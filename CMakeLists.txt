@@ -20,7 +20,6 @@ add_subdirectory(external/googletest)
 add_subdirectory(external/glm)
 
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
-
 target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC SHADERS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw glm)
 
