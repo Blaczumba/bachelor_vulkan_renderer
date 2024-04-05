@@ -1,4 +1,4 @@
-set(TEST_NAME vulkan_tests)
+set(TEST_NAME VulkanTests)
 
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
