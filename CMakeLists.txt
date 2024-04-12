@@ -15,13 +15,28 @@ if(NOT Vulkan_FOUND)
     message(FATAL_ERROR "Vulkan not found!")
 endif()
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build (Debug or Release)" FORCE)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Building in Release mode.")
+else()
+    message(STATUS "Building in Debug mode.")
+endif()
+
+if(UNIX)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -Wall -Wextra -pedantic -O0")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+endif()
+
 add_subdirectory(external/glfw)
 add_subdirectory(external/googletest)
-add_subdirectory(external/glm)
 
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC SHADERS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw glm)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/glm")
 
 add_subdirectory(tests)
 

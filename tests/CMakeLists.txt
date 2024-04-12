@@ -9,4 +9,5 @@ if(WIN32)
 endif()
 
 add_executable(${TEST_NAME} test_vulkan.cpp)
-target_link_libraries(${TEST_NAME} PRIVATE glm GTest::gtest GTest::gtest_main)
+target_link_libraries(${TEST_NAME} PRIVATE GTest::gtest GTest::gtest_main)
+target_include_directories(${TEST_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/glm")
