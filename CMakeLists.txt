@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.19)
 
 set(CMAKE_PROJECT_NAME VulkanProject)
 
@@ -39,12 +39,16 @@ endif()
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
 
 if(WIN32)
+    file(CHMOD "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.bat" PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
+
     add_custom_target(
     CompileShaders
     COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.bat"
     COMMENT "Compiling shaders..."
     )
 elseif(UNIX)
+    file(CHMOD "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.sh" PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
+
     add_custom_target(
     CompileShaders
     COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.sh"

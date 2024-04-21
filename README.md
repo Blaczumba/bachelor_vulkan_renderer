@@ -3,7 +3,7 @@
 * Vulkan SDK installed in the OS
     1) Windows - https://www.lunarg.com/vulkan-sdk/
     2) Raspberry PI 4/5 (Video with installation) - https://www.youtube.com/watch?v=TLzFPIoHhS8&t=78s&ab_channel=NovaspiritTech
-* CMake 3.14 (at least) installed in the OS
+* CMake 3.19 (at least) installed in the OS
 * Development libraries are located in the `external` folder - these are downloaded with repository
 
 
