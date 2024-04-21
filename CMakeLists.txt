@@ -25,18 +25,41 @@ else()
     message(STATUS "Building in Debug mode.")
 endif()
 
-if(UNIX)
+add_subdirectory(external/glfw)
+add_subdirectory(external/googletest)
+
+if(WIN32)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /W3")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+elseif(UNIX)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -Wall -Wextra -pedantic -O0")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 endif()
 
-add_subdirectory(external/glfw)
-add_subdirectory(external/googletest)
-
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
+
+if(WIN32)
+    add_custom_target(
+    CompileShaders
+    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.bat"
+    COMMENT "Compiling shaders..."
+    )
+elseif(UNIX)
+    add_custom_target(
+    CompileShaders
+    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.sh"
+    COMMENT "Compiling shaders..."
+    )
+endif()
+
+add_dependencies(${CMAKE_PROJECT_NAME} CompileShaders)
+
 target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC SHADERS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
+target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC TEXTURES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/textures/")
+
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/glm")
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/stb_image")
 
 add_subdirectory(tests)
 
