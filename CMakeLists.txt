@@ -26,6 +26,7 @@ else()
 endif()
 
 add_subdirectory(external/glfw)
+add_subdirectory(external/tinyobjloader)
 add_subdirectory(external/googletest)
 
 if(WIN32)
@@ -60,10 +61,11 @@ add_dependencies(${CMAKE_PROJECT_NAME} CompileShaders)
 
 target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC SHADERS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
 target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC TEXTURES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/textures/")
+target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC MODELS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/models/")
 
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw tinyobjloader)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/glm")
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/stb_image")
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/tinygltf")
 
 add_subdirectory(tests)
 
