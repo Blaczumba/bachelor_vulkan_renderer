@@ -306,8 +306,8 @@ private:
     }
 
     void recreateSwapChain() {
-        VkOffset2D extent{};
-        while (extent.x == 0 || extent.y == 0) {
+        VkExtent2D extent{};
+        while (extent.width == 0 || extent.height == 0) {
             extent = window->getFramebufferSize();
             glfwWaitEvents();
         }
@@ -1619,11 +1619,11 @@ private:
             return capabilities.currentExtent;
         }
         else {
-            VkOffset2D extent = window->getFramebufferSize();
+            VkExtent2D extent = window->getFramebufferSize();
 
             VkExtent2D actualExtent = {
-                static_cast<uint32_t>(extent.x),
-                static_cast<uint32_t>(extent.y)
+                static_cast<uint32_t>(extent.width),
+                static_cast<uint32_t>(extent.height)
             };
 
             actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);

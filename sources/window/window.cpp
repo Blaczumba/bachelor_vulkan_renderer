@@ -26,10 +26,10 @@ bool Window::running() const {
     return !glfwWindowShouldClose(window);
 }
 
-VkOffset2D Window::getFramebufferSize() const {
-    VkOffset2D extent;
-    glfwGetFramebufferSize(window, &extent.x, &extent.y);
-    return extent;
+VkExtent2D Window::getFramebufferSize() const {
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    return { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 }
 
 GLFWwindow* Window::getGlfwWindow() {

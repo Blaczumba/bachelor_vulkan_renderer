@@ -12,6 +12,6 @@ public:
 	~Window();
 	bool closed() const;
 	bool running() const;
-	VkOffset2D getFramebufferSize() const;
+	VkExtent2D getFramebufferSize() const;
 	GLFWwindow* getGlfwWindow();
 };
