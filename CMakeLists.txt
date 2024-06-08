@@ -25,9 +25,9 @@ else()
     message(STATUS "Building in Debug mode.")
 endif()
 
-add_subdirectory(external/glfw)
-add_subdirectory(external/tinyobjloader)
-add_subdirectory(external/googletest)
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/glfw)
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/tinyobjloader)
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/googletest)
 
 if(WIN32)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /W3")
@@ -40,22 +40,18 @@ endif()
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
 
 if(WIN32)
-    file(CHMOD "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.bat" PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
-
-    add_custom_target(
-    CompileShaders
-    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.bat"
-    COMMENT "Compiling shaders..."
-    )
+    set(SHADER_COMPILE_SCRIPT "${CMAKE_SOURCE_DIR}/shaders/compile_shaders.bat")
 elseif(UNIX)
-    file(CHMOD "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.sh" PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
+    set(SHADER_COMPILE_SCRIPT "${CMAKE_SOURCE_DIR}/shaders/compile_shaders.sh")
+endif()
+
+file(CHMOD ${SHADER_COMPILE_SCRIPT} PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
 
     add_custom_target(
     CompileShaders
-    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.sh"
+    COMMAND ${SHADER_COMPILE_SCRIPT}
     COMMENT "Compiling shaders..."
     )
-endif()
 
 add_dependencies(${CMAKE_PROJECT_NAME} CompileShaders)
 
