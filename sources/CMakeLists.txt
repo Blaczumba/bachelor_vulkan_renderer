@@ -1,3 +1,5 @@
+add_subdirectory(window)
+
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
 
 if(WIN32)
@@ -20,7 +22,7 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC SHADERS_PATH="${CMAKE_SO
 target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC TEXTURES_PATH="${CMAKE_SOURCE_DIR}/assets/textures/")
 target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC MODELS_PATH="${CMAKE_SOURCE_DIR}/assets/models/")
 
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw tinyobjloader)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw tinyobjloader Window)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/glm")
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/tinygltf")
 

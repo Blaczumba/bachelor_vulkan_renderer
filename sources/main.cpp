@@ -12,6 +12,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "window/window.h"
+
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -27,9 +29,7 @@
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
-
-const uint32_t WIDTH = 1920;
-const uint32_t HEIGHT = 1080;
+#include <memory>
 
 const int MAX_FRAMES_IN_FLIGHT = 3;
 
@@ -131,7 +131,7 @@ public:
     }
 
 private:
-    GLFWwindow* window;
+    std::unique_ptr<Window> window;
 
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -196,26 +196,8 @@ private:
     bool framebufferResized = false;
 
     void initWindow() {
-        glfwInit();
-
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-        glfwSetWindowUserPointer(window, this);
-        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-        glfwSetKeyCallback(window, keyCallback);
+        window = std::make_unique<Window>("VulkanRenderer", 1920, 1080);
     }
-
-    static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-            glfwSetWindowShouldClose(window, true);
-    }
-
-    static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-        auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
-        app->framebufferResized = true;
-    }
-
 
     void initVulkan() {
         createInstance();
@@ -246,7 +228,7 @@ private:
     }
 
     void mainLoop() {
-        while (!glfwWindowShouldClose(window)) {
+        while (window->running()) {
             glfwPollEvents();
             drawFrame();
         }
@@ -318,16 +300,15 @@ private:
         vkDestroySurfaceKHR(instance, surface, nullptr);
         vkDestroyInstance(instance, nullptr);
 
-        glfwDestroyWindow(window);
+        // glfwDestroyWindow(window);
 
         glfwTerminate();
     }
 
     void recreateSwapChain() {
-        int width = 0, height = 0;
-        glfwGetFramebufferSize(window, &width, &height);
-        while (width == 0 || height == 0) {
-            glfwGetFramebufferSize(window, &width, &height);
+        VkOffset2D extent{};
+        while (extent.x == 0 || extent.y == 0) {
+            extent = window->getFramebufferSize();
             glfwWaitEvents();
         }
 
@@ -402,7 +383,7 @@ private:
     }
 
     void createSurface() {
-        if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+        if (glfwCreateWindowSurface(instance, window->getGlfwWindow(), nullptr, &surface) != VK_SUCCESS) {
             throw std::runtime_error("failed to create window surface!");
         }
     }
@@ -1588,8 +1569,7 @@ private:
 
         result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-            framebufferResized = false;
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
             recreateSwapChain();
         }
         else if (result != VK_SUCCESS) {
@@ -1639,12 +1619,11 @@ private:
             return capabilities.currentExtent;
         }
         else {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
+            VkOffset2D extent = window->getFramebufferSize();
 
             VkExtent2D actualExtent = {
-                static_cast<uint32_t>(width),
-                static_cast<uint32_t>(height)
+                static_cast<uint32_t>(extent.x),
+                static_cast<uint32_t>(extent.y)
             };
 
             actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
