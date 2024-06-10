@@ -7,11 +7,12 @@
 
 class Window {
 	GLFWwindow* window;
+	VkSurfaceKHR surface;
 public:
 	Window(std::string_view name, uint32_t width, uint32_t height);
 	~Window();
 	bool closed() const;
-	bool running() const;
+	bool open() const;
 	VkExtent2D getFramebufferSize() const;
 	GLFWwindow* getGlfwWindow();
 };

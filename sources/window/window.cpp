@@ -4,10 +4,6 @@
 #include <iostream>
 
 Window::Window(std::string_view name, uint32_t width, uint32_t height) {
-    glfwInit();
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
     window = glfwCreateWindow(width, height, name.data(), nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
@@ -22,7 +18,7 @@ bool Window::closed() const {
     return glfwWindowShouldClose(window);
 }
 
-bool Window::running() const {
+bool Window::open() const {
     return !glfwWindowShouldClose(window);
 }
 
