@@ -14,24 +14,17 @@ class PhysicalDevice {
 	std::shared_ptr<Instance> _instance;
     std::shared_ptr<Surface> _surface;
     VkPhysicalDevice _device;
-    VkSampleCountFlagBits _msaaSamples; // Remove it
 public:
 	PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_ptr<Surface> surface);
-    bool isDeviceSuitable();
 
-    std::vector<VkQueueFamilyProperties> getQueueFamilyProperties() const;
-    std::vector<VkExtensionProperties> getAvailableExtensionProperties() const;
+    VkPhysicalDevice getVkPhysicalDevice();
     VkSampleCountFlagBits getMaxUsableSampleCount();
-
-    bool checkDeviceExtensionSupport() const;
 
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
 
-        bool isComplete() const {
-            return graphicsFamily.has_value() && presentFamily.has_value();
-        }
+        bool isComplete() const;
     };
 
     struct SwapChainSupportDetails {
@@ -40,8 +33,16 @@ public:
         std::vector<VkPresentModeKHR> presentModes;
     };
 
-    QueueFamilyIndices findQueueFamilies();
-    SwapChainSupportDetails querySwapChainSupport();
+    QueueFamilyIndices getQueueFamilyIncides() const;
+    SwapChainSupportDetails getSwapChainSupportDetails() const;
+private:
+    QueueFamilyIndices queueIndices;
+    SwapChainSupportDetails swapChainDetails;
 
-    VkPhysicalDevice getVkPhysicalDevice();
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+
+    bool checkDeviceExtensionSupport(VkPhysicalDevice device) const;
+    std::vector<VkQueueFamilyProperties> getQueueFamilyProperties(VkPhysicalDevice device) const;
+    std::vector<VkExtensionProperties> getAvailableExtensionProperties(VkPhysicalDevice device) const;
 };

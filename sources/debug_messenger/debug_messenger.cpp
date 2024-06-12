@@ -5,8 +5,6 @@
 #include <stdexcept>
 
 DebugMessenger::DebugMessenger(std::shared_ptr<Instance> instance) : _instance(instance) {
-    if (!enableValidationLayers) return;
-
     VkDebugUtilsMessengerCreateInfoEXT createInfo;
     populateDebugMessengerCreateInfoUtility(createInfo);
 

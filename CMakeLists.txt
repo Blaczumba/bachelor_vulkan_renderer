@@ -19,10 +19,12 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build (Debug or Release)" FORCE)
 endif()
 
+
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "Building in Release mode.")
 else()
     message(STATUS "Building in Debug mode.")
+    add_definitions(-DVALIDATION_LAYERS_ENABLED)
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/external/glfw)

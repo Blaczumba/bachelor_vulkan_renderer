@@ -1,18 +1,18 @@
 #include "instance.h"
-#include "debug_messenger_utils.h"
+#include "debug_messenger/debug_messenger_utils.h"
+#include "config/config.h"
 
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
 
-static const std::vector<const char*> validationLayers = {
-    "VK_LAYER_KHRONOS_validation"
-};
-
 Instance::Instance() {
-    if (enableValidationLayers && !checkValidationLayerSupport()) {
+
+#ifdef VALIDATION_LAYERS_ENABLED
+    if (!checkValidationLayerSupport()) {
         throw std::runtime_error("validation layers requested, but not available!");
     }
+#endif
 
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -31,18 +31,17 @@ Instance::Instance() {
     createInfo.ppEnabledExtensionNames = extensions.data();
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-    if (enableValidationLayers) {
-        createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-        createInfo.ppEnabledLayerNames = validationLayers.data();
+#ifdef VALIDATION_LAYERS_ENABLED
+    createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+    createInfo.ppEnabledLayerNames = validationLayers.data();
 
-        populateDebugMessengerCreateInfoUtility(debugCreateInfo);
-        createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
-    }
-    else {
-        createInfo.enabledLayerCount = 0;
+    populateDebugMessengerCreateInfoUtility(debugCreateInfo);
+    createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
+#else
+    createInfo.enabledLayerCount = 0;
 
-        createInfo.pNext = nullptr;
-    }
+    createInfo.pNext = nullptr;
+#endif
 
     if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
         throw std::runtime_error("failed to create instance!");
@@ -79,9 +78,9 @@ std::vector<const char*> Instance::getRequiredExtensions() {
 
     std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-    if (enableValidationLayers) {
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
+#ifdef VALIDATION_LAYERS_ENABLED
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
 
     return extensions;
 }

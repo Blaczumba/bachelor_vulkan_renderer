@@ -7,7 +7,6 @@
 
 class Instance {
 	VkInstance _instance;
-	const bool enableValidationLayers = true;
 
 	bool checkValidationLayerSupport() const;
 	std::vector<const char*> getRequiredExtensions();

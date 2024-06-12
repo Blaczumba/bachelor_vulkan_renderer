@@ -10,7 +10,6 @@ class DebugMessenger {
 	std::shared_ptr<Instance> _instance;
 
 	VkResult CreateDebugUtilsMessengerEXT(const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator);
-	bool enableValidationLayers = true;
 public:
 	DebugMessenger(std::shared_ptr<Instance> instance);
 	~DebugMessenger();
