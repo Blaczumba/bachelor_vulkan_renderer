@@ -6,7 +6,7 @@
 #include <vector>
 
 class Instance {
-	VkInstance instance;
+	VkInstance _instance;
 	const bool enableValidationLayers = true;
 
 	bool checkValidationLayerSupport() const;
@@ -15,4 +15,5 @@ public:
 	Instance();
 	~Instance();
 	VkInstance getVkInstance();
+	std::vector<VkPhysicalDevice> getAvailablePhysicalDevices() const;
 };

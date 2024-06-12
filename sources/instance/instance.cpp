@@ -44,17 +44,17 @@ Instance::Instance() {
         createInfo.pNext = nullptr;
     }
 
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+    if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
         throw std::runtime_error("failed to create instance!");
     }
 }
 
 Instance::~Instance() {
-    vkDestroyInstance(instance, nullptr);
+    vkDestroyInstance(_instance, nullptr);
 }
 
 VkInstance Instance::getVkInstance() {
-    return instance;
+    return _instance;
 }
 
 bool Instance::checkValidationLayerSupport() const {
@@ -84,4 +84,18 @@ std::vector<const char*> Instance::getRequiredExtensions() {
     }
 
     return extensions;
+}
+
+std::vector<VkPhysicalDevice> Instance::getAvailablePhysicalDevices() const {
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
+
+    if (deviceCount == 0) {
+        throw std::runtime_error("failed to find GPUs with Vulkan support!");
+    }
+
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(_instance, &deviceCount, devices.data());
+
+    return devices;
 }
