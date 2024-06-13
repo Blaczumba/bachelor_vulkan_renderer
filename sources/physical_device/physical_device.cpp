@@ -30,8 +30,8 @@ PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_p
         if (suitable) {
             _device = device;
             _msaaSampleCount = getMaxUsableSampleCount(device);
-            _queueIndices = indices;
-            _swapChainDetails = swapChainSupport;
+            _queueIndices = findQueueFamilyIncides(device, surf);
+            _swapChainDetails = querySwapchainSupportDetails(device, surf);
             break;
         }
     }
@@ -50,7 +50,7 @@ QueueFamilyIndices PhysicalDevice::getQueueFamilyIndices() const {
 }
 
 SwapChainSupportDetails PhysicalDevice::getSwapChainDetails() const {
-    return _swapChainDetails;
+    return querySwapchainSupportDetails(_device, _surface->getVkSurface());
 }
 
 VkSampleCountFlagBits PhysicalDevice::getMsaaSampleCount() const {
