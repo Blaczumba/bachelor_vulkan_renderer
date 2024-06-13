@@ -22,7 +22,7 @@ bool Window::open() const {
     return !glfwWindowShouldClose(window);
 }
 
-VkExtent2D Window::getFramebufferSize() const {
+Extent Window::getFramebufferSize() const {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
     return { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };

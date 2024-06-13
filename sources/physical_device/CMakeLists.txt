@@ -1,4 +1,4 @@
-add_library(PhysicalDevice physical_device.cpp)
+add_library(PhysicalDevice physical_device.cpp "features.h" "features.cpp")
 
 target_link_libraries(PhysicalDevice PUBLIC Instance Surface)
 

@@ -1,11 +1,12 @@
 #include "swapchain.h"
+#include "physical_device/features.h"
 
 #include <algorithm>
 #include <stdexcept>
 
 Swapchain::Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice)
 	: _surface(surface), _window(window), _logicalDevice(logicalDevice), _physicalDevice(physicalDevice) {
-    PhysicalDevice::SwapChainSupportDetails swapChainSupport = _physicalDevice->getSwapChainSupportDetails();
+    SwapChainSupportDetails swapChainSupport = _physicalDevice->getSwapChainDetails();
     VkDevice device = logicalDevice->getVkDevice();
 
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -28,7 +29,7 @@ Swapchain::Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> w
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    PhysicalDevice::QueueFamilyIndices indices = _physicalDevice->getQueueFamilyIncides();
+    QueueFamilyIndices indices = _physicalDevice->getQueueFamilyIndices();
     uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
     if (indices.graphicsFamily != indices.presentFamily) {
@@ -84,7 +85,8 @@ VkExtent2D Swapchain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilit
         return capabilities.currentExtent;
     }
     else {
-        VkExtent2D extent = _window->getFramebufferSize();
+        Extent windowExtent = _window->getFramebufferSize();
+        VkExtent2D extent = { windowExtent.width, windowExtent.height };
 
         VkExtent2D actualExtent = {
             static_cast<uint32_t>(extent.width),

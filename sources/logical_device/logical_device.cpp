@@ -1,12 +1,13 @@
 #include "logical_device.h"
 #include "config/config.h"
+#include "physical_device/features.h"
 
 #include <set>
 #include <stdexcept>
 
 LogicalDevice::LogicalDevice(std::shared_ptr<PhysicalDevice> physicalDevice)
     : _physicalDevice(physicalDevice) {
-    PhysicalDevice::QueueFamilyIndices indices = _physicalDevice->getQueueFamilyIncides();
+    QueueFamilyIndices indices = physicalDevice->getQueueFamilyIndices();
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
