@@ -2,8 +2,6 @@
 
 #include "physical_device/physical_device.h"
 
-#include <vulkan/vulkan.h>
-
 #include <memory>
 
 class LogicalDevice {

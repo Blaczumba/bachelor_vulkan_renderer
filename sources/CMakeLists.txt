@@ -4,6 +4,7 @@ add_subdirectory(debug_messenger)
 add_subdirectory(surface)
 add_subdirectory(physical_device)
 add_subdirectory(logical_device)
+add_subdirectory(swapchain)
 
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
 

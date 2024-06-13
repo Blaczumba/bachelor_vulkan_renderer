@@ -3,8 +3,6 @@
 #include "instance/instance.h"
 #include "surface/surface.h"
 
-#include <vulkan/vulkan.h>
-
 #include <vector>
 #include <memory>
 #include <optional>

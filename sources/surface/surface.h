@@ -3,9 +3,6 @@
 #include "instance/instance.h"
 #include "window/window.h"
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
 #include <memory>
 
 class Surface {
