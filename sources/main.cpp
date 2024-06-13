@@ -12,12 +12,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "config/config.h"
 #include "window/window.h"
 #include "instance/instance.h"
 #include "debug_messenger/debug_messenger.h"
 #include "surface/surface.h"
 #include "physical_device/physical_device.h"
-#include "config/config.h"
+#include "logical_device/logical_device.h"
 
 #include <iostream>
 #include <fstream>
@@ -116,7 +117,8 @@ private:
     std::shared_ptr<DebugMessenger> _debugMessenger;
     std::shared_ptr<Surface> _surface;
     std::shared_ptr<PhysicalDevice> _physicalDevice;
-    
+    std::shared_ptr<LogicalDevice> _logicalDevice;
+
     VkSurfaceKHR surface;
 
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -276,7 +278,7 @@ private:
 
         vkDestroyCommandPool(device, commandPool, nullptr);
 
-        vkDestroyDevice(device, nullptr);
+        // vkDestroyDevice(device, nullptr);
 
         //if (enableValidationLayers) {
         //    DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
@@ -315,7 +317,7 @@ private:
     void setupDebugMessenger() {
 #ifdef VALIDATION_LAYERS_ENABLED
         _debugMessenger = std::make_shared<DebugMessenger>(_instance);
-#endif
+#endif // VALIDATION_LAYERS_ENABLED
     }
 
     void createSurface() {
@@ -330,50 +332,10 @@ private:
     }
 
     void createLogicalDevice() {
-        PhysicalDevice::QueueFamilyIndices indices = _physicalDevice->getQueueFamilyIncides();
-
-        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-        std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
-
-        float queuePriority = 1.0f;
-        for (uint32_t queueFamily : uniqueQueueFamilies) {
-            VkDeviceQueueCreateInfo queueCreateInfo{};
-            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueCreateInfo.queueFamilyIndex = queueFamily;
-            queueCreateInfo.queueCount = 1;
-            queueCreateInfo.pQueuePriorities = &queuePriority;
-            queueCreateInfos.push_back(queueCreateInfo);
-        }
-
-        VkPhysicalDeviceFeatures deviceFeatures{};
-        deviceFeatures.samplerAnisotropy = VK_TRUE;
-        deviceFeatures.sampleRateShading = VK_TRUE;
-
-        VkDeviceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-        createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-        createInfo.pQueueCreateInfos = queueCreateInfos.data();
-
-        createInfo.pEnabledFeatures = &deviceFeatures;
-
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-        createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-
-        if (enableValidationLayers) {
-            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-            createInfo.ppEnabledLayerNames = validationLayers.data();
-        }
-        else {
-            createInfo.enabledLayerCount = 0;
-        }
-
-        if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create logical device!");
-        }
-
-        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-        vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+        _logicalDevice = std::make_shared<LogicalDevice>(_physicalDevice);
+        device = _logicalDevice->getVkDevice();
+        graphicsQueue = _logicalDevice->graphicsQueue;
+        presentQueue = _logicalDevice->presentQueue;
     }
 
     void createSwapChain() {

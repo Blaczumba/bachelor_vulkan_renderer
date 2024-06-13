@@ -3,17 +3,16 @@
 #include "instance/instance.h"
 #include "surface/surface.h"
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include <vulkan/vulkan.h>
 
 #include <vector>
 #include <memory>
 #include <optional>
 
 class PhysicalDevice {
+    VkPhysicalDevice _device;
 	std::shared_ptr<Instance> _instance;
     std::shared_ptr<Surface> _surface;
-    VkPhysicalDevice _device;
 public:
 	PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_ptr<Surface> surface);
 

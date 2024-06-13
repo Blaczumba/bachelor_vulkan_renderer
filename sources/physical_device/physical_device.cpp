@@ -87,7 +87,7 @@ PhysicalDevice::QueueFamilyIndices PhysicalDevice::findQueueFamilies(VkPhysicalD
 
     std::vector<VkQueueFamilyProperties> queueFamilies = getQueueFamilyProperties(device);
 
-    for (uint32_t i = 0; i < queueFamilies.size(); i++) {
+    for (uint32_t i = 0; i < queueFamilies.size() && !indices.isComplete(); i++) {
         VkBool32 presentSupport = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(device, i, _surface->getVkSurface(), &presentSupport);
 
@@ -97,10 +97,6 @@ PhysicalDevice::QueueFamilyIndices PhysicalDevice::findQueueFamilies(VkPhysicalD
 
         if (presentSupport) {
             indices.presentFamily = i;
-        }
-
-        if (indices.isComplete()) {
-            break;
         }
     }
 

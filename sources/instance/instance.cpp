@@ -12,7 +12,7 @@ Instance::Instance() {
     if (!checkValidationLayerSupport()) {
         throw std::runtime_error("validation layers requested, but not available!");
     }
-#endif
+#endif // VALIDATION_LAYERS_ENABLED
 
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -41,7 +41,7 @@ Instance::Instance() {
     createInfo.enabledLayerCount = 0;
 
     createInfo.pNext = nullptr;
-#endif
+#endif // VALIDATION_LAYERS_ENABLED
 
     if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
         throw std::runtime_error("failed to create instance!");
@@ -80,7 +80,7 @@ std::vector<const char*> Instance::getRequiredExtensions() {
 
 #ifdef VALIDATION_LAYERS_ENABLED
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#endif
+#endif // VALIDATION_LAYERS_ENABLED
 
     return extensions;
 }
