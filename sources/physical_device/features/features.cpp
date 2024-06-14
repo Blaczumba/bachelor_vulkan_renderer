@@ -1,7 +1,5 @@
 #include "features.h"
 #include "config/config.h"
-#include "physical_device.h"
-#include "surface/surface.h"
 
 #include <algorithm>
 #include <array>

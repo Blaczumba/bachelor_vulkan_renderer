@@ -2,7 +2,7 @@
 
 #include "instance/instance.h"
 #include "surface/surface.h"
-#include "features.h"
+#include "physical_device/features/features.h"
 
 #include <vector>
 #include <memory>
@@ -20,7 +20,5 @@ public:
     SwapChainSupportDetails getSwapChainDetails() const;
     VkSampleCountFlagBits getMsaaSampleCount() const;
 private:
-    QueueFamilyIndices _queueIndices;
-    SwapChainSupportDetails _swapChainDetails;
     VkSampleCountFlagBits _msaaSampleCount;
 };

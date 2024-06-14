@@ -1,6 +1,6 @@
 #include "logical_device.h"
 #include "config/config.h"
-#include "physical_device/features.h"
+#include "physical_device/features/features.h"
 
 #include <set>
 #include <stdexcept>
