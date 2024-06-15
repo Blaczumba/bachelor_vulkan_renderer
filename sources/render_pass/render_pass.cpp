@@ -4,7 +4,7 @@
 #include <optional>
 #include <stdexcept>
 
-Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<Attachment>& attachments)
+Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::unique_ptr<Attachment>>& attachments)
     : _logicalDevice(logicalDevice) {
     std::vector<VkAttachmentReference> colorAttachmentRefs;
     std::vector<VkAttachmentReference> depthAttachmentRefs;
@@ -15,20 +15,20 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
     for (uint32_t i = 0; i < attachments.size(); i++) {
         const auto& attachment = attachments[i];
 
-        attachmentDescriptions.push_back(attachment.description);
+        attachmentDescriptions.push_back(attachment->description);
 
         VkAttachmentReference reference{};
         reference.attachment = i;
 
-        if (dynamic_cast<const ColorAttachment*>(&attachment)) {
+        if (dynamic_cast<const ColorAttachment*>(attachment.get())) {
             reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             colorAttachmentRefs.push_back(reference);
         }
-        else if (dynamic_cast<const DepthAttachment*>(&attachment)) {
+        else if (dynamic_cast<const DepthAttachment*>(attachment.get())) {
             reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             depthAttachmentRefs.push_back(reference);
         }
-        else if (dynamic_cast<const ColorAttachmentResolve*>(&attachment)) {
+        else if (dynamic_cast<const ColorAttachmentResolve*>(attachment.get())) {
             reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             colorAttachmentResolveRefs.push_back(reference);
         }
@@ -61,4 +61,8 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
     if (vkCreateRenderPass(_logicalDevice->getVkDevice(), &renderPassInfo, nullptr, &_renderpass) != VK_SUCCESS) {
         throw std::runtime_error("failed to create render pass!");
     }
+}
+
+VkRenderPass Renderpass::getVkRenderPass() {
+    return _renderpass;
 }
