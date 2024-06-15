@@ -4,6 +4,8 @@
 #include "logical_device/logical_device.h"
 #include "surface/surface.h"
 
+#include <vulkan/vulkan.h>
+
 class Swapchain {
 	std::shared_ptr<Surface> _surface;
 	std::shared_ptr<Window> _window;
@@ -18,9 +20,6 @@ class Swapchain {
 	std::vector<VkFramebuffer> _framebuffers;
 public:
 	Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice);
-private:
-	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes, VkPresentModeKHR preferredMode = VK_PRESENT_MODE_FIFO_KHR);
-	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
+	~Swapchain();
+	void attachFramebuffers(std::vector<VkImageView> attachments, VkRenderPass renderPass);
 };
