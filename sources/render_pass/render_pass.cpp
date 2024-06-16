@@ -1,36 +1,41 @@
 #include "render_pass.h"
+#include "attachment/attachment.h"
 
 #include <unordered_map>
 #include <optional>
 #include <stdexcept>
+#include <variant>
+#include <iostream>
 
-Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::unique_ptr<Attachment>>& attachments)
+Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<Attachment>& attachments)
     : _logicalDevice(logicalDevice) {
     std::vector<VkAttachmentReference> colorAttachmentRefs;
     std::vector<VkAttachmentReference> depthAttachmentRefs;
     std::vector<VkAttachmentReference> colorAttachmentResolveRefs;
     std::vector<VkAttachmentDescription> attachmentDescriptions;
 
-    // RTTI
     for (uint32_t i = 0; i < attachments.size(); i++) {
-        const auto& attachment = attachments[i];
+        Attachment attachment = attachments[i];
 
-        attachmentDescriptions.push_back(attachment->description);
-
-        VkAttachmentReference reference{};
-        reference.attachment = i;
-
-        if (dynamic_cast<const ColorAttachment*>(attachment.get())) {
-            reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            colorAttachmentRefs.push_back(reference);
+        VkAttachmentReference attachmentRefeference{};
+        attachmentRefeference.attachment = i;
+        if (const auto ref = std::get_if<ColorAttachment>(&attachment)) {
+            attachmentDescriptions.push_back(ref->description);
+            attachmentRefeference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            colorAttachmentRefs.push_back(attachmentRefeference);
         }
-        else if (dynamic_cast<const DepthAttachment*>(attachment.get())) {
-            reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            depthAttachmentRefs.push_back(reference);
+        else if (const auto ref = std::get_if<DepthAttachment>(&attachment)) {
+            attachmentDescriptions.push_back(ref->description);
+            attachmentRefeference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            depthAttachmentRefs.push_back(attachmentRefeference);
         }
-        else if (dynamic_cast<const ColorAttachmentResolve*>(attachment.get())) {
-            reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            colorAttachmentResolveRefs.push_back(reference);
+        else if (const auto ref = std::get_if<ColorAttachmentResolve>(&attachment)) {
+            attachmentDescriptions.push_back(ref->description);
+            attachmentRefeference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            colorAttachmentResolveRefs.push_back(attachmentRefeference);
+        }
+        else {
+            throw std::runtime_error("failed to recognize attachment type in render pass creation");
         }
     }
 

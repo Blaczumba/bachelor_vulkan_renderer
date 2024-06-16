@@ -6,10 +6,12 @@
 #include <vector>
 #include <memory>
 
+using Attachment = std::variant<ColorAttachment, DepthAttachment, ColorAttachmentResolve>;
+
 class Renderpass {
 	VkRenderPass _renderpass;
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::unique_ptr<Attachment>>& attachments);
+	Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<Attachment>& attachments);
 	VkRenderPass getVkRenderPass();
 };

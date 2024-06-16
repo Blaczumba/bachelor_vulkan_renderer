@@ -2,17 +2,11 @@
 
 #include <vulkan/vulkan.h>
 
-struct Attachment {
-    VkAttachmentDescription description;
+#include <variant>
 
-    Attachment() {
-        description = {};
-    }
+struct ColorAttachment {
+    VkAttachmentDescription description{};
 
-    virtual ~Attachment() = default;
-};
-
-struct ColorAttachment : public Attachment {
     ColorAttachment(VkFormat format, VkSampleCountFlagBits samples) {
         description.format = format;
         description.samples = samples;
@@ -25,7 +19,9 @@ struct ColorAttachment : public Attachment {
     }
 };
 
-struct DepthAttachment : public Attachment {
+struct DepthAttachment {
+    VkAttachmentDescription description{};
+
     DepthAttachment(VkFormat format, VkSampleCountFlagBits samples) {
         description.format = format;
         description.samples = samples;
@@ -38,7 +34,9 @@ struct DepthAttachment : public Attachment {
     }
 };
 
-struct ColorAttachmentResolve : public Attachment {
+struct ColorAttachmentResolve {
+    VkAttachmentDescription description{};
+
     ColorAttachmentResolve(VkFormat format) {
         description.format = format;
         description.samples = VK_SAMPLE_COUNT_1_BIT;

@@ -27,6 +27,7 @@
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
+#include <variant>
 
 #include <window/window.h>
 #include <instance/instance.h>
@@ -397,14 +398,11 @@ private:
     }
 
     void createRenderPass() {
-        auto a = std::make_unique<ColorAttachment>(swapChainImageFormat, msaaSamples);
-        auto b = std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples);
-        auto c = std::make_unique<ColorAttachmentResolve>(swapChainImageFormat);
-        std::vector<std::unique_ptr<Attachment>> aattachments;
-        aattachments.emplace_back(std::move(a));
-        aattachments.emplace_back(std::move(b));
-        aattachments.emplace_back(std::move(c));
-
+        std::vector<Attachment> aattachments = {
+            ColorAttachment(swapChainImageFormat, msaaSamples),
+            DepthAttachment(findDepthFormat(), msaaSamples),
+            ColorAttachmentResolve(swapChainImageFormat)
+        };
         _renderPass = std::make_shared<Renderpass>(_logicalDevice, aattachments);
         renderPass = _renderPass->getVkRenderPass();
     }
