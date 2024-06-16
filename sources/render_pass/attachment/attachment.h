@@ -7,7 +7,7 @@
 struct ColorAttachment {
     VkAttachmentDescription description{};
 
-    ColorAttachment(VkFormat format, VkSampleCountFlagBits samples) {
+    ColorAttachment(VkFormat format, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT) {
         description.format = format;
         description.samples = samples;
         description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -15,14 +15,17 @@ struct ColorAttachment {
         description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        description.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        if(samples == VK_SAMPLE_COUNT_1_BIT)
+            description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        else
+            description.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
 };
 
 struct DepthAttachment {
     VkAttachmentDescription description{};
 
-    DepthAttachment(VkFormat format, VkSampleCountFlagBits samples) {
+    DepthAttachment(VkFormat format, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT) {
         description.format = format;
         description.samples = samples;
         description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;

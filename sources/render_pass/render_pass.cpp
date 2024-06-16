@@ -56,9 +56,12 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = static_cast<uint32_t>(colorAttachmentRefs.size());
-    subpass.pColorAttachments = colorAttachmentRefs.data();
-    subpass.pDepthStencilAttachment = depthAttachmentRefs.data();
-    subpass.pResolveAttachments = colorAttachmentResolveRefs.data();
+    if(!colorAttachmentRefs.empty())
+        subpass.pColorAttachments = colorAttachmentRefs.data();
+    if(!depthAttachmentRefs.empty())
+        subpass.pDepthStencilAttachment = depthAttachmentRefs.data();
+    if(!colorAttachmentResolveRefs.empty())
+        subpass.pResolveAttachments = colorAttachmentResolveRefs.data();
 
     VkSubpassDependency dependency{};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;

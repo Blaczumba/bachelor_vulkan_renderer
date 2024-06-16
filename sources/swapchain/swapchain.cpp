@@ -1,6 +1,5 @@
 #include "swapchain.h"
 #include "physical_device/features/features.h"
-#include "texture/utils/texture_utils.h"
 #include "utils/swapchain_utils.h"
 
 #include <algorithm>
@@ -63,9 +62,6 @@ Swapchain::Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> w
     _extent = extent;
 }
 
-void Swapchain::createFramebuffers(const std::vector<AttachmentType>& layout) {
-    
-}
 
 Swapchain::~Swapchain() {
     VkDevice device = _logicalDevice->getVkDevice();

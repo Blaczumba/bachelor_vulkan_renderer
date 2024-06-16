@@ -314,7 +314,9 @@ private:
     }
 
     void setupDebugMessenger() {
+#ifdef VALIDATION_LAYERS_ENABLED
         _debugMessenger = std::make_shared<DebugMessenger>(_instance);
+#endif // VALIDATION_LAYERS_ENABLED
     }
 
 
@@ -326,6 +328,7 @@ private:
     void pickPhysicalDevice() {
         _physicalDevice = std::make_shared<PhysicalDevice>(_instance, _surface);
         msaaSamples = _physicalDevice->getMaxMsaaSampleCount();
+        msaaSamples = VK_SAMPLE_COUNT_4_BIT;
         physicalDevice = _physicalDevice->getVkPhysicalDevice();
     }
 
@@ -489,7 +492,6 @@ private:
 
         VkPipelineMultisampleStateCreateInfo multisampling{};
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampling.sampleShadingEnable = VK_FALSE;
         multisampling.rasterizationSamples = msaaSamples;
         multisampling.sampleShadingEnable = VK_TRUE;
         multisampling.minSampleShading = 0.2f;
@@ -547,7 +549,8 @@ private:
         pipelineInfo.pInputAssemblyState = &inputAssembly;
         pipelineInfo.pViewportState = &viewportState;
         pipelineInfo.pRasterizationState = &rasterizer;
-        pipelineInfo.pMultisampleState = &multisampling;
+        if(msaaSamples != VK_SAMPLE_COUNT_1_BIT)
+            pipelineInfo.pMultisampleState = &multisampling;
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = pipelineLayout;
@@ -571,7 +574,7 @@ private:
             std::array<VkImageView, 3> attachments = {
                 colorImageView,
                 depthImageView,
-                swapChainImageViews[i],
+                swapChainImageViews[i]
             };
 
             VkFramebufferCreateInfo framebufferInfo{};
