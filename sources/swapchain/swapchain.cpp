@@ -8,7 +8,7 @@
 
 Swapchain::Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice)
 	: _surface(surface), _window(window), _logicalDevice(logicalDevice), _physicalDevice(physicalDevice) {
-    SwapChainSupportDetails swapChainSupport = _physicalDevice->getSwapChainDetails();
+    SwapChainSupportDetails swapChainSupport = _physicalDevice->getSwapChainSupportDetails();
     VkDevice device = logicalDevice->getVkDevice();
 
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -61,28 +61,10 @@ Swapchain::Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> w
     _framebuffers.resize(imageCount);
     _imageFormat = surfaceFormat.format;
     _extent = extent;
-
-
-    for (size_t i = 0; i < _images.size(); i++) {
-        _imageViews[i] = createImageView(device, _images[i], _imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-    }
 }
 
-void Swapchain::attachFramebuffers(std::vector<VkImageView> attachments, VkRenderPass renderPass) {
-    for (size_t i = 0; i < _imageViews.size(); i++) {
-        VkFramebufferCreateInfo framebufferInfo{};
-        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferInfo.renderPass = renderPass;
-        framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-        framebufferInfo.pAttachments = attachments.data();
-        framebufferInfo.width = _extent.width;
-        framebufferInfo.height = _extent.height;
-        framebufferInfo.layers = 1;
-
-        if (vkCreateFramebuffer(_logicalDevice->getVkDevice(), &framebufferInfo, nullptr, &_framebuffers[i]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create framebuffer!");
-        }
-    }
+void Swapchain::createFramebuffers(const std::vector<AttachmentType>& layout) {
+    
 }
 
 Swapchain::~Swapchain() {

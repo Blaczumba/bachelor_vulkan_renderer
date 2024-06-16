@@ -1,10 +1,7 @@
 #include "render_pass.h"
 #include "attachment/attachment.h"
 
-#include <unordered_map>
-#include <optional>
 #include <stdexcept>
-#include <variant>
 #include <iostream>
 
 Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<Attachment>& attachments)
@@ -19,20 +16,37 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
 
         VkAttachmentReference attachmentRefeference{};
         attachmentRefeference.attachment = i;
+        VkClearValue clearValue{};
+
         if (const auto ref = std::get_if<ColorAttachment>(&attachment)) {
             attachmentDescriptions.push_back(ref->description);
             attachmentRefeference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             colorAttachmentRefs.push_back(attachmentRefeference);
+            
+            clearValue.color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+            _clearValues.push_back(clearValue);
+
+            _layout.emplace_back(AttachmentType::COLOR);
         }
         else if (const auto ref = std::get_if<DepthAttachment>(&attachment)) {
             attachmentDescriptions.push_back(ref->description);
             attachmentRefeference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             depthAttachmentRefs.push_back(attachmentRefeference);
+
+            clearValue.depthStencil = { 1.0f, 0 };
+            _clearValues.push_back(clearValue);
+
+            _layout.emplace_back(AttachmentType::DEPTH_STENCIL);
         }
         else if (const auto ref = std::get_if<ColorAttachmentResolve>(&attachment)) {
             attachmentDescriptions.push_back(ref->description);
             attachmentRefeference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             colorAttachmentResolveRefs.push_back(attachmentRefeference);
+
+            clearValue.color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+            _clearValues.push_back(clearValue);
+
+            _layout.emplace_back(AttachmentType::COLOR_RESOLVE);
         }
         else {
             throw std::runtime_error("failed to recognize attachment type in render pass creation");
@@ -70,4 +84,12 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
 
 VkRenderPass Renderpass::getVkRenderPass() {
     return _renderpass;
+}
+
+const std::vector<VkClearValue>& Renderpass::getClearValues() const {
+    return _clearValues;
+}
+
+const std::vector<AttachmentType>& Renderpass::getLayout() const {
+    return _layout;
 }

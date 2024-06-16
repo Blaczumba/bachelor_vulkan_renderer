@@ -3,6 +3,7 @@
 #include "physical_device/device/physical_device.h"
 #include "logical_device/logical_device.h"
 #include "surface/surface.h"
+#include "render_pass/attachment/attachment_type.h"
 
 #include <vulkan/vulkan.h>
 
@@ -21,5 +22,6 @@ class Swapchain {
 public:
 	Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice);
 	~Swapchain();
-	void attachFramebuffers(std::vector<VkImageView> attachments, VkRenderPass renderPass);
+	
+	void createFramebuffers(const std::vector<AttachmentType>& layout);
 };

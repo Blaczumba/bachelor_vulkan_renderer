@@ -1,6 +1,6 @@
 add_subdirectory(utils)
 
-add_library(Swapchain swapchain.cpp)
+add_library(Swapchain swapchain.cpp "resources/color_resource.h")
 
 target_link_libraries(Swapchain PUBLIC LogicalDevice TextureUtils SwapchainUtils)
 

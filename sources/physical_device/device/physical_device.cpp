@@ -47,10 +47,24 @@ QueueFamilyIndices PhysicalDevice::getQueueFamilyIndices() const {
     return findQueueFamilyIncides(_device, _surface->getVkSurface());
 }
 
-SwapChainSupportDetails PhysicalDevice::getSwapChainDetails() const {
+SwapChainSupportDetails PhysicalDevice::getSwapChainSupportDetails() const {
     return querySwapchainSupportDetails(_device, _surface->getVkSurface());
 }
 
-VkSampleCountFlagBits PhysicalDevice::getMsaaSampleCount() const {
+VkSampleCountFlagBits PhysicalDevice::getMaxMsaaSampleCount() const {
     return _msaaSampleCount;
+}
+
+bool PhysicalDevice::checkTextureFormatSupport(VkFormat format, VkImageTiling tiling, VkFormatFeatureFlags features) const {
+    VkFormatProperties properties;
+    vkGetPhysicalDeviceFormatProperties(_device, format, &properties);
+
+    if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features) {
+        return true;
+    }
+    else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features) {
+        return true;
+    }
+
+    return false;
 }

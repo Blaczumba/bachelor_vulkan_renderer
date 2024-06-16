@@ -17,8 +17,9 @@ public:
 
     VkPhysicalDevice getVkPhysicalDevice();
     QueueFamilyIndices getQueueFamilyIndices() const;
-    SwapChainSupportDetails getSwapChainDetails() const;
-    VkSampleCountFlagBits getMsaaSampleCount() const;
+    SwapChainSupportDetails getSwapChainSupportDetails() const;
+    VkSampleCountFlagBits getMaxMsaaSampleCount() const;
+    bool checkTextureFormatSupport(VkFormat format, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 private:
     VkSampleCountFlagBits _msaaSampleCount;
 };
