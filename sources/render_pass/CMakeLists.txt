@@ -1,3 +1,5 @@
+add_subdirectory(framebuffer)
+
 add_library(Renderpass render_pass.cpp)
 
 target_link_libraries(Renderpass PUBLIC LogicalDevice)

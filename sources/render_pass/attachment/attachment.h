@@ -4,6 +4,17 @@
 
 #include <variant>
 
+enum class AttachmentType : uint8_t {
+    COLOR,
+    DEPTH_STENCIL,
+    COLOR_RESOLVE
+};
+
+struct AttachmentElement {
+    AttachmentType type;
+    VkAttachmentDescription description;
+};
+
 struct ColorAttachment {
     VkAttachmentDescription description{};
 

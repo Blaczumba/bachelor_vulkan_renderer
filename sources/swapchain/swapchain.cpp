@@ -1,14 +1,41 @@
 #include "swapchain.h"
 #include "physical_device/features/features.h"
-#include "utils/swapchain_utils.h"
+#include "swapchain_utils.h"
 
 #include <algorithm>
 #include <stdexcept>
 
 Swapchain::Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice)
 	: _surface(surface), _window(window), _logicalDevice(logicalDevice), _physicalDevice(physicalDevice) {
+    create();
+}
+
+Swapchain::~Swapchain() {
+    cleanup();
+}
+
+
+const std::vector<VkImageView>& Swapchain::getImageViews() const {
+    return _imageViews;
+}
+
+const VkExtent2D& Swapchain::getExtent() const {
+    return _extent;
+}
+
+void Swapchain::cleanup() {
+    VkDevice device = _logicalDevice->getVkDevice();
+
+    for (auto imageView : _imageViews) {
+        vkDestroyImageView(device, imageView, nullptr);
+    }
+
+    vkDestroySwapchainKHR(device, _swapchain, nullptr);
+}
+
+void Swapchain::create() {
     SwapChainSupportDetails swapChainSupport = _physicalDevice->getSwapChainSupportDetails();
-    VkDevice device = logicalDevice->getVkDevice();
+    VkDevice device = _logicalDevice->getVkDevice();
 
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
     VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_MAILBOX_KHR);
@@ -57,21 +84,10 @@ Swapchain::Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> w
     vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, _images.data());
 
     _imageViews.resize(imageCount);
-    _framebuffers.resize(imageCount);
     _imageFormat = surfaceFormat.format;
     _extent = extent;
-}
 
-
-Swapchain::~Swapchain() {
-    VkDevice device = _logicalDevice->getVkDevice();
-    for (auto framebuffer : _framebuffers) {
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
+    for (size_t i = 0; i < imageCount; i++) {
+        _imageViews[i] = _logicalDevice->createImageView(_images[i], _imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
-
-    for (auto imageView : _imageViews) {
-        vkDestroyImageView(device, imageView, nullptr);
-    }
-
-    vkDestroySwapchainKHR(device, _swapchain, nullptr);
 }

@@ -19,34 +19,37 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
         VkClearValue clearValue{};
 
         if (const auto ref = std::get_if<ColorAttachment>(&attachment)) {
-            attachmentDescriptions.push_back(ref->description);
+            const VkAttachmentDescription& description = ref->description;
+            attachmentDescriptions.push_back(description);
             attachmentRefeference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             colorAttachmentRefs.push_back(attachmentRefeference);
             
             clearValue.color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
             _clearValues.push_back(clearValue);
 
-            _layout.emplace_back(AttachmentType::COLOR);
+            _layout.emplace_back(AttachmentType::COLOR, description);
         }
         else if (const auto ref = std::get_if<DepthAttachment>(&attachment)) {
-            attachmentDescriptions.push_back(ref->description);
+            const VkAttachmentDescription& description = ref->description;
+            attachmentDescriptions.push_back(description);
             attachmentRefeference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             depthAttachmentRefs.push_back(attachmentRefeference);
 
             clearValue.depthStencil = { 1.0f, 0 };
             _clearValues.push_back(clearValue);
 
-            _layout.emplace_back(AttachmentType::DEPTH_STENCIL);
+            _layout.emplace_back(AttachmentType::DEPTH_STENCIL, description);
         }
         else if (const auto ref = std::get_if<ColorAttachmentResolve>(&attachment)) {
-            attachmentDescriptions.push_back(ref->description);
+            const VkAttachmentDescription& description = ref->description;
+            attachmentDescriptions.push_back(description);
             attachmentRefeference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             colorAttachmentResolveRefs.push_back(attachmentRefeference);
 
             clearValue.color = { {0.0f, 0.0f, 0.0f, 1.0f} };
             _clearValues.push_back(clearValue);
 
-            _layout.emplace_back(AttachmentType::COLOR_RESOLVE);
+            _layout.emplace_back(AttachmentType::COLOR_RESOLVE, description);
         }
         else {
             throw std::runtime_error("failed to recognize attachment type in render pass creation");
@@ -93,6 +96,6 @@ const std::vector<VkClearValue>& Renderpass::getClearValues() const {
     return _clearValues;
 }
 
-const std::vector<AttachmentType>& Renderpass::getLayout() const {
+const std::vector<AttachmentElement>& Renderpass::getLayout() const {
     return _layout;
 }

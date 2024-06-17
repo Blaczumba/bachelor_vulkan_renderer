@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <stdexcept>
 
 QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
     QueueFamilyIndices indices;

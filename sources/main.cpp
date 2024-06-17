@@ -35,6 +35,7 @@
 #include <surface/surface.h>
 #include <physical_device/device/physical_device.h>
 #include <render_pass/render_pass.h>
+#include <swapchain/swapchain.h>
 
 const uint32_t WIDTH = 1920;
 const uint32_t HEIGHT = 1080;
@@ -114,9 +115,7 @@ private:
     std::shared_ptr<PhysicalDevice> _physicalDevice;
     std::shared_ptr<LogicalDevice> _logicalDevice;
     std::shared_ptr<Renderpass> _renderPass;
-
-    VkInstance instance;
-    VkSurfaceKHR surface;
+    std::shared_ptr<Swapchain> _swapchain;
 
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
@@ -191,7 +190,6 @@ private:
         pickPhysicalDevice();
         createLogicalDevice();
         createSwapChain();
-        createImageViews();
         createRenderPass();
         createDescriptorSetLayout();
         createGraphicsPipeline();
@@ -234,11 +232,7 @@ private:
             vkDestroyFramebuffer(device, framebuffer, nullptr);
         }
 
-        for (auto imageView : swapChainImageViews) {
-            vkDestroyImageView(device, imageView, nullptr);
-        }
-
-        vkDestroySwapchainKHR(device, swapChain, nullptr);
+        _swapchain->cleanup();
     }
 
     void cleanup() {
@@ -302,7 +296,6 @@ private:
         cleanupSwapChain();
 
         createSwapChain();
-        createImageViews();
         createDepthResources();
         createColorResources();
         createFramebuffers();
@@ -310,7 +303,6 @@ private:
 
     void createInstance() {
         _instance = std::make_shared<Instance>();
-        instance = _instance->getVkInstance();
     }
 
     void setupDebugMessenger() {
@@ -322,7 +314,6 @@ private:
 
     void createSurface() {
         _surface = std::make_shared<Surface>(_instance, _window);
-        surface = _surface->getVkSurface();
     }
 
     void pickPhysicalDevice() {
@@ -341,63 +332,12 @@ private:
     }
 
     void createSwapChain() {
-        SwapChainSupportDetails swapChainSupport = _physicalDevice->getSwapChainSupportDetails();
-
-        VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-        VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-        VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
-
-        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-        if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
-            imageCount = swapChainSupport.capabilities.maxImageCount;
-        }
-
-        VkSwapchainCreateInfoKHR createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.surface = surface;
-
-        createInfo.minImageCount = imageCount;
-        createInfo.imageFormat = surfaceFormat.format;
-        createInfo.imageColorSpace = surfaceFormat.colorSpace;
-        createInfo.imageExtent = extent;
-        createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-        QueueFamilyIndices indices = _physicalDevice->getQueueFamilyIndices();
-        uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
-
-        if (indices.graphicsFamily != indices.presentFamily) {
-            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            createInfo.queueFamilyIndexCount = 2;
-            createInfo.pQueueFamilyIndices = queueFamilyIndices;
-        }
-        else {
-            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        }
-
-        createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        createInfo.presentMode = presentMode;
-        createInfo.clipped = VK_TRUE;
-
-        if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create swap chain!");
-        }
-
-        vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-        swapChainImages.resize(imageCount);
-        vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
-
-        swapChainImageFormat = surfaceFormat.format;
-        swapChainExtent = extent;
-    }
-
-    void createImageViews() {
-        swapChainImageViews.resize(swapChainImages.size());
-
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-        }
+        _swapchain = std::make_shared<Swapchain>(_surface, _window, _logicalDevice, _physicalDevice);
+        swapChain = _swapchain->_swapchain;
+        swapChainImages = _swapchain->_images;
+        swapChainExtent = _swapchain->_extent;
+        swapChainImageFormat = _swapchain->_imageFormat;
+        swapChainImageViews = _swapchain->_imageViews;
     }
 
     void createRenderPass() {
