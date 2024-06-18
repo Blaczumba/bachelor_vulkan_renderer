@@ -25,7 +25,7 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
                 _images.push_back(imageData);
                 attachments.push_back(imageData._resourcesView);
                 break;
-            case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
+            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
                 const SwapchainImage imageData = createDepthResources(description);
                 _images.push_back(imageData);
                 attachments.push_back(imageData._resourcesView);
