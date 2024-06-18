@@ -12,10 +12,13 @@ class Framebuffer {
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 	std::shared_ptr<Swapchain> _swapchain;
 	std::shared_ptr<Renderpass> _renderPass;
+
+
+	std::vector<SwapchainImage> _images;
 public:
 	Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shared_ptr<Swapchain> swapchain, std::shared_ptr<Renderpass> renderpass);
 	~Framebuffer();
 private:
-
-	void createDepthResources(const VkAttachmentDescription& description, VkImage image, VkDeviceMemory imageMemory, VkImageView imageView);
+	SwapchainImage createColorResources(const VkAttachmentDescription& description);
+	SwapchainImage createDepthResources(const VkAttachmentDescription& description);
 };

@@ -12,12 +12,12 @@ using Attachment = std::variant<ColorAttachment, DepthAttachment, ColorAttachmen
 class Renderpass {
 	VkRenderPass _renderpass;
 	std::vector<VkClearValue> _clearValues;
-	std::vector<AttachmentElement> _layout;
+	std::vector<VkAttachmentDescription> _layout;
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
 	Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<Attachment>& attachments);
 	~Renderpass();
 	VkRenderPass getVkRenderPass();
 	const std::vector<VkClearValue>& getClearValues() const;
-	const std::vector<AttachmentElement>& getLayout() const;
+	const std::vector<VkAttachmentDescription>& getLayout() const;
 };

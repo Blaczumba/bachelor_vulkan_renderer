@@ -27,7 +27,7 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
             clearValue.color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
             _clearValues.push_back(clearValue);
 
-            _layout.emplace_back(AttachmentType::COLOR, description);
+            _layout.emplace_back(description);
         }
         else if (const auto ref = std::get_if<DepthAttachment>(&attachment)) {
             const VkAttachmentDescription& description = ref->description;
@@ -38,7 +38,7 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
             clearValue.depthStencil = { 1.0f, 0 };
             _clearValues.push_back(clearValue);
 
-            _layout.emplace_back(AttachmentType::DEPTH_STENCIL, description);
+            _layout.emplace_back(description);
         }
         else if (const auto ref = std::get_if<ColorAttachmentResolve>(&attachment)) {
             const VkAttachmentDescription& description = ref->description;
@@ -49,7 +49,7 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
             clearValue.color = { {0.0f, 0.0f, 0.0f, 1.0f} };
             _clearValues.push_back(clearValue);
 
-            _layout.emplace_back(AttachmentType::COLOR_RESOLVE, description);
+            _layout.emplace_back(description);
         }
         else {
             throw std::runtime_error("failed to recognize attachment type in render pass creation");
@@ -100,6 +100,6 @@ const std::vector<VkClearValue>& Renderpass::getClearValues() const {
     return _clearValues;
 }
 
-const std::vector<AttachmentElement>& Renderpass::getLayout() const {
+const std::vector<VkAttachmentDescription>& Renderpass::getLayout() const {
     return _layout;
 }
