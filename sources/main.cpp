@@ -180,7 +180,7 @@ private:
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-        _window = std::make_shared<Window>("Engine", 1920, 1080);
+        _window = std::make_shared<Window>("Bejzak Engine", 1920, 1080);
     }
 
     void initVulkan() {
@@ -302,7 +302,7 @@ private:
     }
 
     void createInstance() {
-        _instance = std::make_shared<Instance>();
+        _instance = std::make_shared<Instance>("Bejzak Engine");
     }
 
     void setupDebugMessenger() {

@@ -30,6 +30,7 @@ PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_p
         if (suitable) {
             _device = device;
             _msaaSampleCount = getMaxUsableSampleCount(device);
+            _queueFamilyIndices = indices;
             break;
         }
     }
@@ -39,12 +40,12 @@ PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_p
     }
 }
 
-VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() {
+VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const {
     return _device;
 }
 
 QueueFamilyIndices PhysicalDevice::getQueueFamilyIndices() const {
-    return findQueueFamilyIncides(_device, _surface->getVkSurface());
+    return _queueFamilyIndices;
 }
 
 SwapChainSupportDetails PhysicalDevice::getSwapChainSupportDetails() const {
@@ -69,7 +70,7 @@ bool PhysicalDevice::checkTextureFormatSupport(VkFormat format, VkImageTiling ti
     return false;
 }
 
-uint32_t PhysicalDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+uint32_t PhysicalDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(_device, &memProperties);
 

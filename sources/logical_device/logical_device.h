@@ -6,6 +6,8 @@
 
 class LogicalDevice {
 	VkDevice _device;
+	VkCommandPool _commandPool;
+
 	std::shared_ptr<PhysicalDevice> _physicalDevice;
 public:
 	LogicalDevice(std::shared_ptr<PhysicalDevice> physicalDevice);

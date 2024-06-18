@@ -6,7 +6,7 @@
 #include <iostream>
 #include <stdexcept>
 
-Instance::Instance() {
+Instance::Instance(std::string_view engineName) {
 
 #ifdef VALIDATION_LAYERS_ENABLED
     if (!checkValidationLayerSupport()) {
@@ -16,9 +16,9 @@ Instance::Instance() {
 
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "Engine";
+    appInfo.pApplicationName = engineName.data();
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName = "No Engine";
+    appInfo.pEngineName = engineName.data();
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_0;
 

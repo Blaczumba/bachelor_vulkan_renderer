@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 
 #include <vector>
+#include <string_view>
 
 class Instance {
 	VkInstance _instance;
@@ -11,7 +12,7 @@ class Instance {
 	bool checkValidationLayerSupport() const;
 	std::vector<const char*> getRequiredExtensions();
 public:
-	Instance();
+	Instance(std::string_view engineName);
 	~Instance();
 	VkInstance getVkInstance();
 	std::vector<VkPhysicalDevice> getAvailablePhysicalDevices() const;

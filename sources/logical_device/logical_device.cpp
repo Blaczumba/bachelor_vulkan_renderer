@@ -50,6 +50,15 @@ LogicalDevice::LogicalDevice(std::shared_ptr<PhysicalDevice> physicalDevice)
 
     vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0, &graphicsQueue);
     vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &presentQueue);
+
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = indices.graphicsFamily.value();
+
+    if (vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create graphics command pool!");
+    }
 }
 
 void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
@@ -135,6 +144,7 @@ VkImageView LogicalDevice::createImageView(VkImage image, VkFormat format, VkIma
 }
 
 LogicalDevice::~LogicalDevice() {
+    vkDestroyCommandPool(_device, _commandPool, nullptr);
     vkDestroyDevice(_device, nullptr);
 }
 

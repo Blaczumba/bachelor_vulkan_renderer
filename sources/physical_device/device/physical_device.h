@@ -15,12 +15,13 @@ class PhysicalDevice {
 public:
 	PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_ptr<Surface> surface);
 
-    VkPhysicalDevice getVkPhysicalDevice();
+    VkPhysicalDevice getVkPhysicalDevice() const;
     QueueFamilyIndices getQueueFamilyIndices() const;
     SwapChainSupportDetails getSwapChainSupportDetails() const;
     VkSampleCountFlagBits getMaxMsaaSampleCount() const;
     bool checkTextureFormatSupport(VkFormat format, VkImageTiling tiling, VkFormatFeatureFlags features) const;
-    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 private:
     VkSampleCountFlagBits _msaaSampleCount;
+    QueueFamilyIndices _queueFamilyIndices;
 };
