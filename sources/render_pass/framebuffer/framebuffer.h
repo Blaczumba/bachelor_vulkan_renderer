@@ -14,6 +14,7 @@ class Framebuffer {
 	std::shared_ptr<Renderpass> _renderPass;
 public:
 	Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shared_ptr<Swapchain> swapchain, std::shared_ptr<Renderpass> renderpass);
+	~Framebuffer();
 private:
 
 	void createDepthResources(const VkAttachmentDescription& description, VkImage image, VkDeviceMemory imageMemory, VkImageView imageView);

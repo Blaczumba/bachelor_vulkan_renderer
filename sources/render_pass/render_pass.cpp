@@ -88,6 +88,10 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
     }
 }
 
+Renderpass::~Renderpass() {
+    vkDestroyRenderPass(_logicalDevice->getVkDevice(), _renderpass, nullptr);
+}
+
 VkRenderPass Renderpass::getVkRenderPass() {
     return _renderpass;
 }

@@ -16,6 +16,7 @@ class Renderpass {
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
 	Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<Attachment>& attachments);
+	~Renderpass();
 	VkRenderPass getVkRenderPass();
 	const std::vector<VkClearValue>& getClearValues() const;
 	const std::vector<AttachmentElement>& getLayout() const;

@@ -21,4 +21,6 @@ public:
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
+
+	friend class SingleTimeCommandBuffer;
 };

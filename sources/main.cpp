@@ -36,6 +36,8 @@
 #include <physical_device/device/physical_device.h>
 #include <render_pass/render_pass.h>
 #include <swapchain/swapchain.h>
+#include <command_buffer/command_buffer.h>
+// #include <image/image.h>
 
 const uint32_t WIDTH = 1920;
 const uint32_t HEIGHT = 1080;
@@ -231,8 +233,6 @@ private:
         for (auto framebuffer : swapChainFramebuffers) {
             vkDestroyFramebuffer(device, framebuffer, nullptr);
         }
-
-        _swapchain->cleanup();
     }
 
     void cleanup() {
@@ -245,7 +245,7 @@ private:
 
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-        vkDestroyRenderPass(device, renderPass, nullptr);
+        // vkDestroyRenderPass(device, renderPass, nullptr);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroyBuffer(device, uniformBuffers[i], nullptr);
@@ -295,7 +295,15 @@ private:
 
         cleanupSwapChain();
 
-        createSwapChain();
+        // createSwapChain();
+        _swapchain->cleanup();
+        _swapchain->create();
+        swapChain = _swapchain->_swapchain;
+        swapChainImages = _swapchain->_images;
+        swapChainExtent = _swapchain->_extent;
+        swapChainImageFormat = _swapchain->_imageFormat;
+        swapChainImageViews = _swapchain->_imageViews;
+
         createDepthResources();
         createColorResources();
         createFramebuffers();
@@ -530,39 +538,6 @@ private:
                 throw std::runtime_error("failed to create framebuffer!");
             }
         }
-    }
-
-    VkCommandBuffer beginSingleTimeCommands() {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-        return commandBuffer;
-    }
-
-    void endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-        vkEndCommandBuffer(commandBuffer);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
-
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     }
 
     void createCommandPool() {
@@ -862,7 +837,8 @@ private:
     }
 
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels) {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+        SingleTimeCommandBuffer handle(_logicalDevice.get());
+        VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
         VkImageMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -913,8 +889,6 @@ private:
             0, nullptr,
             1, &barrier
         );
-
-        endSingleTimeCommands(commandBuffer);
     }
 
     VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) {
@@ -1010,7 +984,8 @@ private:
             throw std::runtime_error("texture image format does not support linear blitting!");
         }
 
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+        SingleTimeCommandBuffer handle(_logicalDevice.get());
+        VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
         VkImageMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1084,12 +1059,11 @@ private:
             0, nullptr,
             0, nullptr,
             1, &barrier);
-
-        endSingleTimeCommands(commandBuffer);
     }
 
     void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+        SingleTimeCommandBuffer handle(_logicalDevice.get());
+        VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
         VkBufferImageCopy region{};
         region.bufferOffset = 0;
@@ -1116,18 +1090,15 @@ private:
             1,
             &region
         );
-
-        endSingleTimeCommands(commandBuffer);
     }
 
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+        SingleTimeCommandBuffer handle(_logicalDevice.get());
+        VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
         VkBufferCopy copyRegion{};
         copyRegion.size = size;
         vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-        endSingleTimeCommands(commandBuffer);
     }
 
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -1239,7 +1210,7 @@ private:
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-        UniformBufferObject ubo{};
+        UniformBufferObject ubo;
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(15.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.3f, 1.3, 1.3));
         //ubo.model = glm::mat4(1.0f);
         ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
