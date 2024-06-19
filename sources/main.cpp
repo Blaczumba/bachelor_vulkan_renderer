@@ -349,10 +349,10 @@ private:
     }
 
     void createRenderPass() {
-        std::vector<Attachment> aattachments = {
-            ColorAttachment(swapChainImageFormat, msaaSamples),
-            DepthAttachment(findDepthFormat(), msaaSamples),
-            ColorAttachmentResolve(swapChainImageFormat)
+        std::vector<std::shared_ptr<Attachment>> aattachments = {
+            std::make_shared<ColorAttachment>(swapChainImageFormat, msaaSamples),
+            std::make_shared<DepthAttachment>(findDepthFormat(), msaaSamples),
+            std::make_shared<ColorResolveAttachment>(swapChainImageFormat)
         };
 
         _renderPass = std::make_shared<Renderpass>(_logicalDevice, aattachments);

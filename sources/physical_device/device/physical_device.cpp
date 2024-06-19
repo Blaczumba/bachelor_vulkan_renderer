@@ -25,7 +25,17 @@ PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_p
         VkPhysicalDeviceFeatures supportedFeatures;
         vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
 
-        bool suitable = indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+        bool discreteGPU = checkDiscreteGPU(device);
+
+        std::array<bool, 5> conditions = {
+            indices.isComplete(),
+            extensionsSupported,
+            swapChainAdequate,
+            supportedFeatures.samplerAnisotropy,
+            discreteGPU
+        };
+
+        bool suitable = std::all_of(conditions.cbegin(), conditions.cend(), [](bool condition) { return condition; });
 
         if (suitable) {
             _device = device;

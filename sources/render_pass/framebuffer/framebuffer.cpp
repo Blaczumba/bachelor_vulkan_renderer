@@ -8,9 +8,7 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
 
     const auto& swapchainImageViews = _swapchain->getImageViews();
     const auto& swapchainExtent = _swapchain->getExtent();
-
     const auto& layout = _renderPass->getLayout();
-
 
     for (size_t i = 0; i < swapchainImageViews.size(); i++) {
         std::vector<VkImageView> attachments;
@@ -75,10 +73,14 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
 Framebuffer::~Framebuffer() {
     VkDevice device = _logicalDevice->getVkDevice();
 
-    for (const auto& image : _images) {
+    for (auto& image : _images) {
         vkDestroyImageView(device, image._resourcesView, nullptr);
         vkDestroyImage(device, image._resourcesImage, nullptr);
         vkFreeMemory(device, image._resourcesMemory, nullptr);
+    }
+
+    for (auto framebuffer : _framebuffers) {
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
     }
 }
 

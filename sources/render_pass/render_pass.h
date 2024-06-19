@@ -7,15 +7,13 @@
 #include <variant>
 #include <memory>
 
-using Attachment = std::variant<ColorAttachment, DepthAttachment, ColorAttachmentResolve>;
-
 class Renderpass {
 	VkRenderPass _renderpass;
 	std::vector<VkClearValue> _clearValues;
 	std::vector<VkAttachmentDescription> _layout;
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<Attachment>& attachments);
+	Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::shared_ptr<Attachment>>& attachments);
 	~Renderpass();
 	VkRenderPass getVkRenderPass();
 	const std::vector<VkClearValue>& getClearValues() const;

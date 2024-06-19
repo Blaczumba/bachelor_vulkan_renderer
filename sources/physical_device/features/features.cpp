@@ -102,6 +102,14 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
         });
 }
 
+bool checkDiscreteGPU(VkPhysicalDevice device) {
+    VkPhysicalDeviceProperties properties;
+
+    vkGetPhysicalDeviceProperties(device, &properties);
+
+    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+}
+
 bool QueueFamilyIndices::isComplete() const {
     return graphicsFamily.has_value() && presentFamily.has_value();
 }

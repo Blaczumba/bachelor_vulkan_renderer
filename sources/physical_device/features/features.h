@@ -25,4 +25,6 @@ SwapChainSupportDetails querySwapchainSupportDetails(VkPhysicalDevice physicalDe
 std::vector<VkQueueFamilyProperties> getQueueFamilyProperties(VkPhysicalDevice device);
 std::vector<VkExtensionProperties> getAvailableExtensionProperties(VkPhysicalDevice device);
 
+bool checkDiscreteGPU(VkPhysicalDevice device);
+
 bool checkDeviceExtensionSupport(VkPhysicalDevice device);

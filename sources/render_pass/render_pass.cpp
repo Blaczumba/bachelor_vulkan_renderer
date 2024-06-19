@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <iostream>
 
-Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<Attachment>& attachments)
+Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::shared_ptr<Attachment>>& attachments)
     : _logicalDevice(logicalDevice) {
     std::vector<VkAttachmentReference> colorAttachmentRefs;
     std::vector<VkAttachmentReference> depthAttachmentRefs;
@@ -12,48 +12,30 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
     std::vector<VkAttachmentDescription> attachmentDescriptions;
 
     for (uint32_t i = 0; i < attachments.size(); i++) {
-        Attachment attachment = attachments[i];
+        const Attachment* attachment = attachments[i].get();
 
-        VkAttachmentReference attachmentRefeference{};
-        attachmentRefeference.attachment = i;
-        VkClearValue clearValue{};
+        VkAttachmentReference attachmentReference{};
+        attachmentReference.layout = attachment->getLayout();
+        attachmentReference.attachment = i;
 
-        if (const auto ref = std::get_if<ColorAttachment>(&attachment)) {
-            const VkAttachmentDescription& description = ref->description;
-            attachmentDescriptions.push_back(description);
-            attachmentRefeference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            colorAttachmentRefs.push_back(attachmentRefeference);
-            
-            clearValue.color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-            _clearValues.push_back(clearValue);
+        attachmentDescriptions.push_back(attachment->getDescription());
+        VkClearValue clearValue = attachment->getClearValue();
 
-            _layout.emplace_back(description);
+        if (dynamic_cast<const ColorAttachment*>(attachment)) {
+            colorAttachmentRefs.push_back(attachmentReference);
         }
-        else if (const auto ref = std::get_if<DepthAttachment>(&attachment)) {
-            const VkAttachmentDescription& description = ref->description;
-            attachmentDescriptions.push_back(description);
-            attachmentRefeference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            depthAttachmentRefs.push_back(attachmentRefeference);
-
-            clearValue.depthStencil = { 1.0f, 0 };
-            _clearValues.push_back(clearValue);
-
-            _layout.emplace_back(description);
+        else if (dynamic_cast<const DepthAttachment*>(attachment)) {
+            depthAttachmentRefs.push_back(attachmentReference);
         }
-        else if (const auto ref = std::get_if<ColorAttachmentResolve>(&attachment)) {
-            const VkAttachmentDescription& description = ref->description;
-            attachmentDescriptions.push_back(description);
-            attachmentRefeference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            colorAttachmentResolveRefs.push_back(attachmentRefeference);
-
-            clearValue.color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-            _clearValues.push_back(clearValue);
-
-            _layout.emplace_back(description);
+        else if (dynamic_cast<const ColorResolveAttachment*>(attachment)) {
+            colorAttachmentResolveRefs.push_back(attachmentReference);
         }
         else {
-            throw std::runtime_error("failed to recognize attachment type in render pass creation");
+            throw std::runtime_error("Unknown attachment type");
         }
+
+        _clearValues.push_back(clearValue);
+        _layout.emplace_back(attachment->getDescription());
     }
 
     VkSubpassDescription subpass{};
