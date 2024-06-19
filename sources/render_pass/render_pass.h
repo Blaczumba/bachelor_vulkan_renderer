@@ -10,12 +10,12 @@
 class Renderpass {
 	VkRenderPass _renderpass;
 	std::vector<VkClearValue> _clearValues;
-	std::vector<VkAttachmentDescription> _layout;
+	std::vector<std::unique_ptr<Attachment>> _attachments;
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::shared_ptr<Attachment>>& attachments);
+	Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, std::vector<std::unique_ptr<Attachment>>&& attachments);
 	~Renderpass();
 	VkRenderPass getVkRenderPass();
 	const std::vector<VkClearValue>& getClearValues() const;
-	const std::vector<VkAttachmentDescription>& getLayout() const;
+	const std::vector<std::unique_ptr<Attachment>>& getAttachments() const;
 };

@@ -37,6 +37,7 @@
 #include <render_pass/render_pass.h>
 #include <swapchain/swapchain.h>
 #include <command_buffer/command_buffer.h>
+#include <render_pass/framebuffer/framebuffer.h>
 // #include <image/image.h>
 
 const uint32_t WIDTH = 1920;
@@ -118,6 +119,7 @@ private:
     std::shared_ptr<LogicalDevice> _logicalDevice;
     std::shared_ptr<Renderpass> _renderPass;
     std::shared_ptr<Swapchain> _swapchain;
+    std::shared_ptr<Framebuffer> _framebuffer;
 
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
@@ -349,13 +351,12 @@ private:
     }
 
     void createRenderPass() {
-        std::vector<std::shared_ptr<Attachment>> aattachments = {
-            std::make_shared<ColorAttachment>(swapChainImageFormat, msaaSamples),
-            std::make_shared<DepthAttachment>(findDepthFormat(), msaaSamples),
-            std::make_shared<ColorResolveAttachment>(swapChainImageFormat)
-        };
+        std::vector<std::unique_ptr<Attachment>> attachments;
+        attachments.emplace_back(std::make_unique<ColorAttachment>(swapChainImageFormat, msaaSamples));
+        attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
+        attachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapChainImageFormat));
 
-        _renderPass = std::make_shared<Renderpass>(_logicalDevice, aattachments);
+        _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(attachments));
         renderPass = _renderPass->getVkRenderPass();
     }
 
@@ -516,6 +517,8 @@ private:
     }
 
     void createFramebuffers() {
+        // _framebuffer = std::make_shared<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+
         swapChainFramebuffers.resize(swapChainImageViews.size());
 
         for (size_t i = 0; i < swapChainImageViews.size(); i++) {

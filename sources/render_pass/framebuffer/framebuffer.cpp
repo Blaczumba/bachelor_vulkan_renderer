@@ -1,5 +1,4 @@
 #include "framebuffer.h"
-#include "memory_objects/image.h"
 
 #include <stdexcept>
 
@@ -8,34 +7,41 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
 
     const auto& swapchainImageViews = _swapchain->getImageViews();
     const auto& swapchainExtent = _swapchain->getExtent();
-    const auto& layout = _renderPass->getLayout();
+    const auto& attachments = _renderPass->getAttachments();
+
+    size_t swapchainPlace{};
+    std::vector<VkImageView> attachmentViews;
+    for (size_t i = 0; i < attachments.size(); i++) {
+        const VkAttachmentDescription& description = attachments[i]->getDescription();
+        SwapchainImage imageData;
+        switch (description.finalLayout) {
+
+        case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+            attachmentViews.push_back(nullptr);
+            swapchainPlace = i;
+            break;
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+            imageData = createColorResources(description);
+            _images.push_back(imageData);
+            attachmentViews.push_back(imageData._resourcesView);
+            break;
+        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+            imageData = createDepthResources(description);
+            _images.push_back(imageData);
+            attachmentViews.push_back(imageData._resourcesView);
+            break;
+        }
+    }
 
     for (size_t i = 0; i < swapchainImageViews.size(); i++) {
-        std::vector<VkImageView> attachments;
-        for (const auto& description : layout) {
-            switch (description.finalLayout) {
-
-            case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-                attachments.push_back(swapchainImageViews[i]);
-                break;
-            case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-                const SwapchainImage imageData = createColorResources(description);
-                _images.push_back(imageData);
-                attachments.push_back(imageData._resourcesView);
-                break;
-            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-                const SwapchainImage imageData = createDepthResources(description);
-                _images.push_back(imageData);
-                attachments.push_back(imageData._resourcesView);
-                break;
-            }
-        }
+        std::vector<VkImageView> views = attachmentViews;
+        views[swapchainPlace] = swapchainImageViews[i];
 
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = _renderPass->getVkRenderPass();
-        framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-        framebufferInfo.pAttachments = attachments.data();
+        framebufferInfo.attachmentCount = static_cast<uint32_t>(views.size());
+        framebufferInfo.pAttachments = views.data();
         framebufferInfo.width = swapchainExtent.width;
         framebufferInfo.height = swapchainExtent.height;
         framebufferInfo.layers = 1;
@@ -45,29 +51,6 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
             throw std::runtime_error("failed to create framebuffer!");
         }
     }
-
-
-    //for (size_t i = 0; i < swapchainImageViews.size(); i++) {
-    //    std::array<VkImageView, 3> attachments = {
-    //        colorImageView,
-    //        depthImageView,
-    //        swapchainImageViews[i]
-    //    };
-
-    //    VkFramebufferCreateInfo framebufferInfo{};
-    //    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    //    framebufferInfo.renderPass = _renderPass->getVkRenderPass();
-    //    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    //    framebufferInfo.pAttachments = attachments.data();
-    //    framebufferInfo.width = swapchainExtent.width;
-    //    framebufferInfo.height = swapchainExtent.height;
-    //    framebufferInfo.layers = 1;
-
-    //    // resize framebuffers!!!
-    //    if (vkCreateFramebuffer(_logicalDevice->getVkDevice(), &framebufferInfo, nullptr, &_framebuffers[i]) != VK_SUCCESS) {
-    //        throw std::runtime_error("failed to create framebuffer!");
-    //    }
-    //}
 }
 
 Framebuffer::~Framebuffer() {

@@ -4,15 +4,15 @@
 #include <stdexcept>
 #include <iostream>
 
-Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::shared_ptr<Attachment>>& attachments)
-    : _logicalDevice(logicalDevice) {
+Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, std::vector<std::unique_ptr<Attachment>>&& attachments)
+    : _logicalDevice(logicalDevice), _attachments(std::move(attachments)) {
     std::vector<VkAttachmentReference> colorAttachmentRefs;
     std::vector<VkAttachmentReference> depthAttachmentRefs;
     std::vector<VkAttachmentReference> colorAttachmentResolveRefs;
     std::vector<VkAttachmentDescription> attachmentDescriptions;
 
-    for (uint32_t i = 0; i < attachments.size(); i++) {
-        const Attachment* attachment = attachments[i].get();
+    for (uint32_t i = 0; i < _attachments.size(); i++) {
+        const Attachment* attachment = _attachments[i].get();
 
         VkAttachmentReference attachmentReference{};
         attachmentReference.layout = attachment->getLayout();
@@ -35,7 +35,6 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const std::
         }
 
         _clearValues.push_back(clearValue);
-        _layout.emplace_back(attachment->getDescription());
     }
 
     VkSubpassDescription subpass{};
@@ -82,6 +81,6 @@ const std::vector<VkClearValue>& Renderpass::getClearValues() const {
     return _clearValues;
 }
 
-const std::vector<VkAttachmentDescription>& Renderpass::getLayout() const {
-    return _layout;
+const std::vector<std::unique_ptr<Attachment>>& Renderpass::getAttachments() const {
+    return std::move(_attachments);
 }

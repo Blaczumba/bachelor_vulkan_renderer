@@ -7,7 +7,7 @@
 struct Attachment {
     virtual VkImageLayout getLayout() const { return layout; };
 
-    VkAttachmentDescription getDescription() const { return description; }
+    const VkAttachmentDescription& getDescription() const { return description; }
     VkFormat getFromat() const { return description.format; }
     VkSampleCountFlagBits getMsaaSampleCount() const { return description.samples; }
 
