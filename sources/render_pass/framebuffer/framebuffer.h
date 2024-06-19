@@ -19,6 +19,8 @@ class Framebuffer {
 public:
 	Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shared_ptr<Swapchain> swapchain, std::shared_ptr<Renderpass> renderpass);
 	~Framebuffer();
+
+	std::vector<VkFramebuffer> getVkFramebuffers() const;
 private:
 	SwapchainImage createColorResources(const VkAttachmentDescription& description);
 	SwapchainImage createDepthResources(const VkAttachmentDescription& description);

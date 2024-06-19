@@ -31,7 +31,6 @@ struct ColorAttachment : public Attachment {
             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR :
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-
         layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         clearValue = { { 0.0f, 0.0f, 0.0f, 1.0f } };
     }

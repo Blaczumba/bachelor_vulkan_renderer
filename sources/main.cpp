@@ -198,8 +198,8 @@ private:
         createDescriptorSetLayout();
         createGraphicsPipeline();
         createCommandPool();
-        createDepthResources();
-        createColorResources();
+        // createDepthResources();
+        // createColorResources();
         createFramebuffers();
         createTextureImage();
         createTextureImageView();
@@ -238,7 +238,7 @@ private:
     }
 
     void cleanup() {
-        cleanupSwapChain();
+        // cleanupSwapChain();
 
         vkDestroySampler(device, textureSampler, nullptr);
         vkDestroyImageView(device, textureImageView, nullptr);
@@ -295,7 +295,7 @@ private:
 
         vkDeviceWaitIdle(device);
 
-        cleanupSwapChain();
+        // cleanupSwapChain();
 
         // createSwapChain();
         _swapchain->cleanup();
@@ -306,8 +306,8 @@ private:
         swapChainImageFormat = _swapchain->_imageFormat;
         swapChainImageViews = _swapchain->_imageViews;
 
-        createDepthResources();
-        createColorResources();
+        // createDepthResources();
+        // createColorResources();
         createFramebuffers();
     }
 
@@ -353,8 +353,8 @@ private:
     void createRenderPass() {
         std::vector<std::unique_ptr<Attachment>> attachments;
         attachments.emplace_back(std::make_unique<ColorAttachment>(swapChainImageFormat, msaaSamples));
-        attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
         attachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapChainImageFormat));
+        attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
         _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(attachments));
         renderPass = _renderPass->getVkRenderPass();
@@ -498,8 +498,7 @@ private:
         pipelineInfo.pInputAssemblyState = &inputAssembly;
         pipelineInfo.pViewportState = &viewportState;
         pipelineInfo.pRasterizationState = &rasterizer;
-        if(msaaSamples != VK_SAMPLE_COUNT_1_BIT)
-            pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pMultisampleState = &multisampling;
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = pipelineLayout;
@@ -517,9 +516,10 @@ private:
     }
 
     void createFramebuffers() {
-        // _framebuffer = std::make_shared<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+        _framebuffer = std::make_shared<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+        swapChainFramebuffers = _framebuffer->getVkFramebuffers();
 
-        swapChainFramebuffers.resize(swapChainImageViews.size());
+        /*swapChainFramebuffers.resize(swapChainImageViews.size());
 
         for (size_t i = 0; i < swapChainImageViews.size(); i++) {
             std::array<VkImageView, 3> attachments = {
@@ -540,7 +540,7 @@ private:
             if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
                 throw std::runtime_error("failed to create framebuffer!");
             }
-        }
+        }*/
     }
 
     void createCommandPool() {

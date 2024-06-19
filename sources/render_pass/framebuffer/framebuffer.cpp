@@ -9,6 +9,8 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
     const auto& swapchainExtent = _swapchain->getExtent();
     const auto& attachments = _renderPass->getAttachments();
 
+    _framebuffers.resize(swapchainImageViews.size());
+
     size_t swapchainPlace{};
     std::vector<VkImageView> attachmentViews;
     for (size_t i = 0; i < attachments.size(); i++) {
@@ -51,6 +53,10 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
             throw std::runtime_error("failed to create framebuffer!");
         }
     }
+}
+
+std::vector<VkFramebuffer> Framebuffer::getVkFramebuffers() const {
+    return _framebuffers;
 }
 
 Framebuffer::~Framebuffer() {
