@@ -21,13 +21,13 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, std::vector
         attachmentDescriptions.push_back(attachment->getDescription());
         VkClearValue clearValue = attachment->getClearValue();
 
-        if (dynamic_cast<const ColorAttachment*>(attachment)) {
+        if (dynamic_cast<const ColorAttachment*>(attachment) || dynamic_cast<const ColorPresentAttachment*>(attachment)) {
             colorAttachmentRefs.push_back(attachmentReference);
         }
         else if (dynamic_cast<const DepthAttachment*>(attachment)) {
             depthAttachmentRefs.push_back(attachmentReference);
         }
-        else if (dynamic_cast<const ColorResolveAttachment*>(attachment)) {
+        else if (dynamic_cast<const ColorResolveAttachment*>(attachment) || dynamic_cast<const ColorResolvePresentAttachment*>(attachment)) {
             colorAttachmentResolveRefs.push_back(attachmentReference);
         }
         else {
@@ -37,9 +37,11 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, std::vector
         _clearValues.push_back(clearValue);
     }
 
+    _colorAttachmentsCount = static_cast<uint32_t>(colorAttachmentRefs.size());
+
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = static_cast<uint32_t>(colorAttachmentRefs.size());
+    subpass.colorAttachmentCount = _colorAttachmentsCount;
     if(!colorAttachmentRefs.empty())
         subpass.pColorAttachments = colorAttachmentRefs.data();
     if(!depthAttachmentRefs.empty())
@@ -83,4 +85,8 @@ const std::vector<VkClearValue>& Renderpass::getClearValues() const {
 
 const std::vector<std::unique_ptr<Attachment>>& Renderpass::getAttachments() const {
     return std::move(_attachments);
+}
+
+uint32_t Renderpass::getColorAttachmentsCount() const {
+    return _colorAttachmentsCount;
 }
