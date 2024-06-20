@@ -21,13 +21,13 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, std::vector
         attachmentDescriptions.push_back(attachment->getDescription());
         VkClearValue clearValue = attachment->getClearValue();
 
-        if (dynamic_cast<const ColorAttachment*>(attachment) || dynamic_cast<const ColorPresentAttachment*>(attachment)) {
+        if (dynamic_cast<const ColorAttachmentBase*>(attachment)) {
             colorAttachmentRefs.push_back(attachmentReference);
         }
         else if (dynamic_cast<const DepthAttachment*>(attachment)) {
             depthAttachmentRefs.push_back(attachmentReference);
         }
-        else if (dynamic_cast<const ColorResolveAttachment*>(attachment) || dynamic_cast<const ColorResolvePresentAttachment*>(attachment)) {
+        else if (dynamic_cast<const ColorResolveAttachmentBase*>(attachment)) {
             colorAttachmentResolveRefs.push_back(attachmentReference);
         }
         else {

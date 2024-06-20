@@ -8,7 +8,6 @@ struct Attachment {
     virtual VkImageLayout getLayout() const { return layout; };
 
     const VkAttachmentDescription& getDescription() const { return description; }
-    VkFormat getFromat() const { return description.format; }
     VkSampleCountFlagBits getMsaaSampleCount() const { return description.samples; }
 
     VkClearValue getClearValue() const { return clearValue; };
@@ -18,7 +17,15 @@ protected:
     VkAttachmentDescription description{};
 };
 
-struct ColorAttachment : public Attachment {
+struct ColorResolveAttachmentBase : public Attachment {
+
+};
+
+struct ColorAttachmentBase : public Attachment {
+
+};
+
+struct ColorAttachment : public ColorAttachmentBase {
     ColorAttachment(VkFormat format, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT) {
         description.format = format;
         description.samples = samples;
@@ -34,7 +41,7 @@ struct ColorAttachment : public Attachment {
     }
 };
 
-struct ColorPresentAttachment : public Attachment {
+struct ColorPresentAttachment : public ColorAttachmentBase {
     ColorPresentAttachment(VkFormat format) {
         description.format = format;
         description.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -66,7 +73,7 @@ struct DepthAttachment : public Attachment {
     }
 };
 
-struct ColorResolveAttachment : public Attachment {
+struct ColorResolveAttachment : public ColorResolveAttachmentBase {
     ColorResolveAttachment(VkFormat format) {
         description.format = format;
         description.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -82,7 +89,7 @@ struct ColorResolveAttachment : public Attachment {
     }
 };
 
-struct ColorResolvePresentAttachment : public Attachment {
+struct ColorResolvePresentAttachment : public ColorResolveAttachmentBase {
     ColorResolvePresentAttachment(VkFormat format) {
         description.format = format;
         description.samples = VK_SAMPLE_COUNT_1_BIT;

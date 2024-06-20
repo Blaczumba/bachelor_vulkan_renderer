@@ -19,7 +19,7 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
         switch (description.finalLayout) {
 
         case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-            attachmentViews.push_back(nullptr);
+            attachmentViews.push_back(VK_NULL_HANDLE);
             swapchainPlace = i;
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
@@ -32,6 +32,8 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
             _images.push_back(imageData);
             attachmentViews.push_back(imageData._resourcesView);
             break;
+        default:
+            std::runtime_error("failed to recognize final layout in framebuffer!");
         }
     }
 
