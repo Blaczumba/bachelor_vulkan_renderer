@@ -325,7 +325,7 @@ private:
     void pickPhysicalDevice() {
         _physicalDevice = std::make_shared<PhysicalDevice>(_instance, _surface);
         msaaSamples = _physicalDevice->getMaxMsaaSampleCount();
-        msaaSamples = VK_SAMPLE_COUNT_8_BIT;
+        msaaSamples = VK_SAMPLE_COUNT_1_BIT;
         physicalDevice = _physicalDevice->getVkPhysicalDevice();
     }
 
@@ -350,14 +350,10 @@ private:
         // There must be the same number of ColorAttachments and ColorResolveAttachments.
         // Every attachment must have the same number of MSAA samples.
         std::vector<std::unique_ptr<Attachment>> attachments;
+        attachments.emplace_back(std::make_unique<ColorPresentAttachment>(swapChainImageFormat));
         attachments.emplace_back(std::make_unique<ColorAttachment>(swapChainImageFormat, msaaSamples));
         attachments.emplace_back(std::make_unique<ColorAttachment>(swapChainImageFormat, msaaSamples));
         attachments.emplace_back(std::make_unique<ColorAttachment>(swapChainImageFormat, msaaSamples));
-        attachments.emplace_back(std::make_unique<ColorAttachment>(swapChainImageFormat, msaaSamples));
-        attachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapChainImageFormat));
-        attachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapChainImageFormat));
-        attachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapChainImageFormat));
-        attachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapChainImageFormat));
         attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
         _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(attachments));
