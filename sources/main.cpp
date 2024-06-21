@@ -325,7 +325,7 @@ private:
     void pickPhysicalDevice() {
         _physicalDevice = std::make_shared<PhysicalDevice>(_instance, _surface);
         msaaSamples = _physicalDevice->getMaxMsaaSampleCount();
-        msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+        msaaSamples = VK_SAMPLE_COUNT_8_BIT;
         physicalDevice = _physicalDevice->getVkPhysicalDevice();
     }
 
@@ -759,9 +759,9 @@ private:
 
     VkFormat findDepthFormat() {
         std::array<VkFormat, 3> depthFormats = {
+            VK_FORMAT_D24_UNORM_S8_UINT,
             VK_FORMAT_D32_SFLOAT,
             VK_FORMAT_D32_SFLOAT_S8_UINT,
-            VK_FORMAT_D24_UNORM_S8_UINT
         };
 
         auto formatPtr = std::find_if(depthFormats.cbegin(), depthFormats.cend(), [&](VkFormat format) {
