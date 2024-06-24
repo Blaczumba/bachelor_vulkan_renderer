@@ -34,3 +34,12 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
 VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const {
     return _commandBuffer;
 }
+
+void copyBuffer(LogicalDevice* logicalDevice, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+    SingleTimeCommandBuffer handle(logicalDevice);
+    VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+
+    VkBufferCopy copyRegion{};
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+}

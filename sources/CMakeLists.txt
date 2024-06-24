@@ -32,7 +32,7 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC TEXTURES_PATH="${CMAKE_S
 target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC MODELS_PATH="${CMAKE_SOURCE_DIR}/assets/models/")
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw tinyobjloader)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Window Instance DebugMessenger Surface PhysicalDevice LogicalDevice Renderpass Swapchain CommandBuffer Image Framebuffer)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Window Instance DebugMessenger Surface PhysicalDevice LogicalDevice Renderpass Swapchain CommandBuffer Image Framebuffer VertexBuffer IndexBuffer)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/glm")
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/tinygltf")
 

@@ -6,10 +6,18 @@ target_link_libraries(Image PUBLIC CommandBuffer)
 target_include_directories(Image PUBLIC ${CMAKE_SOURCE_DIR}/sources)
 target_include_directories(Image PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_library(Buffer buffer.cpp)
+add_library(VertexBuffer "vertex_buffer.cpp")
 
-target_link_libraries(Buffer PUBLIC Vulkan::Vulkan)
+target_link_libraries(VertexBuffer PUBLIC Vulkan::Vulkan)
+target_link_libraries(VertexBuffer PUBLIC LogicalDevice CommandBuffer)
 
-target_include_directories(Buffer PUBLIC ${CMAKE_SOURCE_DIR}/sources)
-target_include_directories(Buffer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(VertexBuffer PUBLIC ${CMAKE_SOURCE_DIR}/sources)
+target_include_directories(VertexBuffer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_library(IndexBuffer "index_buffer.cpp")
+
+target_link_libraries(IndexBuffer PUBLIC Vulkan::Vulkan)
+target_link_libraries(IndexBuffer PUBLIC LogicalDevice CommandBuffer)
+
+target_include_directories(IndexBuffer PUBLIC ${CMAKE_SOURCE_DIR}/sources)
+target_include_directories(IndexBuffer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

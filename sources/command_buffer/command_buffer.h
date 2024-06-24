@@ -13,3 +13,5 @@ public:
 
 	VkCommandBuffer getCommandBuffer() const;
 };
+
+void copyBuffer(LogicalDevice* logicalDevice, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
