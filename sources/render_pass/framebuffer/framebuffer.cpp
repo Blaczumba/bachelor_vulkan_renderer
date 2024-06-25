@@ -50,7 +50,6 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
         framebufferInfo.height = swapchainExtent.height;
         framebufferInfo.layers = 1;
 
-        // resize framebuffers!!!
         if (vkCreateFramebuffer(_logicalDevice->getVkDevice(), &framebufferInfo, nullptr, &_framebuffers[i]) != VK_SUCCESS) {
             throw std::runtime_error("failed to create framebuffer!");
         }

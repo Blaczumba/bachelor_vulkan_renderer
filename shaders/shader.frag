@@ -12,7 +12,7 @@ layout(location = 3) out vec4 outColor4;
 
 void main() {
     outColor1 = texture(texSampler, fragTexCoord);
-    outColor2 = vec4(outColor1.r, 0.0, 0.0, 0.0);
+    outColor2 = vec4(outColor1.r, 0.0, outColor1.b, 0.0);
     outColor3 = vec4(0.0, outColor1.g, 0.0, 0.0);
     outColor4 = vec4(0.0, 0.0, outColor1.b, 0.0);
 }

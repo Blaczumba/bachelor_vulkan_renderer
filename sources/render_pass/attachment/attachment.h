@@ -11,6 +11,7 @@ struct Attachment {
     VkSampleCountFlagBits getMsaaSampleCount() const { return description.samples; }
 
     VkClearValue getClearValue() const { return clearValue; };
+    virtual ~Attachment() = default;
 protected:
     VkImageLayout layout;
     VkClearValue clearValue;

@@ -8,23 +8,23 @@
 #include <vector>
 #include <memory>
 
-template<typename T>
+template<typename VertexType>
 class VertexBuffer {
     VkBuffer _vertexBuffer;
     VkDeviceMemory _vertexBufferMemory;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	VertexBuffer(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<T>& vertices);
+	VertexBuffer(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<VertexType>& vertices);
     ~VertexBuffer();
 
     VkBuffer getVkBuffer() const;
 };
 
-template<typename T>
-VertexBuffer<T>::VertexBuffer(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<T>& vertices)
+template<typename VertexType>
+VertexBuffer<VertexType>::VertexBuffer(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<VertexType>& vertices)
     : _logicalDevice(logicalDevice) {
-    VkDeviceSize bufferSize = sizeof(T) * vertices.size();
+    VkDeviceSize bufferSize = sizeof(VertexType) * vertices.size();
     VkDevice device = _logicalDevice->getVkDevice();
 
     VkBuffer stagingBuffer;
@@ -44,14 +44,14 @@ VertexBuffer<T>::VertexBuffer(std::shared_ptr<LogicalDevice> logicalDevice, cons
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-template<typename T>
-VertexBuffer<T>::~VertexBuffer() {
+template<typename VertexType>
+VertexBuffer<VertexType>::~VertexBuffer() {
     VkDevice device = _logicalDevice->getVkDevice();
     vkDestroyBuffer(device, _vertexBuffer, nullptr);
     vkFreeMemory(device, _vertexBufferMemory, nullptr);
 }
 
-template<typename T>
-VkBuffer VertexBuffer<T>::getVkBuffer() const {
+template<typename VertexType>
+VkBuffer VertexBuffer<VertexType>::getVkBuffer() const {
     return _vertexBuffer;
 }

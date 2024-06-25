@@ -41,6 +41,7 @@
 #include <primitives/vk_primitives_utils.h>
 #include <memory_objects/vertex_buffer.h>
 #include <memory_objects/index_buffer.h>
+#include <memory_objects/uniform_buffer.h>
 // #include <image/image.h>
 
 const uint32_t WIDTH = 1920;
@@ -85,6 +86,7 @@ private:
 
     std::unique_ptr<VertexBuffer<Vertex>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
+    std::vector<UniformBuffer<UniformBufferObject>> _uniformBuffers;
 
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
@@ -108,8 +110,6 @@ private:
 
     std::vector<Vertex> vertices;
     std::vector<uint16_t> indices;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
 
     uint32_t mipLevels;
     VkImage textureImage;
@@ -117,18 +117,11 @@ private:
     VkImageView textureImageView;
     VkSampler textureSampler;
 
-    VkImage depthImage;
-    VkDeviceMemory depthImageMemory;
-    VkImageView depthImageView;
-
-    VkImage colorImage;
-    VkDeviceMemory colorImageMemory;
-    VkImageView colorImageView;
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
-    std::vector<VkBuffer> uniformBuffers;
-    std::vector<VkDeviceMemory> uniformBuffersMemory;
-    std::vector<void*> uniformBuffersMapped;
+    //std::vector<VkBuffer> uniformBuffers;
+    //std::vector<VkDeviceMemory> uniformBuffersMemory;
+    //std::vector<void*> uniformBuffersMapped;
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
@@ -196,10 +189,10 @@ private:
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         // vkDestroyRenderPass(device, renderPass, nullptr);
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
-        }
+        //for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        //    vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+        //    vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+        //}
 
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
@@ -309,33 +302,6 @@ private:
         renderPass = _renderPass->getVkRenderPass();
     }
 
-    void createDescriptorSetLayout() {
-        VkDescriptorSetLayoutBinding uboLayoutBinding{};
-        uboLayoutBinding.binding = 0;
-        uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboLayoutBinding.pImmutableSamplers = nullptr;
-        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-        samplerLayoutBinding.binding = 1;
-        samplerLayoutBinding.descriptorCount = 1;
-        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerLayoutBinding.pImmutableSamplers = nullptr;
-        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
-
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-        layoutInfo.pBindings = bindings.data();
-
-        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor set layout!");
-        }
-    }
-
     void createGraphicsPipeline() {
         auto vertShaderCode = readFile(SHADERS_PATH "vert.spv");
         auto fragShaderCode = readFile(SHADERS_PATH "frag.spv");
@@ -393,14 +359,6 @@ private:
         multisampling.rasterizationSamples = msaaSamples;
         multisampling.sampleShadingEnable = VK_TRUE;
         multisampling.minSampleShading = 0.2f;
-
-        VkPipelineColorBlendAttachmentState colorBlendAttachment1{};
-        colorBlendAttachment1.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment1.blendEnable = VK_FALSE;
-
-        VkPipelineColorBlendAttachmentState colorBlendAttachment2{};
-        colorBlendAttachment2.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment2.blendEnable = VK_FALSE;
 
         uint32_t colorBlendAttachmentsCount = _renderPass->getColorAttachmentsCount();
         std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments(colorBlendAttachmentsCount);
@@ -564,16 +522,35 @@ private:
     }
 
     void createUniformBuffers() {
-        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+        _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);    // necessary
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+            _uniformBuffers.emplace_back(_logicalDevice);
+    }
 
-        uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+    void createDescriptorSetLayout() {
+        VkDescriptorSetLayoutBinding uboLayoutBinding{};
+        uboLayoutBinding.binding = 0;
+        uboLayoutBinding.descriptorCount = 1;
+        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uboLayoutBinding.pImmutableSamplers = nullptr;
+        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
+        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+        samplerLayoutBinding.binding = 1;
+        samplerLayoutBinding.descriptorCount = 1;
+        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerLayoutBinding.pImmutableSamplers = nullptr;
+        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-            vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+        std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+        layoutInfo.pBindings = bindings.data();
+
+        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor set layout!");
         }
     }
 
@@ -610,7 +587,7 @@ private:
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffers[i];
+            bufferInfo.buffer = _uniformBuffers[i].getVkBuffer();
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -1104,7 +1081,8 @@ private:
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
 
-        memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+        _uniformBuffers[currentImage].updateUniformBuffer(ubo);
+        // memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
 
     void drawFrame() {

@@ -8,14 +8,14 @@
 #include <vector>
 #include <memory>
 
-template<typename T>
+template<typename IndexType>
 class IndexBuffer {
     VkBuffer _indexBuffer;
     VkDeviceMemory _indexBufferMemory;
 
     std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-    IndexBuffer(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<T>& indices);
+    IndexBuffer(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<IndexType>& indices);
     ~IndexBuffer();
 
     VkIndexType getIndexType() const;
@@ -23,10 +23,10 @@ public:
 };
 
 
-template<typename T>
-IndexBuffer<T>::IndexBuffer(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<T>& indices)
+template<typename IndexType>
+IndexBuffer<IndexType>::IndexBuffer(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<IndexType>& indices)
     : _logicalDevice(logicalDevice) {
-    VkDeviceSize bufferSize = sizeof(T) * indices.size();
+    VkDeviceSize bufferSize = sizeof(IndexType) * indices.size();
     VkDevice device = _logicalDevice->getVkDevice();
 
     VkBuffer stagingBuffer;
@@ -46,14 +46,14 @@ IndexBuffer<T>::IndexBuffer(std::shared_ptr<LogicalDevice> logicalDevice, const 
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-template<typename T>
-IndexBuffer<T>::~IndexBuffer() {
+template<typename IndexType>
+IndexBuffer<IndexType>::~IndexBuffer() {
     VkDevice device = _logicalDevice->getVkDevice();
     vkDestroyBuffer(device, _indexBuffer, nullptr);
     vkFreeMemory(device, _indexBufferMemory, nullptr);
 }
 
-template<typename T>
-VkBuffer IndexBuffer<T>::getVkBuffer() const {
+template<typename IndexType>
+VkBuffer IndexBuffer<IndexType>::getVkBuffer() const {
     return _indexBuffer;
 }
