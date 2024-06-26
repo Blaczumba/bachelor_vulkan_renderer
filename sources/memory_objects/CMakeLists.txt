@@ -6,6 +6,8 @@ target_link_libraries(Image PUBLIC CommandBuffer)
 target_include_directories(Image PUBLIC ${CMAKE_SOURCE_DIR}/sources)
 target_include_directories(Image PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_subdirectory(texture)
+
 add_library(VertexBuffer "vertex_buffer.cpp")
 
 target_link_libraries(VertexBuffer PUBLIC Vulkan::Vulkan)

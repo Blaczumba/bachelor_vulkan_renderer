@@ -2,7 +2,7 @@
 
 #include "instance/instance.h"
 #include "surface/surface.h"
-#include "physical_device/features/features.h"
+#include "physical_device/property_manager/property_manager.h"
 
 #include <vector>
 #include <memory>
@@ -12,6 +12,8 @@ class PhysicalDevice {
     VkPhysicalDevice _device;
 	std::shared_ptr<Instance> _instance;
     std::shared_ptr<Surface> _surface;
+
+    PhysicalDevicePropertyManager _propertyManager;
 public:
 	PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_ptr<Surface> surface);
 
@@ -21,7 +23,9 @@ public:
     VkSampleCountFlagBits getMaxMsaaSampleCount() const;
     bool checkTextureFormatSupport(VkFormat format, VkImageTiling tiling, VkFormatFeatureFlags features) const;
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+    float getMaxSamplerAnisotropy() const;
 private:
     VkSampleCountFlagBits _msaaSampleCount;
     QueueFamilyIndices _queueFamilyIndices;
+    float _maxSamplerAnisotropy;
 };

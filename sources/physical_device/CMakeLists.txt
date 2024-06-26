@@ -1,2 +1,2 @@
 add_subdirectory(device)
-add_subdirectory(features)
+add_subdirectory(property_manager)

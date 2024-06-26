@@ -11,21 +11,21 @@ PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_p
     std::vector<VkPhysicalDevice> devices = _instance->getAvailablePhysicalDevices();
     VkSurfaceKHR surf = surface->getVkSurface();
 
-    for (const auto& device : devices) {
-        QueueFamilyIndices indices = findQueueFamilyIncides(device, surf);
-        bool extensionsSupported = checkDeviceExtensionSupport(device);
+    for (const auto device : devices) {
+        QueueFamilyIndices indices = _propertyManager.findQueueFamilyIncides(device, surf);
+        bool extensionsSupported = _propertyManager.checkDeviceExtensionSupport(device);
 
         bool swapChainAdequate = false;
         SwapChainSupportDetails swapChainSupport;
         if (extensionsSupported) {
-            swapChainSupport = querySwapchainSupportDetails(device, surf);
+            swapChainSupport = _propertyManager.querySwapchainSupportDetails(device, surf);
             swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
         }
 
         VkPhysicalDeviceFeatures supportedFeatures;
         vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
 
-        bool discreteGPU = checkDiscreteGPU(device);
+        bool discreteGPU = _propertyManager.checkDiscreteGPU(device);
 
         std::array<bool, 5> conditions = {
             indices.isComplete(),
@@ -39,7 +39,8 @@ PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_p
 
         if (suitable) {
             _device = device;
-            _msaaSampleCount = getMaxUsableSampleCount(device);
+            _msaaSampleCount = _propertyManager.getMaxUsableSampleCount(device);
+            _maxSamplerAnisotropy = _propertyManager.getMaxSamplerAnisotropy(device);
             _queueFamilyIndices = indices;
             break;
         }
@@ -59,7 +60,7 @@ QueueFamilyIndices PhysicalDevice::getQueueFamilyIndices() const {
 }
 
 SwapChainSupportDetails PhysicalDevice::getSwapChainSupportDetails() const {
-    return querySwapchainSupportDetails(_device, _surface->getVkSurface());
+    return _propertyManager.querySwapchainSupportDetails(_device, _surface->getVkSurface());
 }
 
 VkSampleCountFlagBits PhysicalDevice::getMaxMsaaSampleCount() const {
@@ -91,4 +92,8 @@ uint32_t PhysicalDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFla
     }
 
     throw std::runtime_error("failed to find suitable memory type!");
+}
+
+float PhysicalDevice::getMaxSamplerAnisotropy() const {
+    return _maxSamplerAnisotropy;
 }

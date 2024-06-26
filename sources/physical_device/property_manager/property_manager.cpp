@@ -1,11 +1,11 @@
-#include "features.h"
+#include "property_manager.h"
 #include "config/config.h"
 
 #include <algorithm>
 #include <array>
 #include <stdexcept>
 
-QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
+QueueFamilyIndices PhysicalDevicePropertyManager::findQueueFamilyIncides(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) const {
     QueueFamilyIndices indices;
 
     std::vector<VkQueueFamilyProperties> queueFamilies = getQueueFamilyProperties(physicalDevice);
@@ -26,7 +26,7 @@ QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice physicalDevice, VkSur
     return indices;
 }
 
-VkSampleCountFlagBits getMaxUsableSampleCount(VkPhysicalDevice physicalDevice) {
+VkSampleCountFlagBits PhysicalDevicePropertyManager::getMaxUsableSampleCount(VkPhysicalDevice physicalDevice) const {
     VkPhysicalDeviceProperties physicalDeviceProperties;
     vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
 
@@ -46,7 +46,14 @@ VkSampleCountFlagBits getMaxUsableSampleCount(VkPhysicalDevice physicalDevice) {
     return *std::find_if(samples.cbegin(), samples.cend(), [&](VkSampleCountFlagBits sample) { return sample & counts; });
 }
 
-SwapChainSupportDetails querySwapchainSupportDetails(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
+float PhysicalDevicePropertyManager::getMaxSamplerAnisotropy(VkPhysicalDevice physicalDevice) const {
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+    return properties.limits.maxSamplerAnisotropy;
+}
+
+SwapChainSupportDetails PhysicalDevicePropertyManager::querySwapchainSupportDetails(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) const {
     SwapChainSupportDetails details;
 
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &details.capabilities);
@@ -71,7 +78,7 @@ SwapChainSupportDetails querySwapchainSupportDetails(VkPhysicalDevice physicalDe
 }
 
 
-std::vector<VkQueueFamilyProperties> getQueueFamilyProperties(VkPhysicalDevice device) {
+std::vector<VkQueueFamilyProperties> PhysicalDevicePropertyManager::getQueueFamilyProperties(VkPhysicalDevice device) const {
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
@@ -81,7 +88,7 @@ std::vector<VkQueueFamilyProperties> getQueueFamilyProperties(VkPhysicalDevice d
     return queueFamilies;
 }
 
-std::vector<VkExtensionProperties> getAvailableExtensionProperties(VkPhysicalDevice device) {
+std::vector<VkExtensionProperties> PhysicalDevicePropertyManager::getAvailableExtensionProperties(VkPhysicalDevice device) const {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
@@ -91,7 +98,7 @@ std::vector<VkExtensionProperties> getAvailableExtensionProperties(VkPhysicalDev
     return availableExtensions;
 }
 
-bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
+bool PhysicalDevicePropertyManager::checkDeviceExtensionSupport(VkPhysicalDevice device) const {
     std::vector<VkExtensionProperties> availableExtensions = getAvailableExtensionProperties(device);
 
     // Check if all deviceExtensions are in availableExtensions.
@@ -102,7 +109,7 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
         });
 }
 
-bool checkDiscreteGPU(VkPhysicalDevice device) {
+bool PhysicalDevicePropertyManager::checkDiscreteGPU(VkPhysicalDevice device) const {
     VkPhysicalDeviceProperties properties;
 
     vkGetPhysicalDeviceProperties(device, &properties);
