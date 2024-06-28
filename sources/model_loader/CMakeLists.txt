@@ -1,0 +1,2 @@
+add_subdirectory(obj_loader)
+add_subdirectory(tiny_gltf_loader)

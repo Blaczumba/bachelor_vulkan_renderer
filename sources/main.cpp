@@ -1,9 +1,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
-
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
@@ -35,12 +32,12 @@
 #include <swapchain/swapchain.h>
 #include <command_buffer/command_buffer.h>
 #include <render_pass/framebuffer/framebuffer.h>
-#include <primitives/vk_primitives_utils.h>
 #include <memory_objects/vertex_buffer.h>
 #include <memory_objects/index_buffer.h>
 #include <memory_objects/uniform_buffer.h>
 #include <pipeline/graphics_pipeline.h>
 #include <memory_objects/texture/texture_2D.h>
+#include <model_loader/obj_loader/obj_loader.h>
 // #include <image/image.h>
 
 const uint32_t WIDTH = 1920;
@@ -80,6 +77,10 @@ private:
     std::unique_ptr<Pipeline> _graphicsPipeline;
     std::unique_ptr<Texture> _texture;
 
+    TinyOBJLoaderVertex<uint16_t> vertexLoader;
+
+    VertexData<Vertex, uint16_t> _vertexData;
+
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
 
@@ -99,9 +100,6 @@ private:
     VkPipeline graphicsPipeline;
 
     VkCommandPool commandPool;
-
-    std::vector<Vertex> vertices;
-    std::vector<uint16_t> indices;
 
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -305,73 +303,15 @@ private:
     }
 
     void loadModel() {
-        struct Indices {
-            int a;
-            int b;
-            int c;
-
-            struct Hash {
-                std::size_t operator()(const Indices& triple) const {
-                    std::size_t hash = 0;
-                    hash ^= std::hash<int>{}(triple.a) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-                    hash ^= std::hash<int>{}(triple.b) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-                    hash ^= std::hash<int>{}(triple.c) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-                    return hash;
-                }
-            };
-
-            bool operator==(const Indices& other) const {
-                return a == other.a && b == other.b && c == other.c;
-            }
-        };
-
-        tinyobj::attrib_t attrib;
-        std::vector<tinyobj::shape_t> shapes;
-        std::vector<tinyobj::material_t> materials;
-        std::string warn, err;
-
-        if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODELS_PATH "viking_room.obj")) {
-            throw std::runtime_error(warn + err);
-        }
-
-        std::unordered_map<Indices, int, Indices::Hash> mp;
-        for (const auto& shape : shapes) {
-            for (const auto& index : shape.mesh.indices) {
-                Indices idx = Indices{ index.vertex_index, index.normal_index, index.texcoord_index };
-                if (auto ptr = mp.find(idx); ptr != mp.cend()) {
-                    indices.push_back(ptr->second);
-                }
-                else {
-                    mp.insert({ idx, vertices.size() });
-
-                    Vertex vertex{};
-                    vertex.pos = {
-                        attrib.vertices[3 * index.vertex_index + 0],
-                        attrib.vertices[3 * index.vertex_index + 1],
-                        attrib.vertices[3 * index.vertex_index + 2]
-                    };
-
-                    vertex.texCoord = {
-                        attrib.texcoords[2 * index.texcoord_index + 0],
-                        1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-                    };
-
-                    vertex.color = { 1.0f, 1.0f, 1.0f };
-
-                    indices.push_back(vertices.size());
-                    vertices.push_back(vertex);
-                }
-            }
-        }
-        return;
+        _vertexData = vertexLoader.extract(MODELS_PATH "viking_room.obj");
     }
 
     void createVertexBuffer() {
-        _vertexBuffer = std::make_unique<VertexBuffer<Vertex>>(_logicalDevice, vertices);
+        _vertexBuffer = std::make_unique<VertexBuffer<Vertex>>(_logicalDevice, _vertexData.vertices);
     }
 
     void createIndexBuffer() {
-        _indexBuffer = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, indices);
+        _indexBuffer = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, _vertexData.indices);
     }
 
     void createUniformBuffers() {
@@ -555,7 +495,7 @@ private:
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline->getVkPipelineLayout(), 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(_vertexData.indices.size()), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 

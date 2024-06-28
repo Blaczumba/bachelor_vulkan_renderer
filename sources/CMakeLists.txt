@@ -1,3 +1,6 @@
+include_directories(${CMAKE_SOURCE_DIR}/external/glm)
+include_directories(${CMAKE_SOURCE_DIR}/external/)
+
 add_subdirectory(window)
 add_subdirectory(instance)
 add_subdirectory(debug_messenger)
@@ -9,6 +12,8 @@ add_subdirectory(render_pass)
 add_subdirectory(swapchain)
 add_subdirectory(command_buffer)
 add_subdirectory(pipeline)
+add_subdirectory(model_loader)
+add_subdirectory(descriptor_set)
 
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
 
@@ -32,9 +37,8 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC SHADERS_PATH="${CMAKE_SO
 target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC TEXTURES_PATH="${CMAKE_SOURCE_DIR}/assets/textures/")
 target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC MODELS_PATH="${CMAKE_SOURCE_DIR}/assets/models/")
 
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw tinyobjloader)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Window Instance DebugMessenger Surface PhysicalDevice LogicalDevice Renderpass Swapchain CommandBuffer Image Framebuffer VertexBuffer IndexBuffer UniformBuffer Pipeline Texture)
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/glm")
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Window Instance DebugMessenger Surface PhysicalDevice LogicalDevice Renderpass Swapchain CommandBuffer Image Framebuffer VertexBuffer IndexBuffer UniformBuffer Pipeline Texture TinyGLTFLoader OBJLoader DescriptorSet)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/tinygltf")
 
 add_subdirectory(tests)

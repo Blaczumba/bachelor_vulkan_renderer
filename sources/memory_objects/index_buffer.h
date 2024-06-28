@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <memory>
+#include <cstring>
 
 template<typename IndexType>
 class IndexBuffer {

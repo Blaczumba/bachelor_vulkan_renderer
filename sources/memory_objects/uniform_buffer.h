@@ -5,6 +5,7 @@
 #include <vulkan/vulkan.h>
 
 #include <memory>
+#include <cstring>
 
 template<typename UniformBufferObject>
 class UniformBuffer {

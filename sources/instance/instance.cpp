@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
+#include <cstring>
 
 Instance::Instance(std::string_view engineName) {
 
@@ -66,7 +67,7 @@ bool Instance::checkValidationLayerSupport() const {
     // Check if all validation layers are in available layers.
     return std::all_of(validationLayers.cbegin(), validationLayers.cend(), [&](const char* layerName) {
         return std::find_if(availableLayers.cbegin(), availableLayers.cend(), [&](const auto& layerProperty) {
-            return strcmp(layerName, layerProperty.layerName) == 0;
+            return std::strcmp(layerName, layerProperty.layerName) == 0;
             }) != availableLayers.cend();
     });
 }

@@ -1,6 +1,7 @@
 #include "property_manager.h"
 #include "config/config.h"
 
+#include <cstring>
 #include <algorithm>
 #include <array>
 #include <stdexcept>

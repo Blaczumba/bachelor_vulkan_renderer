@@ -27,12 +27,12 @@ PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_p
 
         bool discreteGPU = _propertyManager.checkDiscreteGPU(device);
 
-        std::array<bool, 5> conditions = {
+        std::array<bool, 4> conditions = {
             indices.isComplete(),
             extensionsSupported,
             swapChainAdequate,
             supportedFeatures.samplerAnisotropy,
-            discreteGPU
+            // discreteGPU
         };
 
         bool suitable = std::all_of(conditions.cbegin(), conditions.cend(), [](bool condition) { return condition; });

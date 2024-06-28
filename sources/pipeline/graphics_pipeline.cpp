@@ -1,6 +1,6 @@
 #include "graphics_pipeline.h"
 #include "shader_utils.h"
-#include "primitives/vk_primitives_utils.h"
+#include "primitives/vk_primitives.h"
 
 #include <stdexcept>
 

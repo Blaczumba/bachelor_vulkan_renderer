@@ -1,6 +1,7 @@
 #include "swapchain_utils.h"
 
 #include <algorithm>
+#include <limits>
 
 VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats, VkFormat preferredFormat) {
     auto availableFormat = std::find_if(availableFormats.cbegin(), availableFormats.cend(), [=](const auto& format) {
