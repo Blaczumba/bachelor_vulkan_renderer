@@ -23,8 +23,16 @@ public:
 	~DescriptorSetLayout();
 };
 
-class DescriptorSet {
-	DescriptorSetLayout _layout;
+class DescriptorSets {
+	VkDescriptorSetLayout _descriptorSetLayout;
+	VkDescriptorPool _descriptorPool;
+	std::vector<VkDescriptorSet> _descriptorSets;
+
+	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	DescriptorSet(const DescriptorSetLayout& layout);
+	DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::unique_ptr<UniformBufferAbstraction>>>& uniformBuffers);
+	~DescriptorSets();
+
+	VkDescriptorSetLayout getVkDescriptorSetLayout() const;
+	VkDescriptorSet& getVkDescriptorSet(size_t i);
 };
