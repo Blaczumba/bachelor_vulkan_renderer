@@ -11,7 +11,7 @@ class UniformBufferAbstraction {
 public:
 	virtual ~UniformBufferAbstraction() = default;
 
-	virtual void updateUniformBuffer(void* object, size_t size) =0;
+	virtual void updateUniformBuffer(void* object) =0;
 
 	virtual VkDescriptorType getVkDescriptorType() const =0;
 };
@@ -29,7 +29,7 @@ public:
 	virtual VkImageView getVkImageView() const { return _imageView; };
 	virtual VkSampler getVkSampler() const { return _sampler; };
 
-	void updateUniformBuffer(void* object, size_t size) override {};
+	void updateUniformBuffer(void* object) override {};
 
 	VkDescriptorType getVkDescriptorType() const override { 
 		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -41,18 +41,17 @@ protected:
 	VkBuffer _uniformBuffer;
 	VkDeviceMemory _uniformBufferMemory;
 	void* _uniformBufferMapped;
-	const size_t _size;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	UniformBufferStruct(std::shared_ptr<LogicalDevice> logicalDevice, size_t size) : _logicalDevice(logicalDevice), _size(size) {}
+	UniformBufferStruct(std::shared_ptr<LogicalDevice> logicalDevice) : _logicalDevice(logicalDevice) {}
 	virtual ~UniformBufferStruct() = default;
 	virtual VkBuffer getVkBuffer() const { return _uniformBuffer; }
 
-	void updateUniformBuffer(void* object, size_t size) =0;
+	void updateUniformBuffer(void* object) =0;
 
 	virtual VkDescriptorType getVkDescriptorType() const =0;
-	size_t getBufferSize() const { return _size; }
+	virtual size_t getBufferSize() const =0;
 };
 
 template<typename UniformBufferType>
@@ -61,18 +60,22 @@ public:
 	UniformBuffer(std::shared_ptr<LogicalDevice> logicalDevice);
 	~UniformBuffer();
 
-	void updateUniformBuffer(void* object, size_t size) override;
+	void updateUniformBuffer(void* object) override;
 
 	VkDescriptorType getVkDescriptorType() const override {
 		return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	}
+
+	size_t getBufferSize() const override {
+		return sizeof(UniformBufferType);
 	}
 };
 
 template<typename UniformBufferType>
 UniformBuffer<UniformBufferType>::UniformBuffer(std::shared_ptr<LogicalDevice> logicalDevice)
-	: UniformBufferStruct(logicalDevice, sizeof(UniformBufferType)) {
+	: UniformBufferStruct(logicalDevice) {
 
-	VkDeviceSize bufferSize = _size;
+	VkDeviceSize bufferSize = sizeof(UniformBufferType);
 
 	_logicalDevice->createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, _uniformBuffer, _uniformBufferMemory);
 
@@ -88,6 +91,6 @@ UniformBuffer<UniformBufferType>::~UniformBuffer() {
 }
 
 template<typename UniformBufferType>
-void UniformBuffer<UniformBufferType>::updateUniformBuffer(void* object, size_t size) {
-	std::memcpy(_uniformBufferMapped, object, size);
+void UniformBuffer<UniformBufferType>::updateUniformBuffer(void* object) {
+	std::memcpy(_uniformBufferMapped, object, sizeof(UniformBufferType));
 }

@@ -398,7 +398,7 @@ private:
                 descriptorWrites[j].descriptorType = _uniformBuffers[i][j]->getVkDescriptorType();
                 descriptorWrites[j].descriptorCount = 1;
 
-                if (auto ptr = dynamic_cast<UniformBufferStruct*>(_uniformBuffers[i][j].get()); ptr) {
+                if (auto ptr = dynamic_cast<UniformBufferStruct*>(_uniformBuffers[i][j].get())) {
                     bufferInfo.emplace_back(
                         VkDescriptorBufferInfo{
                             .buffer = ptr->getVkBuffer(),
@@ -406,10 +406,9 @@ private:
                             .range = ptr->getBufferSize(),
                         }
                     );
-
                     descriptorWrites[j].pBufferInfo = &bufferInfo.back();
                 }
-                else if (auto ptr = dynamic_cast<UniformBufferImage*>(_uniformBuffers[i][j].get()); ptr) {
+                else if (auto ptr = dynamic_cast<UniformBufferImage*>(_uniformBuffers[i][j].get())) {
                     imageInfo.emplace_back(
                         VkDescriptorImageInfo{
                             .sampler = ptr->getVkSampler(),
@@ -552,10 +551,10 @@ private:
         //ubo.model = glm::mat4(1.0f);
         ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1;
+        ubo.proj[1][1] = -ubo.proj[1][1];
 
-        _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo, sizeof(ubo));
-        _uniformBuffers[currentImage][1]->updateUniformBuffer(&ubo, sizeof(ubo));
+        _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
+        // _uniformBuffers[currentImage][1]->updateUniformBuffer(&ubo);
         // memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
 
