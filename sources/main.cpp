@@ -73,7 +73,7 @@ private:
     std::unique_ptr<Framebuffer> _framebuffer;
     std::unique_ptr<VertexBuffer<Vertex>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
-    std::vector<UniformBuffer<UniformBufferObject>> _uniformBuffers;
+    std::vector<std::vector<std::unique_ptr<UniformBufferAbstraction>>> _uniformBuffers;
     std::unique_ptr<Pipeline> _graphicsPipeline;
     std::unique_ptr<Texture> _texture;
 
@@ -315,9 +315,16 @@ private:
     }
 
     void createUniformBuffers() {
-        _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);    // necessary
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-            _uniformBuffers.emplace_back(_logicalDevice);
+        _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            std::vector<std::unique_ptr<UniformBufferAbstraction>> ub;
+            ub.reserve(2);
+           
+            ub.emplace_back(std::make_unique<UniformBuffer<UniformBufferObject>>(_logicalDevice));
+            ub.emplace_back(std::make_unique<UniformBufferImage>(_logicalDevice, _texture->getVkImageView(), _texture->getVkSampler()));
+            
+            _uniformBuffers.emplace_back(std::move(ub));
+        }
     }
 
     void createDescriptorSetLayout() {
@@ -378,33 +385,41 @@ private:
             throw std::runtime_error("failed to allocate descriptor sets!");
         }
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = _uniformBuffers[i].getVkBuffer();
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
+        for (size_t i = 0; i < _uniformBuffers.size(); i++) {
+            std::vector<VkWriteDescriptorSet> descriptorWrites(_uniformBuffers[i].size());
 
-            VkDescriptorImageInfo imageInfo{};
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = _texture->getVkImageView();
-            imageInfo.sampler = _texture->getVkSampler();
+            std::vector<VkDescriptorImageInfo> imageInfo{};
+            std::vector<VkDescriptorBufferInfo> bufferInfo{};
+            for (size_t j = 0; j < _uniformBuffers[i].size(); j++) {
+                descriptorWrites[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrites[j].dstSet = descriptorSets[i];
+                descriptorWrites[j].dstBinding = j;
+                descriptorWrites[j].dstArrayElement = 0;
+                descriptorWrites[j].descriptorType = _uniformBuffers[i][j]->getVkDescriptorType();
+                descriptorWrites[j].descriptorCount = 1;
 
-            std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = descriptorSets[i];
-            descriptorWrites[0].dstBinding = 0;
-            descriptorWrites[0].dstArrayElement = 0;
-            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &bufferInfo;
+                if (auto ptr = dynamic_cast<UniformBufferStruct*>(_uniformBuffers[i][j].get()); ptr) {
+                    bufferInfo.emplace_back(
+                        VkDescriptorBufferInfo{
+                            .buffer = ptr->getVkBuffer(),
+                            .offset = 0,
+                            .range = ptr->getBufferSize(),
+                        }
+                    );
 
-            descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[1].dstSet = descriptorSets[i];
-            descriptorWrites[1].dstBinding = 1;
-            descriptorWrites[1].dstArrayElement = 0;
-            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorWrites[1].descriptorCount = 1;
-            descriptorWrites[1].pImageInfo = &imageInfo;
+                    descriptorWrites[j].pBufferInfo = &bufferInfo.back();
+                }
+                else if (auto ptr = dynamic_cast<UniformBufferImage*>(_uniformBuffers[i][j].get()); ptr) {
+                    imageInfo.emplace_back(
+                        VkDescriptorImageInfo{
+                            .sampler = ptr->getVkSampler(),
+                            .imageView = ptr->getVkImageView(),
+                            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        }
+                    );
+                    descriptorWrites[j].pImageInfo = &imageInfo.back();
+                }
+            }
 
             vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
         }
@@ -539,7 +554,8 @@ private:
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
 
-        _uniformBuffers[currentImage].updateUniformBuffer(ubo);
+        _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo, sizeof(ubo));
+        _uniformBuffers[currentImage][1]->updateUniformBuffer(&ubo, sizeof(ubo));
         // memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
 
