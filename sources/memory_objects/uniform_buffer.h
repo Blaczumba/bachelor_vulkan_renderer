@@ -1,6 +1,7 @@
 #pragma once
 
 #include <logical_device/logical_device.h>
+#include <memory_objects/texture/texture_2D.h>
 
 #include <vulkan/vulkan.h>
 
@@ -16,18 +17,16 @@ public:
 	virtual VkDescriptorType getVkDescriptorType() const =0;
 };
 
-class UniformBufferImage : public UniformBufferAbstraction {
+class UniformBufferTexture : public UniformBufferAbstraction {
 protected:
-	VkImageView _imageView;
-	VkSampler _sampler;
+	std::shared_ptr<Texture> _texture;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	UniformBufferImage(std::shared_ptr<LogicalDevice> logicalDevice, VkImageView imageView, VkSampler sampler) 
-		: _logicalDevice(logicalDevice), _imageView(imageView), _sampler(sampler) {}
-	virtual ~UniformBufferImage() = default;
-	virtual VkImageView getVkImageView() const { return _imageView; };
-	virtual VkSampler getVkSampler() const { return _sampler; };
+	UniformBufferTexture(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Texture> texture) 
+		: _logicalDevice(logicalDevice), _texture(texture) {}
+	virtual ~UniformBufferTexture() = default;
+	const Texture* getTexturePtr() const { return _texture.get(); }
 
 	void updateUniformBuffer(void* object) override {};
 

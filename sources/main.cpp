@@ -76,7 +76,7 @@ private:
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
     std::vector<std::vector<std::unique_ptr<UniformBufferAbstraction>>> _uniformBuffers;
     std::unique_ptr<Pipeline> _graphicsPipeline;
-    std::unique_ptr<Texture> _texture;
+    std::shared_ptr<Texture> _texture;
     std::unique_ptr<DescriptorSets> _descriptorSets;
 
     TinyOBJLoaderVertex<uint16_t> vertexLoader;
@@ -315,8 +315,7 @@ private:
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             std::vector<std::unique_ptr<UniformBufferAbstraction>> ub;
             ub.emplace_back(std::make_unique<UniformBuffer<UniformBufferObject>>(_logicalDevice));
-            ub.emplace_back(std::make_unique<UniformBufferImage>(_logicalDevice, _texture->getVkImageView(), _texture->getVkSampler()));
-            ub.emplace_back(std::make_unique<UniformBufferImage>(_logicalDevice, _texture->getVkImageView(), _texture->getVkSampler()));
+            ub.emplace_back(std::make_unique<UniformBufferTexture>(_logicalDevice, _texture));
             
             _uniformBuffers.emplace_back(std::move(ub));
         }
@@ -349,7 +348,7 @@ private:
     }
 
     void createTextureImage() {
-        _texture = std::make_unique<Texture2D>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
+        _texture = std::make_shared<Texture2D>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
     }
 
     void createCommandBuffers() {

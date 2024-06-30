@@ -88,8 +88,9 @@ DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, con
     for (size_t i = 0; i < numSets; i++) {
         std::vector<VkWriteDescriptorSet> descriptorWrites(uniformBuffers[i].size());
 
-        std::vector<VkDescriptorImageInfo> imageInfo{};
-        std::vector<VkDescriptorBufferInfo> bufferInfo{};
+        std::vector<VkDescriptorImageInfo> imageInfos(uniformBuffers[i].size());
+        std::vector<VkDescriptorBufferInfo> bufferInfos(uniformBuffers[i].size());
+
         for (size_t j = 0; j < uniformBuffers[i].size(); j++) {
             descriptorWrites[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[j].dstSet = _descriptorSets[i];
@@ -99,24 +100,21 @@ DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, con
             descriptorWrites[j].descriptorCount = 1;
 
             if (auto ptr = dynamic_cast<UniformBufferStruct*>(uniformBuffers[i][j].get())) {
-                bufferInfo.emplace_back(
-                    VkDescriptorBufferInfo{
-                        .buffer = ptr->getVkBuffer(),
-                        .offset = 0,
-                        .range = ptr->getBufferSize(),
-                    }
-                );
-                descriptorWrites[j].pBufferInfo = &bufferInfo.back();
+                bufferInfos[j] = {
+                    .buffer = ptr->getVkBuffer(),
+                    .offset = 0,
+                    .range = ptr->getBufferSize(),
+                };
+                descriptorWrites[j].pBufferInfo = &bufferInfos[j];
             }
-            else if (auto ptr = dynamic_cast<UniformBufferImage*>(uniformBuffers[i][j].get())) {
-                imageInfo.emplace_back(
-                    VkDescriptorImageInfo{
-                        .sampler = ptr->getVkSampler(),
-                        .imageView = ptr->getVkImageView(),
-                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    }
-                );
-                descriptorWrites[j].pImageInfo = &imageInfo.back();
+            else if (auto ptr = dynamic_cast<UniformBufferTexture*>(uniformBuffers[i][j].get())) {
+                auto texturePtr = ptr->getTexturePtr();
+                imageInfos[j] = {
+                    .sampler = texturePtr->getVkSampler(),
+                    .imageView = texturePtr->getVkImageView(),
+                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                };
+                descriptorWrites[j].pImageInfo = &imageInfos[j];
             }
         }
 
