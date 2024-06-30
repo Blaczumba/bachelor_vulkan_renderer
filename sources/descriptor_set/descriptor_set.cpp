@@ -1,5 +1,6 @@
 #include "descriptor_set.h"
 
+#include <unordered_map>
 #include <stdexcept>
 
 DescriptorSetLayout::DescriptorSetLayout(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<DescriptorSetLayoutElement>& layoutElements)
@@ -36,14 +37,19 @@ DescriptorSetLayout::~DescriptorSetLayout() {
 DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::unique_ptr<UniformBufferAbstraction>>>& uniformBuffers)
 	: _logicalDevice(logicalDevice) {
 
+    std::unordered_map<VkDescriptorType, uint8_t> descriptorTypeOccurances;
+
     std::vector<VkDescriptorSetLayoutBinding> layoutBindings(uniformBuffers[0].size());
 
     for (uint32_t i = 0; i < layoutBindings.size(); ++i) {
+        VkDescriptorType descriptorType = uniformBuffers[0][i]->getVkDescriptorType();
         layoutBindings[i].binding = i;
         layoutBindings[i].descriptorCount = 1;
-        layoutBindings[i].descriptorType = uniformBuffers[0][i]->getVkDescriptorType();
+        layoutBindings[i].descriptorType = descriptorType;
         layoutBindings[i].pImmutableSamplers = nullptr;
         layoutBindings[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        descriptorTypeOccurances[descriptorType]++;
     }
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -57,10 +63,13 @@ DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, con
 
     const uint32_t numSets = uniformBuffers.size();
 
-    std::vector<VkDescriptorPoolSize> poolSizes(uniformBuffers[0].size());
-    for (size_t i = 0; i < poolSizes.size(); i++) {
-        poolSizes[i].type = uniformBuffers[0][i]->getVkDescriptorType();
-        poolSizes[i].descriptorCount = numSets;
+    std::vector<VkDescriptorPoolSize> poolSizes;
+    for (const auto [descriptorType, numOccurances] : descriptorTypeOccurances) {
+        poolSizes.emplace_back(VkDescriptorPoolSize{
+                .type = descriptorType,
+                .descriptorCount = numSets * numOccurances,
+            }
+        );
     }
 
     VkDescriptorPoolCreateInfo poolInfo{};
