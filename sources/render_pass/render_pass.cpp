@@ -84,7 +84,7 @@ const std::vector<VkClearValue>& Renderpass::getClearValues() const {
 }
 
 const std::vector<std::unique_ptr<Attachment>>& Renderpass::getAttachments() const {
-    return std::move(_attachments);
+    return _attachments;
 }
 
 uint32_t Renderpass::getColorAttachmentsCount() const {

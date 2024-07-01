@@ -9,10 +9,8 @@ struct VertexData {
 	std::vector<IndexType> indices;
 };
 
-template<typename VertexType, typename IndexType>
+template<typename VertexType>
 class ModelLoader {
 public:
 	virtual ~ModelLoader() = default;
-
-	virtual VertexData<VertexType, IndexType> extract(const std::string&) { return{}; };
 };

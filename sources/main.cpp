@@ -74,16 +74,14 @@ private:
     std::unique_ptr<Framebuffer> _framebuffer;
     std::unique_ptr<VertexBuffer<Vertex>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
+    VertexData<Vertex, uint16_t> _vertexData;
     std::vector<std::vector<std::unique_ptr<UniformBufferAbstraction>>> _uniformBuffers;
     std::unique_ptr<Pipeline> _graphicsPipeline;
     std::shared_ptr<Texture> _texture;
     std::unique_ptr<DescriptorSets> _descriptorSets;
 
-    TinyOBJLoaderVertex<uint16_t> vertexLoader;
+    TinyOBJLoaderVertex vertexLoader;
 
-    VertexData<Vertex, uint16_t> _vertexData;
-
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
 
     VkQueue graphicsQueue;
@@ -195,9 +193,7 @@ private:
 
     void pickPhysicalDevice() {
         _physicalDevice = std::make_shared<PhysicalDevice>(_instance, _surface);
-        msaaSamples = _physicalDevice->getMaxMsaaSampleCount();
         msaaSamples = VK_SAMPLE_COUNT_1_BIT;
-        physicalDevice = _physicalDevice->getVkPhysicalDevice();
     }
 
     void createLogicalDevice() {
@@ -236,9 +232,8 @@ private:
         _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
     }
 
-
     void loadModel() {
-        _vertexData = vertexLoader.extract(MODELS_PATH "viking_room.obj");
+        _vertexData = vertexLoader.extract<uint16_t>(MODELS_PATH "viking_room.obj");
     }
 
     void createVertexBuffer() {

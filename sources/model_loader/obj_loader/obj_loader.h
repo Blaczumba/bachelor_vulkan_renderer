@@ -28,17 +28,33 @@ struct Indices {
     }
 };
 
-template<typename IndexType>
-class TinyOBJLoaderVertex : public ModelLoader<Vertex, IndexType> {
 
+class TinyOBJLoaderVertex : public ModelLoader<Vertex> {
+    template<typename IndexType>
+    VertexData<Vertex, IndexType> templatedExtractor(const std::string&);
 public:
 	TinyOBJLoaderVertex() = default;
-	VertexData<Vertex, IndexType> extract(const std::string& filePath) override;
+    template<typename IndexType>
+	VertexData<Vertex, IndexType> extract(const std::string& filePath);
 };
 
+template<>
+VertexData<Vertex, uint8_t> TinyOBJLoaderVertex::extract(const std::string& filePath) {
+    return templatedExtractor<uint8_t>(filePath);
+}
 
-template<typename IndexType>
-VertexData<Vertex, IndexType> TinyOBJLoaderVertex<IndexType>::extract(const std::string& filePath) {
+template<>
+VertexData<Vertex, uint16_t> TinyOBJLoaderVertex::extract(const std::string& filePath) {
+    return templatedExtractor<uint16_t>(filePath);
+}
+
+template<>
+VertexData<Vertex, uint32_t> TinyOBJLoaderVertex::extract(const std::string& filePath) {
+    return templatedExtractor<uint32_t>(filePath);
+}
+
+template<typename IndexType> 
+VertexData<Vertex, IndexType> TinyOBJLoaderVertex::templatedExtractor(const std::string& filePath) {
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
@@ -59,7 +75,7 @@ VertexData<Vertex, IndexType> TinyOBJLoaderVertex<IndexType>::extract(const std:
                 indices.push_back(ptr->second);
             }
             else {
-                mp.insert({ idx, vertices.size() });
+                mp.insert({ idx, static_cast<IndexType>(vertices.size()) });
 
                 Vertex vertex{};
                 vertex.pos = {
@@ -75,7 +91,7 @@ VertexData<Vertex, IndexType> TinyOBJLoaderVertex<IndexType>::extract(const std:
 
                 vertex.color = { 1.0f, 1.0f, 1.0f };
 
-                indices.push_back(vertices.size());
+                indices.push_back(static_cast<IndexType>(vertices.size()));
                 vertices.push_back(vertex);
             }
         }

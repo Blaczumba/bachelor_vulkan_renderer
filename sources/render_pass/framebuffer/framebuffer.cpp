@@ -73,7 +73,7 @@ Framebuffer::~Framebuffer() {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
     }
 }
-
+#include <iostream>
 SwapchainImage Framebuffer::createColorResources(const VkAttachmentDescription& description) {
     VkExtent2D swapchainExtent = _swapchain->getExtent();
     VkFormat colorFormat = description.format;

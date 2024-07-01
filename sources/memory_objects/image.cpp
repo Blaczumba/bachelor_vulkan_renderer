@@ -2,6 +2,7 @@
 
 #include "command_buffer/command_buffer.h"
 
+#include <iostream>
 #include <stdexcept>
 
 void transitionImageLayout(LogicalDevice* logicalDevice, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels) {
