@@ -4,6 +4,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <memory>
+
 class SingleTimeCommandBuffer {
 	VkCommandBuffer _commandBuffer;
 	LogicalDevice* _logicalDevice;

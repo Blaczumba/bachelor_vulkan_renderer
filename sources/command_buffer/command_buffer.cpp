@@ -2,13 +2,8 @@
 
 SingleTimeCommandBuffer::SingleTimeCommandBuffer(LogicalDevice* logicalDevice)
     : _logicalDevice(logicalDevice) {
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = _logicalDevice->_commandPool;
-    allocInfo.commandBufferCount = 1;
 
-    vkAllocateCommandBuffers(_logicalDevice->_device, &allocInfo, &_commandBuffer);
+    _commandBuffer = _logicalDevice->createCommandBuffer();
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

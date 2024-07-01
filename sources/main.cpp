@@ -90,15 +90,12 @@ private:
     VkQueue presentQueue;
 
     VkSwapchainKHR swapChain;
-    std::vector<VkImage> swapChainImages;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
-    std::vector<VkImageView> swapChainImageViews;
-    std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkPipeline graphicsPipeline;
 
-    VkCommandPool commandPool;
+    // VkCommandPool commandPool;
 
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -134,7 +131,6 @@ private:
         createUniformBuffers();
         createDescriptorSets();
         createGraphicsPipeline();
-        createCommandPool();
         createFramebuffers();
         loadModel();
         createVertexBuffer();
@@ -153,31 +149,6 @@ private:
     }
 
     void cleanup() {
-        // cleanupSwapChain();
-
-        //vkDestroySampler(device, textureSampler, nullptr);
-        //vkDestroyImageView(device, textureImageView, nullptr);
-        //vkDestroyImage(device, textureImage, nullptr);
-        //vkFreeMemory(device, textureImageMemory, nullptr);
-
-        // vkDestroyPipeline(device, graphicsPipeline, nullptr);
-        // vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-        // vkDestroyRenderPass(device, renderPass, nullptr);
-
-        //for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        //    vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-        //    vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
-        //}
-
-        // vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-
-        // vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-
-        // vkDestroyBuffer(device, indexBuffer, nullptr);
-        // vkFreeMemory(device, indexBufferMemory, nullptr);
-
-        // vkDestroyBuffer(device, vertexBuffer, nullptr);
-        // vkFreeMemory(device, vertexBufferMemory, nullptr);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -185,18 +156,8 @@ private:
             vkDestroyFence(device, inFlightFences[i], nullptr);
         }
 
-        vkDestroyCommandPool(device, commandPool, nullptr);
-
-        // vkDestroyDevice(device, nullptr);
-
-        /*if (enableValidationLayers) {
-            DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-        }*/
-
-        // vkDestroySurfaceKHR(instance, surface, nullptr);
-        // vkDestroyInstance(instance, nullptr);
-
-        // glfwDestroyWindow(window);
+        // vkFreeCommandBuffers(device, commandPool, MAX_FRAMES_IN_FLIGHT, commandBuffers.data());
+        // vkDestroyCommandPool(device, commandPool, nullptr);
 
         glfwTerminate();
     }
@@ -210,16 +171,10 @@ private:
 
         vkDeviceWaitIdle(device);
 
-        // cleanupSwapChain();
-
-        // createSwapChain();
-        _swapchain->cleanup();
-        _swapchain->create();
+        _swapchain->recrete();
         swapChain = _swapchain->_swapchain;
-        swapChainImages = _swapchain->_images;
         swapChainExtent = _swapchain->_extent;
         swapChainImageFormat = _swapchain->_imageFormat;
-        swapChainImageViews = _swapchain->_imageViews;
 
         createFramebuffers();
     }
@@ -233,7 +188,6 @@ private:
         _debugMessenger = std::make_shared<DebugMessenger>(_instance);
 #endif // VALIDATION_LAYERS_ENABLED
     }
-
 
     void createSurface() {
         _surface = std::make_shared<Surface>(_instance, _window);
@@ -256,10 +210,8 @@ private:
     void createSwapChain() {
         _swapchain = std::make_shared<Swapchain>(_surface, _window, _logicalDevice, _physicalDevice);
         swapChain = _swapchain->_swapchain;
-        swapChainImages = _swapchain->_images;
         swapChainExtent = _swapchain->_extent;
         swapChainImageFormat = _swapchain->_imageFormat;
-        swapChainImageViews = _swapchain->_imageViews;
     }
 
     void createRenderPass() {
@@ -282,21 +234,8 @@ private:
 
     void createFramebuffers() {
         _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
-        swapChainFramebuffers = _framebuffer->getVkFramebuffers();
     }
 
-    void createCommandPool() {
-        QueueFamilyIndices queueFamilyIndices = _physicalDevice->getQueueFamilyIndices();
-
-        VkCommandPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-
-        if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create graphics command pool!");
-        }
-    }
 
     void loadModel() {
         _vertexData = vertexLoader.extract(MODELS_PATH "viking_room.obj");
@@ -325,10 +264,6 @@ private:
         _descriptorSets = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffers);
     }
 
-    bool hasStencilComponent(VkFormat format) {
-        return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-    }
-
     VkFormat findDepthFormat() {
         std::array<VkFormat, 3> depthFormats = {
             VK_FORMAT_D24_UNORM_S8_UINT,
@@ -352,17 +287,7 @@ private:
     }
 
     void createCommandBuffers() {
-        commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
-
-        if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate command buffers!");
-        }
+        commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     }
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -376,7 +301,7 @@ private:
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = _renderPass->getVkRenderPass();
-        renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+        renderPassInfo.framebuffer = _framebuffer->getVkFramebuffers()[imageIndex];
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = swapChainExtent;
 

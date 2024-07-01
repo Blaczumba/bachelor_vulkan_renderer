@@ -8,19 +8,10 @@
 #include <vector>
 #include <memory>
 
-struct DescriptorSetLayoutElement {
-	VkDescriptorType type;
-	VkShaderStageFlags stage;
-};
-
 class DescriptorSetLayout {
 	VkDescriptorSetLayout _layout;
-	std::vector<DescriptorSetLayoutElement> _layoutElements;
-
-	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	DescriptorSetLayout(std::shared_ptr<LogicalDevice> logicalDevice,  const std::vector<DescriptorSetLayoutElement>& layoutElements);
-	~DescriptorSetLayout();
+	DescriptorSetLayout();
 };
 
 class DescriptorSets {
@@ -29,6 +20,7 @@ class DescriptorSets {
 	std::vector<VkDescriptorSet> _descriptorSets;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
+	std::shared_ptr<DescriptorSetLayout> _layout;
 public:
 	DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::unique_ptr<UniformBufferAbstraction>>>& uniformBuffers);
 	~DescriptorSets();

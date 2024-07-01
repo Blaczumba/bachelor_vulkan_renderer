@@ -26,5 +26,6 @@ public:
 
 	void cleanup();
 	void create();
+	void recrete();
 private:
 };

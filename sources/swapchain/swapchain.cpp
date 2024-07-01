@@ -89,3 +89,8 @@ void Swapchain::create() {
         _imageViews[i] = _logicalDevice->createImageView(_images[i], _imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
 }
+
+void Swapchain::recrete() {
+    cleanup();
+    create();
+}
