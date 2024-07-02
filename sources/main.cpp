@@ -41,6 +41,7 @@
 #include <descriptor_set/descriptor_set.h>
 #include <camera/fps_camera.h>
 #include <window/callback_manager/fps_callback_manager.h>
+#include <memory_objects/texture/texture2D_attachment.h>
 
 const uint32_t WIDTH = 1920;
 const uint32_t HEIGHT = 1080;
@@ -79,6 +80,7 @@ private:
     std::vector<std::vector<std::unique_ptr<UniformBufferAbstraction>>> _uniformBuffers;
     std::unique_ptr<Pipeline> _graphicsPipeline;
     std::shared_ptr<Texture> _texture;
+    std::shared_ptr<Texture> _textureAttachment;
     std::unique_ptr<DescriptorSets> _descriptorSets;
 
     TinyOBJLoaderVertex vertexLoader;
@@ -211,9 +213,6 @@ private:
         auto swapchainImageFormat = _swapchain->getSwapchainImageFormat();
         std::vector<std::unique_ptr<Attachment>> attachments;
         attachments.emplace_back(std::make_unique<ColorPresentAttachment>(swapchainImageFormat));
-        attachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-        attachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-        attachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
         attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
         _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(attachments));
@@ -225,6 +224,7 @@ private:
 
     void createFramebuffers() {
         _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+        //_framebuffer = std::make_unique<Framebuffer>(_logicalDevice, , 3)
     }
 
     void loadModel() {
@@ -245,6 +245,7 @@ private:
             std::vector<std::unique_ptr<UniformBufferAbstraction>> ub;
             ub.emplace_back(std::make_unique<UniformBuffer<UniformBufferObject>>(_logicalDevice));
             ub.emplace_back(std::make_unique<UniformBufferTexture>(_logicalDevice, _texture));
+            ub.emplace_back(std::make_unique<UniformBufferTexture>(_logicalDevice, _textureAttachment));
             
             _uniformBuffers.emplace_back(std::move(ub));
         }
@@ -273,7 +274,9 @@ private:
     }
 
     void createTextureImage() {
+        VkExtent2D extent = { 1920, 1080 };
         _texture = std::make_shared<Texture2D>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
+        _textureAttachment = std::make_shared<Texture2DAttachment>(_logicalDevice, VK_FORMAT_D32_SFLOAT, extent);
     }
 
     void createCommandBuffers() {

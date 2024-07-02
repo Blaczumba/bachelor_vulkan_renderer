@@ -8,6 +8,7 @@ struct SwapchainImage {
 	VkImage _resourcesImage;
 	VkDeviceMemory _resourcesMemory;
 	VkImageView _resourcesView;
+	VkExtent2D _extent;
 };
 
 void transitionImageLayout(LogicalDevice* logicalDevice, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
