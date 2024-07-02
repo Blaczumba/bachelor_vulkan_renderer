@@ -1,11 +1,13 @@
 #include "fps_camera.h"
 
+#include <iostream>
+
 FPSCamera::FPSCamera(glm::vec3 position, glm::vec3 up, float yaw, float pitch)
-    : front(glm::vec3(0.0f, 0.0f, -1.0f)), movementSpeed(SPEED), mouseSensitivity(SENSITIVITY), zoom(ZOOM) {
-    position = position;
-    worldUp = up;
-    yaw = yaw;
-    pitch = pitch;
+    : _front(glm::vec3(0.0f, 0.0f, -1.0f)), _movementSpeed(SPEED), _mouseSensitivity(SENSITIVITY), _zoom(ZOOM) {
+    _position = position;
+    _worldUp = up;
+    _yaw = yaw;
+    _pitch = pitch;
     updateCameraVectors();
 }
 
@@ -15,52 +17,58 @@ FPSCamera::FPSCamera(float posX, float posY, float posZ, float upX, float upY, f
 }
 
 glm::mat4 FPSCamera::getViewMatrix() const {
-    return glm::lookAt(position, position + front, up);
+    return glm::lookAt(_position, _position + _front, _up);
 }
 
 void FPSCamera::processKeyboard(MovementDirections direction, float deltaTime) {
-    float velocity = movementSpeed * deltaTime;
-    if (direction == MovementDirections::FORWARD)
-        position += front * velocity;
-    if (direction == MovementDirections::BACKWARD)
-        position -= front * velocity;
-    if (direction == MovementDirections::LEFT)
-        position -= right * velocity;
-    if (direction == MovementDirections::RIGHT)
-        position += right * velocity;
+    float velocity = _movementSpeed * deltaTime;
+    switch (direction) {
+    case MovementDirections::FORWARD:
+        _position += _front * velocity;
+        break;
+    case MovementDirections::BACKWARD:
+        _position -= _front * velocity;
+        break;
+    case MovementDirections::LEFT:
+        _position -= _right * velocity;
+        break;
+    case MovementDirections::RIGHT:
+        _position += _right * velocity;
+        break;
+    }
 }
 
 void FPSCamera::processMouseMovement(float xoffset, float yoffset, bool constrainPitch) {
-    xoffset *= mouseSensitivity;
-    yoffset *= mouseSensitivity;
+    xoffset *= _mouseSensitivity;
+    yoffset *= _mouseSensitivity;
 
-    yaw += xoffset;
-    pitch += yoffset;
+    _yaw += xoffset;
+    _pitch += yoffset;
 
     if (constrainPitch)
     {
-        if (pitch > 89.0f)
-            pitch = 89.0f;
-        if (pitch < -89.0f)
-            pitch = -89.0f;
+        if (_pitch > 89.0f)
+            _pitch = 89.0f;
+        if (_pitch < -89.0f)
+            _pitch = -89.0f;
     }
 
     updateCameraVectors();
 }
 
 void FPSCamera::processMouseScroll(float yoffset) {
-    zoom -= (float)yoffset;
-    if (zoom < 1.0f)
-        zoom = 1.0f;
-    if (zoom > 45.0f)
-        zoom = 45.0f;
+    _zoom -= (float)yoffset;
+    if (_zoom < 1.0f)
+        _zoom = 1.0f;
+    if (_zoom > 45.0f)
+        _zoom = 45.0f;
 }
 
 void FPSCamera::updateCameraVectors() {
-    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    front.y = sin(glm::radians(pitch));
-    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    _front.x = cos(_yaw) * cos(_pitch);
+    _front.y = sin(_pitch);
+    _front.z = sin(_yaw) * cos(_pitch);
  
-    right = glm::normalize(glm::cross(front, worldUp));
-    up = glm::normalize(glm::cross(right, front));
+    _right = glm::normalize(glm::cross(_front, _worldUp));
+    _up = glm::normalize(glm::cross(_right, _front));
 }

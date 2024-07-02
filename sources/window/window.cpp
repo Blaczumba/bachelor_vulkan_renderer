@@ -1,13 +1,10 @@
 #include "window.h"
-#include "window_callback.h"
 
 #include <iostream>
 
 Window::Window(std::string_view name, uint32_t width, uint32_t height) {
     window = glfwCreateWindow(width, height, name.data(), nullptr, nullptr);
-    glfwSetWindowUserPointer(window, this);
-    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-    glfwSetKeyCallback(window, keyCallback);
+
 }
 
 Window::~Window() {

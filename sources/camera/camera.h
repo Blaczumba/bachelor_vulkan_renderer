@@ -4,6 +4,5 @@
 
 class Camera {
 public:
-	Camera();
 	virtual glm::mat4 getViewMatrix() const =0;
 };

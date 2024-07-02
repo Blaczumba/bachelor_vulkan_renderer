@@ -39,7 +39,8 @@
 #include <memory_objects/texture/texture_2D.h>
 #include <model_loader/obj_loader/obj_loader.h>
 #include <descriptor_set/descriptor_set.h>
-#include <camera/camera.h>
+#include <camera/fps_camera.h>
+#include <window/callback_manager/fps_callback_manager.h>
 
 const uint32_t WIDTH = 1920;
 const uint32_t HEIGHT = 1080;
@@ -81,6 +82,8 @@ private:
     std::unique_ptr<DescriptorSets> _descriptorSets;
 
     TinyOBJLoaderVertex vertexLoader;
+    std::unique_ptr<CallbackManager> _callbackManager;
+    FPSCamera _camera;
 
     VkDevice device;
 
@@ -111,6 +114,7 @@ private:
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
         _window = std::make_shared<Window>("Bejzak Engine", 1920, 1080);
+        _callbackManager = std::make_unique<FPSCallbackManager>(_window, _camera);
     }
 
     void initVulkan() {
@@ -135,7 +139,7 @@ private:
 
     void mainLoop() {
         while (_window->open()) {
-            glfwPollEvents();
+            _callbackManager->pollEvents();
             drawFrame();
         }
 
@@ -362,9 +366,9 @@ private:
         const auto& swapchainExtent = _swapchain->getExtent();
 
         UniformBufferObject ubo;
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(15.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.3f, 1.3, 1.3));
+        ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -1.0f));
         //ubo.model = glm::mat4(1.0f);
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = _camera.getViewMatrix();
 
         ubo.proj = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] = -ubo.proj[1][1];

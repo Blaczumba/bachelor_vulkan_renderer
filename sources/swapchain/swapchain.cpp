@@ -43,7 +43,7 @@ void Swapchain::create() {
     SwapChainSupportDetails swapChainSupport = _physicalDevice->getSwapChainSupportDetails();
     VkDevice device = _logicalDevice->getVkDevice();
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_B8G8R8A8_SRGB);
-    VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_MAILBOX_KHR);
+    VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_FIFO_KHR);
     Extent windowExtent = _window->getFramebufferSize();
     VkExtent2D extent = chooseSwapExtent({ windowExtent.width, windowExtent.height }, swapChainSupport.capabilities);
 
