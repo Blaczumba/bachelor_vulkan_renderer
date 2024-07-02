@@ -1,16 +1,15 @@
-#include "texture2D_attachment.h"
+#include "texture_2D_color.h"
 #include "memory_objects/image.h"
 
 #include <stdexcept>
 
-Texture2DAttachment::Texture2DAttachment(std::shared_ptr<LogicalDevice> logicalDevice, VkFormat format, VkExtent2D extent)
-	: Texture(std::move(logicalDevice)) {
+Texture2DColor::Texture2DColor(std::shared_ptr<LogicalDevice> logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
+    : Texture(std::move(logicalDevice)) {
 
-    _logicalDevice->createImage(extent.width, extent.height, 1, VK_SAMPLE_COUNT_1_BIT, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _textureImage, _textureImageMemory);
-    transitionImageLayout(_logicalDevice.get(), _textureImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
-    transitionImageLayout(_logicalDevice.get(), _textureImage, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+    _logicalDevice->createImage(extent.width, extent.height, 1, samples, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _textureImage, _textureImageMemory);
+    // transitionImageLayout(_logicalDevice.get(), _textureImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
-    _textureImageView = _logicalDevice->createImageView(_textureImage, format, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+    _textureImageView = _logicalDevice->createImageView(_textureImage, format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -35,7 +34,7 @@ Texture2DAttachment::Texture2DAttachment(std::shared_ptr<LogicalDevice> logicalD
     }
 }
 
-Texture2DAttachment::~Texture2DAttachment() {
+Texture2DColor::~Texture2DColor() {
     VkDevice device = _logicalDevice->getVkDevice();
 
     vkDestroySampler(device, _textureSampler, nullptr);
@@ -44,10 +43,10 @@ Texture2DAttachment::~Texture2DAttachment() {
     vkFreeMemory(device, _textureImageMemory, nullptr);
 }
 
-VkImageView Texture2DAttachment::getVkImageView() const {
+VkImageView Texture2DColor::getVkImageView() const {
     return _textureImageView;
 }
 
-VkSampler Texture2DAttachment::getVkSampler() const {
+VkSampler Texture2DColor::getVkSampler() const {
     return _textureSampler;
 }

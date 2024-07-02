@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <stdexcept>
 
-DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::unique_ptr<UniformBufferAbstraction>>>& uniformBuffers)
+DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>>& uniformBuffers)
 	: _logicalDevice(logicalDevice) {
 
     std::unordered_map<VkDescriptorType, uint8_t> descriptorTypeOccurances;

@@ -22,7 +22,7 @@ class DescriptorSets {
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 	std::shared_ptr<DescriptorSetLayout> _layout;
 public:
-	DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::unique_ptr<UniformBufferAbstraction>>>& uniformBuffers);
+	DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>>& uniformBuffers);
 	~DescriptorSets();
 
 	VkDescriptorSetLayout getVkDescriptorSetLayout() const;

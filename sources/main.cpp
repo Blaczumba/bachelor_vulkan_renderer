@@ -41,7 +41,8 @@
 #include <descriptor_set/descriptor_set.h>
 #include <camera/fps_camera.h>
 #include <window/callback_manager/fps_callback_manager.h>
-#include <memory_objects/texture/texture2D_attachment.h>
+#include <memory_objects/texture/texture_2D_depth.h>
+#include <memory_objects/texture/texture_2D_color.h>
 
 const uint32_t WIDTH = 1920;
 const uint32_t HEIGHT = 1080;
@@ -77,11 +78,14 @@ private:
     std::unique_ptr<VertexBuffer<Vertex>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
     VertexData<Vertex, uint16_t> _vertexData;
-    std::vector<std::vector<std::unique_ptr<UniformBufferAbstraction>>> _uniformBuffers;
+    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers;
+    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers2;
     std::unique_ptr<Pipeline> _graphicsPipeline;
     std::shared_ptr<Texture> _texture;
-    std::shared_ptr<Texture> _textureAttachment;
+    std::shared_ptr<Texture> _textureDepthAttachment;
+    std::shared_ptr<Texture> _textureColorAttachment;
     std::unique_ptr<DescriptorSets> _descriptorSets;
+    std::unique_ptr<DescriptorSets> _descriptorSets2;
 
     TinyOBJLoaderVertex vertexLoader;
     std::unique_ptr<CallbackManager> _callbackManager;
@@ -212,6 +216,7 @@ private:
         // Every attachment must have the same number of MSAA samples.
         auto swapchainImageFormat = _swapchain->getSwapchainImageFormat();
         std::vector<std::unique_ptr<Attachment>> attachments;
+        //attachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
         attachments.emplace_back(std::make_unique<ColorPresentAttachment>(swapchainImageFormat));
         attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
@@ -223,12 +228,26 @@ private:
     }
 
     void createFramebuffers() {
-        _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
-        //_framebuffer = std::make_unique<Framebuffer>(_logicalDevice, , 3)
+        //_framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+        VkExtent2D extent = _swapchain->getExtent();
+        // _textureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, _swapchain->getSwapchainImageFormat(), msaaSamples, extent);
+        _textureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, VK_FORMAT_D32_SFLOAT, msaaSamples, extent);
+
+        auto swapchainImages = _swapchain->getImageViews();
+        std::vector<std::vector<VkImageView>> views = {
+            {swapchainImages[0], _textureDepthAttachment->getVkImageView()},
+            {swapchainImages[1], _textureDepthAttachment->getVkImageView()},
+            {swapchainImages[2], _textureDepthAttachment->getVkImageView()},
+        };
+        _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(views), _renderPass, _swapchain->getExtent(), MAX_FRAMES_IN_FLIGHT);
+    }
+
+    void createOffScreenFramebuffer() {
+
     }
 
     void loadModel() {
-        _vertexData = vertexLoader.extract<uint16_t>(MODELS_PATH "viking_room.obj");
+        _vertexData = vertexLoader.extract<uint16_t>(MODELS_PATH "cube.obj");
     }
 
     void createVertexBuffer() {
@@ -241,24 +260,33 @@ private:
 
     void createUniformBuffers() {
         _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
+        _uniformBuffers2.reserve(MAX_FRAMES_IN_FLIGHT);
+        auto textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture);
+
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            std::vector<std::unique_ptr<UniformBufferAbstraction>> ub;
-            ub.emplace_back(std::make_unique<UniformBuffer<UniformBufferObject>>(_logicalDevice));
-            ub.emplace_back(std::make_unique<UniformBufferTexture>(_logicalDevice, _texture));
-            ub.emplace_back(std::make_unique<UniformBufferTexture>(_logicalDevice, _textureAttachment));
+            std::vector<std::shared_ptr<UniformBufferAbstraction>> ub;
+            ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice));
+            ub.emplace_back(textureUniform);
             
             _uniformBuffers.emplace_back(std::move(ub));
+
+            ub.clear();
+            ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice));
+            ub.emplace_back(textureUniform);
+
+            _uniformBuffers2.emplace_back(std::move(ub));
         }
     }
 
     void createDescriptorSets() {
         _descriptorSets = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffers);
+        _descriptorSets2 = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffers2);
     }
 
     VkFormat findDepthFormat() {
         std::array<VkFormat, 3> depthFormats = {
-            VK_FORMAT_D24_UNORM_S8_UINT,
             VK_FORMAT_D32_SFLOAT,
+            VK_FORMAT_D24_UNORM_S8_UINT,
             VK_FORMAT_D32_SFLOAT_S8_UINT,
         };
 
@@ -274,9 +302,7 @@ private:
     }
 
     void createTextureImage() {
-        VkExtent2D extent = { 1920, 1080 };
-        _texture = std::make_shared<Texture2D>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
-        _textureAttachment = std::make_shared<Texture2DAttachment>(_logicalDevice, VK_FORMAT_D32_SFLOAT, extent);
+        _texture = std::make_shared<Texture2D>(_logicalDevice, TEXTURES_PATH "brickwall.jpg", _physicalDevice->getMaxSamplerAnisotropy());
     }
 
     void createCommandBuffers() {
@@ -332,6 +358,10 @@ private:
 
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(_vertexData.indices.size()), 1, 0, 0, 0);
 
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline->getVkPipelineLayout(), 0, 1, &_descriptorSets2->getVkDescriptorSet(currentFrame), 0, nullptr);
+
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(_vertexData.indices.size()), 1, 0, 0, 0);
+
         vkCmdEndRenderPass(commandBuffer);
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
@@ -377,6 +407,16 @@ private:
         ubo.proj[1][1] = -ubo.proj[1][1];
 
         _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
+
+
+        ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -3.0f));
+        //ubo.model = glm::mat4(1.0f);
+        ubo.view = _camera.getViewMatrix();
+
+        ubo.proj = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10.0f);
+        ubo.proj[1][1] = -ubo.proj[1][1];
+
+        _uniformBuffers2[currentImage][0]->updateUniformBuffer(&ubo);
         // _uniformBuffers[currentImage][1]->updateUniformBuffer(&ubo);
         // memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }

@@ -16,8 +16,7 @@ class Framebuffer {
 
 	std::vector<SwapchainImage> _images;
 public:
-	Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shared_ptr<Swapchain> swapchain, std::shared_ptr<Renderpass> renderpass);
-	Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::vector<SwapchainImage> images, uint32_t count);
+	Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::vector<std::vector<VkImageView>>&& images, std::shared_ptr<Renderpass> renderpass, VkExtent2D extent, uint32_t count);
 	~Framebuffer();
 
 	std::vector<VkFramebuffer> getVkFramebuffers() const;

@@ -2,80 +2,17 @@
 
 #include <stdexcept>
 
-Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shared_ptr<Swapchain> swapchain, std::shared_ptr<Renderpass> renderpass)
-    : _logicalDevice(logicaldevice), _swapchain(swapchain), _renderPass(renderpass) {
-
-    const auto& swapchainImageViews = _swapchain->getImageViews();
-    const auto& swapchainExtent = _swapchain->getExtent();
-    const auto& attachments = _renderPass->getAttachments();
-
-    _framebuffers.resize(swapchainImageViews.size());
-
-    size_t swapchainPlace{};
-    std::vector<VkImageView> attachmentViews;
-    for (size_t i = 0; i < attachments.size(); i++) {
-        const VkAttachmentDescription& description = attachments[i]->getDescription();
-        SwapchainImage imageData;
-        switch (description.finalLayout) {
-
-        case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-            attachmentViews.push_back(VK_NULL_HANDLE);
-            swapchainPlace = i;
-            break;
-        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            imageData = createColorResources(description);
-            _images.push_back(imageData);
-            attachmentViews.push_back(imageData._resourcesView);
-            break;
-        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            imageData = createDepthResources(description);
-            _images.push_back(imageData);
-            attachmentViews.push_back(imageData._resourcesView);
-            break;
-        default:
-            std::runtime_error("failed to recognize final layout in framebuffer!");
-        }
-    }
-
-    for (size_t i = 0; i < swapchainImageViews.size(); i++) {
-        std::vector<VkImageView> views = attachmentViews;
-        views[swapchainPlace] = swapchainImageViews[i];
-
-        VkFramebufferCreateInfo framebufferInfo{};
-        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferInfo.renderPass = _renderPass->getVkRenderPass();
-        framebufferInfo.attachmentCount = static_cast<uint32_t>(views.size());
-        framebufferInfo.pAttachments = views.data();
-        framebufferInfo.width = swapchainExtent.width;
-        framebufferInfo.height = swapchainExtent.height;
-        framebufferInfo.layers = 1;
-
-        if (vkCreateFramebuffer(_logicalDevice->getVkDevice(), &framebufferInfo, nullptr, &_framebuffers[i]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create framebuffer!");
-        }
-    }
-}
-
-Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::vector<SwapchainImage> images, uint32_t count)
-    : _logicalDevice(logicaldevice), _images(images) {
+Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::vector<std::vector<VkImageView>>&& images, std::shared_ptr<Renderpass> renderpass, VkExtent2D extent, uint32_t count)
+    : _logicalDevice(logicaldevice), _renderPass(renderpass) {
 
     _framebuffers.resize(count);
-    VkExtent2D extent = images[0]._extent;
-
-    size_t swapchainPlace{};
-    std::vector<VkImageView> attachmentViews;
-    for (size_t i = 0; i < images.size(); i++) {
-        attachmentViews.push_back(images[i]._resourcesView);
-    }
 
     for (size_t i = 0; i < count; i++) {
-        std::vector<VkImageView> views = attachmentViews;
-
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = _renderPass->getVkRenderPass();
-        framebufferInfo.attachmentCount = static_cast<uint32_t>(views.size());
-        framebufferInfo.pAttachments = views.data();
+        framebufferInfo.attachmentCount = static_cast<uint32_t>(images[i].size());
+        framebufferInfo.pAttachments = images[i].data();
         framebufferInfo.width = extent.width;
         framebufferInfo.height = extent.height;
         framebufferInfo.layers = 1;
