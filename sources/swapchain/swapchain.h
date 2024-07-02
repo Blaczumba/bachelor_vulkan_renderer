@@ -12,15 +12,17 @@ class Swapchain {
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 	std::shared_ptr<PhysicalDevice> _physicalDevice;
 
-public:
 	VkSwapchainKHR _swapchain;
 	std::vector<VkImage> _images;
 	std::vector<VkImageView> _imageViews;
 	VkFormat _imageFormat;
 	VkExtent2D _extent;
+public:
 	Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice);
 	~Swapchain();
 
+	const VkSwapchainKHR getVkSwapchain() const;
+	VkFormat getSwapchainImageFormat() const;
 	const std::vector<VkImageView>& getImageViews() const;
 	const VkExtent2D& getExtent() const;
 

@@ -39,7 +39,7 @@
 #include <memory_objects/texture/texture_2D.h>
 #include <model_loader/obj_loader/obj_loader.h>
 #include <descriptor_set/descriptor_set.h>
-// #include <image/image.h>
+#include <camera/camera.h>
 
 const uint32_t WIDTH = 1920;
 const uint32_t HEIGHT = 1080;
@@ -86,10 +86,6 @@ private:
 
     VkQueue graphicsQueue;
     VkQueue presentQueue;
-
-    VkSwapchainKHR swapChain;
-    VkFormat swapChainImageFormat;
-    VkExtent2D swapChainExtent;
 
     VkPipeline graphicsPipeline;
 
@@ -170,9 +166,6 @@ private:
         vkDeviceWaitIdle(device);
 
         _swapchain->recrete();
-        swapChain = _swapchain->_swapchain;
-        swapChainExtent = _swapchain->_extent;
-        swapChainImageFormat = _swapchain->_imageFormat;
 
         createFramebuffers();
     }
@@ -205,20 +198,18 @@ private:
 
     void createSwapChain() {
         _swapchain = std::make_shared<Swapchain>(_surface, _window, _logicalDevice, _physicalDevice);
-        swapChain = _swapchain->_swapchain;
-        swapChainExtent = _swapchain->_extent;
-        swapChainImageFormat = _swapchain->_imageFormat;
     }
 
     void createRenderPass() {
         // There must be at least one "Present" attachment (Color or Resolve).
         // There must be the same number of ColorAttachments and ColorResolveAttachments.
         // Every attachment must have the same number of MSAA samples.
+        auto swapchainImageFormat = _swapchain->getSwapchainImageFormat();
         std::vector<std::unique_ptr<Attachment>> attachments;
-        attachments.emplace_back(std::make_unique<ColorPresentAttachment>(swapChainImageFormat));
-        attachments.emplace_back(std::make_unique<ColorAttachment>(swapChainImageFormat, msaaSamples));
-        attachments.emplace_back(std::make_unique<ColorAttachment>(swapChainImageFormat, msaaSamples));
-        attachments.emplace_back(std::make_unique<ColorAttachment>(swapChainImageFormat, msaaSamples));
+        attachments.emplace_back(std::make_unique<ColorPresentAttachment>(swapchainImageFormat));
+        attachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+        attachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+        attachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
         attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
         _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(attachments));
@@ -298,7 +289,7 @@ private:
         renderPassInfo.renderPass = _renderPass->getVkRenderPass();
         renderPassInfo.framebuffer = _framebuffer->getVkFramebuffers()[imageIndex];
         renderPassInfo.renderArea.offset = { 0, 0 };
-        renderPassInfo.renderArea.extent = swapChainExtent;
+        renderPassInfo.renderArea.extent = _swapchain->getExtent();
 
         const auto& clearValues = _renderPass->getClearValues();
         renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -308,18 +299,20 @@ private:
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline->getVkPipeline());
 
+        const VkExtent2D& swapchainExtent = _swapchain->getExtent();
+
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = (float)swapChainExtent.width;
-        viewport.height = (float)swapChainExtent.height;
+        viewport.width = (float)swapchainExtent.width;
+        viewport.height = (float)swapchainExtent.height;
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
         VkRect2D scissor{};
         scissor.offset = { 0, 0 };
-        scissor.extent = swapChainExtent;
+        scissor.extent = swapchainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
         VkBuffer vertexBuffers[] = { _vertexBuffer->getVkBuffer() };
@@ -366,11 +359,14 @@ private:
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
+        const auto& swapchainExtent = _swapchain->getExtent();
+
         UniformBufferObject ubo;
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(15.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.3f, 1.3, 1.3));
         //ubo.model = glm::mat4(1.0f);
         ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+
+        ubo.proj = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] = -ubo.proj[1][1];
 
         _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
@@ -382,7 +378,7 @@ private:
         vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
         uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+        VkResult result = vkAcquireNextImageKHR(device, _swapchain->getVkSwapchain(), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             recreateSwapChain();
@@ -425,7 +421,7 @@ private:
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
 
-        VkSwapchainKHR swapChains[] = { swapChain };
+        VkSwapchainKHR swapChains[] = { _swapchain->getVkSwapchain()};
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
 

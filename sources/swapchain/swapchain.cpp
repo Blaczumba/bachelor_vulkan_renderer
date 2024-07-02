@@ -13,6 +13,13 @@ Swapchain::~Swapchain() {
     cleanup();
 }
 
+const VkSwapchainKHR Swapchain::getVkSwapchain() const {
+    return _swapchain;
+}
+
+VkFormat Swapchain::getSwapchainImageFormat() const {
+    return _imageFormat;
+}
 
 const std::vector<VkImageView>& Swapchain::getImageViews() const {
     return _imageViews;
