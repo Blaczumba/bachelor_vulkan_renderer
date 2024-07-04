@@ -15,6 +15,7 @@ add_subdirectory(pipeline)
 add_subdirectory(model_loader)
 add_subdirectory(descriptor_set)
 add_subdirectory(camera)
+add_subdirectory(screenshot)
 
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
 

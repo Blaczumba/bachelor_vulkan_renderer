@@ -1,5 +1,6 @@
 #include "texture_2D.h"
 #include "memory_objects/image.h"
+#include "command_buffer/command_buffer.h"
 
 #include <vulkan/vulkan.h>
 
@@ -35,11 +36,13 @@ Texture2D::Texture2D(std::shared_ptr<LogicalDevice> logicalDevice, std::string_v
     stbi_image_free(pixels);
 
     _logicalDevice->createImage(texWidth, texHeight, _mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _textureImage, _textureImageMemory);
-
-    transitionImageLayout(_logicalDevice.get(), _textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, _mipLevels);
-    copyBufferToImage(_logicalDevice.get(), stagingBuffer, _textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-
-    generateMipmaps(_logicalDevice.get(), _textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, _mipLevels);
+    {
+        SingleTimeCommandBuffer handle(_logicalDevice.get());
+        VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+        transitionImageLayout(commandBuffer, _textureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, _mipLevels);
+        copyBufferToImage(commandBuffer, stagingBuffer, _textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+        generateMipmaps(commandBuffer, _textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, _mipLevels);
+    }
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);

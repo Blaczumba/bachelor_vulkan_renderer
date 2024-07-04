@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 Swapchain::Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice)
-	: _surface(surface), _window(window), _logicalDevice(logicalDevice), _physicalDevice(physicalDevice) {
+	: _surface(surface), _window(window), _logicalDevice(logicalDevice), _physicalDevice(physicalDevice), _currentFrame(0) {
     create();
 }
 
@@ -29,6 +29,10 @@ const VkExtent2D& Swapchain::getExtent() const {
     return _extent;
 }
 
+VkImage Swapchain::getCurrentImage() const {
+    return _images[_currentFrame];
+}
+
 void Swapchain::cleanup() {
     VkDevice device = _logicalDevice->getVkDevice();
 
@@ -47,21 +51,21 @@ void Swapchain::create() {
     Extent windowExtent = _window->getFramebufferSize();
     VkExtent2D extent = chooseSwapExtent({ windowExtent.width, windowExtent.height }, swapChainSupport.capabilities);
 
-    uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-    if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
-        imageCount = swapChainSupport.capabilities.maxImageCount;
+    _imageCount = swapChainSupport.capabilities.minImageCount + 1;
+    if (swapChainSupport.capabilities.maxImageCount > 0 && _imageCount > swapChainSupport.capabilities.maxImageCount) {
+        _imageCount = swapChainSupport.capabilities.maxImageCount;
     }
 
     VkSwapchainCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     createInfo.surface = _surface->getVkSurface();
 
-    createInfo.minImageCount = imageCount;
+    createInfo.minImageCount = _imageCount;
     createInfo.imageFormat = surfaceFormat.format;
     createInfo.imageColorSpace = surfaceFormat.colorSpace;
     createInfo.imageExtent = extent;
     createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
     QueueFamilyIndices indices = _physicalDevice->getQueueFamilyIndices();
     uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
@@ -84,15 +88,15 @@ void Swapchain::create() {
         throw std::runtime_error("failed to create swap chain!");
     }
 
-    vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, nullptr);
-    _images.resize(imageCount);
-    vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, _images.data());
+    vkGetSwapchainImagesKHR(device, _swapchain, &_imageCount, nullptr);
+    _images.resize(_imageCount);
+    vkGetSwapchainImagesKHR(device, _swapchain, &_imageCount, _images.data());
 
-    _imageViews.resize(imageCount);
+    _imageViews.resize(_imageCount);
     _imageFormat = surfaceFormat.format;
     _extent = extent;
 
-    for (size_t i = 0; i < imageCount; i++) {
+    for (size_t i = 0; i < _imageCount; i++) {
         _imageViews[i] = _logicalDevice->createImageView(_images[i], _imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
 }
@@ -100,4 +104,37 @@ void Swapchain::create() {
 void Swapchain::recrete() {
     cleanup();
     create();
+}
+
+uint32_t Swapchain::update() {
+    if (++_currentFrame == _imageCount)
+        _currentFrame = 0;
+    return _currentFrame;
+}
+
+uint32_t Swapchain::acquireNextImage() const {
+    return 0;
+}
+
+VkResult Swapchain::present(VkSemaphore waitSemaphore) const {
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &waitSemaphore;
+
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &_swapchain;
+    return VK_SUCCESS;
+  /*  presentInfo.pImageIndices = &imageIndex;
+
+    result = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+        framebufferResized = false;
+        recreateSwapChain();
+    }
+    else if (result != VK_SUCCESS) {
+        throw std::runtime_error("failed to present swap chain image!");
+    }*/
 }

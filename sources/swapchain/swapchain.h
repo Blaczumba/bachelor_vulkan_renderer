@@ -17,6 +17,8 @@ class Swapchain {
 	std::vector<VkImageView> _imageViews;
 	VkFormat _imageFormat;
 	VkExtent2D _extent;
+	uint32_t _currentFrame;
+	uint32_t _imageCount;
 public:
 	Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice);
 	~Swapchain();
@@ -25,9 +27,14 @@ public:
 	VkFormat getSwapchainImageFormat() const;
 	const std::vector<VkImageView>& getImageViews() const;
 	const VkExtent2D& getExtent() const;
+	VkImage getCurrentImage() const;
 
 	void cleanup();
 	void create();
 	void recrete();
+
+	uint32_t update();
+	uint32_t acquireNextImage() const;
+	VkResult present(VkSemaphore waitSemaphore) const;
 private:
 };

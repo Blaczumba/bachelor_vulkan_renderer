@@ -73,7 +73,7 @@ private:
     std::shared_ptr<LogicalDevice> _logicalDevice;
     std::shared_ptr<Renderpass> _renderPass;
     std::shared_ptr<Swapchain> _swapchain;
-    
+
     std::unique_ptr<Framebuffer> _framebuffer;
     std::unique_ptr<VertexBuffer<Vertex>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
@@ -228,26 +228,24 @@ private:
     }
 
     void createFramebuffers() {
-        //_framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
-        VkExtent2D extent = _swapchain->getExtent();
-        // _textureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, _swapchain->getSwapchainImageFormat(), msaaSamples, extent);
-        _textureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, VK_FORMAT_D32_SFLOAT, msaaSamples, extent);
+        _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+        //VkExtent2D extent = _swapchain->getExtent();
+        //// _textureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, _swapchain->getSwapchainImageFormat(), msaaSamples, extent);
+        //_textureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, VK_FORMAT_D32_SFLOAT, msaaSamples, extent);
 
-        auto swapchainImages = _swapchain->getImageViews();
-        std::vector<std::vector<VkImageView>> views = {
-            {swapchainImages[0], _textureDepthAttachment->getVkImageView()},
-            {swapchainImages[1], _textureDepthAttachment->getVkImageView()},
-            {swapchainImages[2], _textureDepthAttachment->getVkImageView()},
-        };
-        _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(views), _renderPass, _swapchain->getExtent(), MAX_FRAMES_IN_FLIGHT);
-    }
-
-    void createOffScreenFramebuffer() {
-
+        //auto swapchainImages = _swapchain->getImageViews();
+        //uint32_t imageCount = swapchainImages.size();
+        //std::vector<std::vector<VkImageView>> views = {
+        //    {swapchainImages[0], _textureDepthAttachment->getVkImageView()},
+        //    {swapchainImages[1], _textureDepthAttachment->getVkImageView()},
+        //    {swapchainImages[2], _textureDepthAttachment->getVkImageView()},
+        //    {swapchainImages[3], _textureDepthAttachment->getVkImageView()},
+        //};
+        //_framebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(views), _renderPass, _swapchain->getExtent(), imageCount);
     }
 
     void loadModel() {
-        _vertexData = vertexLoader.extract<uint16_t>(MODELS_PATH "cube.obj");
+        _vertexData = vertexLoader.extract<uint16_t>(MODELS_PATH "viking_room.obj");
     }
 
     void createVertexBuffer() {
@@ -267,20 +265,13 @@ private:
             std::vector<std::shared_ptr<UniformBufferAbstraction>> ub;
             ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice));
             ub.emplace_back(textureUniform);
-            
+
             _uniformBuffers.emplace_back(std::move(ub));
-
-            ub.clear();
-            ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice));
-            ub.emplace_back(textureUniform);
-
-            _uniformBuffers2.emplace_back(std::move(ub));
         }
     }
 
     void createDescriptorSets() {
         _descriptorSets = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffers);
-        _descriptorSets2 = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffers2);
     }
 
     VkFormat findDepthFormat() {
@@ -292,7 +283,7 @@ private:
 
         auto formatPtr = std::find_if(depthFormats.cbegin(), depthFormats.cend(), [&](VkFormat format) {
             return _physicalDevice->checkTextureFormatSupport(format, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-        });
+            });
 
         if (formatPtr == depthFormats.cend()) {
             throw std::runtime_error("failed to find depth format!");
@@ -302,12 +293,14 @@ private:
     }
 
     void createTextureImage() {
-        _texture = std::make_shared<Texture2D>(_logicalDevice, TEXTURES_PATH "brickwall.jpg", _physicalDevice->getMaxSamplerAnisotropy());
+        _texture = std::make_shared<Texture2D>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
     }
 
     void createCommandBuffers() {
         commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     }
+
+    int special = 0;
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
         VkCommandBufferBeginInfo beginInfo{};
@@ -329,7 +322,6 @@ private:
         renderPassInfo.pClearValues = clearValues.data();
 
         vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline->getVkPipeline());
 
         const VkExtent2D& swapchainExtent = _swapchain->getExtent();
@@ -342,7 +334,6 @@ private:
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
         VkRect2D scissor{};
         scissor.offset = { 0, 0 };
         scissor.extent = swapchainExtent;
@@ -355,10 +346,6 @@ private:
         vkCmdBindIndexBuffer(commandBuffer, _indexBuffer->getVkBuffer(), 0, _indexBuffer->getIndexType());
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline->getVkPipelineLayout(), 0, 1, &_descriptorSets->getVkDescriptorSet(currentFrame), 0, nullptr);
-
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(_vertexData.indices.size()), 1, 0, 0, 0);
-
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline->getVkPipelineLayout(), 0, 1, &_descriptorSets2->getVkDescriptorSet(currentFrame), 0, nullptr);
 
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(_vertexData.indices.size()), 1, 0, 0, 0);
 
@@ -399,7 +386,7 @@ private:
         const auto& swapchainExtent = _swapchain->getExtent();
 
         UniformBufferObject ubo;
-        ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -1.0f));
+        ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -1.0f));
         //ubo.model = glm::mat4(1.0f);
         ubo.view = _camera.getViewMatrix();
 
@@ -407,24 +394,15 @@ private:
         ubo.proj[1][1] = -ubo.proj[1][1];
 
         _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
-
-
-        ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -3.0f));
-        //ubo.model = glm::mat4(1.0f);
-        ubo.view = _camera.getViewMatrix();
-
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10.0f);
-        ubo.proj[1][1] = -ubo.proj[1][1];
-
-        _uniformBuffers2[currentImage][0]->updateUniformBuffer(&ubo);
         // _uniformBuffers[currentImage][1]->updateUniformBuffer(&ubo);
         // memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
-
     void drawFrame() {
+
         vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
         uint32_t imageIndex;
+
         VkResult result = vkAcquireNextImageKHR(device, _swapchain->getVkSwapchain(), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -435,12 +413,15 @@ private:
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
+
         updateUniformBuffer(currentFrame);
+
 
         vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
         vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-        recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
+
+        recordCommandBuffer(commandBuffers[currentFrame], imageIndex); // To TUTAJ
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -461,14 +442,13 @@ private:
         if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
             throw std::runtime_error("failed to submit draw command buffer!");
         }
-
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
 
-        VkSwapchainKHR swapChains[] = { _swapchain->getVkSwapchain()};
+        VkSwapchainKHR swapChains[] = { _swapchain->getVkSwapchain() };
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
 
@@ -484,8 +464,10 @@ private:
             throw std::runtime_error("failed to present swap chain image!");
         }
 
+        currentFrame = _swapchain->update();
         if (++currentFrame == MAX_FRAMES_IN_FLIGHT)
-            currentFrame -= MAX_FRAMES_IN_FLIGHT;
+            currentFrame = 0;
+
     }
 };
 

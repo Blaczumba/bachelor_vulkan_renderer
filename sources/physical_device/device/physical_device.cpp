@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <stdexcept>
+#include <iostream>
 
 PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_ptr<Surface> surface)
 	: _instance(instance), _surface(surface), _device(VK_NULL_HANDLE) {
@@ -79,6 +80,16 @@ bool PhysicalDevice::checkTextureFormatSupport(VkFormat format, VkImageTiling ti
     }
 
     return false;
+}
+
+bool PhysicalDevice::checkBlittingSupport(VkFormat format) const {
+    VkFormatProperties formatProps;
+    vkGetPhysicalDeviceFormatProperties(_device, format, &formatProps);
+    if (!(formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
+        std::cout << "Device does not support blitting from optimal tiled images, using copy instead of blit!" << std::endl;
+        return false;
+    }
+    return true;
 }
 
 uint32_t PhysicalDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
