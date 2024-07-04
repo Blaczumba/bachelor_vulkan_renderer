@@ -11,12 +11,12 @@ Screenshot::Screenshot(std::shared_ptr<PhysicalDevice> physicalDevice, std::shar
 		physicalDevice->checkBlittingSupport(VK_FORMAT_R8G8B8A8_UNORM);
 }
 
-void Screenshot::saveScreenshot(const std::string& filepath) {
+void Screenshot::saveScreenshot(const std::string& filepath, uint32_t imageIndex) {
 	// Source for the copy is the last rendered swapchain image
 	VkDevice device = _logicalDevice->getVkDevice();
 	const VkFormat format = _swapchain->getSwapchainImageFormat();
 	const VkExtent2D extent = _swapchain->getExtent();
-	VkImage srcImage = _swapchain->getCurrentImage(); // TODO
+	VkImage srcImage = _swapchain->getVkImage(imageIndex);
 	VkImage dstImage;
 	VkDeviceMemory dstImageMemory;
 	_logicalDevice->createImage(

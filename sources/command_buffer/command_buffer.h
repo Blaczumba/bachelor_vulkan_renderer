@@ -8,6 +8,8 @@
 
 class SingleTimeCommandBuffer {
 	VkCommandBuffer _commandBuffer;
+	VkFence _fence;
+
 	LogicalDevice* _logicalDevice;
 public:
 	SingleTimeCommandBuffer(LogicalDevice* logicalDevice);

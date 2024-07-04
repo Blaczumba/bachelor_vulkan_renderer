@@ -43,6 +43,7 @@
 #include <window/callback_manager/fps_callback_manager.h>
 #include <memory_objects/texture/texture_2D_depth.h>
 #include <memory_objects/texture/texture_2D_color.h>
+#include <screenshot/screenshot.h>
 
 const uint32_t WIDTH = 1920;
 const uint32_t HEIGHT = 1080;
@@ -86,6 +87,7 @@ private:
     std::shared_ptr<Texture> _textureColorAttachment;
     std::unique_ptr<DescriptorSets> _descriptorSets;
     std::unique_ptr<DescriptorSets> _descriptorSets2;
+    std::unique_ptr<Screenshot> _screenshot;
 
     TinyOBJLoaderVertex vertexLoader;
     std::unique_ptr<CallbackManager> _callbackManager;
@@ -141,6 +143,7 @@ private:
         createIndexBuffer();
         createCommandBuffers();
         createSyncObjects();
+        createScreenshotObject();
     }
 
     void mainLoop() {
@@ -300,7 +303,9 @@ private:
         commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     }
 
-    int special = 0;
+    void createScreenshotObject() {
+        _screenshot = std::make_unique<Screenshot>(_physicalDevice, _logicalDevice, _swapchain);
+    }
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
         VkCommandBufferBeginInfo beginInfo{};
@@ -464,7 +469,9 @@ private:
             throw std::runtime_error("failed to present swap chain image!");
         }
 
-        currentFrame = _swapchain->update();
+        if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS)   
+            _screenshot->saveScreenshot("screenshot.ppm", 0);
+
         if (++currentFrame == MAX_FRAMES_IN_FLIGHT)
             currentFrame = 0;
 

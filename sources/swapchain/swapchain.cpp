@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 Swapchain::Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice)
-	: _surface(surface), _window(window), _logicalDevice(logicalDevice), _physicalDevice(physicalDevice), _currentFrame(0) {
+	: _surface(surface), _window(window), _logicalDevice(logicalDevice), _physicalDevice(physicalDevice) {
     create();
 }
 
@@ -29,8 +29,8 @@ const VkExtent2D& Swapchain::getExtent() const {
     return _extent;
 }
 
-VkImage Swapchain::getCurrentImage() const {
-    return _images[_currentFrame];
+VkImage Swapchain::getVkImage(uint32_t index) {
+    return _images[index];
 }
 
 void Swapchain::cleanup() {
@@ -104,12 +104,6 @@ void Swapchain::create() {
 void Swapchain::recrete() {
     cleanup();
     create();
-}
-
-uint32_t Swapchain::update() {
-    if (++_currentFrame == _imageCount)
-        _currentFrame = 0;
-    return _currentFrame;
 }
 
 uint32_t Swapchain::acquireNextImage() const {

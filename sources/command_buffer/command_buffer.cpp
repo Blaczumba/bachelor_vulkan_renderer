@@ -1,7 +1,16 @@
 #include "command_buffer.h"
 
+#include <stdexcept>
+
 SingleTimeCommandBuffer::SingleTimeCommandBuffer(LogicalDevice* logicalDevice)
     : _logicalDevice(logicalDevice) {
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+    if (vkCreateFence(_logicalDevice->getVkDevice(), &fenceInfo, nullptr, &_fence) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create SingleTimeCommandBuffer fence!");
+    }
 
     _commandBuffer = _logicalDevice->createCommandBuffer();
 
@@ -13,6 +22,8 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(LogicalDevice* logicalDevice)
 }
 
 SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
+    VkDevice device = _logicalDevice->_device;
+
     vkEndCommandBuffer(_commandBuffer);
 
     VkSubmitInfo submitInfo{};
@@ -20,10 +31,11 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &_commandBuffer;
 
-    vkQueueSubmit(_logicalDevice->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(_logicalDevice->graphicsQueue);
+    vkQueueSubmit(_logicalDevice->graphicsQueue, 1, &submitInfo, _fence);
+    vkWaitForFences(device, 1, &_fence, VK_TRUE, UINT64_MAX);
 
-    vkFreeCommandBuffers(_logicalDevice->_device, _logicalDevice->_commandPool, 1, &_commandBuffer);
+    vkFreeCommandBuffers(device, _logicalDevice->_commandPool, 1, &_commandBuffer);
+    vkDestroyFence(device, _fence, nullptr);
 }
 
 VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const {
