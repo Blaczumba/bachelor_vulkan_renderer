@@ -3,6 +3,22 @@
 #include <iostream>
 #include <stdexcept>
 
+VkImage Image::getVkImage() const {
+    return _image;
+}
+
+VkDeviceMemory Image::getVkDeviceMemory() const {
+    return _memory;
+}
+
+VkImageView Image::getVkImageView() const {
+    return _view;
+}
+
+VkExtent2D Image::getVkExtent2D() const {
+    return _extent;
+}
+
 void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels) {
     VkImageMemoryBarrier barrier{};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;

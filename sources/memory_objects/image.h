@@ -4,13 +4,19 @@
 
 #include <vulkan/vulkan.h>
 
-struct Image {
+class Image {
+protected:
 	VkImage _image;
 	VkDeviceMemory _memory;
 	VkImageView _view;
 	VkExtent2D _extent;
+public:
+	VkImage getVkImage() const;
+	VkDeviceMemory getVkDeviceMemory() const;
+	VkImageView getVkImageView() const;
+	VkExtent2D getVkExtent2D() const;
 
-	// virtual ~Image() = default;
+	virtual ~Image() = default;
 };
 
 void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels);

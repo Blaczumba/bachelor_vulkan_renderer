@@ -2,7 +2,7 @@
 
 #include <memory>
 
-class ImageDepth : protected Image {
+class ImageDepth : public Image {
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 
 public:

@@ -1,5 +1,8 @@
 #include "framebuffer.h"
 
+#include "memory_objects/image/image_color.h"
+#include "memory_objects/image/image_depth.h"
+
 #include <stdexcept>
 
 Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::vector<std::vector<VkImageView>>&& images, std::shared_ptr<Renderpass> renderpass, VkExtent2D extent, uint32_t count)
@@ -31,6 +34,7 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
     const auto& attachments = _renderPass->getAttachments();
 
     _framebuffers.resize(swapchainImageViews.size());
+    _images.reserve(swapchainImageViews.size());
 
     size_t swapchainPlace{};
     std::vector<VkImageView> attachmentViews;
@@ -44,14 +48,12 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
             swapchainPlace = i;
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            imageData = createColorResources(description);
-            _images.push_back(imageData);
-            attachmentViews.push_back(imageData._view);
+            _images.emplace_back(new ImageColor(_logicalDevice, description.format, description.samples, swapchainExtent));
+            attachmentViews.push_back(_images.back()->getVkImageView());
             break;
         case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            imageData = createDepthResources(description);
-            _images.push_back(imageData);
-            attachmentViews.push_back(imageData._view);
+            _images.emplace_back(new ImageDepth(_logicalDevice, description.format, description.samples, swapchainExtent));
+            attachmentViews.push_back(_images.back()->getVkImageView());
             break;
         default:
             std::runtime_error("failed to recognize final layout in framebuffer!");
@@ -85,41 +87,7 @@ std::vector<VkFramebuffer> Framebuffer::getVkFramebuffers() const {
 Framebuffer::~Framebuffer() {
     VkDevice device = _logicalDevice->getVkDevice();
 
-    for (auto& image : _images) {
-        vkDestroyImageView(device, image._view, nullptr);
-        vkDestroyImage(device, image._image, nullptr);
-        vkFreeMemory(device, image._memory, nullptr);
-    }
-
     for (auto framebuffer : _framebuffers) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
     }
-}
-
-Image Framebuffer::createColorResources(const VkAttachmentDescription& description) {
-    VkExtent2D swapchainExtent = _swapchain->getExtent();
-    VkFormat colorFormat = description.format;
-
-    VkImage colorImage;
-    VkDeviceMemory colorImageMemory;
-    VkImageView colorImageView;
-
-    _logicalDevice->createImage(swapchainExtent.width, swapchainExtent.height, 1, description.samples, colorFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage, colorImageMemory);
-    colorImageView = _logicalDevice->createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-
-    return { colorImage, colorImageMemory, colorImageView, swapchainExtent };
-}
-
-Image Framebuffer::createDepthResources(const VkAttachmentDescription& description) {
-    VkExtent2D swapchainExtent = _swapchain->getExtent();
-    VkFormat depthFormat = description.format;
-
-    VkImage depthImage;
-    VkDeviceMemory depthImageMemory;
-    VkImageView depthImageView;
-
-    _logicalDevice->createImage(swapchainExtent.width, swapchainExtent.height, 1, description.samples, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
-    depthImageView = _logicalDevice->createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
-
-    return { depthImage, depthImageMemory, depthImageView, swapchainExtent };
 }
