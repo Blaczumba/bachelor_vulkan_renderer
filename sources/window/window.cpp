@@ -19,6 +19,10 @@ bool Window::open() const {
     return !glfwWindowShouldClose(window);
 }
 
+void Window::setWindowSize(int width, int height) {
+    glfwSetWindowSize(window, width, height);
+}
+
 Extent Window::getFramebufferSize() const {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);

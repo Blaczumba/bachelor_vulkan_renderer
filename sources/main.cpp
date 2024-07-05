@@ -22,6 +22,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <variant>
+#include <future>
 
 #include <window/window.h>
 #include <instance/instance.h>
@@ -82,7 +83,7 @@ private:
     std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers;
     std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers2;
     std::unique_ptr<Pipeline> _graphicsPipeline;
-    std::shared_ptr<Texture> _texture;
+    std::shared_ptr<Texture2D> _texture;
     std::shared_ptr<Texture> _textureDepthAttachment;
     std::shared_ptr<Texture> _textureColorAttachment;
     std::unique_ptr<DescriptorSets> _descriptorSets;
@@ -199,7 +200,6 @@ private:
 
     void pickPhysicalDevice() {
         _physicalDevice = std::make_shared<PhysicalDevice>(_instance, _surface);
-        msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     }
 
     void createLogicalDevice() {
@@ -217,10 +217,12 @@ private:
         // There must be at least one "Present" attachment (Color or Resolve).
         // There must be the same number of ColorAttachments and ColorResolveAttachments.
         // Every attachment must have the same number of MSAA samples.
+        msaaSamples = VK_SAMPLE_COUNT_4_BIT;
         auto swapchainImageFormat = _swapchain->getSwapchainImageFormat();
         std::vector<std::unique_ptr<Attachment>> attachments;
         //attachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
-        attachments.emplace_back(std::make_unique<ColorPresentAttachment>(swapchainImageFormat));
+        attachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
+        attachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
         attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
         _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(attachments));
@@ -426,7 +428,7 @@ private:
 
         vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
 
-        recordCommandBuffer(commandBuffers[currentFrame], imageIndex); // To TUTAJ
+        recordCommandBuffer(commandBuffers[currentFrame], imageIndex); 
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -469,8 +471,9 @@ private:
             throw std::runtime_error("failed to present swap chain image!");
         }
 
-        if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS)   
-            _screenshot->saveScreenshot("screenshot.ppm", 0);
+        if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS)
+            // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
+            std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", _texture->getVkImage(), _texture->getExtent());
 
         if (++currentFrame == MAX_FRAMES_IN_FLIGHT)
             currentFrame = 0;

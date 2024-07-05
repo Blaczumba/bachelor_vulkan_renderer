@@ -36,7 +36,7 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
     std::vector<VkImageView> attachmentViews;
     for (size_t i = 0; i < attachments.size(); i++) {
         const VkAttachmentDescription& description = attachments[i]->getDescription();
-        SwapchainImage imageData;
+        Image imageData;
         switch (description.finalLayout) {
 
         case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
@@ -46,12 +46,12 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
             imageData = createColorResources(description);
             _images.push_back(imageData);
-            attachmentViews.push_back(imageData._resourcesView);
+            attachmentViews.push_back(imageData._view);
             break;
         case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
             imageData = createDepthResources(description);
             _images.push_back(imageData);
-            attachmentViews.push_back(imageData._resourcesView);
+            attachmentViews.push_back(imageData._view);
             break;
         default:
             std::runtime_error("failed to recognize final layout in framebuffer!");
@@ -86,9 +86,9 @@ Framebuffer::~Framebuffer() {
     VkDevice device = _logicalDevice->getVkDevice();
 
     for (auto& image : _images) {
-        vkDestroyImageView(device, image._resourcesView, nullptr);
-        vkDestroyImage(device, image._resourcesImage, nullptr);
-        vkFreeMemory(device, image._resourcesMemory, nullptr);
+        vkDestroyImageView(device, image._view, nullptr);
+        vkDestroyImage(device, image._image, nullptr);
+        vkFreeMemory(device, image._memory, nullptr);
     }
 
     for (auto framebuffer : _framebuffers) {
@@ -96,7 +96,7 @@ Framebuffer::~Framebuffer() {
     }
 }
 
-SwapchainImage Framebuffer::createColorResources(const VkAttachmentDescription& description) {
+Image Framebuffer::createColorResources(const VkAttachmentDescription& description) {
     VkExtent2D swapchainExtent = _swapchain->getExtent();
     VkFormat colorFormat = description.format;
 
@@ -110,7 +110,7 @@ SwapchainImage Framebuffer::createColorResources(const VkAttachmentDescription& 
     return { colorImage, colorImageMemory, colorImageView, swapchainExtent };
 }
 
-SwapchainImage Framebuffer::createDepthResources(const VkAttachmentDescription& description) {
+Image Framebuffer::createDepthResources(const VkAttachmentDescription& description) {
     VkExtent2D swapchainExtent = _swapchain->getExtent();
     VkFormat depthFormat = description.format;
 

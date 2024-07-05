@@ -14,6 +14,8 @@ public:
 	~Window();
 	bool closed() const;
 	bool open() const;
+
+	void setWindowSize(int width, int height);
 	Extent getFramebufferSize() const;
 	GLFWwindow* getGlfwWindow();
 };
