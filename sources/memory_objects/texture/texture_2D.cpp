@@ -11,7 +11,7 @@
 #include <stdexcept>
 
 Texture2D::Texture2D(std::shared_ptr<LogicalDevice> logicalDevice, std::string_view texturePath, float samplerAnisotropy)
-    : Texture(std::move(logicalDevice)) {
+    : Texture(std::move(logicalDevice), VK_FORMAT_R8G8B8A8_SRGB) {
 
     VkDevice device = _logicalDevice->getVkDevice();
 
@@ -20,6 +20,7 @@ Texture2D::Texture2D(std::shared_ptr<LogicalDevice> logicalDevice, std::string_v
     _mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
     _extent = { static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight) };
+
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels) {
@@ -37,7 +38,7 @@ Texture2D::Texture2D(std::shared_ptr<LogicalDevice> logicalDevice, std::string_v
 
     stbi_image_free(pixels);
 
-    _logicalDevice->createImage(texWidth, texHeight, _mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
+    _logicalDevice->createImage(texWidth, texHeight, _mipLevels, VK_SAMPLE_COUNT_1_BIT, _format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
     {
         SingleTimeCommandBuffer handle(_logicalDevice.get());
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();

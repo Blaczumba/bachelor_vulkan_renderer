@@ -7,11 +7,15 @@
 class Image {
 protected:
 	VkImage _image;
+	VkFormat _format;
 	VkDeviceMemory _memory;
 	VkImageView _view;
 	VkExtent2D _extent;
 public:
+	Image(VkFormat format);
+
 	VkImage getVkImage() const;
+	VkFormat getVkFormat() const;
 	VkDeviceMemory getVkDeviceMemory() const;
 	VkImageView getVkImageView() const;
 	VkExtent2D getVkExtent() const;

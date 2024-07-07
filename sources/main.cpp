@@ -471,9 +471,11 @@ private:
             throw std::runtime_error("failed to present swap chain image!");
         }
 
-        if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS)
+        if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
+            
             // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
-            std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", _texture->getVkImage(), _texture->getVkExtent());
+            std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", _swapchain->getVkImage(imageIndex), _swapchain->getExtent());
+        }
 
         if (++currentFrame == MAX_FRAMES_IN_FLIGHT)
             currentFrame = 0;

@@ -4,9 +4,9 @@
 #include <stdexcept>
 
 Texture2DColor::Texture2DColor(std::shared_ptr<LogicalDevice> logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
-    : Texture(std::move(logicalDevice)) {
+    : Texture(std::move(logicalDevice), format) {
 
-    _logicalDevice->createImage(extent.width, extent.height, 1, samples, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
+    _logicalDevice->createImage(extent.width, extent.height, 1, samples, _format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
     // transitionImageLayout(_logicalDevice.get(), _textureImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
     _view = _logicalDevice->createImageView(_image, format, VK_IMAGE_ASPECT_COLOR_BIT, 1);

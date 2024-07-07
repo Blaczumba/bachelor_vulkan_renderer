@@ -3,8 +3,17 @@
 #include <iostream>
 #include <stdexcept>
 
+Image::Image(VkFormat format)
+    : _format(format) {
+
+}
+
 VkImage Image::getVkImage() const {
     return _image;
+}
+
+VkFormat Image::getVkFormat() const {
+    return _format;
 }
 
 VkDeviceMemory Image::getVkDeviceMemory() const {

@@ -2,6 +2,7 @@
 
 #include "physical_device/device/physical_device.h"
 #include "swapchain/swapchain.h"
+#include "memory_objects/image.h"
 
 #include <vulkan/vulkan.h>
 

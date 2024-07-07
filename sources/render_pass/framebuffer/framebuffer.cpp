@@ -41,10 +41,10 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
     std::vector<VkImageView> attachmentViews;
     for (size_t i = 0; i < attachments.size(); i++) {
         const VkAttachmentDescription& description = attachments[i]->getDescription();
-        Image imageData;
         switch (description.finalLayout) {
 
         case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+            // TODO adding swapchain images to _images
             attachmentViews.push_back(VK_NULL_HANDLE);
             swapchainPlace = i;
             break;

@@ -12,7 +12,7 @@ protected:
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	Texture(std::shared_ptr<LogicalDevice> logicalDevice);
+	Texture(std::shared_ptr<LogicalDevice> logicalDevice, VkFormat format);
 	virtual ~Texture();
 
 	virtual void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) =0;
