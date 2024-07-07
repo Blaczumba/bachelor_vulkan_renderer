@@ -12,12 +12,12 @@
 
 Texture2D::Texture2D(std::shared_ptr<LogicalDevice> logicalDevice, std::string_view texturePath, float samplerAnisotropy)
     : Texture(std::move(logicalDevice)) {
+
     VkDevice device = _logicalDevice->getVkDevice();
 
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(texturePath.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     _mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
-
 
     _extent = { static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight) };
     VkDeviceSize imageSize = texWidth * texHeight * 4;
@@ -37,11 +37,11 @@ Texture2D::Texture2D(std::shared_ptr<LogicalDevice> logicalDevice, std::string_v
 
     stbi_image_free(pixels);
 
-    _logicalDevice->createImage(texWidth, texHeight, _mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _textureImageMemory);
+    _logicalDevice->createImage(texWidth, texHeight, _mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
     {
         SingleTimeCommandBuffer handle(_logicalDevice.get());
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-        transitionImageLayout(commandBuffer, _image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, _mipLevels);
+        transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         copyBufferToImage(commandBuffer, stagingBuffer, _image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
         generateMipmaps(commandBuffer, _image, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, _mipLevels);
     }
@@ -49,7 +49,7 @@ Texture2D::Texture2D(std::shared_ptr<LogicalDevice> logicalDevice, std::string_v
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-    _textureImageView = _logicalDevice->createImageView(_image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, _mipLevels);
+    _view = _logicalDevice->createImageView(_image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, _mipLevels);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -69,36 +69,12 @@ Texture2D::Texture2D(std::shared_ptr<LogicalDevice> logicalDevice, std::string_v
     samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
     samplerInfo.mipLodBias = 0.0f;
 
-    if (vkCreateSampler(device, &samplerInfo, nullptr, &_textureSampler) != VK_SUCCESS) {
+    if (vkCreateSampler(device, &samplerInfo, nullptr, &_sampler) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture sampler!");
     }
 }
 
-Texture2D::~Texture2D() {
-    VkDevice device = _logicalDevice->getVkDevice();
-
-    vkDestroySampler(device, _textureSampler, nullptr);
-    vkDestroyImageView(device, _textureImageView, nullptr);
-    vkDestroyImage(device, _image, nullptr);
-    vkFreeMemory(device, _textureImageMemory, nullptr);
-}
-
-VkImage Texture2D::getVkImage() const {
-    return _image;
-}
-
-VkDeviceMemory Texture2D::getVkDeviceMemory() const {
-    return _textureImageMemory;
-}
-
-VkImageView Texture2D::getVkImageView() const {
-    return _textureImageView;
-}
-
-VkSampler Texture2D::getVkSampler() const {
-    return _textureSampler;
-}
-
-VkExtent2D Texture2D::getExtent() const {
-    return _extent;
+void Texture2D::transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) {
+    transitionImageLayout(commandBuffer, _image, _layout, newLayout, VK_IMAGE_ASPECT_COLOR_BIT, _mipLevels);
+    _layout = newLayout;
 }

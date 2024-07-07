@@ -15,7 +15,7 @@ VkImageView Image::getVkImageView() const {
     return _view;
 }
 
-VkExtent2D Image::getVkExtent2D() const {
+VkExtent2D Image::getVkExtent() const {
     return _extent;
 }
 

@@ -5,7 +5,8 @@
 
 #include <stdexcept>
 
-Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::vector<std::vector<VkImageView>>&& images, std::shared_ptr<Renderpass> renderpass, VkExtent2D extent, uint32_t count)
+//TODO
+Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::vector<std::vector<VkImageView>>&& images, std::shared_ptr<Renderpass> renderpass, VkExtent2D extent, uint32_t count) 
     : _logicalDevice(logicaldevice), _renderPass(renderpass) {
 
     _framebuffers.resize(count);

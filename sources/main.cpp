@@ -473,7 +473,7 @@ private:
 
         if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS)
             // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
-            std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", _texture->getVkImage(), _texture->getExtent());
+            std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", _texture->getVkImage(), _texture->getVkExtent());
 
         if (++currentFrame == MAX_FRAMES_IN_FLIGHT)
             currentFrame = 0;

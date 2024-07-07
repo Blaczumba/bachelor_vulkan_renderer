@@ -14,7 +14,7 @@ public:
 	VkImage getVkImage() const;
 	VkDeviceMemory getVkDeviceMemory() const;
 	VkImageView getVkImageView() const;
-	VkExtent2D getVkExtent2D() const;
+	VkExtent2D getVkExtent() const;
 
 	virtual ~Image() = default;
 };

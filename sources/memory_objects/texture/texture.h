@@ -7,16 +7,15 @@
 
 class Texture : public Image {
 protected:
-	VkImage _image;
+	VkSampler _sampler;
 	VkImageLayout _layout;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
 	Texture(std::shared_ptr<LogicalDevice> logicalDevice);
-	virtual ~Texture() = default;
+	virtual ~Texture();
 
-	void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) {}
-	VkImageLayout getImageLayout() const;
-	virtual VkImageView getVkImageView() const=0;
-	virtual VkSampler getVkSampler() const=0;
+	virtual void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) =0;
+	VkImageLayout getVkImageLayout() const;
+	VkSampler getVkSampler() const;
 };

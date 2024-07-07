@@ -6,10 +6,10 @@
 Texture2DDepth::Texture2DDepth(std::shared_ptr<LogicalDevice> logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
 	: Texture(std::move(logicalDevice)) {
 
-    _logicalDevice->createImage(extent.width, extent.height, 1, samples, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _textureImage, _textureImageMemory);
+    _logicalDevice->createImage(extent.width, extent.height, 1, samples, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
     // transitionImageLayout(_logicalDevice.get(), _textureImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
-    _textureImageView = _logicalDevice->createImageView(_textureImage, format, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+    _view = _logicalDevice->createImageView(_image, format, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -29,7 +29,7 @@ Texture2DDepth::Texture2DDepth(std::shared_ptr<LogicalDevice> logicalDevice, VkF
     samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
     samplerInfo.mipLodBias = 0.0f;
 
-    if (vkCreateSampler(_logicalDevice->getVkDevice(), &samplerInfo, nullptr, &_textureSampler) != VK_SUCCESS) {
+    if (vkCreateSampler(_logicalDevice->getVkDevice(), &samplerInfo, nullptr, &_sampler) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture sampler!");
     }
 }
@@ -37,16 +37,8 @@ Texture2DDepth::Texture2DDepth(std::shared_ptr<LogicalDevice> logicalDevice, VkF
 Texture2DDepth::~Texture2DDepth() {
     VkDevice device = _logicalDevice->getVkDevice();
 
-    vkDestroySampler(device, _textureSampler, nullptr);
-    vkDestroyImageView(device, _textureImageView, nullptr);
-    vkDestroyImage(device, _textureImage, nullptr);
-    vkFreeMemory(device, _textureImageMemory, nullptr);
-}
-
-VkImageView Texture2DDepth::getVkImageView() const {
-    return _textureImageView;
-}
-
-VkSampler Texture2DDepth::getVkSampler() const {
-    return _textureSampler;
+    vkDestroySampler(device, _sampler, nullptr);
+    vkDestroyImageView(device, _view, nullptr);
+    vkDestroyImage(device, _image, nullptr);
+    vkFreeMemory(device, _memory, nullptr);
 }
