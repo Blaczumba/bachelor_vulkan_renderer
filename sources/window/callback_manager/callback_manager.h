@@ -2,15 +2,19 @@
 
 #include "window/window.h"
 
-#include "screenshot/screenshot.h"
+#include "window/callback_observer/callback_observer.h"
 
+#include <vector>
 #include <memory>
 
 class CallbackManager {
 protected:
 	std::shared_ptr<Window> _window;
 
+	std::vector<CallbackObserver*> _observers;
 public:
 	CallbackManager(std::shared_ptr<Window> window) : _window(window) {};
-	virtual void pollEvents() =0;
+	void attach(CallbackObserver* observer);
+
+	virtual void pollEvents() = 0;
 };

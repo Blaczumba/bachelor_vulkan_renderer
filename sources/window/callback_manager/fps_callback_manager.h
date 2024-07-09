@@ -3,11 +3,12 @@
 #include "camera/fps_camera.h"
 
 #include <iostream>
+#include <functional>
+
 
 class FPSCallbackManager : public CallbackManager {
-    FPSCamera& camera;
 public:
-	FPSCallbackManager(std::shared_ptr<Window> window, FPSCamera& camera);
+    FPSCallbackManager(std::shared_ptr<Window> window);
 
     void pollEvents() override;
 

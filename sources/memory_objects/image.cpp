@@ -3,31 +3,6 @@
 #include <iostream>
 #include <stdexcept>
 
-Image::Image(VkFormat format)
-    : _format(format) {
-
-}
-
-VkImage Image::getVkImage() const {
-    return _image;
-}
-
-VkFormat Image::getVkFormat() const {
-    return _format;
-}
-
-VkDeviceMemory Image::getVkDeviceMemory() const {
-    return _memory;
-}
-
-VkImageView Image::getVkImageView() const {
-    return _view;
-}
-
-VkExtent2D Image::getVkExtent() const {
-    return _extent;
-}
-
 void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels) {
     VkImageMemoryBarrier barrier{};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -157,7 +132,7 @@ void copyImageToBuffer(VkCommandBuffer commandBuffer, VkImage image, VkImageLayo
     vkCmdCopyImageToBuffer(commandBuffer, image, layout, buffer, 1, &region);
 }
 
-void generateMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
+void generateMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat imageFormat, VkImageLayout finalLayout, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
 
     VkImageMemoryBarrier barrier{};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -206,7 +181,7 @@ void generateMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat imag
             VK_FILTER_LINEAR);
 
         barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.newLayout = finalLayout;
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
@@ -222,7 +197,7 @@ void generateMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat imag
 
     barrier.subresourceRange.baseMipLevel = mipLevels - 1;
     barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.newLayout = finalLayout;
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 

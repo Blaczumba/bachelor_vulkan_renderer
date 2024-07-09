@@ -44,6 +44,7 @@
 #include <window/callback_manager/fps_callback_manager.h>
 #include <memory_objects/texture/texture_2D_depth.h>
 #include <memory_objects/texture/texture_2D_color.h>
+#include <memory_objects/texture/texture_2D_sampler.h>
 #include <screenshot/screenshot.h>
 
 const uint32_t WIDTH = 1920;
@@ -83,16 +84,14 @@ private:
     std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers;
     std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers2;
     std::unique_ptr<Pipeline> _graphicsPipeline;
-    std::shared_ptr<Texture2D> _texture;
-    std::shared_ptr<Texture> _textureDepthAttachment;
-    std::shared_ptr<Texture> _textureColorAttachment;
+    std::shared_ptr<Texture2DSampler> _texture;
     std::unique_ptr<DescriptorSets> _descriptorSets;
     std::unique_ptr<DescriptorSets> _descriptorSets2;
     std::unique_ptr<Screenshot> _screenshot;
 
     TinyOBJLoaderVertex vertexLoader;
     std::unique_ptr<CallbackManager> _callbackManager;
-    FPSCamera _camera;
+    std::unique_ptr<FPSCamera> _camera;
 
     VkDevice device;
 
@@ -123,7 +122,10 @@ private:
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
         _window = std::make_shared<Window>("Bejzak Engine", 1920, 1080);
-        _callbackManager = std::make_unique<FPSCallbackManager>(_window, _camera);
+        _callbackManager = std::make_unique<FPSCallbackManager>(_window);
+        _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), (float)1920 / (float)1080, 0.01f, 10.0f);
+        //_camera->observe(*_callbackManager);
+        _callbackManager->attach(_camera.get());
     }
 
     void initVulkan() {
@@ -234,19 +236,6 @@ private:
 
     void createFramebuffers() {
         _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
-        //VkExtent2D extent = _swapchain->getExtent();
-        //// _textureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, _swapchain->getSwapchainImageFormat(), msaaSamples, extent);
-        //_textureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, VK_FORMAT_D32_SFLOAT, msaaSamples, extent);
-
-        //auto swapchainImages = _swapchain->getImageViews();
-        //uint32_t imageCount = swapchainImages.size();
-        //std::vector<std::vector<VkImageView>> views = {
-        //    {swapchainImages[0], _textureDepthAttachment->getVkImageView()},
-        //    {swapchainImages[1], _textureDepthAttachment->getVkImageView()},
-        //    {swapchainImages[2], _textureDepthAttachment->getVkImageView()},
-        //    {swapchainImages[3], _textureDepthAttachment->getVkImageView()},
-        //};
-        //_framebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(views), _renderPass, _swapchain->getExtent(), imageCount);
     }
 
     void loadModel() {
@@ -298,7 +287,7 @@ private:
     }
 
     void createTextureImage() {
-        _texture = std::make_shared<Texture2D>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
+        _texture = std::make_shared<Texture2DSampler>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
     }
 
     void createCommandBuffers() {
@@ -395,7 +384,7 @@ private:
         UniformBufferObject ubo;
         ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -1.0f));
         //ubo.model = glm::mat4(1.0f);
-        ubo.view = _camera.getViewMatrix();
+        ubo.view = _camera->getViewMatrix();
 
         ubo.proj = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] = -ubo.proj[1][1];

@@ -1,4 +1,8 @@
-add_subdirectory(image)
+add_library(Image image.cpp)
+
+target_link_libraries(Image PUBLIC Vulkan::Vulkan)
+target_link_libraries(Image PUBLIC LogicalDevice)
+
 add_subdirectory(texture)
 
 add_library(VertexBuffer "vertex_buffer.cpp")

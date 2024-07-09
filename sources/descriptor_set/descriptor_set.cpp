@@ -86,12 +86,15 @@ DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, con
                 descriptorWrites[j].pBufferInfo = &bufferInfos[j];
             }
             else if (auto ptr = dynamic_cast<UniformBufferTexture*>(uniformBuffers[i][j].get())) {
-                auto texturePtr = ptr->getTexturePtr();
+                auto texturePtr     = ptr->getTexturePtr();
+                const auto& image   = texturePtr->getImage();
+
                 imageInfos[j] = {
-                    .sampler = texturePtr->getVkSampler(),
-                    .imageView = texturePtr->getVkImageView(),
-                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    .sampler        = texturePtr->getVkSampler(),
+                    .imageView      = image.view,
+                    .imageLayout    = image.layout,
                 };
+
                 descriptorWrites[j].pImageInfo = &imageInfos[j];
             }
         }

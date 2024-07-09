@@ -5,17 +5,16 @@
 
 #include <memory>
 
-class Texture : public Image {
+class Texture {
 protected:
-	VkSampler _sampler;
-	VkImageLayout _layout;
+	Image _image;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	Texture(std::shared_ptr<LogicalDevice> logicalDevice, VkFormat format);
-	virtual ~Texture();
+	Texture(std::shared_ptr<LogicalDevice> logicalDevice);
+	virtual ~Texture() = default;
+
+	const Image& getImage() const;
 
 	virtual void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) =0;
-	VkImageLayout getVkImageLayout() const;
-	VkSampler getVkSampler() const;
 };

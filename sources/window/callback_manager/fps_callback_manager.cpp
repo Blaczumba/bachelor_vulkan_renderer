@@ -1,9 +1,9 @@
 #include "fps_callback_manager.h"
 
-FPSCallbackManager::FPSCallbackManager(std::shared_ptr<Window> window, FPSCamera& camera)
-	: CallbackManager(window), camera(camera) {
+FPSCallbackManager::FPSCallbackManager(std::shared_ptr<Window> window)
+	: CallbackManager(window) {
 	GLFWwindow* glfwWindow = _window->getGlfwWindow();
-	glfwSetWindowUserPointer(glfwWindow, &camera);
+	glfwSetWindowUserPointer(glfwWindow, this);
 
 	glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	// glfwSetFramebufferSizeCallback(glfwWindow, framebufferResizeCallback);
@@ -18,14 +18,19 @@ void FPSCallbackManager::pollEvents() {
 
 void FPSCallbackManager::processKeyboard() {
 	GLFWwindow* window = _window->getGlfwWindow();
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		camera.processKeyboard(MovementDirections::FORWARD, 1.0f / 60.0f);
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		camera.processKeyboard(MovementDirections::BACKWARD, 1.0f / 60.0f);
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		camera.processKeyboard(MovementDirections::LEFT, 1.0f / 60.0f);
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		camera.processKeyboard(MovementDirections::RIGHT, 1.0f / 60.0f);
+
+	for (auto observer : _observers) {
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+			observer->updateKeyboard({ 1.0f / 60.0f, GLFW_KEY_W });
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+			observer->updateKeyboard({ 1.0f / 60.0f, GLFW_KEY_S });
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+			observer->updateKeyboard({ 1.0f / 60.0f, GLFW_KEY_A });
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+			observer->updateKeyboard({ 1.0f / 60.0f, GLFW_KEY_D });
+		if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
+			observer->updateKeyboard({ 1.0f / 60.0f, GLFW_KEY_P });
+	}
 }
 
 void FPSCallbackManager::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -37,7 +42,7 @@ void FPSCallbackManager::keyCallback(GLFWwindow* window, int key, int scancode, 
 
 void FPSCallbackManager::mouseCallback(GLFWwindow* window, double xposIn, double yposIn)
 {
-	auto camera = reinterpret_cast<FPSCamera*>(glfwGetWindowUserPointer(window));
+	auto cbManager = reinterpret_cast<FPSCallbackManager*>(glfwGetWindowUserPointer(window));
 
 	float xpos = static_cast<float>(xposIn);
 	float ypos = static_cast<float>(yposIn);
@@ -55,7 +60,9 @@ void FPSCallbackManager::mouseCallback(GLFWwindow* window, double xposIn, double
 	lastX = xpos;
 	lastY = ypos;
 
-	camera->processMouseMovement(xoffset, yoffset);
+	for (auto observer : cbManager->_observers) {
+		observer->updateMouse({ 1.0f / 60.0f, xoffset, yoffset });
+	}
 }
 
 void FPSCallbackManager::framebufferResizeCallback(GLFWwindow* window, int width, int height) {

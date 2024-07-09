@@ -1,8 +1,5 @@
 #include "framebuffer.h"
 
-#include "memory_objects/image/image_color.h"
-#include "memory_objects/image/image_depth.h"
-
 #include <stdexcept>
 
 //TODO
@@ -35,7 +32,6 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
     const auto& attachments = _renderPass->getAttachments();
 
     _framebuffers.resize(swapchainImageViews.size());
-    _images.reserve(swapchainImageViews.size());
 
     size_t swapchainPlace{};
     std::vector<VkImageView> attachmentViews;
@@ -49,12 +45,12 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
             swapchainPlace = i;
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            _images.emplace_back(new ImageColor(_logicalDevice, description.format, description.samples, swapchainExtent));
-            attachmentViews.push_back(_images.back()->getVkImageView());
+            _colorImages.emplace_back(_logicalDevice, description.format, description.samples, swapchainExtent);
+            attachmentViews.push_back(_colorImages.back().getImage().view);
             break;
         case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            _images.emplace_back(new ImageDepth(_logicalDevice, description.format, description.samples, swapchainExtent));
-            attachmentViews.push_back(_images.back()->getVkImageView());
+            _depthImages.emplace_back(_logicalDevice, description.format, description.samples, swapchainExtent);
+            attachmentViews.push_back(_depthImages.back().getImage().view);
             break;
         default:
             std::runtime_error("failed to recognize final layout in framebuffer!");

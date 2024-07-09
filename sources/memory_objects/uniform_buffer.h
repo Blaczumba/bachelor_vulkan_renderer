@@ -1,7 +1,7 @@
 #pragma once
 
 #include <logical_device/logical_device.h>
-#include <memory_objects/texture/texture_2D.h>
+#include <memory_objects/texture/texture_2D_sampler.h>
 
 #include <vulkan/vulkan.h>
 
@@ -19,14 +19,14 @@ public:
 
 class UniformBufferTexture : public UniformBufferAbstraction {
 protected:
-	std::shared_ptr<Texture> _texture;
+	std::shared_ptr<Texture2DSampler> _texture;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	UniformBufferTexture(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Texture> texture) 
+	UniformBufferTexture(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Texture2DSampler> texture) 
 		: _logicalDevice(logicalDevice), _texture(texture) {}
 	virtual ~UniformBufferTexture() = default;
-	const Texture* getTexturePtr() const { return _texture.get(); }
+	const Texture2DSampler* getTexturePtr() const { return _texture.get(); }
 
 	void updateUniformBuffer(void* object) override {};
 
