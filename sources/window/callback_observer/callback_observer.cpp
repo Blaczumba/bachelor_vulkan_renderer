@@ -2,4 +2,3 @@
 
 //void CallbackObserver::observe(CallbackManager& callbackManager) {
 //	callbackManager.attach(this);
-//}

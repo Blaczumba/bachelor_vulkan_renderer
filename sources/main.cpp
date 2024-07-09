@@ -179,6 +179,8 @@ private:
             glfwWaitEvents();
         }
 
+        _camera->setAspectRatio(static_cast<float>(extent.width) / extent.height);
+
         vkDeviceWaitIdle(device);
 
         _swapchain->recrete();
@@ -386,7 +388,7 @@ private:
         //ubo.model = glm::mat4(1.0f);
         ubo.view = _camera->getViewMatrix();
 
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10.0f);
+        ubo.proj = _camera->getProjectionMatrix();
         ubo.proj[1][1] = -ubo.proj[1][1];
 
         _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
