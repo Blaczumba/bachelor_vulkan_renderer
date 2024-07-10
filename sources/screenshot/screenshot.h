@@ -12,6 +12,5 @@ class Screenshot {
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
 	Screenshot(std::shared_ptr<LogicalDevice> logicalDevice);
-	void saveImage(const std::string& filepath, VkImage image, VkExtent2D extent, VkFormat format);
-	void saveImage(const std::string& filePath, const Image& image, const VkExtent2D& extent);
+	void saveImage(const std::string& filePath, const Image& image);
 };

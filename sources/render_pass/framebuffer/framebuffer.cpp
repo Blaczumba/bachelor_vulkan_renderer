@@ -80,6 +80,9 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
     }
 }
 
+const std::vector<Texture2DColor>& Framebuffer::getColorTextures() const {
+    return _colorImages;
+}
 
 std::vector<VkFramebuffer> Framebuffer::getVkFramebuffers() const {
     return _framebuffers;

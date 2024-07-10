@@ -23,5 +23,7 @@ public:
 	Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shared_ptr<Swapchain> swapchain, std::shared_ptr<Renderpass> renderpass);
 	~Framebuffer();
 
+	const std::vector<Texture2DColor>& getColorTextures() const;
+
 	std::vector<VkFramebuffer> getVkFramebuffers() const;
 };

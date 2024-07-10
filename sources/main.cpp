@@ -114,8 +114,6 @@ private:
     std::vector<VkFence> inFlightFences;
     uint32_t currentFrame = 0;
 
-    bool framebufferResized = false;
-
     void initWindow() {
         glfwInit();
 
@@ -165,9 +163,6 @@ private:
             vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
             vkDestroyFence(device, inFlightFences[i], nullptr);
         }
-
-        // vkFreeCommandBuffers(device, commandPool, MAX_FRAMES_IN_FLIGHT, commandBuffers.data());
-        // vkDestroyCommandPool(device, commandPool, nullptr);
 
         glfwTerminate();
     }
@@ -221,11 +216,11 @@ private:
         // There must be at least one "Present" attachment (Color or Resolve).
         // There must be the same number of ColorAttachments and ColorResolveAttachments.
         // Every attachment must have the same number of MSAA samples.
-        msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+        msaaSamples = VK_SAMPLE_COUNT_1_BIT;
         auto swapchainImageFormat = _swapchain->getVkFormat();
         std::vector<std::unique_ptr<Attachment>> attachments;
         //attachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
-        attachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
+        attachments.emplace_back(std::make_unique<ColorPresentAttachment>(swapchainImageFormat));
         attachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
         attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
@@ -411,9 +406,7 @@ private:
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-
         updateUniformBuffer(currentFrame);
-
 
         vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
@@ -454,8 +447,7 @@ private:
 
         result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-            framebufferResized = false;
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
             recreateSwapChain();
         }
         else if (result != VK_SUCCESS) {
@@ -465,8 +457,9 @@ private:
         if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
             
             // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
-            //_screenshot->saveImage("screenshot.ppm", _swapchain->getVkImage(imageIndex), _swapchain->getExtent(), _swapchain->getSwapchainImageFormat());
-            // std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", _swapchain->getVkImage(imageIndex), _swapchain->getExtent(), _swapchain->getSwapchainImageFormat());
+            // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
+            const auto& texture = _framebuffer->getColorTextures()[0];
+            std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", _swapchain->getImages()[imageIndex]);
         }
 
         if (++currentFrame == MAX_FRAMES_IN_FLIGHT)
