@@ -222,7 +222,7 @@ private:
         // There must be the same number of ColorAttachments and ColorResolveAttachments.
         // Every attachment must have the same number of MSAA samples.
         msaaSamples = VK_SAMPLE_COUNT_4_BIT;
-        auto swapchainImageFormat = _swapchain->getSwapchainImageFormat();
+        auto swapchainImageFormat = _swapchain->getVkFormat();
         std::vector<std::unique_ptr<Attachment>> attachments;
         //attachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
         attachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
@@ -297,7 +297,7 @@ private:
     }
 
     void createScreenshotObject() {
-        _screenshot = std::make_unique<Screenshot>(_physicalDevice, _logicalDevice, _swapchain);
+        _screenshot = std::make_unique<Screenshot>(_logicalDevice);
     }
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -465,7 +465,8 @@ private:
         if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
             
             // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
-            std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", _swapchain->getVkImage(imageIndex), _swapchain->getExtent());
+            //_screenshot->saveImage("screenshot.ppm", _swapchain->getVkImage(imageIndex), _swapchain->getExtent(), _swapchain->getSwapchainImageFormat());
+            // std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", _swapchain->getVkImage(imageIndex), _swapchain->getExtent(), _swapchain->getSwapchainImageFormat());
         }
 
         if (++currentFrame == MAX_FRAMES_IN_FLIGHT)

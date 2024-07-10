@@ -1,7 +1,5 @@
 #include "fps_camera.h"
 
-#include <iostream>
-
 FPSCamera::FPSCamera(float fovyRadians, float aspectRatio, float zNear, float zFar)
     : _fovy(fovyRadians), _aspectRatio(aspectRatio), _zNear(zNear), _zFar(zFar) {
     _projectionMatrix = glm::perspective(fovyRadians, aspectRatio, zNear, zFar);

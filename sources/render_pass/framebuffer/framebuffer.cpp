@@ -1,5 +1,7 @@
 #include "framebuffer.h"
 
+#include <algorithm>
+#include <iterator>
 #include <stdexcept>
 
 //TODO
@@ -26,10 +28,12 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::vect
 
 Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shared_ptr<Swapchain> swapchain, std::shared_ptr<Renderpass> renderpass)
     : _logicalDevice(logicaldevice), _swapchain(swapchain), _renderPass(renderpass) {
+    const auto& images              = _swapchain->getImages();
+    const auto& swapchainExtent     = _swapchain->getExtent();
+    const auto& attachments         = _renderPass->getAttachments();
 
-    const auto& swapchainImageViews = _swapchain->getImageViews();
-    const auto& swapchainExtent = _swapchain->getExtent();
-    const auto& attachments = _renderPass->getAttachments();
+    std::vector<VkImageView> swapchainImageViews;
+    std::transform(images.cbegin(), images.cend(), std::back_inserter(swapchainImageViews), [](const Image& image) { return image.view; });
 
     _framebuffers.resize(swapchainImageViews.size());
 

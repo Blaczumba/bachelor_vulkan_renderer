@@ -132,6 +132,57 @@ void copyImageToBuffer(VkCommandBuffer commandBuffer, VkImage image, VkImageLayo
     vkCmdCopyImageToBuffer(commandBuffer, image, layout, buffer, 1, &region);
 }
 
+void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImage, VkExtent2D srcSize, VkExtent2D dstSize, VkImageAspectFlagBits aspect) {
+    VkOffset3D srcBlitSize;
+    srcBlitSize.x = srcSize.width;
+    srcBlitSize.y = srcSize.height;
+    srcBlitSize.z = 1;
+
+    VkOffset3D dstBlitSize;
+    dstBlitSize.x = dstSize.width;
+    dstBlitSize.y = dstSize.height;
+    dstBlitSize.z = 1;
+
+    VkImageBlit imageBlitRegion{};
+    imageBlitRegion.srcSubresource.aspectMask   = aspect;
+    imageBlitRegion.srcSubresource.layerCount   = 1;
+    imageBlitRegion.srcOffsets[1]               = srcBlitSize;
+
+    imageBlitRegion.dstSubresource.aspectMask   = aspect;
+    imageBlitRegion.dstSubresource.layerCount   = 1;
+    imageBlitRegion.dstOffsets[1]               = dstBlitSize;
+
+    // Issue the blit command
+    vkCmdBlitImage(
+        commandBuffer,
+        srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &imageBlitRegion,
+        VK_FILTER_LINEAR);
+
+}
+
+void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImage, VkExtent2D extent, VkImageAspectFlagBits aspect) {
+    VkImageCopy imageCopyRegion{};
+    imageCopyRegion.srcSubresource.aspectMask = aspect;
+    imageCopyRegion.srcSubresource.layerCount = 1;
+    imageCopyRegion.dstSubresource.aspectMask = aspect;
+    imageCopyRegion.dstSubresource.layerCount = 1;
+
+    imageCopyRegion.extent.width    = extent.width;
+    imageCopyRegion.extent.height   = extent.height;
+    imageCopyRegion.extent.depth    = 1;
+
+    // Issue the copy command
+    vkCmdCopyImage(
+        commandBuffer,
+        srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &imageCopyRegion);
+}
+
 void generateMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat imageFormat, VkImageLayout finalLayout, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
 
     VkImageMemoryBarrier barrier{};

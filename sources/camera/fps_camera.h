@@ -10,22 +10,22 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 class FPSCamera : public Camera, public CallbackObserver {
-    glm::vec3 _position = glm::vec3(0.0f, 0.0f, -1.0f);
-    glm::vec3 _worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 _up = _worldUp;
-    glm::vec3 _front = glm::vec3(0.0f, 0.0f, -1.0f);
+    glm::vec3 _position     = glm::vec3(0.0f, 0.0f, -1.0f);
+    glm::vec3 _worldUp      = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 _up           = _worldUp;
+    glm::vec3 _front        = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 _right;
 
-    float _yaw = -90.0f;
-    float _pitch = 0.0f;
+    float _yaw      = -90.0f;
+    float _pitch    = 0.0f;
 
-    float _movementSpeed = 2.5f;
+    float _movementSpeed    = 2.5f;
     float _mouseSensitivity = 0.002f;
 
-    float _fovy = glm::radians(45.0f);
-    float _aspectRatio = 1.0f;
-    float _zNear = 0.1f;
-    float _zFar = 100.0f;
+    float _fovy         = glm::radians(45.0f);
+    float _aspectRatio  = 1.0f;
+    float _zNear        = 0.1f;
+    float _zFar         = 100.0f;
 
     glm::mat4 _projectionMatrix = glm::mat4(1.0f);
 

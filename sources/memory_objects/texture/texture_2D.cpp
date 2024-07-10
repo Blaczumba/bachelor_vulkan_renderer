@@ -11,6 +11,6 @@ Texture2D::Texture2D(std::shared_ptr<LogicalDevice> logicalDevice)
     : Texture(std::move(logicalDevice)) {
 }
 
-const VkExtent2D& Texture2D::getVkExtent2D() const {
-    return _extent;
+VkExtent2D Texture2D::getVkExtent2D() const {
+    return { _image.extent.width, _image.extent.height };
 }

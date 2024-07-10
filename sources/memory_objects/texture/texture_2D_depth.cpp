@@ -6,9 +6,9 @@
 Texture2DDepth::Texture2DDepth(std::shared_ptr<LogicalDevice> logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
 	: Texture2D(std::move(logicalDevice)) {
 
-    _extent = extent;
     _sampleCount = samples;
     _image.format = format;
+    _image.extent = { extent.width, extent.height, 1 };
 
     _logicalDevice->createImage(extent.width, extent.height, 1, samples, _image.format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image.image, _image.memory);
     _image.view = _logicalDevice->createImageView(_image.image, format, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
