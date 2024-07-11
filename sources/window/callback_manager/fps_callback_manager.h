@@ -1,3 +1,5 @@
+#pragma once
+
 #include "callback_manager.h"
 
 #include "camera/fps_camera.h"

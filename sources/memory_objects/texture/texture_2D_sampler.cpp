@@ -6,12 +6,14 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image/stb_image.h>
 
+#include <ktx.h>
+#include <ktxvulkan.h>
+
 #include <iostream>
 #include <stdexcept>
 
 Texture2DSampler::Texture2DSampler(std::shared_ptr<LogicalDevice> logicalDevice, const std::string& texturePath, float samplerAnisotropy)
     : Texture2D(std::move(logicalDevice)), _texturePath(texturePath), _samplerAnisotropy(samplerAnisotropy) {
-
     VkDevice device = _logicalDevice->getVkDevice();
 
     int texWidth, texHeight, texChannels;
@@ -68,7 +70,7 @@ Texture2DSampler::Texture2DSampler(std::shared_ptr<LogicalDevice> logicalDevice,
     samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
     samplerInfo.compareEnable           = VK_FALSE;
-    samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.compareOp               = VK_COMPARE_OP_NEVER;
     samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     samplerInfo.minLod                  = 0.0f;
     samplerInfo.maxLod                  = VK_LOD_CLAMP_NONE;

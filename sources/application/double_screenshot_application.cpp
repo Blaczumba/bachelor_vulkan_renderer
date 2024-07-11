@@ -1,6 +1,7 @@
 #include "double_screenshot_application.h"
 
 #include <algorithm>
+#include <array>
 
 DoubleScreenshotApplication::DoubleScreenshotApplication()
 	: ApplicationBase() {
@@ -49,6 +50,24 @@ DoubleScreenshotApplication::DoubleScreenshotApplication()
     _screenshot = std::make_unique<Screenshot>(_logicalDevice);
 
     createSyncObjects();
+}
+
+DoubleScreenshotApplication::~DoubleScreenshotApplication() {
+    VkDevice device = _logicalDevice->getVkDevice();
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroySemaphore(device, _renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(device, _imageAvailableSemaphores[i], nullptr);
+        vkDestroyFence(device, _inFlightFences[i], nullptr);
+    }
+}
+
+void DoubleScreenshotApplication::run() {
+    while (_window->open()) {
+        _callbackManager->pollEvents();
+        draw();
+    }
+    vkDeviceWaitIdle(_logicalDevice->getVkDevice());
 }
 
 void DoubleScreenshotApplication::draw() {

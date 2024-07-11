@@ -17,6 +17,6 @@ ApplicationBase::ApplicationBase() {
 	_swapchain = std::make_shared<Swapchain>(_surface, _window, _logicalDevice, _physicalDevice);
 }
 
-virtual ApplicationBase::~ApplicationBase() {
+ApplicationBase::~ApplicationBase() {
 	glfwTerminate();
 }

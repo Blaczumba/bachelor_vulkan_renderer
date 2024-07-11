@@ -1,3 +1,5 @@
+#pragma once
+
 #include "application_base.h"
 
 #include <render_pass/render_pass.h>
@@ -43,9 +45,10 @@ class DoubleScreenshotApplication : public ApplicationBase {
     const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
 public:
 	DoubleScreenshotApplication();
-    ~DoubleScreenshotApplication() = default;
-    void draw() override;
+    ~DoubleScreenshotApplication();
+    void run() override;
 private:
+    void draw();
     VkFormat findDepthFormat() const;
     void createSyncObjects();
     void updateUniformBuffer(uint32_t currentImage);

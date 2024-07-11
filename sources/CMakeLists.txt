@@ -16,6 +16,11 @@ add_subdirectory(model_loader)
 add_subdirectory(descriptor_set)
 add_subdirectory(camera)
 add_subdirectory(screenshot)
+
+add_compile_definitions(SHADERS_PATH="${CMAKE_SOURCE_DIR}/shaders/")
+add_compile_definitions(TEXTURES_PATH="${CMAKE_SOURCE_DIR}/assets/textures/")
+add_compile_definitions(MODELS_PATH="${CMAKE_SOURCE_DIR}/assets/models/")
+
 add_subdirectory(application)
 
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
@@ -36,12 +41,9 @@ file(CHMOD ${SHADER_COMPILE_SCRIPT} PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_
 
 add_dependencies(${CMAKE_PROJECT_NAME} CompileShaders)
 
-add_compile_definitions(SHADERS_PATH="${CMAKE_SOURCE_DIR}/shaders/")
-add_compile_definitions(TEXTURES_PATH="${CMAKE_SOURCE_DIR}/assets/textures/")
-add_compile_definitions(MODELS_PATH="${CMAKE_SOURCE_DIR}/assets/models/")
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Window Instance DebugMessenger Surface PhysicalDevice LogicalDevice Renderpass Swapchain CommandBuffer Framebuffer VertexBuffer IndexBuffer UniformBuffer Pipeline Texture TinyGLTFLoader OBJLoader DescriptorSet Camera CallbackManager Screenshot)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Window Instance DebugMessenger Surface PhysicalDevice LogicalDevice Renderpass Swapchain CommandBuffer Framebuffer VertexBuffer IndexBuffer UniformBuffer Pipeline Texture TinyGLTFLoader OBJLoader DescriptorSet Camera CallbackManager Screenshot Application)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/tinygltf")
 
 add_subdirectory(tests)

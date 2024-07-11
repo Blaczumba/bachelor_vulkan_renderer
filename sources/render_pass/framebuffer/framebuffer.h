@@ -1,3 +1,5 @@
+#pragma once
+
 #include "logical_device/logical_device.h"
 #include "swapchain/swapchain.h"
 #include "render_pass/render_pass.h"

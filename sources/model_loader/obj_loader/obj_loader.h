@@ -38,21 +38,6 @@ public:
 	VertexData<Vertex, IndexType> extract(const std::string& filePath);
 };
 
-template<>
-VertexData<Vertex, uint8_t> TinyOBJLoaderVertex::extract(const std::string& filePath) {
-    return templatedExtractor<uint8_t>(filePath);
-}
-
-template<>
-VertexData<Vertex, uint16_t> TinyOBJLoaderVertex::extract(const std::string& filePath) {
-    return templatedExtractor<uint16_t>(filePath);
-}
-
-template<>
-VertexData<Vertex, uint32_t> TinyOBJLoaderVertex::extract(const std::string& filePath) {
-    return templatedExtractor<uint32_t>(filePath);
-}
-
 template<typename IndexType> 
 VertexData<Vertex, IndexType> TinyOBJLoaderVertex::templatedExtractor(const std::string& filePath) {
     tinyobj::attrib_t attrib;

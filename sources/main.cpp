@@ -1,3 +1,5 @@
+#pragma once
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -39,6 +41,7 @@
 #include <pipeline/graphics_pipeline.h>
 #include <memory_objects/texture/texture_2D.h>
 #include <model_loader/obj_loader/obj_loader.h>
+#include <model_loader/tiny_gltf_loader/tiny_gltf_loader.h>
 #include <descriptor_set/descriptor_set.h>
 #include <camera/fps_camera.h>
 #include <window/callback_manager/fps_callback_manager.h>
@@ -46,6 +49,8 @@
 #include <memory_objects/texture/texture_2D_color.h>
 #include <memory_objects/texture/texture_2D_sampler.h>
 #include <screenshot/screenshot.h>
+
+#include <application/double_screenshot_application.h>
 
 const int MAX_FRAMES_IN_FLIGHT = 3;
 
@@ -420,7 +425,7 @@ private:
             // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
             const auto& texture = _framebuffer->getColorTextures()[0];
             _screenshot->saveImage("screenshot.ppm", texture.getImage());
-            _window->setWindowSize(1920 / 4, 1080 / 4);
+            // _window->setWindowSize(1920 / 4, 1080 / 4);
             //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
         }
 
@@ -431,10 +436,12 @@ private:
 };
 
 int main() {
-    BejzakEngine app;
+    // BejzakEngine app;
+    DoubleScreenshotApplication app;
 
     try {
         app.run();
+        //app.run();
     }
     catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
