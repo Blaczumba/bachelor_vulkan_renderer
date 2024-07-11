@@ -4,6 +4,7 @@
 #include "memory_objects/image.h"
 
 #include <fstream>
+#include <iostream>
 
 Screenshot::Screenshot(std::shared_ptr<LogicalDevice> logicalDevice)
 	: _logicalDevice(logicalDevice) {
@@ -33,19 +34,13 @@ void Screenshot::saveImage(const std::string& filePath, const Image& image) {
 		SingleTimeCommandBuffer commandBufferGuard(_logicalDevice.get());
 		VkCommandBuffer copyCmd = commandBufferGuard.getCommandBuffer();
 
-		// Transition destination image to transfer destination layout
 		transitionImageLayout(copyCmd, dstImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-		// Transition swapchain image from present to transfer source layout
 		transitionImageLayout(copyCmd, image.image, image.layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 		copyImageToImage(copyCmd, image.image, dstImage, extent);
 
-		// Transition destination image to general layout, which is the required layout for mapping the image memory later on
 		transitionImageLayout(copyCmd, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-		// Transition back the swap chain image after the copy is done
-
 		transitionImageLayout(copyCmd, image.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image.layout, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-
 	}
 
 	// Get layout of the image (including row pitch)
@@ -66,7 +61,6 @@ void Screenshot::saveImage(const std::string& filePath, const Image& image) {
 	bool colorSwizzle = false;
 	std::vector<VkFormat> formatsBGR = { VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SNORM };
 	colorSwizzle = (std::find_if(formatsBGR.begin(), formatsBGR.end(), [&image](VkFormat givenFormat) { return image.format == givenFormat; }) != formatsBGR.end());
-	
 
 	// ppm binary pixel data
 	for (uint32_t y = 0; y < extent.height; y++) {

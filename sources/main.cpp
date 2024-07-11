@@ -112,6 +112,7 @@ private:
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
+
     uint32_t currentFrame = 0;
 
     void initWindow() {
@@ -249,7 +250,6 @@ private:
 
     void createUniformBuffers() {
         _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
-        _uniformBuffers2.reserve(MAX_FRAMES_IN_FLIGHT);
         auto textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture);
 
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -371,16 +371,10 @@ private:
     }
 
     void updateUniformBuffer(uint32_t currentImage) {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
+        UniformBufferObject ubo;
         const auto& swapchainExtent = _swapchain->getExtent();
 
-        UniformBufferObject ubo;
         ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -1.0f));
-        //ubo.model = glm::mat4(1.0f);
         ubo.view = _camera->getViewMatrix();
 
         ubo.proj = _camera->getProjectionMatrix();
@@ -390,10 +384,9 @@ private:
         // _uniformBuffers[currentImage][1]->updateUniformBuffer(&ubo);
         // memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
+
     void drawFrame() {
-
         vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-
         uint32_t imageIndex;
 
         VkResult result = vkAcquireNextImageKHR(device, _swapchain->getVkSwapchain(), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
@@ -433,6 +426,7 @@ private:
         if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
             throw std::runtime_error("failed to submit draw command buffer!");
         }
+
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
@@ -455,11 +449,11 @@ private:
         }
 
         if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
-            
             // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
             // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
             const auto& texture = _framebuffer->getColorTextures()[0];
-            std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", _swapchain->getImages()[imageIndex]);
+            _screenshot->saveImage("screenshot.ppm", texture.getImage());
+            //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
         }
 
         if (++currentFrame == MAX_FRAMES_IN_FLIGHT)

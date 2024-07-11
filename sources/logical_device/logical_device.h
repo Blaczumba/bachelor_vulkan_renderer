@@ -23,6 +23,8 @@ public:
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
+	VkQueue computeQueue;
+	VkQueue transferQueue;
 
 	friend class SingleTimeCommandBuffer;
 };

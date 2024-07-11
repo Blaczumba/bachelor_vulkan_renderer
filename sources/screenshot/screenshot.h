@@ -7,10 +7,13 @@
 #include <vulkan/vulkan.h>
 
 #include <memory>
+#include <mutex>
 
 class Screenshot {
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
 	Screenshot(std::shared_ptr<LogicalDevice> logicalDevice);
 	void saveImage(const std::string& filePath, const Image& image);
+
+private:
 };

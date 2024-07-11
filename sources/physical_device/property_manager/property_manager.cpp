@@ -19,6 +19,14 @@ QueueFamilyIndices PhysicalDevicePropertyManager::findQueueFamilyIncides(VkPhysi
             indices.graphicsFamily = i;
         }
 
+        if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+            indices.computeFamily = i;
+        }
+
+        if (queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) {
+            indices.transferFamily = i;
+        }
+
         if (presentSupport) {
             indices.presentFamily = i;
         }
@@ -119,5 +127,5 @@ bool PhysicalDevicePropertyManager::checkDiscreteGPU(VkPhysicalDevice device) co
 }
 
 bool QueueFamilyIndices::isComplete() const {
-    return graphicsFamily.has_value() && presentFamily.has_value();
+    return graphicsFamily.has_value() && presentFamily.has_value() && computeFamily.has_value() && transferFamily.has_value();
 }

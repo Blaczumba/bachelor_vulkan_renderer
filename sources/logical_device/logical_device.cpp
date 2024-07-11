@@ -9,7 +9,12 @@ LogicalDevice::LogicalDevice(std::shared_ptr<PhysicalDevice> physicalDevice)
     QueueFamilyIndices indices = physicalDevice->getQueueFamilyIndices();
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+    std::set<uint32_t> uniqueQueueFamilies = { 
+        indices.graphicsFamily.value(), 
+        indices.presentFamily.value(), 
+        indices.computeFamily.value(), 
+        indices.transferFamily.value() 
+    };
 
     float queuePriority = 1.0f;
     for (uint32_t queueFamily : uniqueQueueFamilies) {
@@ -49,6 +54,8 @@ LogicalDevice::LogicalDevice(std::shared_ptr<PhysicalDevice> physicalDevice)
 
     vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0, &graphicsQueue);
     vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &presentQueue);
+    vkGetDeviceQueue(_device, indices.computeFamily.value(), 0, &computeQueue);
+    vkGetDeviceQueue(_device, indices.transferFamily.value(), 0, &transferQueue);
 
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
