@@ -12,19 +12,19 @@ DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, con
 
     for (uint32_t i = 0; i < layoutBindings.size(); ++i) {
         VkDescriptorType descriptorType = uniformBuffers[0][i]->getVkDescriptorType();
-        layoutBindings[i].binding = i;
-        layoutBindings[i].descriptorCount = 1;
-        layoutBindings[i].descriptorType = descriptorType;
-        layoutBindings[i].pImmutableSamplers = nullptr;
-        layoutBindings[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        layoutBindings[i].binding               = i;
+        layoutBindings[i].descriptorCount       = 1;
+        layoutBindings[i].descriptorType        = descriptorType;
+        layoutBindings[i].pImmutableSamplers    = nullptr;
+        layoutBindings[i].stageFlags            = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         descriptorTypeOccurances[descriptorType]++;
     }
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = static_cast<uint32_t>(layoutBindings.size());
-    layoutInfo.pBindings = layoutBindings.data();
+    layoutInfo.pBindings    = layoutBindings.data();
 
     if (vkCreateDescriptorSetLayout(_logicalDevice->getVkDevice(), &layoutInfo, nullptr, &_descriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
@@ -35,17 +35,17 @@ DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, con
     std::vector<VkDescriptorPoolSize> poolSizes;
     for (const auto [descriptorType, numOccurances] : descriptorTypeOccurances) {
         poolSizes.emplace_back(VkDescriptorPoolSize{
-                .type = descriptorType,
-                .descriptorCount = numSets * numOccurances,
+                .type               = descriptorType,
+                .descriptorCount    = numSets * numOccurances,
             }
         );
     }
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-    poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = numSets;
+    poolInfo.poolSizeCount  = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.pPoolSizes     = poolSizes.data();
+    poolInfo.maxSets        = numSets;
 
     if (vkCreateDescriptorPool(_logicalDevice->getVkDevice(), &poolInfo, nullptr, &_descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
@@ -53,10 +53,10 @@ DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, con
 
     std::vector<VkDescriptorSetLayout> layouts(numSets, _descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = _descriptorPool;
-    allocInfo.descriptorSetCount = numSets;
-    allocInfo.pSetLayouts = layouts.data();
+    allocInfo.sType                 = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool        = _descriptorPool;
+    allocInfo.descriptorSetCount    = numSets;
+    allocInfo.pSetLayouts           = layouts.data();
 
     _descriptorSets.resize(numSets);
     if (vkAllocateDescriptorSets(_logicalDevice->getVkDevice(), &allocInfo, _descriptorSets.data()) != VK_SUCCESS) {
@@ -70,18 +70,18 @@ DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, con
         std::vector<VkDescriptorBufferInfo> bufferInfos(uniformBuffers[i].size());
 
         for (size_t j = 0; j < uniformBuffers[i].size(); j++) {
-            descriptorWrites[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[j].dstSet = _descriptorSets[i];
-            descriptorWrites[j].dstBinding = j;
+            descriptorWrites[j].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[j].dstSet          = _descriptorSets[i];
+            descriptorWrites[j].dstBinding      = j;
             descriptorWrites[j].dstArrayElement = 0;
-            descriptorWrites[j].descriptorType = uniformBuffers[i][j]->getVkDescriptorType();
+            descriptorWrites[j].descriptorType  = uniformBuffers[i][j]->getVkDescriptorType();
             descriptorWrites[j].descriptorCount = 1;
 
             if (auto ptr = dynamic_cast<UniformBufferStruct*>(uniformBuffers[i][j].get())) {
                 bufferInfos[j] = {
                     .buffer = ptr->getVkBuffer(),
                     .offset = 0,
-                    .range = ptr->getBufferSize(),
+                    .range  = ptr->getBufferSize(),
                 };
                 descriptorWrites[j].pBufferInfo = &bufferInfos[j];
             }

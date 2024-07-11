@@ -8,4 +8,6 @@ public:
     ~Texture2DDepth();
 
 	void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) override;
+private:
+	bool hasStencil(VkFormat format) const;
 };

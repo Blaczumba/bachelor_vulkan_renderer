@@ -47,16 +47,7 @@
 #include <memory_objects/texture/texture_2D_sampler.h>
 #include <screenshot/screenshot.h>
 
-const uint32_t WIDTH = 1920;
-const uint32_t HEIGHT = 1080;
-
 const int MAX_FRAMES_IN_FLIGHT = 3;
-
-struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
-    alignas(16) glm::mat4 view;
-    alignas(16) glm::mat4 proj;
-};
 
 class BejzakEngine {
 public:
@@ -74,38 +65,24 @@ private:
     std::shared_ptr<Surface> _surface;
     std::shared_ptr<PhysicalDevice> _physicalDevice;
     std::shared_ptr<LogicalDevice> _logicalDevice;
-    std::shared_ptr<Renderpass> _renderPass;
     std::shared_ptr<Swapchain> _swapchain;
 
+    std::shared_ptr<Renderpass> _renderPass;
     std::unique_ptr<Framebuffer> _framebuffer;
     std::unique_ptr<VertexBuffer<Vertex>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
     VertexData<Vertex, uint16_t> _vertexData;
     std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers;
-    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers2;
     std::unique_ptr<Pipeline> _graphicsPipeline;
     std::shared_ptr<Texture2DSampler> _texture;
     std::unique_ptr<DescriptorSets> _descriptorSets;
-    std::unique_ptr<DescriptorSets> _descriptorSets2;
     std::unique_ptr<Screenshot> _screenshot;
 
     TinyOBJLoaderVertex vertexLoader;
     std::unique_ptr<CallbackManager> _callbackManager;
     std::unique_ptr<FPSCamera> _camera;
 
-    VkDevice device;
-
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
-
-    VkPipeline graphicsPipeline;
-
-    // VkCommandPool commandPool;
-
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
-
-    //VkDescriptorPool descriptorPool;
-    //std::vector<VkDescriptorSet> descriptorSets;
 
     std::vector<VkCommandBuffer> commandBuffers;
 
@@ -154,10 +131,11 @@ private:
             drawFrame();
         }
 
-        vkDeviceWaitIdle(device);
+        vkDeviceWaitIdle(_logicalDevice->getVkDevice());
     }
 
     void cleanup() {
+        VkDevice device = _logicalDevice->getVkDevice();
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -177,7 +155,7 @@ private:
 
         _camera->setAspectRatio(static_cast<float>(extent.width) / extent.height);
 
-        vkDeviceWaitIdle(device);
+        vkDeviceWaitIdle(_logicalDevice->getVkDevice());
 
         _swapchain->recrete();
 
@@ -204,9 +182,6 @@ private:
 
     void createLogicalDevice() {
         _logicalDevice = std::make_shared<LogicalDevice>(_physicalDevice);
-        device = _logicalDevice->getVkDevice();
-        graphicsQueue = _logicalDevice->graphicsQueue;
-        presentQueue = _logicalDevice->presentQueue;
     }
 
     void createSwapChain() {
@@ -340,7 +315,7 @@ private:
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline->getVkPipelineLayout(), 0, 1, &_descriptorSets->getVkDescriptorSet(currentFrame), 0, nullptr);
 
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(_vertexData.indices.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, _indexBuffer->getIndexCount(), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
@@ -353,6 +328,8 @@ private:
         imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
         renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
         inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
+        VkDevice device = _logicalDevice->getVkDevice();
 
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -376,7 +353,7 @@ private:
 
         ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -1.0f));
         ubo.view = _camera->getViewMatrix();
-
+        
         ubo.proj = _camera->getProjectionMatrix();
         ubo.proj[1][1] = -ubo.proj[1][1];
 
@@ -386,10 +363,12 @@ private:
     }
 
     void drawFrame() {
+        VkDevice device = _logicalDevice->getVkDevice();
+
         vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
         uint32_t imageIndex;
 
-        VkResult result = vkAcquireNextImageKHR(device, _swapchain->getVkSwapchain(), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+        VkResult result = _swapchain->acquireNextImage(imageAvailableSemaphores[currentFrame], &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             recreateSwapChain();
@@ -423,23 +402,11 @@ private:
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+        if (vkQueueSubmit(_logicalDevice->graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
             throw std::runtime_error("failed to submit draw command buffer!");
         }
 
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
-
-        VkSwapchainKHR swapChains[] = { _swapchain->getVkSwapchain() };
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = swapChains;
-
-        presentInfo.pImageIndices = &imageIndex;
-
-        result = vkQueuePresentKHR(presentQueue, &presentInfo);
+        result = _swapchain->present(imageIndex, signalSemaphores[0]);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
             recreateSwapChain();
@@ -453,6 +420,7 @@ private:
             // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
             const auto& texture = _framebuffer->getColorTextures()[0];
             _screenshot->saveImage("screenshot.ppm", texture.getImage());
+            _window->setWindowSize(1920 / 4, 1080 / 4);
             //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
         }
 

@@ -7,6 +7,7 @@
 #include <glfw/glfw3.h>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 class FPSCamera : public Camera, public CallbackObserver {
@@ -34,7 +35,7 @@ public:
 
     void updateKeyboard(const KeyboardData& cbData) override;
     void updateMouse(const MouseData& cbData) override;
-    void setCallbackMmanager(CallbackManager& cbManager);
+    // void setCallbackMmanager(CallbackManager& cbManager);
 
     void setAspectRatio(float aspectRatio);
     void setFovy(float fovyRadians);

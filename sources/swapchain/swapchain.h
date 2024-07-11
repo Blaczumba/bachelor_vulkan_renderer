@@ -33,7 +33,7 @@ public:
 
 	uint32_t imageIndex; // TODO
 
-	uint32_t acquireNextImage() const;
-	VkResult present(VkSemaphore waitSemaphore) const;
+	VkResult acquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t* imageIndex) const;
+	VkResult present(uint32_t imageIndex, VkSemaphore waitSemaphore) const;
 private:
 };

@@ -110,29 +110,18 @@ void Swapchain::recrete() {
     create();
 }
 
-uint32_t Swapchain::acquireNextImage() const {
-    return 0;
+VkResult Swapchain::acquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t* imageIndex) const {
+    return vkAcquireNextImageKHR(_logicalDevice->getVkDevice(), _swapchain, UINT64_MAX, presentCompleteSemaphore, (VkFence)nullptr, imageIndex);
 }
 
-VkResult Swapchain::present(VkSemaphore waitSemaphore) const {
+VkResult Swapchain::present(uint32_t imageIndex, VkSemaphore waitSemaphore) const {
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = &waitSemaphore;
-
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &_swapchain;
-    return VK_SUCCESS;
-  /*  presentInfo.pImageIndices = &imageIndex;
+    presentInfo.pImageIndices = &imageIndex;
 
-    result = vkQueuePresentKHR(presentQueue, &presentInfo);
-
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-        framebufferResized = false;
-        recreateSwapChain();
-    }
-    else if (result != VK_SUCCESS) {
-        throw std::runtime_error("failed to present swap chain image!");
-    }*/
+    return vkQueuePresentKHR(_logicalDevice->presentQueue, &presentInfo);
 }
