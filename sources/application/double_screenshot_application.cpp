@@ -62,6 +62,11 @@ DoubleScreenshotApplication::~DoubleScreenshotApplication() {
     }
 }
 
+DoubleScreenshotApplication& DoubleScreenshotApplication::getInstance() {
+    static DoubleScreenshotApplication application;
+    return application;
+}
+
 void DoubleScreenshotApplication::run() {
     while (_window->open()) {
         _callbackManager->pollEvents();

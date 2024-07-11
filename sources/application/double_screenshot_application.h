@@ -43,9 +43,16 @@ class DoubleScreenshotApplication : public ApplicationBase {
 
     uint32_t _currentFrame              = 0;
     const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
-public:
+
 	DoubleScreenshotApplication();
     ~DoubleScreenshotApplication();
+public:
+    static DoubleScreenshotApplication& getInstance();
+
+    DoubleScreenshotApplication(const DoubleScreenshotApplication&) = delete;
+    DoubleScreenshotApplication(DoubleScreenshotApplication&&) = delete;
+    void operator=(const DoubleScreenshotApplication&) = delete;
+
     void run() override;
 private:
     void draw();

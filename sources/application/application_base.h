@@ -19,7 +19,6 @@ protected:
 #ifdef VALIDATION_LAYERS_ENABLED
     std::shared_ptr<DebugMessenger> _debugMessenger;
 #endif // VALIDATION_LAYERS_ENABLED
-
 public:
     ApplicationBase();
     virtual ~ApplicationBase();
