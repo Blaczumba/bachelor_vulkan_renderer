@@ -6,9 +6,9 @@ layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
 
 layout(location = 0) out vec4 outColor;
-// layout(location = 1) out vec4 outColor1;
+layout(location = 1) out vec4 outColor1;
 
 void main() {
     outColor = texture(texSampler, fragTexCoord);
-    // outColor1 = vec4(outColor.r, 0.0, outColor.b, 1.0);
+    outColor1 = outColor;
 }

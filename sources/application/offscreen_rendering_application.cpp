@@ -22,8 +22,11 @@ OffscreenRendering::OffscreenRendering()
     _lowResRenderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(offscreenAttachments));
 
     std::vector<std::unique_ptr<Attachment>> presentAttachments;
-    presentAttachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
+    presentAttachments.reserve(5);
     presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+    presentAttachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
+    presentAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
     presentAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
     _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(presentAttachments));
@@ -52,9 +55,6 @@ OffscreenRendering::OffscreenRendering()
     _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, msaaSamples, lowResExtent);
     _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), msaaSamples, lowResExtent);
 
-    _textureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, msaaSamples, extent);
-    _textureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), msaaSamples, extent);
-
     auto lowResTextureColorResolveView = _lowResTextureColorResolveAttachment->getImage().view;
     auto lowResTextureColorView = _lowResTextureColorAttachment->getImage().view;
     auto lowResTextureDepthView = _lowResTextureDepthAttachment->getImage().view;
@@ -66,16 +66,7 @@ OffscreenRendering::OffscreenRendering()
 
     _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
 
-    auto swapchainImages = _swapchain->getImages();
-    auto textureColorView = _textureColorAttachment->getImage().view;
-    auto textureDepthView = _textureDepthAttachment->getImage().view;
-    std::vector<std::vector<VkImageView>> views = {
-        {swapchainImages[0].view, textureColorView, textureDepthView},
-        {swapchainImages[1].view, textureColorView, textureDepthView},
-        {swapchainImages[2].view, textureColorView, textureDepthView},
-    };
-
-    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(views), _renderPass, _swapchain->getExtent(), MAX_FRAMES_IN_FLIGHT);
+    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
 
     _vertexData = _OBJLoader.extract<uint16_t>(MODELS_PATH "viking_room.obj");
     _vertexBuffer = std::make_unique<VertexBuffer<Vertex>>(_logicalDevice, _vertexData.vertices);
@@ -171,7 +162,8 @@ void OffscreenRendering::draw() {
     if (glfwGetKey(std::dynamic_pointer_cast<WindowGLFW>(_window)->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
         // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
         // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
-        _screenshot->saveImage("screenshot.ppm", _lowResTextureColorResolveAttachment->getImage());
+        _screenshot->saveImage("hig_res_screenshot.ppm", _framebuffer->getColorTextures()[imageIndex].getImage());
+        _screenshot->saveImage("low_res_screenshot.ppm", _lowResTextureColorResolveAttachment->getImage());
         //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
     }
 
