@@ -160,7 +160,12 @@ void OffscreenRendering::draw() {
         throw std::runtime_error("failed to present swap chain image!");
     }
 
-    if (glfwGetKey(std::dynamic_pointer_cast<WindowGLFW>(_window)->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
+    if (glfwGetKey(std::dynamic_pointer_cast<WindowGLFW>(_window)->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS && _lastKey == GLFW_KEY_O ||
+        glfwGetKey(std::dynamic_pointer_cast<WindowGLFW>(_window)->getGlfwWindow(), GLFW_KEY_O) == GLFW_PRESS && _lastKey == GLFW_KEY_P) {
+        if (_lastKey == GLFW_KEY_P)
+            _lastKey = GLFW_KEY_O;
+        else
+            _lastKey = GLFW_KEY_P;
         // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
         // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
         _screenshot->saveImage("hig_res_screenshot.ppm", _framebuffer->getColorTextures()[0].getImage());

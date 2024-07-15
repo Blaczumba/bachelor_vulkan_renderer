@@ -3,6 +3,7 @@
 
 int main() {
     OffscreenRendering& app = OffscreenRendering::getInstance();
+
     try {
         app.run();
     }
