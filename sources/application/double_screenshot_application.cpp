@@ -5,8 +5,8 @@
 
 DoubleScreenshotApplication::DoubleScreenshotApplication()
 	: ApplicationBase() {
-    _callbackManager = std::make_unique<FPSCallbackManager>(_window);
-    _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), (float)1920 / (float)1080, 0.01f, 10.0f);
+    _callbackManager = std::make_unique<FPSCallbackManager>(std::dynamic_pointer_cast<WindowGLFW>(_window));
+    _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 10.0f);
     _callbackManager->attach(_camera.get());
 
     // There must be at least one "Present" attachment (Color or Resolve).
@@ -128,13 +128,13 @@ void DoubleScreenshotApplication::draw() {
         throw std::runtime_error("failed to present swap chain image!");
     }
 
-    if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
-        // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
-        // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
-        const auto& texture = _framebuffer->getColorTextures()[0];
-        _screenshot->saveImage("screenshot.ppm", texture.getImage());
-        //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
-    }
+    //if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
+    //    // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
+    //    // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
+    //    const auto& texture = _framebuffer->getColorTextures()[0];
+    //    _screenshot->saveImage("screenshot.ppm", texture.getImage());
+    //    //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
+    //}
 
     if (++_currentFrame == MAX_FRAMES_IN_FLIGHT)
         _currentFrame = 0;
@@ -250,7 +250,7 @@ void DoubleScreenshotApplication::recordCommandBuffer(VkCommandBuffer commandBuf
 }
 
 void DoubleScreenshotApplication::recreateSwapChain() {
-    Extent extent{};
+    VkExtent2D extent{};
     while (extent.width == 0 || extent.height == 0) {
         extent = _window->getFramebufferSize();
         glfwWaitEvents();

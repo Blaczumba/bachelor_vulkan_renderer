@@ -45,7 +45,7 @@ void Swapchain::create() {
     VkDevice device = _logicalDevice->getVkDevice();
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_B8G8R8A8_SRGB);
     VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_MAILBOX_KHR);
-    Extent windowExtent = _window->getFramebufferSize();
+    VkExtent2D windowExtent = _window->getFramebufferSize();
     std::vector<VkImage> images;
 
     VkExtent2D extent = chooseSwapExtent({ windowExtent.width, windowExtent.height }, swapChainSupport.capabilities);

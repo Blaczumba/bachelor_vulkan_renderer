@@ -41,9 +41,7 @@ file(CHMOD ${SHADER_COMPILE_SCRIPT} PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_
 
 add_dependencies(${CMAKE_PROJECT_NAME} CompileShaders)
 
-
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Window Instance DebugMessenger Surface PhysicalDevice LogicalDevice Renderpass Swapchain CommandBuffer Framebuffer VertexBuffer IndexBuffer UniformBuffer Pipeline Texture TinyGLTFLoader OBJLoader DescriptorSet Camera CallbackManager Screenshot Application)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Application)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/tinygltf")
 
 add_subdirectory(tests)

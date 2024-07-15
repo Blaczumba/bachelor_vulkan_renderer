@@ -2,7 +2,6 @@
 
 int main() {
     DoubleScreenshotApplication& app = DoubleScreenshotApplication::getInstance();
-
     try {
         app.run();
     }

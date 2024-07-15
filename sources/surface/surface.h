@@ -1,7 +1,7 @@
 #pragma once
 
 #include "instance/instance.h"
-#include "window/window.h"
+#include "window/window/window.h"
 
 #include <memory>
 

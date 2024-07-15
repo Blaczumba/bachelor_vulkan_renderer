@@ -1,5 +1,7 @@
 #pragma once
 
+#include "primitives.h"
+
 #include <vulkan/vulkan.h>
 
 #include <array>

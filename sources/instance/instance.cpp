@@ -1,5 +1,6 @@
 #include "instance.h"
 #include "debug_messenger/debug_messenger_utils.h"
+#include "window/window/window.h"
 #include "config/config.h"
 
 #include <algorithm>
@@ -73,11 +74,7 @@ bool Instance::checkValidationLayerSupport() const {
 }
 
 std::vector<const char*> Instance::getRequiredExtensions() {
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+    std::vector<const char*> extensions = Window::getWindowExtensions();
 
 #ifdef VALIDATION_LAYERS_ENABLED
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

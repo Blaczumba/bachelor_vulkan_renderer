@@ -10,7 +10,7 @@
 
 class FPSCallbackManager : public CallbackManager {
 public:
-    FPSCallbackManager(std::shared_ptr<Window> window);
+    FPSCallbackManager(std::shared_ptr<WindowGLFW> window);
 
     void pollEvents() override;
 
