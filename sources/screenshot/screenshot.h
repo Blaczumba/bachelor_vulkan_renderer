@@ -39,4 +39,5 @@ private:
 
 	void savingThread();
 	void savePixels(const CommandData& imagesData);
+	void freeImageResources(const Image& image) const;
 };

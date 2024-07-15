@@ -18,17 +18,28 @@ Screenshot::~Screenshot() {
 		_shouldStop = true;
 		_commandDataCV.notify_one();
 	}
-	if (_savingThread.joinable())
+
+	if (_savingThread.joinable()) {
 		_savingThread.join();
+	}
+
+	{
+		CommandData commandData;
+		std::lock_guard<std::mutex> lck(_commandDataMutex);
+		while (!_commandData.empty()) {
+			commandData = std::move(_commandData.front());
+			_commandData.pop();
+			freeImageResources(commandData.dstImage);
+		}
+	}
 }
 
 void Screenshot::savingThread() {
-
+	CommandData commandData;
 	while (!_shouldStop) {
-		CommandData commandData;
 		{
 			std::unique_lock<std::mutex> lck(_commandDataMutex);
-			_commandDataCV.wait(lck, [this]() { return !_commandData.empty() || _shouldStop; });
+			_commandDataCV.wait(lck, [this]() { return _shouldStop || !_commandData.empty(); });
 			if (_shouldStop) {
 				continue;
 			}
@@ -40,14 +51,10 @@ void Screenshot::savingThread() {
 }
 
 void Screenshot::saveImage(const std::string& filePath, const Image& srcImage) {
-	// Source for the copy is the last rendered swapchain image
 	VkDevice device = _logicalDevice->getVkDevice();
 	VkExtent2D extent = { srcImage.extent.width, srcImage.extent.height };
 	Image dstImage;
 	dstImage.extent = { extent.width, extent.height, 1 };
-	//VkImage dstImage;
-	//VkDeviceMemory dstImageMemory;
-	//VkExtent2D extent = { image.extent.width, image.extent.height };
 
 	_logicalDevice->createImage(
 		dstImage.extent.width,
@@ -74,8 +81,6 @@ void Screenshot::saveImage(const std::string& filePath, const Image& srcImage) {
 		transitionImageLayout(copyCmd, dstImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 		transitionImageLayout(copyCmd, srcImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcImage.layout, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	}
-
-	//savePixels({ srcImage, dstImage, filePath });
 
 	{
 		std::lock_guard<std::mutex> lck(_commandDataMutex);
@@ -129,6 +134,12 @@ void Screenshot::savePixels(const CommandData& imagesData) {
 	}
 
 	vkUnmapMemory(device, dstImage.memory);
-	vkFreeMemory(device, dstImage.memory, nullptr);
-	vkDestroyImage(device, dstImage.image, nullptr);
+	freeImageResources(dstImage);
+}
+
+void Screenshot::freeImageResources(const Image& image) const {
+	VkDevice device = _logicalDevice->getVkDevice();
+
+	vkFreeMemory(device, image.memory, nullptr);
+	vkDestroyImage(device, image.image, nullptr);
 }
