@@ -48,7 +48,7 @@ Texture2DSampler::Texture2DSampler(std::shared_ptr<LogicalDevice> logicalDevice,
         transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         copyBufferToImage(commandBuffer, stagingBuffer, _image.image, _image.extent.width, _image.extent.height);
 
-        _image.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        _image.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;   // It is set in generateMipmaps
 
         generateMipmaps(commandBuffer, _image.image, _image.format, _image.layout, _image.extent.width, _image.extent.height, _mipLevels);
     }

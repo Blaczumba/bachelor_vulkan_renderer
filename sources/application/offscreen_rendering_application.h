@@ -26,7 +26,7 @@ class OffscreenRendering : public ApplicationBase {
 
     std::shared_ptr<Renderpass> _lowResRenderPass;
     std::unique_ptr<Framebuffer> _lowResFramebuffer;
-    std::shared_ptr<Texture2DColor> _lowResTextureColorResolveAttachment;
+    // std::shared_ptr<Texture2DColor> _lowResTextureColorResolveAttachment;
     std::shared_ptr<Texture2DColor> _lowResTextureColorAttachment;
     std::shared_ptr<Texture2DDepth> _lowResTextureDepthAttachment;
     std::unique_ptr<Pipeline> _lowResGraphicsPipeline;

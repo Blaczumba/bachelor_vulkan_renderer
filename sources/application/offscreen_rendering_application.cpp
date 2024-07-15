@@ -13,11 +13,12 @@ OffscreenRendering::OffscreenRendering()
     // There must be the same number of ColorAttachments and ColorResolveAttachments.
     // Every attachment must have the same number of MSAA samples.
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+    VkSampleCountFlagBits lowResMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
     auto swapchainImageFormat = _swapchain->getVkFormat();
     std::vector<std::unique_ptr<Attachment>> offscreenAttachments;
-    offscreenAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
-    offscreenAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-    offscreenAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
+    // offscreenAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
+    offscreenAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, lowResMsaaSamples));
+    offscreenAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), lowResMsaaSamples));
 
     _lowResRenderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(offscreenAttachments));
 
@@ -46,22 +47,22 @@ OffscreenRendering::OffscreenRendering()
 
     _descriptorSets = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffers);
     
-    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "off.vert.spv", "off.frag.spv");
+    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), lowResMsaaSamples, "off.vert.spv", "off.frag.spv");
     _graphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
 
     VkExtent2D extent = _swapchain->getExtent();
     VkExtent2D lowResExtent = { extent.width / 4, extent.height / 4 };
-    _lowResTextureColorResolveAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, VK_SAMPLE_COUNT_1_BIT, lowResExtent);
-    _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, msaaSamples, lowResExtent);
-    _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), msaaSamples, lowResExtent);
+    // _lowResTextureColorResolveAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, VK_SAMPLE_COUNT_1_BIT, lowResExtent);
+    _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
+    _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
 
-    auto lowResTextureColorResolveView = _lowResTextureColorResolveAttachment->getImage().view;
+    // auto lowResTextureColorResolveView = _lowResTextureColorResolveAttachment->getImage().view;
     auto lowResTextureColorView = _lowResTextureColorAttachment->getImage().view;
     auto lowResTextureDepthView = _lowResTextureDepthAttachment->getImage().view;
     std::vector<std::vector<VkImageView>> lowResViews = {
-        {lowResTextureColorResolveView, lowResTextureColorView, lowResTextureDepthView},
-        {lowResTextureColorResolveView, lowResTextureColorView, lowResTextureDepthView},
-        {lowResTextureColorResolveView, lowResTextureColorView, lowResTextureDepthView},
+        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
+        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
+        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
     };
 
     _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
@@ -163,7 +164,7 @@ void OffscreenRendering::draw() {
         // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
         // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
         _screenshot->saveImage("hig_res_screenshot.ppm", _framebuffer->getColorTextures()[0].getImage());
-        _screenshot->saveImage("low_res_screenshot.ppm", _lowResTextureColorResolveAttachment->getImage());
+        _screenshot->saveImage("low_res_screenshot.ppm", _lowResTextureColorAttachment->getImage());
         //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
     }
 
