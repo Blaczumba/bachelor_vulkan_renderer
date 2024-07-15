@@ -23,10 +23,10 @@ OffscreenRendering::OffscreenRendering()
 
     std::vector<std::unique_ptr<Attachment>> presentAttachments;
     presentAttachments.reserve(5);
-    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-    presentAttachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
     presentAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
+    presentAttachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
+    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
     presentAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
     _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(presentAttachments));
@@ -162,7 +162,7 @@ void OffscreenRendering::draw() {
     if (glfwGetKey(std::dynamic_pointer_cast<WindowGLFW>(_window)->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
         // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
         // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
-        _screenshot->saveImage("hig_res_screenshot.ppm", _framebuffer->getColorTextures()[imageIndex].getImage());
+        _screenshot->saveImage("hig_res_screenshot.ppm", _framebuffer->getColorTextures()[0].getImage());
         _screenshot->saveImage("low_res_screenshot.ppm", _lowResTextureColorResolveAttachment->getImage());
         //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
     }
