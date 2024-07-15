@@ -4,10 +4,10 @@
 
 #include <stdexcept>
 
-GraphicsPipeline::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits msaaSamples)
+GraphicsPipeline::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader)
 	: Pipeline(logicalDevice) {
-    auto vertShaderCode = readFile(SHADERS_PATH "vert.spv");
-    auto fragShaderCode = readFile(SHADERS_PATH "frag.spv");
+    auto vertShaderCode = readFile(SHADERS_PATH + vertexShader);
+    auto fragShaderCode = readFile(SHADERS_PATH + fragmentShader);
 
     VkDevice device = _logicalDevice->getVkDevice();
 

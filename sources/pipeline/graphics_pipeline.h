@@ -9,7 +9,7 @@
 
 class GraphicsPipeline : public Pipeline {
 public:
-	GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits msaaSamples);
+	GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader);
 	~GraphicsPipeline();
 
 };

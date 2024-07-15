@@ -1,10 +1,10 @@
-#include "double_screenshot_application.h"
+#include "offscreen_rendering_application.h"
 
 #include <algorithm>
 #include <array>
 
-DoubleScreenshotApplication::DoubleScreenshotApplication()
-	: ApplicationBase() {
+OffscreenRendering::OffscreenRendering()
+    : ApplicationBase() {
     _callbackManager = std::make_unique<FPSCallbackManager>(std::dynamic_pointer_cast<WindowGLFW>(_window));
     _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 10.0f);
     _callbackManager->attach(_camera.get());
@@ -12,18 +12,24 @@ DoubleScreenshotApplication::DoubleScreenshotApplication()
     // There must be at least one "Present" attachment (Color or Resolve).
     // There must be the same number of ColorAttachments and ColorResolveAttachments.
     // Every attachment must have the same number of MSAA samples.
-    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
     auto swapchainImageFormat = _swapchain->getVkFormat();
-    std::vector<std::unique_ptr<Attachment>> attachments;
-    //attachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
-    attachments.emplace_back(std::make_unique<ColorPresentAttachment>(swapchainImageFormat));
-    attachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-    attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
+    std::vector<std::unique_ptr<Attachment>> offscreenAttachments;
+    offscreenAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
+    offscreenAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+    offscreenAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
-    _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(attachments));
+    _lowResRenderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(offscreenAttachments));
+
+    std::vector<std::unique_ptr<Attachment>> presentAttachments;
+    presentAttachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
+    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+    presentAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
+
+    _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(presentAttachments));
 
     _texture = std::make_shared<Texture2DSampler>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
-    
+
     _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
     auto textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture);
 
@@ -36,10 +42,40 @@ DoubleScreenshotApplication::DoubleScreenshotApplication()
     }
 
     _descriptorSets = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffers);
-
-    _graphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
     
-    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "off.vert.spv", "off.frag.spv");
+    _graphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
+
+    VkExtent2D extent = _swapchain->getExtent();
+    VkExtent2D lowResExtent = { extent.width / 4, extent.height / 4 };
+    _lowResTextureColorResolveAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, VK_SAMPLE_COUNT_1_BIT, lowResExtent);
+    _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, msaaSamples, lowResExtent);
+    _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), msaaSamples, lowResExtent);
+
+    _textureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, msaaSamples, extent);
+    _textureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), msaaSamples, extent);
+
+    auto lowResTextureColorResolveView = _lowResTextureColorResolveAttachment->getImage().view;
+    auto lowResTextureColorView = _lowResTextureColorAttachment->getImage().view;
+    auto lowResTextureDepthView = _lowResTextureDepthAttachment->getImage().view;
+    std::vector<std::vector<VkImageView>> lowResViews = {
+        {lowResTextureColorResolveView, lowResTextureColorView, lowResTextureDepthView},
+        {lowResTextureColorResolveView, lowResTextureColorView, lowResTextureDepthView},
+        {lowResTextureColorResolveView, lowResTextureColorView, lowResTextureDepthView},
+    };
+
+    _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
+
+    auto swapchainImages = _swapchain->getImages();
+    auto textureColorView = _textureColorAttachment->getImage().view;
+    auto textureDepthView = _textureDepthAttachment->getImage().view;
+    std::vector<std::vector<VkImageView>> views = {
+        {swapchainImages[0].view, textureColorView, textureDepthView},
+        {swapchainImages[1].view, textureColorView, textureDepthView},
+        {swapchainImages[2].view, textureColorView, textureDepthView},
+    };
+
+    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(views), _renderPass, _swapchain->getExtent(), MAX_FRAMES_IN_FLIGHT);
 
     _vertexData = _OBJLoader.extract<uint16_t>(MODELS_PATH "viking_room.obj");
     _vertexBuffer = std::make_unique<VertexBuffer<Vertex>>(_logicalDevice, _vertexData.vertices);
@@ -52,7 +88,7 @@ DoubleScreenshotApplication::DoubleScreenshotApplication()
     createSyncObjects();
 }
 
-DoubleScreenshotApplication::~DoubleScreenshotApplication() {
+OffscreenRendering::~OffscreenRendering() {
     VkDevice device = _logicalDevice->getVkDevice();
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -62,12 +98,12 @@ DoubleScreenshotApplication::~DoubleScreenshotApplication() {
     }
 }
 
-DoubleScreenshotApplication& DoubleScreenshotApplication::getInstance() {
-    static DoubleScreenshotApplication application;
+OffscreenRendering& OffscreenRendering::getInstance() {
+    static OffscreenRendering application;
     return application;
 }
 
-void DoubleScreenshotApplication::run() {
+void OffscreenRendering::run() {
     while (_window->open()) {
         _callbackManager->pollEvents();
         draw();
@@ -75,7 +111,7 @@ void DoubleScreenshotApplication::run() {
     vkDeviceWaitIdle(_logicalDevice->getVkDevice());
 }
 
-void DoubleScreenshotApplication::draw() {
+void OffscreenRendering::draw() {
     VkDevice device = _logicalDevice->getVkDevice();
 
     vkWaitForFences(device, 1, &_inFlightFences[_currentFrame], VK_TRUE, UINT64_MAX);
@@ -141,7 +177,7 @@ void DoubleScreenshotApplication::draw() {
 
 }
 
-VkFormat DoubleScreenshotApplication::findDepthFormat() const {
+VkFormat OffscreenRendering::findDepthFormat() const {
     std::array<VkFormat, 3> depthFormats = {
         VK_FORMAT_D32_SFLOAT,
         VK_FORMAT_D24_UNORM_S8_UINT,
@@ -159,7 +195,7 @@ VkFormat DoubleScreenshotApplication::findDepthFormat() const {
     return *formatPtr;
 }
 
-void DoubleScreenshotApplication::createSyncObjects() {
+void OffscreenRendering::createSyncObjects() {
     _imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     _renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     _inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -182,7 +218,7 @@ void DoubleScreenshotApplication::createSyncObjects() {
     }
 }
 
-void DoubleScreenshotApplication::updateUniformBuffer(uint32_t currentImage) {
+void OffscreenRendering::updateUniformBuffer(uint32_t currentImage) {
     UniformBufferObject ubo;
     const auto& swapchainExtent = _swapchain->getExtent();
 
@@ -195,7 +231,7 @@ void DoubleScreenshotApplication::updateUniformBuffer(uint32_t currentImage) {
     _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
 }
 
-void DoubleScreenshotApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+void OffscreenRendering::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -249,7 +285,7 @@ void DoubleScreenshotApplication::recordCommandBuffer(VkCommandBuffer commandBuf
     }
 }
 
-void DoubleScreenshotApplication::recreateSwapChain() {
+void OffscreenRendering::recreateSwapChain() {
     VkExtent2D extent{};
     while (extent.width == 0 || extent.height == 0) {
         extent = _window->getFramebufferSize();
