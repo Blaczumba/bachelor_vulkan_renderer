@@ -24,20 +24,20 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<Framebuffer> _framebuffer;
     std::shared_ptr<Texture2DColor> _textureColorAttachment;
     std::shared_ptr<Texture2DDepth> _textureDepthAttachment;
+    std::unique_ptr<Pipeline> _graphicsPipeline;
 
     std::shared_ptr<Renderpass> _lowResRenderPass;
     std::unique_ptr<Framebuffer> _lowResFramebuffer;
     std::shared_ptr<Texture2DColor> _lowResTextureColorResolveAttachment;
     std::shared_ptr<Texture2DColor> _lowResTextureColorAttachment;
     std::shared_ptr<Texture2DDepth> _lowResTextureDepthAttachment;
+    std::unique_ptr<Pipeline> _lowResGraphicsPipeline;
 
     std::unique_ptr<VertexBuffer<Vertex>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
     VertexData<Vertex, uint16_t> _vertexData;
     std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers;
     std::shared_ptr<Texture2DSampler> _texture;
-    std::unique_ptr<Pipeline> _graphicsPipeline;
-    std::unique_ptr<Pipeline> _lowResGraphicsPipeline;
     std::unique_ptr<DescriptorSets> _descriptorSets;
     std::unique_ptr<Screenshot> _screenshot;
 
@@ -46,6 +46,7 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<FPSCamera> _camera;
 
     std::vector<VkCommandBuffer> _commandBuffers;
+    std::vector<VkCommandBuffer> _offscreenCommandBuffers;
 
     std::vector<VkSemaphore> _imageAvailableSemaphores;
     std::vector<VkSemaphore> _renderFinishedSemaphores;
@@ -70,5 +71,6 @@ private:
     void createSyncObjects();
     void updateUniformBuffer(uint32_t currentImage);
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    void recordOffscreenCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void recreateSwapChain();
 };

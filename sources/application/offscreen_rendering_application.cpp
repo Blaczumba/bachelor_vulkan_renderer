@@ -82,6 +82,7 @@ OffscreenRendering::OffscreenRendering()
     _indexBuffer = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, _vertexData.indices);
 
     _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
+    _offscreenCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
 
     _screenshot = std::make_unique<Screenshot>(_logicalDevice);
 
@@ -132,7 +133,9 @@ void OffscreenRendering::draw() {
     vkResetFences(device, 1, &_inFlightFences[_currentFrame]);
 
     vkResetCommandBuffer(_commandBuffers[_currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+    vkResetCommandBuffer(_offscreenCommandBuffers[_currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
 
+    recordOffscreenCommandBuffer(_offscreenCommandBuffers[_currentFrame], _currentFrame);
     recordCommandBuffer(_commandBuffers[_currentFrame], imageIndex);
 
     VkSubmitInfo submitInfo{};
@@ -144,8 +147,9 @@ void OffscreenRendering::draw() {
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
 
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &_commandBuffers[_currentFrame];
+    std::array<VkCommandBuffer, 2> submitCommands = { _offscreenCommandBuffers[_currentFrame], _commandBuffers[_currentFrame] };
+    submitInfo.commandBufferCount = static_cast<uint32_t>(submitCommands.size());
+    submitInfo.pCommandBuffers = submitCommands.data();
 
     VkSemaphore signalSemaphores[] = { _renderFinishedSemaphores[_currentFrame] };
     submitInfo.signalSemaphoreCount = 1;
@@ -164,13 +168,12 @@ void OffscreenRendering::draw() {
         throw std::runtime_error("failed to present swap chain image!");
     }
 
-    //if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
-    //    // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
-    //    // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
-    //    const auto& texture = _framebuffer->getColorTextures()[0];
-    //    _screenshot->saveImage("screenshot.ppm", texture.getImage());
-    //    //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
-    //}
+    if (glfwGetKey(std::dynamic_pointer_cast<WindowGLFW>(_window)->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
+        // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
+        // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
+        _screenshot->saveImage("screenshot.ppm", _lowResTextureColorResolveAttachment->getImage());
+        //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
+    }
 
     if (++_currentFrame == MAX_FRAMES_IN_FLIGHT)
         _currentFrame = 0;
@@ -229,6 +232,59 @@ void OffscreenRendering::updateUniformBuffer(uint32_t currentImage) {
     ubo.proj[1][1] = -ubo.proj[1][1];
 
     _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
+}
+
+void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+        throw std::runtime_error("failed to begin recording command buffer!");
+    }
+
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = _lowResRenderPass->getVkRenderPass();
+    renderPassInfo.framebuffer = _lowResFramebuffer->getVkFramebuffers()[imageIndex];
+    renderPassInfo.renderArea.offset = { 0, 0 };
+    VkExtent2D extent = { _lowResTextureColorAttachment->getImage().extent.width, _lowResTextureColorAttachment->getImage().extent.height };
+    renderPassInfo.renderArea.extent = extent;
+
+    const auto& clearValues = _lowResRenderPass->getClearValues();
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _lowResGraphicsPipeline->getVkPipeline());
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float)extent.width;
+    viewport.height = (float)extent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = extent;
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    VkBuffer vertexBuffers[] = { _vertexBuffer->getVkBuffer() };
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+    vkCmdBindIndexBuffer(commandBuffer, _indexBuffer->getVkBuffer(), 0, _indexBuffer->getIndexType());
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _lowResGraphicsPipeline->getVkPipelineLayout(), 0, 1, &_descriptorSets->getVkDescriptorSet(_currentFrame), 0, nullptr);
+
+    vkCmdDrawIndexed(commandBuffer, _indexBuffer->getIndexCount(), 1, 0, 0, 0);
+
+    vkCmdEndRenderPass(commandBuffer);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to record command buffer!");
+    }
 }
 
 void OffscreenRendering::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
