@@ -18,6 +18,7 @@ public:
     static float lastX;
     static float lastY;
 private:
+    static CallbackData _data;
 
     void processKeyboard();
 

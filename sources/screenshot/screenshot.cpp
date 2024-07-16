@@ -39,7 +39,7 @@ void Screenshot::savingThread() {
 	while (!_shouldStop) {
 		{
 			std::unique_lock<std::mutex> lck(_commandDataMutex);
-			_commandDataCV.wait(lck, [this]() { return _shouldStop || !_commandData.empty(); });
+			_commandDataCV.wait(lck, [this]() { return !_commandData.empty() || _shouldStop; });
 			if (_shouldStop) {
 				continue;
 			}

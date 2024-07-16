@@ -1,22 +1,29 @@
 #pragma once
 
+#include <vector>
 #include <cstdint>
 
-struct KeyboardData {
-	float deltaTime;
-
-	uint32_t key;
+enum class Direction : uint32_t {
+	NONE = 0,
+	FORWARD,
+	BACKWARD,
+	RIGHT,
+	LEFT
 };
 
-struct MouseData {
-	float deltaTime;
+struct CallbackData {
+	float deltaTime						= 0.0f;
 
-	float xoffset;
-	float yoffset;
+	bool keyboardAction					= false;
+	std::vector<uint32_t> keys			= {};
+	std::vector<Direction> directions	= {};
+
+	bool mouseAction					= false;
+	float xoffset						= 0.0f;
+	float yoffset						= 0.0f;
 };
 
 class CallbackObserver {
 public:
-	virtual void updateKeyboard(const KeyboardData& cbData) = 0;
-	virtual void updateMouse(const MouseData& cbData) = 0;
+	virtual void updateInput(const CallbackData& cbData) = 0;
 };

@@ -1,5 +1,7 @@
 #include "fps_camera.h"
 
+#include <iostream>
+
 FPSCamera::FPSCamera(float fovyRadians, float aspectRatio, float zNear, float zFar)
     : _fovy(fovyRadians), _aspectRatio(aspectRatio), _zNear(zNear), _zFar(zFar) {
     _projectionMatrix = glm::perspective(fovyRadians, aspectRatio, zNear, zFar);
@@ -10,33 +12,32 @@ FPSCamera::FPSCamera(float fovyRadians, float aspectRatio, float zNear, float zF
 //    cbManager.attach(this);
 //}
 
-void FPSCamera::updateKeyboard(const KeyboardData& cbData) {
-    switch (cbData.key) {
-    case GLFW_KEY_W:
-        move(cbData.deltaTime * _front);
-        break;
-    case GLFW_KEY_S:
-        move(-cbData.deltaTime * _front);
-        break;
-    case GLFW_KEY_A:
-        move(-cbData.deltaTime * _right);
-        break;
-    case GLFW_KEY_D:
-        move(cbData.deltaTime * _right);
-        break;
+void FPSCamera::updateInput(const CallbackData& cbData) {
+    if (cbData.keyboardAction) {
+        for (const auto direction : cbData.directions) {
+            switch (direction) {
+            case Direction::FORWARD:
+                move(cbData.deltaTime * _front);
+                break;
+            case Direction::BACKWARD:
+                move(-cbData.deltaTime * _front);
+                break;
+            case Direction::LEFT:
+                move(-cbData.deltaTime * _right);
+                break;
+            case Direction::RIGHT:
+                move(cbData.deltaTime * _right);
+                break;
+            }
+        }
     }
-}
 
-void FPSCamera::updateMouse(const MouseData& cbData) {
-    _yaw += cbData.xoffset * _mouseSensitivity;
-    _pitch += cbData.yoffset * _mouseSensitivity;
-
-    if (_pitch > 89.0f)
-        _pitch = 89.0f;
-    if (_pitch < -89.0f)
-        _pitch = -89.0f;
-
-    rotate(_yaw, _pitch);
+    if (cbData.mouseAction) {
+        std::cout << cbData.xoffset * 0.001f << ' ' << cbData.yoffset * 0.001f << std::endl;
+        _yaw += cbData.xoffset * cbData.deltaTime * _mouseSensitivity;
+        _pitch += cbData.yoffset * cbData.deltaTime * _mouseSensitivity;
+        rotate(_yaw, _pitch);
+    }
 }
 
 glm::mat4 FPSCamera::getViewMatrix() const {
