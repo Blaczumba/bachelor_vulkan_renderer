@@ -12,6 +12,19 @@ Screenshot::Screenshot(std::shared_ptr<LogicalDevice> logicalDevice)
 	_savingThread = std::thread(&Screenshot::savingThread, this);
 }
 
+void Screenshot::addImageToObserved(const Image& image, const std::string& name) {
+	_images.push_back(image);
+	_imageNames.push_back(name);
+}
+
+void Screenshot::updateInput(const CallbackData& cbData) {
+	if (std::find(cbData.keys.cbegin(), cbData.keys.cend(), Keyboard::Key::P) != cbData.keys.cend()) {
+		for (size_t i = 0; i < _images.size(); i++) {
+			saveImage(std::to_string(_counter++) + '_' + _imageNames[i], _images[i]);
+		}
+	}
+}
+
 Screenshot::~Screenshot() {
 	{
 		std::lock_guard<std::mutex> lck(_commandDataMutex);
@@ -84,7 +97,7 @@ void Screenshot::saveImage(const std::string& filePath, const Image& srcImage) {
 
 	{
 		std::lock_guard<std::mutex> lck(_commandDataMutex);
-		_commandData.push({ srcImage, dstImage, std::format("{}_{}", _counter++, filePath) });
+		_commandData.push({ srcImage, dstImage, filePath });
 		_commandDataCV.notify_one();
 	}
 }

@@ -7,6 +7,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <string>
 #include <thread>
 #include <memory>
 #include <mutex>
@@ -14,13 +15,18 @@
 #include <condition_variable>
 #include <queue>
 
-class Screenshot {
+class Screenshot : public CallbackObserver {
 	std::shared_ptr<LogicalDevice> _logicalDevice;
+
+	std::vector<Image> _images;
+	std::vector<std::string> _imageNames;
 
 public:
 	Screenshot(std::shared_ptr<LogicalDevice> logicalDevice);
 	~Screenshot();
 
+	void updateInput(const CallbackData& cbData) override;
+	void addImageToObserved(const Image& image, const std::string& name);
 	void saveImage(const std::string& filePath, const Image& image);
 
 private:

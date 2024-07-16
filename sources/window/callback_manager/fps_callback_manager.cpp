@@ -1,5 +1,7 @@
 #include "fps_callback_manager.h"
 
+#include <iostream>
+
 FPSCallbackManager::FPSCallbackManager(std::shared_ptr<WindowGLFW> window)
 	: CallbackManager(window) {
 	GLFWwindow* glfwWindow = _window->getGlfwWindow();
@@ -28,14 +30,15 @@ void FPSCallbackManager::pollEvents() {
 	glfwPollEvents();
 	processKeyboard();
 
+	if (!_data.keys.empty())
+		_data.keyboardAction = true;
+
 	for (auto observer : _observers) {
 		observer->updateInput(_data);
 	}
 }
 
 void FPSCallbackManager::processKeyboard() {
-	_data.keyboardAction = true;
-
 	GLFWwindow* window = _window->getGlfwWindow();
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
@@ -65,7 +68,6 @@ void FPSCallbackManager::keyCallback(GLFWwindow* window, int key, int scancode, 
 
 void FPSCallbackManager::mouseCallback(GLFWwindow* window, double xposIn, double yposIn) {
 	_data.mouseAction = true;
-
 	auto cbManager = reinterpret_cast<FPSCallbackManager*>(glfwGetWindowUserPointer(window));
 
 	float xpos = static_cast<float>(xposIn);

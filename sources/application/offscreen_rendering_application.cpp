@@ -5,10 +5,6 @@
 
 OffscreenRendering::OffscreenRendering()
     : ApplicationBase() {
-    _callbackManager = std::make_unique<FPSCallbackManager>(std::dynamic_pointer_cast<WindowGLFW>(_window));
-    _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 10.0f);
-    _callbackManager->attach(_camera.get());
-
     // There must be at least one "Present" attachment (Color or Resolve).
     // There must be the same number of ColorAttachments and ColorResolveAttachments.
     // Every attachment must have the same number of MSAA samples.
@@ -77,6 +73,14 @@ OffscreenRendering::OffscreenRendering()
     _offscreenCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
 
     _screenshot = std::make_unique<Screenshot>(_logicalDevice);
+    _screenshot->addImageToObserved(_framebuffer->getColorTextures()[0].getImage(), "hig_res_screenshot.ppm");
+    _screenshot->addImageToObserved(_lowResTextureColorAttachment->getImage(), "low_res_screenshot.ppm");
+
+    _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 10.0f);
+
+    _callbackManager = std::make_unique<FPSCallbackManager>(std::dynamic_pointer_cast<WindowGLFW>(_window));
+    _callbackManager->attach(_camera.get());
+    _callbackManager->attach(_screenshot.get());
 
     createSyncObjects();
 }
