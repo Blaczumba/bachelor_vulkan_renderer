@@ -2,7 +2,6 @@
 
 #include "camera.h"
 #include "window/callback_observer/callback_observer.h"
-#include "window/callback_manager/callback_manager.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -32,7 +31,6 @@ public:
     FPSCamera(float fovyRadians, float aspectRatio, float zNear, float zFar);
 
     void updateInput(const CallbackData& cbData) override;
-    // void setCallbackMmanager(CallbackManager& cbManager);
 
     void setAspectRatio(float aspectRatio);
     void setFovy(float fovyRadians);
