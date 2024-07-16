@@ -53,7 +53,7 @@ class OffscreenRendering : public ApplicationBase {
     uint32_t _currentFrame              = 0;
     const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
 
-    uint32_t _lastKey = GLFW_KEY_O;
+    uint32_t _lastKey                   = GLFW_KEY_O;
 
     OffscreenRendering();
     ~OffscreenRendering();
