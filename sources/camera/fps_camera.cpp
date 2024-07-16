@@ -10,18 +10,18 @@ FPSCamera::FPSCamera(float fovyRadians, float aspectRatio, float zNear, float zF
 
 void FPSCamera::updateInput(const CallbackData& cbData) {
     if (cbData.keyboardAction) {
-        for (const auto direction : cbData.directions) {
+        for (const auto direction : cbData.keys) {
             switch (direction) {
-            case Direction::FORWARD:
+            case Keyboard::Key::W :
                 move(cbData.deltaTime * _front);
                 break;
-            case Direction::BACKWARD:
+            case Keyboard::Key::S :
                 move(-cbData.deltaTime * _front);
                 break;
-            case Direction::LEFT:
+            case Keyboard::Key::A :
                 move(-cbData.deltaTime * _right);
                 break;
-            case Direction::RIGHT:
+            case Keyboard::Key::D :
                 move(cbData.deltaTime * _right);
                 break;
             }

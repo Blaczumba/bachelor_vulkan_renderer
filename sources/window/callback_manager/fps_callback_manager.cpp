@@ -18,14 +18,12 @@ void FPSCallbackManager::pollEvents() {
 		.deltaTime		= 1.0f / 60.0f,
 		.keyboardAction = false,
 		.keys			= {},
-		.directions		= {},
 		.mouseAction	= false,
 		.xoffset		= 0.0f,
 		.yoffset		= 0.0f
 	};
 
-	_data.directions.reserve(10);
-	_data.keys.reserve(10);
+	_data.keys.reserve(26);
 
 	glfwPollEvents();
 	processKeyboard();
@@ -41,27 +39,28 @@ void FPSCallbackManager::processKeyboard() {
 	GLFWwindow* window = _window->getGlfwWindow();
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-		_data.directions.push_back(Direction::FORWARD);
+		_data.keys.push_back(Keyboard::Key::W);
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-		_data.directions.push_back(Direction::BACKWARD);
+		_data.keys.push_back(Keyboard::Key::S);
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-		_data.directions.push_back(Direction::LEFT);
+		_data.keys.push_back(Keyboard::Key::A);
 	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-		_data.directions.push_back(Direction::RIGHT);
-	}
-	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
-		_data.keys.push_back(GLFW_KEY_P);
+		_data.keys.push_back(Keyboard::Key::D);
 	}
 }
 
 void FPSCallbackManager::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	auto camera = reinterpret_cast<FPSCamera*>(glfwGetWindowUserPointer(window));
 
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
+	}
+	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
+		_data.keys.push_back(Keyboard::Key::P);
+	}
 }
 
 void FPSCallbackManager::mouseCallback(GLFWwindow* window, double xposIn, double yposIn) {

@@ -7,7 +7,6 @@
 #include <iostream>
 #include <functional>
 
-
 class FPSCallbackManager : public CallbackManager {
 public:
     FPSCallbackManager(std::shared_ptr<WindowGLFW> window);
