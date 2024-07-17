@@ -56,7 +56,7 @@ Texture2DSampler::Texture2DSampler(std::shared_ptr<LogicalDevice> logicalDevice,
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-    _image.view = _logicalDevice->createImageView(_image.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, _mipLevels);
+    _image.view = _logicalDevice->createImageView(_image.image, _image.format, VK_IMAGE_ASPECT_COLOR_BIT, _mipLevels);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -73,7 +73,7 @@ Texture2DSampler::Texture2DSampler(std::shared_ptr<LogicalDevice> logicalDevice,
     samplerInfo.compareOp               = VK_COMPARE_OP_NEVER;
     samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     samplerInfo.minLod                  = 0.0f;
-    samplerInfo.maxLod                  = VK_LOD_CLAMP_NONE;
+    samplerInfo.maxLod                  = static_cast<float>(_mipLevels);
     samplerInfo.mipLodBias              = 0.0f;
 
     if (vkCreateSampler(device, &samplerInfo, nullptr, &_sampler) != VK_SUCCESS) {

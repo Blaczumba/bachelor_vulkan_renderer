@@ -74,8 +74,6 @@ VertexData<Vertex, IndexType> TinyOBJLoaderVertex::templatedExtractor(const std:
                     1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
                 };
 
-                vertex.color = { 1.0f, 1.0f, 1.0f };
-
                 indices.push_back(static_cast<IndexType>(vertices.size()));
                 vertices.push_back(vertex);
             }

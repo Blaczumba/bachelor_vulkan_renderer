@@ -6,7 +6,7 @@
 
 class Pipeline {
 protected:
-	VkPipeline _graphicsPipeline;
+	VkPipeline _pipeline;
 	VkPipelineLayout _pipelineLayout;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;

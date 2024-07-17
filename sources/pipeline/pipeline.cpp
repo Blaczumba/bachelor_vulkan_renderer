@@ -6,7 +6,7 @@ Pipeline::Pipeline(std::shared_ptr<LogicalDevice> logicalDevice)
 }
 
 VkPipeline Pipeline::getVkPipeline() const {
-	return _graphicsPipeline;
+	return _pipeline;
 }
 
 VkPipelineLayout Pipeline::getVkPipelineLayout() const {

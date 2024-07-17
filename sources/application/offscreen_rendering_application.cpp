@@ -29,6 +29,7 @@ OffscreenRendering::OffscreenRendering()
     _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(presentAttachments));
 
     _texture = std::make_shared<Texture2DSampler>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
+    _textureCubemap = std::make_shared<TextureCubemap>(_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, _physicalDevice->getMaxSamplerAnisotropy());
 
     _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
     auto textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture, VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -45,6 +46,19 @@ OffscreenRendering::OffscreenRendering()
     
     _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), lowResMsaaSamples, "off.vert.spv", "off.frag.spv");
     _graphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
+
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        // TODO
+        std::vector<std::shared_ptr<UniformBufferAbstraction>> ub;
+        ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice, VK_SHADER_STAGE_VERTEX_BIT));
+        ub.emplace_back(textureUniform);
+
+        _uniformBuffersSkybox.emplace_back(std::move(ub));
+    }
+    
+    _descriptorSetsSkybox = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffersSkybox);
+
+    //_graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSetsSkybox->getVkDescriptorSetLayout(), msaaSamples, "skybox.vert.spv", "skybox.frag.spv");
 
     VkExtent2D extent = _swapchain->getExtent();
     VkExtent2D lowResExtent = { extent.width / 4, extent.height / 4 };

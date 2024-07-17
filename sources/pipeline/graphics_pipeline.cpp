@@ -130,7 +130,7 @@ GraphicsPipeline::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice,
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipelineInfo.pDepthStencilState = &depthStencil;
 
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline) != VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_pipeline) != VK_SUCCESS) {
         throw std::runtime_error("failed to create graphics pipeline!");
     }
 
@@ -141,6 +141,6 @@ GraphicsPipeline::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice,
 GraphicsPipeline::~GraphicsPipeline() {
     VkDevice device = _logicalDevice->getVkDevice();
 
-    vkDestroyPipeline(device, _graphicsPipeline, nullptr);
+    vkDestroyPipeline(device, _pipeline, nullptr);
     vkDestroyPipelineLayout(device, _pipelineLayout, nullptr);
 }

@@ -17,12 +17,14 @@
 #include <memory_objects/texture/texture_2D_depth.h>
 #include <memory_objects/texture/texture_2D_color.h>
 #include <memory_objects/texture/texture_2D_sampler.h>
+#include <memory_objects/texture/texture_cubemap.h>
 #include <screenshot/screenshot.h>
 
 class OffscreenRendering : public ApplicationBase {
     std::shared_ptr<Renderpass> _renderPass;
     std::unique_ptr<Framebuffer> _framebuffer;
     std::unique_ptr<Pipeline> _graphicsPipeline;
+    std::unique_ptr<Pipeline> _graphicsPipelineSkybox;
 
     std::shared_ptr<Renderpass> _lowResRenderPass;
     std::unique_ptr<Framebuffer> _lowResFramebuffer;
@@ -35,8 +37,11 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
     VertexData<Vertex, uint16_t> _vertexData;
     std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers;
+    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffersSkybox;
     std::shared_ptr<Texture2DSampler> _texture;
+    std::shared_ptr<TextureCubemap> _textureCubemap;
     std::unique_ptr<DescriptorSets> _descriptorSets;
+    std::unique_ptr<DescriptorSets> _descriptorSetsSkybox;
     std::unique_ptr<Screenshot> _screenshot;
 
     TinyOBJLoaderVertex _OBJLoader;
