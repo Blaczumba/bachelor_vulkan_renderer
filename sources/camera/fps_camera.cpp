@@ -5,6 +5,7 @@
 FPSCamera::FPSCamera(float fovyRadians, float aspectRatio, float zNear, float zFar)
     : _fovy(fovyRadians), _aspectRatio(aspectRatio), _zNear(zNear), _zFar(zFar) {
     _projectionMatrix = glm::perspective(fovyRadians, aspectRatio, zNear, zFar);
+    _projectionMatrix[1][1] = -_projectionMatrix[1][1];
     rotate(_yaw, _pitch);
 }
 
@@ -47,21 +48,25 @@ const glm::mat4& FPSCamera::getProjectionMatrix() const {
 void FPSCamera::setAspectRatio(float aspectRatio) {
     _aspectRatio = aspectRatio;
     _projectionMatrix = glm::perspective(_fovy, _aspectRatio, _zNear, _zFar);
+    _projectionMatrix[1][1] = -_projectionMatrix[1][1];
 }
 
 void FPSCamera::setFovy(float fovyRadians) {
     _fovy = fovyRadians;
     _projectionMatrix = glm::perspective(_fovy, _aspectRatio, _zNear, _zFar);
+    _projectionMatrix[1][1] = -_projectionMatrix[1][1];
 }
 
 void FPSCamera::setZNear(float zNear) {
     _zNear = zNear;
     _projectionMatrix = glm::perspective(_fovy, _aspectRatio, _zNear, _zFar);
+    _projectionMatrix[1][1] = -_projectionMatrix[1][1];
 }
 
 void FPSCamera::setZFar(float zFar) {
     _zFar = zFar;
     _projectionMatrix = glm::perspective(_fovy, _aspectRatio, _zNear, _zFar);
+    _projectionMatrix[1][1] = -_projectionMatrix[1][1];
 }
 
 void FPSCamera::move(glm::vec3 direction) {

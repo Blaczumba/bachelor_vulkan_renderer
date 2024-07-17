@@ -31,11 +31,11 @@ OffscreenRendering::OffscreenRendering()
     _texture = std::make_shared<Texture2DSampler>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
 
     _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
-    auto textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture);
+    auto textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         std::vector<std::shared_ptr<UniformBufferAbstraction>> ub;
-        ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice));
+        ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice, VK_SHADER_STAGE_VERTEX_BIT));
         ub.emplace_back(textureUniform);
 
         _uniformBuffers.emplace_back(std::move(ub));
@@ -216,9 +216,7 @@ void OffscreenRendering::updateUniformBuffer(uint32_t currentImage) {
 
     ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -1.0f));
     ubo.view = _camera->getViewMatrix();
-
     ubo.proj = _camera->getProjectionMatrix();
-    ubo.proj[1][1] = -ubo.proj[1][1];
 
     _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
 }
