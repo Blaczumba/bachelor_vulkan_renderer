@@ -2,9 +2,6 @@
 
 #include "camera.h"
 #include "window/callback_observer/callback_observer.h"
-#include "window/callback_manager/callback_manager.h"
-
-#include <glfw/glfw3.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -21,7 +18,7 @@ class FPSCamera : public Camera, public CallbackObserver {
     float _pitch    = 0.0f;
 
     float _movementSpeed    = 2.5f;
-    float _mouseSensitivity = 0.002f;
+    float _mouseSensitivity = 0.06f;
 
     float _fovy         = glm::radians(45.0f);
     float _aspectRatio  = 1.0f;
@@ -33,9 +30,7 @@ class FPSCamera : public Camera, public CallbackObserver {
 public:
     FPSCamera(float fovyRadians, float aspectRatio, float zNear, float zFar);
 
-    void updateKeyboard(const KeyboardData& cbData) override;
-    void updateMouse(const MouseData& cbData) override;
-    // void setCallbackMmanager(CallbackManager& cbManager);
+    void updateInput(const CallbackData& cbData) override;
 
     void setAspectRatio(float aspectRatio);
     void setFovy(float fovyRadians);

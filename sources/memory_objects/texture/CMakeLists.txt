@@ -8,7 +8,7 @@ set(KTX_SOURCES
     ${KTX_DIR}/lib/filestream.c)
 
 
-add_library(Texture texture.cpp texture_2D.cpp texture_2D_depth.cpp texture_2D_color.cpp texture_2D_sampler.cpp ${KTX_SOURCES})
+add_library(Texture texture.cpp texture_2D.cpp texture_2D_depth.cpp texture_2D_color.cpp texture_2D_sampler.cpp texture_2D_image.cpp texture_cubemap.cpp ${KTX_SOURCES})
 
 target_link_libraries(Texture PUBLIC Vulkan::Vulkan)
 target_link_libraries(Texture PUBLIC LogicalDevice CommandBuffer Image)

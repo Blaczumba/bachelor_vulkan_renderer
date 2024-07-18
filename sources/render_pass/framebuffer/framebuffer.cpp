@@ -39,6 +39,8 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
 
     size_t swapchainPlace{};
     std::vector<VkImageView> attachmentViews;
+    _colorImages.reserve(attachments.size());
+    _depthImages.reserve(attachments.size());
     for (size_t i = 0; i < attachments.size(); i++) {
         const VkAttachmentDescription& description = attachments[i]->getDescription();
         switch (description.finalLayout) {
@@ -57,7 +59,7 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
             attachmentViews.push_back(_depthImages.back().getImage().view);
             break;
         default:
-            std::runtime_error("failed to recognize final layout in framebuffer!");
+            std::runtime_error("failed to recognize final layout in the framebuffer!");
         }
     }
 

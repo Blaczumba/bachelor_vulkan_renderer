@@ -21,10 +21,15 @@ class DescriptorSets {
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 	std::shared_ptr<DescriptorSetLayout> _layout;
+
 public:
+	// Maybe && move semantics?
 	DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>>& uniformBuffers);
 	~DescriptorSets();
 
 	VkDescriptorSetLayout getVkDescriptorSetLayout() const;
 	VkDescriptorSet& getVkDescriptorSet(size_t i);
+
+private:
+	bool checkInputDataCoherence(const std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>>& uniformBuffers) const;
 };

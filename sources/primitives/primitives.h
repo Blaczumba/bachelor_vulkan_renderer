@@ -9,14 +9,28 @@ struct Extent {
 	uint32_t height;
 };
 
-struct Vertex {
+struct VertexP {
     glm::vec3 pos;
-    glm::vec3 color;
+};
+
+struct VertexPT {
+    glm::vec3 pos;
     glm::vec2 texCoord;
+};
+
+struct VertexPTN {
+    glm::vec3 pos;
+    glm::vec2 texCoord;
+    glm::vec3 normal;
 };
 
 struct UniformBufferObject {
     alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 view;
+    alignas(16) glm::mat4 proj;
+};
+
+struct UniformBufferObjectMP {
+    alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 proj;
 };

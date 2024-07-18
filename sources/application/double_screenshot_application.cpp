@@ -4,53 +4,98 @@
 #include <array>
 
 DoubleScreenshotApplication::DoubleScreenshotApplication()
-	: ApplicationBase() {
-    _callbackManager = std::make_unique<FPSCallbackManager>(_window);
-    _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), (float)1920 / (float)1080, 0.01f, 10.0f);
+    : ApplicationBase() {
+
+    createDescriptorSets();
+    createPresentResources();
+    createOffscreenResources();
+
+    _vertexData = TinyOBJLoaderVertex::extract<VertexPT, uint16_t>(MODELS_PATH "viking_room.obj");
+    _vertexBuffer = std::make_unique<VertexBuffer<VertexPT>>(_logicalDevice, _vertexData.vertices);
+    _indexBuffer = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, _vertexData.indices);
+
+    _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
+    _offscreenCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
+
+    _screenshot = std::make_unique<Screenshot>(_logicalDevice);
+    _screenshot->addImageToObserved(_framebuffer->getColorTextures()[0].getImage(), "hig_res_screenshot.ppm");
+    _screenshot->addImageToObserved(_lowResTextureColorAttachment->getImage(), "low_res_screenshot.ppm");
+
+    _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 10.0f);
+
+    _callbackManager = std::make_unique<FPSCallbackManager>(std::dynamic_pointer_cast<WindowGLFW>(_window));
     _callbackManager->attach(_camera.get());
+    _callbackManager->attach(_screenshot.get());
+
+    createSyncObjects();
+}
+
+void DoubleScreenshotApplication::createDescriptorSets() {
+    _texture = std::make_shared<Texture2DImage>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
+
+    // Object
+    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> uniformBuffers(MAX_FRAMES_IN_FLIGHT);
+    _mvpUnuiformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
+    _textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        _mvpUnuiformBuffers.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice, VK_SHADER_STAGE_VERTEX_BIT));
+
+        uniformBuffers[i] = { _mvpUnuiformBuffers[i], _textureUniform };
+    }
+
+    _descriptorSets = std::make_unique<DescriptorSets>(_logicalDevice, uniformBuffers);
+}
+
+void DoubleScreenshotApplication::createPresentResources() {
+    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+    VkFormat swapchainImageFormat = _swapchain->getVkFormat();
 
     // There must be at least one "Present" attachment (Color or Resolve).
     // There must be the same number of ColorAttachments and ColorResolveAttachments.
     // Every attachment must have the same number of MSAA samples.
-    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
-    auto swapchainImageFormat = _swapchain->getVkFormat();
-    std::vector<std::unique_ptr<Attachment>> attachments;
-    //attachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
-    attachments.emplace_back(std::make_unique<ColorPresentAttachment>(swapchainImageFormat));
-    attachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-    attachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
+    std::vector<std::unique_ptr<Attachment>> presentAttachments;
+    presentAttachments.reserve(5);
+    presentAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
+    presentAttachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
+    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+    presentAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
-    _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(attachments));
-
-    _texture = std::make_shared<Texture2DSampler>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
-    
-    _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
-    auto textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture);
-
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::vector<std::shared_ptr<UniformBufferAbstraction>> ub;
-        ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice));
-        ub.emplace_back(textureUniform);
-
-        _uniformBuffers.emplace_back(std::move(ub));
-    }
-
-    _descriptorSets = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffers);
-
-    _graphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples);
-    
+    _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(presentAttachments));
     _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
-
-    _vertexData = _OBJLoader.extract<uint16_t>(MODELS_PATH "viking_room.obj");
-    _vertexBuffer = std::make_unique<VertexBuffer<Vertex>>(_logicalDevice, _vertexData.vertices);
-    _indexBuffer = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, _vertexData.indices);
-
-    _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
-
-    _screenshot = std::make_unique<Screenshot>(_logicalDevice);
-
-    createSyncObjects();
+    _graphicsPipeline = std::make_unique<GraphicsPipeline<VertexPT>>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
 }
+
+void DoubleScreenshotApplication::createOffscreenResources() {
+    VkSampleCountFlagBits lowResMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkFormat swapchainImageFormat = _swapchain->getVkFormat();
+    VkExtent2D extent = _swapchain->getExtent();
+    VkExtent2D lowResExtent = { extent.width / 4, extent.height / 4 };
+
+    std::vector<std::unique_ptr<Attachment>> offscreenAttachments;
+    // offscreenAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
+    offscreenAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, lowResMsaaSamples));
+    offscreenAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), lowResMsaaSamples));
+
+    _lowResRenderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(offscreenAttachments));
+
+    _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
+    _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
+
+    // auto lowResTextureColorResolveView = _lowResTextureColorResolveAttachment->getImage().view;
+    auto lowResTextureColorView = _lowResTextureColorAttachment->getImage().view;
+    auto lowResTextureDepthView = _lowResTextureDepthAttachment->getImage().view;
+    std::vector<std::vector<VkImageView>> lowResViews = {
+        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
+        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
+        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
+    };
+
+    _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
+    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline<VertexPT>>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), lowResMsaaSamples, "off.vert.spv", "off.frag.spv");
+}
+
 
 DoubleScreenshotApplication::~DoubleScreenshotApplication() {
     VkDevice device = _logicalDevice->getVkDevice();
@@ -96,7 +141,9 @@ void DoubleScreenshotApplication::draw() {
     vkResetFences(device, 1, &_inFlightFences[_currentFrame]);
 
     vkResetCommandBuffer(_commandBuffers[_currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+    vkResetCommandBuffer(_offscreenCommandBuffers[_currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
 
+    recordOffscreenCommandBuffer(_offscreenCommandBuffers[_currentFrame], _currentFrame);
     recordCommandBuffer(_commandBuffers[_currentFrame], imageIndex);
 
     VkSubmitInfo submitInfo{};
@@ -108,8 +155,9 @@ void DoubleScreenshotApplication::draw() {
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
 
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &_commandBuffers[_currentFrame];
+    std::array<VkCommandBuffer, 2> submitCommands = { _offscreenCommandBuffers[_currentFrame], _commandBuffers[_currentFrame] };
+    submitInfo.commandBufferCount = static_cast<uint32_t>(submitCommands.size());
+    submitInfo.pCommandBuffers = submitCommands.data();
 
     VkSemaphore signalSemaphores[] = { _renderFinishedSemaphores[_currentFrame] };
     submitInfo.signalSemaphoreCount = 1;
@@ -126,14 +174,6 @@ void DoubleScreenshotApplication::draw() {
     }
     else if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to present swap chain image!");
-    }
-
-    if (glfwGetKey(_window->getGlfwWindow(), GLFW_KEY_P) == GLFW_PRESS) {
-        // std::async(std::launch::async, &Screenshot::saveScreenshot, _screenshot.get(), "screenshot.ppm", imageIndex);
-        // _screenshot->saveImage("screenshot.ppm", _swapchain->getImages()[imageIndex]);
-        const auto& texture = _framebuffer->getColorTextures()[0];
-        _screenshot->saveImage("screenshot.ppm", texture.getImage());
-        //std::async(std::launch::async, &Screenshot::saveImage, _screenshot.get(), "screenshot.ppm", texture.getImage());
     }
 
     if (++_currentFrame == MAX_FRAMES_IN_FLIGHT)
@@ -188,11 +228,62 @@ void DoubleScreenshotApplication::updateUniformBuffer(uint32_t currentImage) {
 
     ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, -1.0f));
     ubo.view = _camera->getViewMatrix();
-
     ubo.proj = _camera->getProjectionMatrix();
-    ubo.proj[1][1] = -ubo.proj[1][1];
 
-    _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
+    _mvpUnuiformBuffers[currentImage]->updateUniformBuffer(&ubo);
+}
+
+void DoubleScreenshotApplication::recordOffscreenCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+        throw std::runtime_error("failed to begin recording command buffer!");
+    }
+
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = _lowResRenderPass->getVkRenderPass();
+    renderPassInfo.framebuffer = _lowResFramebuffer->getVkFramebuffers()[imageIndex];
+    renderPassInfo.renderArea.offset = { 0, 0 };
+    VkExtent2D extent = { _lowResTextureColorAttachment->getImage().extent.width, _lowResTextureColorAttachment->getImage().extent.height };
+    renderPassInfo.renderArea.extent = extent;
+
+    const auto& clearValues = _lowResRenderPass->getClearValues();
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _lowResGraphicsPipeline->getVkPipeline());
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float)extent.width;
+    viewport.height = (float)extent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = extent;
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    VkBuffer vertexBuffers[] = { _vertexBuffer->getVkBuffer() };
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+    vkCmdBindIndexBuffer(commandBuffer, _indexBuffer->getVkBuffer(), 0, _indexBuffer->getIndexType());
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _lowResGraphicsPipeline->getVkPipelineLayout(), 0, 1, &_descriptorSets->getVkDescriptorSet(_currentFrame), 0, nullptr);
+
+    vkCmdDrawIndexed(commandBuffer, _indexBuffer->getIndexCount(), 1, 0, 0, 0);
+
+    vkCmdEndRenderPass(commandBuffer);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to record command buffer!");
+    }
 }
 
 void DoubleScreenshotApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -250,7 +341,7 @@ void DoubleScreenshotApplication::recordCommandBuffer(VkCommandBuffer commandBuf
 }
 
 void DoubleScreenshotApplication::recreateSwapChain() {
-    Extent extent{};
+    VkExtent2D extent{};
     while (extent.width == 0 || extent.height == 0) {
         extent = _window->getFramebufferSize();
         glfwWaitEvents();

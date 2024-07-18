@@ -5,13 +5,13 @@
 // TODO needs to be moved to .h
 
 template<typename IndexType>
-VertexData<Vertex, IndexType> TinyGLTFLoaderVertex<IndexType>::extract(const std::string& filePath) {
+VertexData<VertexPT, IndexType> TinyGLTFLoaderVertex<IndexType>::extract(const std::string& filePath) {
     tinygltf::Model model;
 
     std::string error;
     std::string warning;
 
-    std::vector<Vertex> vertices;
+    std::vector<VertexPT> vertices;
 
     bool ret = _loader.LoadASCIIFromFile(&model, &error, &warning, filePath);
     // Use loader.LoadBinaryFromFile(&model, &err, &warn, filename); for .glb files

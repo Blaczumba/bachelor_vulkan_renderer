@@ -1,7 +1,8 @@
 #include <application/double_screenshot_application.h>
+#include <application/offscreen_rendering_application.h>
 
 int main() {
-    DoubleScreenshotApplication& app = DoubleScreenshotApplication::getInstance();
+    OffscreenRendering& app = OffscreenRendering::getInstance();
 
     try {
         app.run();

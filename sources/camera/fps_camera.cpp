@@ -1,42 +1,40 @@
 #include "fps_camera.h"
 
+#include <glm/glm/gtc/constants.hpp>
+
 FPSCamera::FPSCamera(float fovyRadians, float aspectRatio, float zNear, float zFar)
     : _fovy(fovyRadians), _aspectRatio(aspectRatio), _zNear(zNear), _zFar(zFar) {
     _projectionMatrix = glm::perspective(fovyRadians, aspectRatio, zNear, zFar);
+    _projectionMatrix[1][1] = -_projectionMatrix[1][1];
     rotate(_yaw, _pitch);
 }
 
-//void FPSCamera::setCallbackMmanager(CallbackManager& cbManager) {
-//    cbManager.attach(this);
-//}
-
-void FPSCamera::updateKeyboard(const KeyboardData& cbData) {
-    switch (cbData.key) {
-    case GLFW_KEY_W:
-        move(cbData.deltaTime * _front);
-        break;
-    case GLFW_KEY_S:
-        move(-cbData.deltaTime * _front);
-        break;
-    case GLFW_KEY_A:
-        move(-cbData.deltaTime * _right);
-        break;
-    case GLFW_KEY_D:
-        move(cbData.deltaTime * _right);
-        break;
+void FPSCamera::updateInput(const CallbackData& cbData) {
+    if (cbData.keyboardAction) {
+        for (const auto direction : cbData.keys) {
+            switch (direction) {
+            case Keyboard::Key::W :
+                move(cbData.deltaTime * _front);
+                break;
+            case Keyboard::Key::S :
+                move(-cbData.deltaTime * _front);
+                break;
+            case Keyboard::Key::A :
+                move(-cbData.deltaTime * _right);
+                break;
+            case Keyboard::Key::D :
+                move(cbData.deltaTime * _right);
+                break;
+            }
+        }
     }
-}
 
-void FPSCamera::updateMouse(const MouseData& cbData) {
-    _yaw += cbData.xoffset * _mouseSensitivity;
-    _pitch += cbData.yoffset * _mouseSensitivity;
-
-    if (_pitch > 89.0f)
-        _pitch = 89.0f;
-    if (_pitch < -89.0f)
-        _pitch = -89.0f;
-
-    rotate(_yaw, _pitch);
+    if (cbData.mouseAction) {
+        _yaw += cbData.xoffset * cbData.deltaTime * _mouseSensitivity;
+        _pitch += cbData.yoffset * cbData.deltaTime * _mouseSensitivity;
+        _pitch = std::fminf(_pitch, glm::half_pi<float>() - glm::epsilon<float>()); // constrain pitch
+        rotate(_yaw, _pitch);
+    }
 }
 
 glm::mat4 FPSCamera::getViewMatrix() const {
@@ -50,21 +48,25 @@ const glm::mat4& FPSCamera::getProjectionMatrix() const {
 void FPSCamera::setAspectRatio(float aspectRatio) {
     _aspectRatio = aspectRatio;
     _projectionMatrix = glm::perspective(_fovy, _aspectRatio, _zNear, _zFar);
+    _projectionMatrix[1][1] = -_projectionMatrix[1][1];
 }
 
 void FPSCamera::setFovy(float fovyRadians) {
     _fovy = fovyRadians;
     _projectionMatrix = glm::perspective(_fovy, _aspectRatio, _zNear, _zFar);
+    _projectionMatrix[1][1] = -_projectionMatrix[1][1];
 }
 
 void FPSCamera::setZNear(float zNear) {
     _zNear = zNear;
     _projectionMatrix = glm::perspective(_fovy, _aspectRatio, _zNear, _zFar);
+    _projectionMatrix[1][1] = -_projectionMatrix[1][1];
 }
 
 void FPSCamera::setZFar(float zFar) {
     _zFar = zFar;
     _projectionMatrix = glm::perspective(_fovy, _aspectRatio, _zNear, _zFar);
+    _projectionMatrix[1][1] = -_projectionMatrix[1][1];
 }
 
 void FPSCamera::move(glm::vec3 direction) {

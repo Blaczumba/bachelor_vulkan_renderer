@@ -1,10 +1,12 @@
 #include "application_base.h"
 
-ApplicationBase::ApplicationBase() {
-	glfwInit();
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+#include "window/window/window_glfw.h"
 
-	_window = std::make_shared<Window>("Bejzak Engine", 1920, 1080);
+ApplicationBase::ApplicationBase() {
+	// glfwInit();
+	// glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
+	_window = std::make_shared<WindowGLFW>("Bejzak Engine", 1920, 1080);
 	_instance = std::make_shared<Instance>("Bejzak Engine");
 
 #ifdef VALIDATION_LAYERS_ENABLED
@@ -18,5 +20,5 @@ ApplicationBase::ApplicationBase() {
 }
 
 ApplicationBase::~ApplicationBase() {
-	glfwTerminate();
+	// glfwTerminate();
 }

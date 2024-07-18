@@ -6,6 +6,8 @@
 #include <tinyobjloader/tiny_obj_loader.h>
 
 #include <unordered_map>
+#include <algorithm>
+#include <iterator>
 #include <stdexcept>
 
 struct Indices {
@@ -29,57 +31,22 @@ struct Indices {
 };
 
 
-class TinyOBJLoaderVertex : public ModelLoader<Vertex> {
-    template<typename IndexType>
-    VertexData<Vertex, IndexType> templatedExtractor(const std::string&);
+class TinyOBJLoaderVertex {
+    template<typename VertexType>
+    static VertexData<VertexType, uint32_t> templatedExtractor(const std::string&);
 public:
 	TinyOBJLoaderVertex() = default;
-    template<typename IndexType>
-	VertexData<Vertex, IndexType> extract(const std::string& filePath);
+
+    template<typename VertexType, typename IndexType>
+	static VertexData<VertexType, IndexType> extract(const std::string& filePath);
 };
 
-template<typename IndexType> 
-VertexData<Vertex, IndexType> TinyOBJLoaderVertex::templatedExtractor(const std::string& filePath) {
-    tinyobj::attrib_t attrib;
-    std::vector<tinyobj::shape_t> shapes;
-    std::vector<tinyobj::material_t> materials;
-    std::string warning, error;
-
-    std::vector<Vertex> vertices;
-    std::vector<IndexType> indices;
-
-    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warning, &error, filePath.data())) {
-        throw std::runtime_error(warning + error);
-    }
-
-    std::unordered_map<Indices, int, Indices::Hash> mp;
-    for (const auto& shape : shapes) {
-        for (const auto& index : shape.mesh.indices) {
-            Indices idx = Indices{ index.vertex_index, index.normal_index, index.texcoord_index };
-            if (auto ptr = mp.find(idx); ptr != mp.cend()) {
-                indices.push_back(ptr->second);
-            }
-            else {
-                mp.insert({ idx, static_cast<IndexType>(vertices.size()) });
-
-                Vertex vertex{};
-                vertex.pos = {
-                    attrib.vertices[3 * index.vertex_index + 0],
-                    attrib.vertices[3 * index.vertex_index + 1],
-                    attrib.vertices[3 * index.vertex_index + 2]
-                };
-
-                vertex.texCoord = {
-                    attrib.texcoords[2 * index.texcoord_index + 0],
-                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-                };
-
-                vertex.color = { 1.0f, 1.0f, 1.0f };
-
-                indices.push_back(static_cast<IndexType>(vertices.size()));
-                vertices.push_back(vertex);
-            }
-        }
-    }
-    return { vertices, indices };
+template<typename VertexType, typename IndexType>
+VertexData<VertexType, IndexType> TinyOBJLoaderVertex::extract(const std::string& filePath) {
+    VertexData<VertexType, uint32_t> data =  templatedExtractor<VertexType>(filePath);
+    VertexData<VertexType, IndexType> output;
+    output.vertices = std::move(data.vertices);
+    std::transform(data.indices.cbegin(), data.indices.cend(), std::back_inserter(output.indices), [](uint32_t index) { return static_cast<IndexType>(index); });
+    return output;
 }
+

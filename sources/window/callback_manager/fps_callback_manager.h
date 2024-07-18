@@ -7,10 +7,9 @@
 #include <iostream>
 #include <functional>
 
-
 class FPSCallbackManager : public CallbackManager {
 public:
-    FPSCallbackManager(std::shared_ptr<Window> window);
+    FPSCallbackManager(std::shared_ptr<WindowGLFW> window);
 
     void pollEvents() override;
 
@@ -18,6 +17,7 @@ public:
     static float lastX;
     static float lastY;
 private:
+    static CallbackData _data;
 
     void processKeyboard();
 

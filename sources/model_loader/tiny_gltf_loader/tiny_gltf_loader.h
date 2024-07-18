@@ -6,8 +6,8 @@
 #include <tinygltf/tiny_gltf.h>
 
 template<typename IndexType>
-class TinyGLTFLoaderVertex : public ModelLoader<Vertex> {
+class TinyGLTFLoaderVertex : public ModelLoader<VertexPT> {
 	tinygltf::TinyGLTF _loader;
 public:
-	VertexData<Vertex, IndexType> extract(const std::string&) override;
+	VertexData<VertexPT, IndexType> extract(const std::string&) override;
 };
