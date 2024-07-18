@@ -107,7 +107,7 @@ void OffscreenRendering::createOffscreenResources() {
 
     _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
     _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline<VertexPT>>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), lowResMsaaSamples, "off.vert.spv", "off.frag.spv");
-    //_lowResGraphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(_logicalDevice, _lowResRenderPass, _descriptorSetsSkybox->getVkDescriptorSetLayout(), lowResMsaaSamples, "skybox.vert.spv", "skybox.frag.spv");
+    _lowResGraphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _lowResRenderPass, _descriptorSetsSkybox->getVkDescriptorSetLayout(), lowResMsaaSamples, "skybox_offscreen.vert.spv", "skybox_offscreen.frag.spv", false);
 }
 
 
@@ -268,7 +268,6 @@ void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuf
     renderPassInfo.pClearValues = clearValues.data();
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _lowResGraphicsPipeline->getVkPipeline());
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -278,13 +277,18 @@ void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuf
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
     VkRect2D scissor{};
     scissor.offset = { 0, 0 };
     scissor.extent = extent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    VkBuffer vertexBuffers[] = { _vertexBuffer->getVkBuffer() };
     VkDeviceSize offsets[] = { 0 };
+
+    // OBJECT
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _lowResGraphicsPipeline->getVkPipeline());
+
+    VkBuffer vertexBuffers[] = { _vertexBuffer->getVkBuffer() };
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
     vkCmdBindIndexBuffer(commandBuffer, _indexBuffer->getVkBuffer(), 0, _indexBuffer->getIndexType());
@@ -292,6 +296,19 @@ void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuf
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _lowResGraphicsPipeline->getVkPipelineLayout(), 0, 1, &_descriptorSets->getVkDescriptorSet(_currentFrame), 0, nullptr);
 
     vkCmdDrawIndexed(commandBuffer, _indexBuffer->getIndexCount(), 1, 0, 0, 0);
+
+    // SKYBOX
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _lowResGraphicsPipelineSkybox->getVkPipeline());
+
+    VkBuffer vertexBuffersCube[] = { _vertexBufferCube->getVkBuffer() };
+
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersCube, offsets);
+
+    vkCmdBindIndexBuffer(commandBuffer, _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _lowResGraphicsPipelineSkybox->getVkPipelineLayout(), 0, 1, &_descriptorSetsSkybox->getVkDescriptorSet(_currentFrame), 0, nullptr);
+
+    vkCmdDrawIndexed(commandBuffer, _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 
