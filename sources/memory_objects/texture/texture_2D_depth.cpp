@@ -2,6 +2,7 @@
 #include "memory_objects/image.h"
 #include "command_buffer/command_buffer.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 Texture2DDepth::Texture2DDepth(std::shared_ptr<LogicalDevice> logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)

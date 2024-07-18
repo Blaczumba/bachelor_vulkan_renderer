@@ -5,6 +5,7 @@
 #include <ktxvulkan.h>
 
 #include <stdexcept>
+#include <cstring>
 
 TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std::string filePath, VkFormat format, float samplerAnisotropy)
 	: Texture2DSampler(logicalDevice, samplerAnisotropy), _filePath(filePath) {

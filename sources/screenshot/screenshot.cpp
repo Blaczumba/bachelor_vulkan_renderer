@@ -3,9 +3,9 @@
 #include "command_buffer/command_buffer.h"
 #include "memory_objects/image.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <format>
 
 Screenshot::Screenshot(std::shared_ptr<LogicalDevice> logicalDevice)
 	: _logicalDevice(logicalDevice), _counter(0), _shouldStop(false) {
