@@ -22,7 +22,7 @@ DoubleScreenshotApplication::DoubleScreenshotApplication()
 
     _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(attachments));
 
-    _texture = std::make_shared<Texture2DSampler>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
+    // _texture = std::make_shared<Texture2DSampler>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
     
     _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
     auto textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture, VK_SHADER_STAGE_FRAGMENT_BIT);

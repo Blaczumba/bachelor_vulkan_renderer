@@ -7,7 +7,7 @@
 #include <stdexcept>
 
 TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std::string filePath, VkFormat format, float samplerAnisotropy)
-	: Texture2D(logicalDevice), _filePath(filePath), _samplerAnisotropy(samplerAnisotropy) {
+	: Texture2DSampler(logicalDevice, samplerAnisotropy), _filePath(filePath) {
 	VkDevice device = _logicalDevice->getVkDevice();
 
 	ktxResult result;
@@ -108,15 +108,6 @@ TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std
 	if (vkCreateSampler(device, &samplerInfo, nullptr, &_sampler) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
-}
-
-TextureCubemap::~TextureCubemap() {
-	VkDevice device = _logicalDevice->getVkDevice();
-
-	vkDestroySampler(device, _sampler, nullptr);
-	vkDestroyImageView(device, _image.view, nullptr);
-	vkDestroyImage(device, _image.image, nullptr);
-	vkFreeMemory(device, _image.memory, nullptr);
 }
 
 void TextureCubemap::transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) {

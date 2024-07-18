@@ -16,7 +16,7 @@
 #include <window/callback_manager/fps_callback_manager.h>
 #include <memory_objects/texture/texture_2D_depth.h>
 #include <memory_objects/texture/texture_2D_color.h>
-#include <memory_objects/texture/texture_2D_sampler.h>
+#include <memory_objects/texture/texture_2D_image.h>
 #include <memory_objects/texture/texture_cubemap.h>
 #include <screenshot/screenshot.h>
 
@@ -41,7 +41,7 @@ class OffscreenRendering : public ApplicationBase {
     std::shared_ptr<UniformBufferTexture> _textureUniform;
     std::shared_ptr<UniformBufferTexture> _skyboxTextureUniform;
 
-    std::shared_ptr<Texture2DSampler> _texture;
+    std::shared_ptr<Texture2DImage> _texture;
     std::shared_ptr<TextureCubemap> _textureCubemap;
 
     std::unique_ptr<DescriptorSets> _descriptorSets;

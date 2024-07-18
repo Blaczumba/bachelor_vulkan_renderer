@@ -48,7 +48,7 @@ OffscreenRendering::OffscreenRendering()
 }
 
 void OffscreenRendering::createDescriptorSets() {
-    _texture = std::make_shared<Texture2DSampler>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
+    _texture = std::make_shared<Texture2DImage>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
     _textureCubemap = std::make_shared<TextureCubemap>(_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, _physicalDevice->getMaxSamplerAnisotropy());
 
     // Object
@@ -66,13 +66,13 @@ void OffscreenRendering::createDescriptorSets() {
 
     // Skybox
     std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> uniformBuffersSkybox(MAX_FRAMES_IN_FLIGHT);
-    /*_skyboxTextureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _textureCubemap, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _skyboxTextureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _textureCubemap, VK_SHADER_STAGE_FRAGMENT_BIT);
     
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         uniformBuffersSkybox[i] = { _mvpUnuiformBuffers[i], _skyboxTextureUniform };
     }
 
-    _descriptorSetsSkybox = std::make_unique<DescriptorSets>(_logicalDevice, uniformBuffersSkybox);*/
+    _descriptorSetsSkybox = std::make_unique<DescriptorSets>(_logicalDevice, uniformBuffersSkybox);
 }
 
 void OffscreenRendering::createPresentResources() {
