@@ -77,7 +77,7 @@ void OffscreenRendering::createPresentResources() {
     _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(presentAttachments));
     _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
     _graphicsPipeline = std::make_unique<GraphicsPipeline<VertexPT>>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
-    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _renderPass, _descriptorSetsSkybox->getVkDescriptorSetLayout(), msaaSamples, "skybox.vert.spv", "skybox.frag.spv");
+    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _renderPass, _descriptorSetsSkybox->getVkDescriptorSetLayout(), msaaSamples, "skybox.vert.spv", "skybox.frag.spv", false);
 }
 
 void OffscreenRendering::createOffscreenResources() {
@@ -320,7 +320,6 @@ void OffscreenRendering::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     renderPassInfo.pClearValues = clearValues.data();
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline->getVkPipeline());
 
     const VkExtent2D& swapchainExtent = _swapchain->getExtent();
 
@@ -337,8 +336,12 @@ void OffscreenRendering::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     scissor.extent = swapchainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+    // OBJECT
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline->getVkPipeline());
+
     VkBuffer vertexBuffers[] = { _vertexBuffer->getVkBuffer() };
     VkDeviceSize offsets[] = { 0 };
+
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
     vkCmdBindIndexBuffer(commandBuffer, _indexBuffer->getVkBuffer(), 0, _indexBuffer->getIndexType());
@@ -346,6 +349,19 @@ void OffscreenRendering::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline->getVkPipelineLayout(), 0, 1, &_descriptorSets->getVkDescriptorSet(_currentFrame), 0, nullptr);
 
     vkCmdDrawIndexed(commandBuffer, _indexBuffer->getIndexCount(), 1, 0, 0, 0);
+
+    // SKYBOX
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipelineSkybox->getVkPipeline());
+
+    VkBuffer vertexBuffersCube[] = { _vertexBufferCube->getVkBuffer() };
+    
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersCube, offsets);
+
+    vkCmdBindIndexBuffer(commandBuffer, _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipelineSkybox->getVkPipelineLayout(), 0, 1, &_descriptorSetsSkybox->getVkDescriptorSet(_currentFrame), 0, nullptr);
+
+    vkCmdDrawIndexed(commandBuffer, _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 

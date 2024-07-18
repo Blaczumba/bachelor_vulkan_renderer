@@ -44,7 +44,7 @@ template<>
 VkVertexInputBindingDescription getBindingDescription<VertexP>() {
     VkVertexInputBindingDescription bindingDescription{};
     bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(VertexPT);
+    bindingDescription.stride = sizeof(VertexP);
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
     return bindingDescription;

@@ -13,12 +13,12 @@
 template<typename VertexType>
 class GraphicsPipeline : public Pipeline {
 public:
-	GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader);
+	GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace = true);
 	~GraphicsPipeline();
 };
 
 template<typename VertexType>
-GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader)
+GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace)
     : Pipeline(logicalDevice) {
     auto vertShaderCode = readFile(SHADERS_PATH + vertexShader);
     auto fragShaderCode = readFile(SHADERS_PATH + fragmentShader);
@@ -69,7 +69,7 @@ GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> lo
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.cullMode = (backFace) ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_FRONT_BIT;
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -99,7 +99,7 @@ GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> lo
 
     std::vector<VkDynamicState> dynamicStates = {
         VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR
+        VK_DYNAMIC_STATE_SCISSOR,
     };
     VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;

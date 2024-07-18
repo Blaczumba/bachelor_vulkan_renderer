@@ -106,6 +106,9 @@ void LogicalDevice::createImage(uint32_t width, uint32_t height, uint32_t mipLev
     imageInfo.samples       = numSamples;
     imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
 
+    if (layerCount == 6)
+        imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
     if (vkCreateImage(_device, &imageInfo, nullptr, &outImage) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
     }
@@ -131,12 +134,12 @@ VkImageView LogicalDevice::createImageView(VkImage image, VkFormat format, VkIma
     range.baseMipLevel      = 0;
     range.levelCount        = mipLevels;
     range.baseArrayLayer    = 0;
-    range.layerCount        = 1;
+    range.layerCount        = layerCount;
 
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType              = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image              = image;
-    viewInfo.viewType           = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.viewType           = (layerCount == 6) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format             = format;
     viewInfo.subresourceRange   = range;
 
