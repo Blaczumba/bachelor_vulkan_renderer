@@ -10,12 +10,8 @@ layout (binding = 0) uniform UniformBufferObject {
 
 layout (location = 0) out vec3 outUVW;
 
-void main() 
-{
-	// Convert cubemap coordinates into Vulkan coordinate space
+void main() {
 	outUVW = inPos;
-	// Remove translation from view matrix
 	vec4 outPos = ubo.projection * mat4(mat3(ubo.view)) * vec4(inPos.xyz, 1.0);
 	gl_Position = outPos.xyww;
-	gl_Position.z -= 0.000001;
 }
