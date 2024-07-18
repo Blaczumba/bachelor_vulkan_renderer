@@ -5,31 +5,18 @@
 
 OffscreenRendering::OffscreenRendering()
     : ApplicationBase() {
-    // There must be at least one "Present" attachment (Color or Resolve).
-    // There must be the same number of ColorAttachments and ColorResolveAttachments.
-    // Every attachment must have the same number of MSAA samples.
 
-    
     createDescriptorSets();
     createPresentResources();
     createOffscreenResources();
     
-    //for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    //    // TODO
-    //    std::vector<std::shared_ptr<UniformBufferAbstraction>> ub;
-    //    ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice, VK_SHADER_STAGE_VERTEX_BIT));
-    //    ub.emplace_back(textureUniform);
-
-    //    _uniformBuffersSkybox.emplace_back(std::move(ub));
-    //}
-    //
-    //_descriptorSetsSkybox = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffersSkybox);
-
-    // _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSetsSkybox->getVkDescriptorSetLayout(), msaaSamples, "skybox.vert.spv", "skybox.frag.spv");
-
     _vertexData = _OBJLoader.extract<uint16_t>(MODELS_PATH "viking_room.obj");
-    _vertexBuffer = std::make_unique<VertexBuffer<Vertex>>(_logicalDevice, _vertexData.vertices);
+    _vertexBuffer = std::make_unique<VertexBuffer<VertexPT>>(_logicalDevice, _vertexData.vertices);
     _indexBuffer = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, _vertexData.indices);
+
+    //_vertexDataCube = _OBJLoader.extract<uint16_t>(MODELS_PATH "cube.obj");
+    //_vertexBufferCube = std::make_unique<VertexBuffer<VertexPT>>(_logicalDevice, _vertexData.vertices);
+    //_indexBufferCube = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, _vertexData.indices);
 
     _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     _offscreenCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
@@ -89,7 +76,8 @@ void OffscreenRendering::createPresentResources() {
 
     _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(presentAttachments));
     _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
-    _graphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
+    _graphicsPipeline = std::make_unique<GraphicsPipeline<VertexPT>>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
+    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _renderPass, _descriptorSetsSkybox->getVkDescriptorSetLayout(), msaaSamples, "skybox.vert.spv", "skybox.frag.spv");
 }
 
 void OffscreenRendering::createOffscreenResources() {
@@ -118,12 +106,10 @@ void OffscreenRendering::createOffscreenResources() {
     };
 
     _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
-    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), lowResMsaaSamples, "off.vert.spv", "off.frag.spv");
+    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline<VertexPT>>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), lowResMsaaSamples, "off.vert.spv", "off.frag.spv");
+    //_lowResGraphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(_logicalDevice, _lowResRenderPass, _descriptorSetsSkybox->getVkDescriptorSetLayout(), lowResMsaaSamples, "skybox.vert.spv", "skybox.frag.spv");
 }
 
-void OffscreenRendering::createSkyboxResources() {
-
-}
 
 OffscreenRendering::~OffscreenRendering() {
     VkDevice device = _logicalDevice->getVkDevice();

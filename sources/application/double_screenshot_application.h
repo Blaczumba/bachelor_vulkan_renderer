@@ -16,18 +16,31 @@
 #include <window/callback_manager/fps_callback_manager.h>
 #include <memory_objects/texture/texture_2D_depth.h>
 #include <memory_objects/texture/texture_2D_color.h>
-#include <memory_objects/texture/texture_2D_sampler.h>
+#include <memory_objects/texture/texture_2D_image.h>
+#include <memory_objects/texture/texture_cubemap.h>
 #include <screenshot/screenshot.h>
 
 class DoubleScreenshotApplication : public ApplicationBase {
     std::shared_ptr<Renderpass> _renderPass;
     std::unique_ptr<Framebuffer> _framebuffer;
-    std::unique_ptr<VertexBuffer<Vertex>> _vertexBuffer;
-    std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
-    VertexData<Vertex, uint16_t> _vertexData;
-    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers;
     std::unique_ptr<Pipeline> _graphicsPipeline;
-    std::shared_ptr<Texture2DSampler> _texture;
+
+    std::shared_ptr<Renderpass> _lowResRenderPass;
+    std::unique_ptr<Framebuffer> _lowResFramebuffer;
+    // std::shared_ptr<Texture2DColor> _lowResTextureColorResolveAttachment;
+    std::shared_ptr<Texture2DColor> _lowResTextureColorAttachment;
+    std::shared_ptr<Texture2DDepth> _lowResTextureDepthAttachment;
+    std::unique_ptr<Pipeline> _lowResGraphicsPipeline;
+
+    std::unique_ptr<VertexBuffer<VertexPT>> _vertexBuffer;
+    std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
+    VertexData<VertexPT, uint16_t> _vertexData;
+
+    std::vector<std::shared_ptr<UniformBuffer<UniformBufferObject>>> _mvpUnuiformBuffers;
+    std::shared_ptr<UniformBufferTexture> _textureUniform;
+
+    std::shared_ptr<Texture2DImage> _texture;
+
     std::unique_ptr<DescriptorSets> _descriptorSets;
     std::unique_ptr<Screenshot> _screenshot;
 
@@ -36,15 +49,16 @@ class DoubleScreenshotApplication : public ApplicationBase {
     std::unique_ptr<FPSCamera> _camera;
 
     std::vector<VkCommandBuffer> _commandBuffers;
+    std::vector<VkCommandBuffer> _offscreenCommandBuffers;
 
     std::vector<VkSemaphore> _imageAvailableSemaphores;
     std::vector<VkSemaphore> _renderFinishedSemaphores;
     std::vector<VkFence> _inFlightFences;
 
-    uint32_t _currentFrame              = 0;
+    uint32_t _currentFrame = 0;
     const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
 
-	DoubleScreenshotApplication();
+    DoubleScreenshotApplication();
     ~DoubleScreenshotApplication();
 public:
     static DoubleScreenshotApplication& getInstance();
@@ -60,5 +74,10 @@ private:
     void createSyncObjects();
     void updateUniformBuffer(uint32_t currentImage);
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    void recordOffscreenCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void recreateSwapChain();
+
+    void createDescriptorSets();
+    void createOffscreenResources();
+    void createPresentResources();
 };

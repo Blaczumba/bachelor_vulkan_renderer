@@ -9,9 +9,19 @@ struct Extent {
 	uint32_t height;
 };
 
-struct Vertex {
+struct VertexP {
+    glm::vec3 pos;
+};
+
+struct VertexPT {
     glm::vec3 pos;
     glm::vec2 texCoord;
+};
+
+struct VertexPTN {
+    glm::vec3 pos;
+    glm::vec2 texCoord;
+    glm::vec3 normal;
 };
 
 struct UniformBufferObject {

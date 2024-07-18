@@ -29,23 +29,23 @@ struct Indices {
 };
 
 
-class TinyOBJLoaderVertex : public ModelLoader<Vertex> {
+class TinyOBJLoaderVertex : public ModelLoader<VertexPT> {
     template<typename IndexType>
-    VertexData<Vertex, IndexType> templatedExtractor(const std::string&);
+    VertexData<VertexPT, IndexType> templatedExtractor(const std::string&);
 public:
 	TinyOBJLoaderVertex() = default;
     template<typename IndexType>
-	VertexData<Vertex, IndexType> extract(const std::string& filePath);
+	VertexData<VertexPT, IndexType> extract(const std::string& filePath);
 };
 
 template<typename IndexType> 
-VertexData<Vertex, IndexType> TinyOBJLoaderVertex::templatedExtractor(const std::string& filePath) {
+VertexData<VertexPT, IndexType> TinyOBJLoaderVertex::templatedExtractor(const std::string& filePath) {
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warning, error;
 
-    std::vector<Vertex> vertices;
+    std::vector<VertexPT> vertices;
     std::vector<IndexType> indices;
 
     if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warning, &error, filePath.data())) {
@@ -62,7 +62,7 @@ VertexData<Vertex, IndexType> TinyOBJLoaderVertex::templatedExtractor(const std:
             else {
                 mp.insert({ idx, static_cast<IndexType>(vertices.size()) });
 
-                Vertex vertex{};
+                VertexPT vertex{};
                 vertex.pos = {
                     attrib.vertices[3 * index.vertex_index + 0],
                     attrib.vertices[3 * index.vertex_index + 1],

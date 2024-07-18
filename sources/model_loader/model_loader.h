@@ -12,5 +12,5 @@ struct VertexData {
 template<typename VertexType>
 class ModelLoader {
 public:
-	virtual ~ModelLoader() = default;
+	~ModelLoader() = default;
 };

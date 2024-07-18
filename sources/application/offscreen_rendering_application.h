@@ -32,10 +32,15 @@ class OffscreenRendering : public ApplicationBase {
     std::shared_ptr<Texture2DColor> _lowResTextureColorAttachment;
     std::shared_ptr<Texture2DDepth> _lowResTextureDepthAttachment;
     std::unique_ptr<Pipeline> _lowResGraphicsPipeline;
+    std::unique_ptr<Pipeline> _lowResGraphicsPipelineSkybox;
 
-    std::unique_ptr<VertexBuffer<Vertex>> _vertexBuffer;
+    std::unique_ptr<VertexBuffer<VertexPT>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
-    VertexData<Vertex, uint16_t> _vertexData;
+    VertexData<VertexPT, uint16_t> _vertexData;
+
+    std::unique_ptr<VertexBuffer<VertexP>> _vertexBufferCube;
+    std::unique_ptr<IndexBuffer<uint16_t>> _indexBufferCube;
+    VertexData<VertexP, uint16_t> _vertexDataCube;
 
     std::vector<std::shared_ptr<UniformBuffer<UniformBufferObject>>> _mvpUnuiformBuffers;
     std::shared_ptr<UniformBufferTexture> _textureUniform;
@@ -61,8 +66,6 @@ class OffscreenRendering : public ApplicationBase {
 
     uint32_t _currentFrame              = 0;
     const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
-
-    uint32_t _lastKey                   = GLFW_KEY_O;
 
     OffscreenRendering();
     ~OffscreenRendering();
