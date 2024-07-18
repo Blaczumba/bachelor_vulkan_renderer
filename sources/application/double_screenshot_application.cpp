@@ -10,7 +10,7 @@ DoubleScreenshotApplication::DoubleScreenshotApplication()
     createPresentResources();
     createOffscreenResources();
 
-    _vertexData = _OBJLoader.extract<uint16_t>(MODELS_PATH "viking_room.obj");
+    _vertexData = TinyOBJLoaderVertex::extract<VertexPT, uint16_t>(MODELS_PATH "viking_room.obj");
     _vertexBuffer = std::make_unique<VertexBuffer<VertexPT>>(_logicalDevice, _vertexData.vertices);
     _indexBuffer = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, _vertexData.indices);
 

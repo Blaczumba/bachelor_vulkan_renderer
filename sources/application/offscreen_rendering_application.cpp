@@ -10,13 +10,13 @@ OffscreenRendering::OffscreenRendering()
     createPresentResources();
     createOffscreenResources();
     
-    _vertexData = _OBJLoader.extract<uint16_t>(MODELS_PATH "viking_room.obj");
+    _vertexData = TinyOBJLoaderVertex::extract<VertexPT, uint16_t>(MODELS_PATH "viking_room.obj");
     _vertexBuffer = std::make_unique<VertexBuffer<VertexPT>>(_logicalDevice, _vertexData.vertices);
     _indexBuffer = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, _vertexData.indices);
 
-    //_vertexDataCube = _OBJLoader.extract<uint16_t>(MODELS_PATH "cube.obj");
-    //_vertexBufferCube = std::make_unique<VertexBuffer<VertexPT>>(_logicalDevice, _vertexData.vertices);
-    //_indexBufferCube = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, _vertexData.indices);
+    _vertexDataCube = TinyOBJLoaderVertex::extract<VertexP, uint16_t>(MODELS_PATH "cube.obj");
+    _vertexBufferCube = std::make_unique<VertexBuffer<VertexP>>(_logicalDevice, _vertexDataCube.vertices);
+    _indexBufferCube = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, _vertexDataCube.indices);
 
     _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     _offscreenCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);

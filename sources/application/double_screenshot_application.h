@@ -44,7 +44,6 @@ class DoubleScreenshotApplication : public ApplicationBase {
     std::unique_ptr<DescriptorSets> _descriptorSets;
     std::unique_ptr<Screenshot> _screenshot;
 
-    TinyOBJLoaderVertex _OBJLoader;
     std::unique_ptr<CallbackManager> _callbackManager;
     std::unique_ptr<FPSCamera> _camera;
 
