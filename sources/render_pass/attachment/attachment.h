@@ -30,7 +30,7 @@ struct ColorAttachment : public ColorAttachmentBase {
     ColorAttachment(VkFormat format, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT) {
         description.format = format;
         description.samples = samples;
-        description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        description.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -46,7 +46,7 @@ struct ColorPresentAttachment : public ColorAttachmentBase {
     ColorPresentAttachment(VkFormat format) {
         description.format = format;
         description.samples = VK_SAMPLE_COUNT_1_BIT;
-        description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        description.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
