@@ -8,76 +8,24 @@ OffscreenRendering::OffscreenRendering()
     // There must be at least one "Present" attachment (Color or Resolve).
     // There must be the same number of ColorAttachments and ColorResolveAttachments.
     // Every attachment must have the same number of MSAA samples.
-    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
-    VkSampleCountFlagBits lowResMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
-    auto swapchainImageFormat = _swapchain->getVkFormat();
-    std::vector<std::unique_ptr<Attachment>> offscreenAttachments;
-    // offscreenAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
-    offscreenAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, lowResMsaaSamples));
-    offscreenAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), lowResMsaaSamples));
 
-    _lowResRenderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(offscreenAttachments));
-
-    std::vector<std::unique_ptr<Attachment>> presentAttachments;
-    presentAttachments.reserve(5);
-    presentAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
-    presentAttachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
-    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-    presentAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
-
-    _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(presentAttachments));
-
-    _texture = std::make_shared<Texture2DSampler>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
-    _textureCubemap = std::make_shared<TextureCubemap>(_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, _physicalDevice->getMaxSamplerAnisotropy());
-
-    _uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
-    auto textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture, VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::vector<std::shared_ptr<UniformBufferAbstraction>> ub;
-        ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice, VK_SHADER_STAGE_VERTEX_BIT));
-        ub.emplace_back(textureUniform);
-
-        _uniformBuffers.emplace_back(std::move(ub));
-    }
-
-    _descriptorSets = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffers);
     
-    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), lowResMsaaSamples, "off.vert.spv", "off.frag.spv");
-    _graphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
-
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        // TODO
-        std::vector<std::shared_ptr<UniformBufferAbstraction>> ub;
-        ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice, VK_SHADER_STAGE_VERTEX_BIT));
-        ub.emplace_back(textureUniform);
-
-        _uniformBuffersSkybox.emplace_back(std::move(ub));
-    }
+    createDescriptorSets();
+    createPresentResources();
+    createOffscreenResources();
     
-    _descriptorSetsSkybox = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffersSkybox);
+    //for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    //    // TODO
+    //    std::vector<std::shared_ptr<UniformBufferAbstraction>> ub;
+    //    ub.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice, VK_SHADER_STAGE_VERTEX_BIT));
+    //    ub.emplace_back(textureUniform);
 
-    //_graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSetsSkybox->getVkDescriptorSetLayout(), msaaSamples, "skybox.vert.spv", "skybox.frag.spv");
+    //    _uniformBuffersSkybox.emplace_back(std::move(ub));
+    //}
+    //
+    //_descriptorSetsSkybox = std::make_unique<DescriptorSets>(_logicalDevice, _uniformBuffersSkybox);
 
-    VkExtent2D extent = _swapchain->getExtent();
-    VkExtent2D lowResExtent = { extent.width / 4, extent.height / 4 };
-    // _lowResTextureColorResolveAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, VK_SAMPLE_COUNT_1_BIT, lowResExtent);
-    _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
-    _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
-
-    // auto lowResTextureColorResolveView = _lowResTextureColorResolveAttachment->getImage().view;
-    auto lowResTextureColorView = _lowResTextureColorAttachment->getImage().view;
-    auto lowResTextureDepthView = _lowResTextureDepthAttachment->getImage().view;
-    std::vector<std::vector<VkImageView>> lowResViews = {
-        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
-        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
-        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
-    };
-
-    _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
-
-    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+    // _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSetsSkybox->getVkDescriptorSetLayout(), msaaSamples, "skybox.vert.spv", "skybox.frag.spv");
 
     _vertexData = _OBJLoader.extract<uint16_t>(MODELS_PATH "viking_room.obj");
     _vertexBuffer = std::make_unique<VertexBuffer<Vertex>>(_logicalDevice, _vertexData.vertices);
@@ -97,6 +45,84 @@ OffscreenRendering::OffscreenRendering()
     _callbackManager->attach(_screenshot.get());
 
     createSyncObjects();
+}
+
+void OffscreenRendering::createDescriptorSets() {
+    _texture = std::make_shared<Texture2DSampler>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
+    _textureCubemap = std::make_shared<TextureCubemap>(_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, _physicalDevice->getMaxSamplerAnisotropy());
+
+    // Object
+    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> uniformBuffers(MAX_FRAMES_IN_FLIGHT);
+    _mvpUnuiformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
+    _textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        _mvpUnuiformBuffers.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice, VK_SHADER_STAGE_VERTEX_BIT));
+
+        uniformBuffers[i] = { _mvpUnuiformBuffers[i], _textureUniform };
+    }
+
+    _descriptorSets = std::make_unique<DescriptorSets>(_logicalDevice, uniformBuffers);
+
+    // Skybox
+    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> uniformBuffersSkybox(MAX_FRAMES_IN_FLIGHT);
+    /*_skyboxTextureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _textureCubemap, VK_SHADER_STAGE_FRAGMENT_BIT);
+    
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        uniformBuffersSkybox[i] = { _mvpUnuiformBuffers[i], _skyboxTextureUniform };
+    }
+
+    _descriptorSetsSkybox = std::make_unique<DescriptorSets>(_logicalDevice, uniformBuffersSkybox);*/
+}
+
+void OffscreenRendering::createPresentResources() {
+    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+    VkFormat swapchainImageFormat = _swapchain->getVkFormat();
+
+    std::vector<std::unique_ptr<Attachment>> presentAttachments;
+    presentAttachments.reserve(5);
+    presentAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
+    presentAttachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
+    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
+    presentAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
+
+    _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(presentAttachments));
+    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+    _graphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
+}
+
+void OffscreenRendering::createOffscreenResources() {
+    VkSampleCountFlagBits lowResMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkFormat swapchainImageFormat = _swapchain->getVkFormat();
+    VkExtent2D extent = _swapchain->getExtent();
+    VkExtent2D lowResExtent = { extent.width / 4, extent.height / 4 };
+
+    std::vector<std::unique_ptr<Attachment>> offscreenAttachments;
+    // offscreenAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
+    offscreenAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, lowResMsaaSamples));
+    offscreenAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), lowResMsaaSamples));
+
+    _lowResRenderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(offscreenAttachments));
+
+    _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
+    _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
+
+    // auto lowResTextureColorResolveView = _lowResTextureColorResolveAttachment->getImage().view;
+    auto lowResTextureColorView = _lowResTextureColorAttachment->getImage().view;
+    auto lowResTextureDepthView = _lowResTextureDepthAttachment->getImage().view;
+    std::vector<std::vector<VkImageView>> lowResViews = {
+        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
+        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
+        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
+    };
+
+    _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
+    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), lowResMsaaSamples, "off.vert.spv", "off.frag.spv");
+}
+
+void OffscreenRendering::createSkyboxResources() {
+
 }
 
 OffscreenRendering::~OffscreenRendering() {
@@ -232,7 +258,7 @@ void OffscreenRendering::updateUniformBuffer(uint32_t currentImage) {
     ubo.view = _camera->getViewMatrix();
     ubo.proj = _camera->getProjectionMatrix();
 
-    _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
+    _mvpUnuiformBuffers[currentImage]->updateUniformBuffer(&ubo);
 }
 
 void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {

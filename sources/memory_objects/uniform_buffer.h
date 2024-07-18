@@ -17,8 +17,6 @@ public:
 
 	virtual ~UniformBufferAbstraction() = default;
 
-	virtual void updateUniformBuffer(void* object) =0;
-
 	virtual VkDescriptorType getVkDescriptorType() const =0;
 };
 
@@ -32,8 +30,6 @@ public:
 		: UniformBufferAbstraction(stageFlags), _logicalDevice(logicalDevice), _texture(texture) {}
 	virtual ~UniformBufferTexture() = default;
 	const Texture2DSampler* getTexturePtr() const { return _texture.get(); }
-
-	void updateUniformBuffer(void* object) override {};
 
 	VkDescriptorType getVkDescriptorType() const override { 
 		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -52,8 +48,6 @@ public:
 	virtual ~UniformBufferStruct() = default;
 	virtual VkBuffer getVkBuffer() const { return _uniformBuffer; }
 
-	void updateUniformBuffer(void* object) =0;
-
 	virtual VkDescriptorType getVkDescriptorType() const =0;
 	virtual size_t getBufferSize() const =0;
 };
@@ -64,7 +58,7 @@ public:
 	UniformBuffer(std::shared_ptr<LogicalDevice> logicalDevice, VkShaderStageFlags stageFlags);
 	~UniformBuffer();
 
-	void updateUniformBuffer(void* object) override;
+	void updateUniformBuffer(UniformBufferType* object);
 
 	VkDescriptorType getVkDescriptorType() const override {
 		return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -95,6 +89,6 @@ UniformBuffer<UniformBufferType>::~UniformBuffer() {
 }
 
 template<typename UniformBufferType>
-void UniformBuffer<UniformBufferType>::updateUniformBuffer(void* object) {
+void UniformBuffer<UniformBufferType>::updateUniformBuffer(UniformBufferType* object) {
 	std::memcpy(_uniformBufferMapped, object, sizeof(UniformBufferType));
 }

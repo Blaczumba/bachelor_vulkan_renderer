@@ -190,7 +190,7 @@ void DoubleScreenshotApplication::updateUniformBuffer(uint32_t currentImage) {
     ubo.view = _camera->getViewMatrix();
     ubo.proj = _camera->getProjectionMatrix();
 
-    _uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
+    //_uniformBuffers[currentImage][0]->updateUniformBuffer(&ubo);
 }
 
 void DoubleScreenshotApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {

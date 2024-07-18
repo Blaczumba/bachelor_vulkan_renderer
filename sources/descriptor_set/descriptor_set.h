@@ -23,6 +23,7 @@ class DescriptorSets {
 	std::shared_ptr<DescriptorSetLayout> _layout;
 
 public:
+	// Maybe && move semantics?
 	DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>>& uniformBuffers);
 	~DescriptorSets();
 

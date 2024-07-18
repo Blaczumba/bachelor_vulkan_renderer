@@ -36,10 +36,14 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<VertexBuffer<Vertex>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
     VertexData<Vertex, uint16_t> _vertexData;
-    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffers;
-    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> _uniformBuffersSkybox;
+
+    std::vector<std::shared_ptr<UniformBuffer<UniformBufferObject>>> _mvpUnuiformBuffers;
+    std::shared_ptr<UniformBufferTexture> _textureUniform;
+    std::shared_ptr<UniformBufferTexture> _skyboxTextureUniform;
+
     std::shared_ptr<Texture2DSampler> _texture;
     std::shared_ptr<TextureCubemap> _textureCubemap;
+
     std::unique_ptr<DescriptorSets> _descriptorSets;
     std::unique_ptr<DescriptorSets> _descriptorSetsSkybox;
     std::unique_ptr<Screenshot> _screenshot;
@@ -78,4 +82,9 @@ private:
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void recordOffscreenCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void recreateSwapChain();
+
+    void createDescriptorSets();
+    void createOffscreenResources();
+    void createPresentResources();
+    void createSkyboxResources();
 };
