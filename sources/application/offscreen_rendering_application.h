@@ -7,7 +7,7 @@
 #include <render_pass/framebuffer/framebuffer.h>
 #include <memory_objects/vertex_buffer.h>
 #include <memory_objects/index_buffer.h>
-#include <memory_objects/uniform_buffer.h>
+#include <memory_objects/uniform_buffer/uniform_buffer.h>
 #include <pipeline/graphics_pipeline.h>
 #include <memory_objects/texture/texture_2D.h>
 #include <model_loader/obj_loader/obj_loader.h>
@@ -18,6 +18,7 @@
 #include <memory_objects/texture/texture_2D_color.h>
 #include <memory_objects/texture/texture_2D_image.h>
 #include <memory_objects/texture/texture_cubemap.h>
+#include <memory_objects/uniform_buffer/push_constants.h>
 #include <screenshot/screenshot.h>
 
 class OffscreenRendering : public ApplicationBase {
@@ -42,9 +43,12 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBufferCube;
     VertexData<VertexP, uint16_t> _vertexDataCube;
 
-    std::vector<std::shared_ptr<UniformBuffer<UniformBufferObject>>> _mvpUnuiformBuffers;
+    std::vector<std::shared_ptr<UniformBufferStruct<UniformBufferObject>>> _mvpUnuiformBuffers;
+    std::shared_ptr<UniformBufferDynamic<UniformBufferObject>> _dynammicUniformBuffers;
     std::shared_ptr<UniformBufferTexture> _textureUniform;
     std::shared_ptr<UniformBufferTexture> _skyboxTextureUniform;
+    std::unique_ptr<PushConstants> _pushConstants;
+    UniformBufferObject _ubo;
 
     std::shared_ptr<Texture2DImage> _texture;
     std::shared_ptr<TextureCubemap> _textureCubemap;

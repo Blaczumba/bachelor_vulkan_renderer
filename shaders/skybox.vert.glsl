@@ -2,7 +2,7 @@
 
 layout (location = 0) in vec3 inPos;
 
-layout (binding = 0) uniform UniformBufferObject {
+layout (push_constant) uniform UniformBufferObject {
 	mat4 model;
 	mat4 view;
 	mat4 projection;

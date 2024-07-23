@@ -4,33 +4,36 @@
 #include <stdexcept>
 #include <iostream>
 
-Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, std::vector<std::unique_ptr<Attachment>>&& attachments)
-    : _logicalDevice(logicalDevice), _attachments(std::move(attachments)) {
+Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const AttachmentLayout& layout)
+    : _logicalDevice(logicalDevice), _attachmentsLayout(layout) {
     std::vector<VkAttachmentReference> colorAttachmentRefs;
     std::vector<VkAttachmentReference> depthAttachmentRefs;
     std::vector<VkAttachmentReference> colorAttachmentResolveRefs;
     std::vector<VkAttachmentDescription> attachmentDescriptions;
 
-    for (uint32_t i = 0; i < _attachments.size(); i++) {
-        const Attachment* attachment = _attachments[i].get();
+    const auto& attachments = _attachmentsLayout.getAttachments();
+
+    for (uint32_t i = 0; i < attachments.size(); i++) {
+        const Attachment attachment = attachments[i];
 
         VkAttachmentReference attachmentReference{};
-        attachmentReference.layout = attachment->getLayout();
+        attachmentReference.layout = attachment.getLayout();
         attachmentReference.attachment = i;
 
-        attachmentDescriptions.push_back(attachment->getDescription());
-        VkClearValue clearValue = attachment->getClearValue();
+        attachmentDescriptions.push_back(attachment.getDescription());
+        VkClearValue clearValue = attachment.getClearValue();
 
-        if (dynamic_cast<const ColorAttachmentBase*>(attachment)) {
+        switch (attachment.getAttachmentRefType()) {
+        case Attachment::Type::COLOR_ATTACHMENT:
             colorAttachmentRefs.push_back(attachmentReference);
-        }
-        else if (dynamic_cast<const DepthAttachment*>(attachment)) {
-            depthAttachmentRefs.push_back(attachmentReference);
-        }
-        else if (dynamic_cast<const ColorResolveAttachmentBase*>(attachment)) {
+            break;
+        case Attachment::Type::COLOR_ATTACHMENT_RESOLVE:
             colorAttachmentResolveRefs.push_back(attachmentReference);
-        }
-        else {
+            break;
+        case Attachment::Type::DEPTH_ATTACHMENT:
+            depthAttachmentRefs.push_back(attachmentReference);
+            break;
+        default:
             throw std::runtime_error("Unknown attachment type");
         }
 
@@ -83,8 +86,8 @@ const std::vector<VkClearValue>& Renderpass::getClearValues() const {
     return _clearValues;
 }
 
-const std::vector<std::unique_ptr<Attachment>>& Renderpass::getAttachments() const {
-    return _attachments;
+const AttachmentLayout& Renderpass::getAttachmentsLayout() const {
+    return _attachmentsLayout;
 }
 
 uint32_t Renderpass::getColorAttachmentsCount() const {

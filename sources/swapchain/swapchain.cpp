@@ -100,7 +100,8 @@ void Swapchain::create() {
             .view   = _logicalDevice->createImageView(images[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1),
             .format = surfaceFormat.format,
             .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .extent = { extent.width, extent.height, 1 }
+            .extent = { extent.width, extent.height, 1 },
+            .aspect = VK_IMAGE_ASPECT_COLOR_BIT
         };
     }
 }

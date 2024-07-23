@@ -2,17 +2,17 @@
 
 #include <stdexcept>
 
-SingleTimeCommandBuffer::SingleTimeCommandBuffer(LogicalDevice* logicalDevice)
+SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDevice)
     : _logicalDevice(logicalDevice) {
 
     VkFenceCreateInfo fenceInfo{};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-    if (vkCreateFence(_logicalDevice->getVkDevice(), &fenceInfo, nullptr, &_fence) != VK_SUCCESS) {
+    if (vkCreateFence(_logicalDevice.getVkDevice(), &fenceInfo, nullptr, &_fence) != VK_SUCCESS) {
         throw std::runtime_error("failed to create SingleTimeCommandBuffer fence!");
     }
 
-    _commandBuffer = _logicalDevice->createCommandBuffer();
+    _commandBuffer = _logicalDevice.createCommandBuffer();
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -22,7 +22,7 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(LogicalDevice* logicalDevice)
 }
 
 SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
-    VkDevice device = _logicalDevice->_device;
+    VkDevice device = _logicalDevice._device;
 
     vkEndCommandBuffer(_commandBuffer);
 
@@ -31,10 +31,10 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
     submitInfo.commandBufferCount   = 1;
     submitInfo.pCommandBuffers      = &_commandBuffer;
 
-    vkQueueSubmit(_logicalDevice->graphicsQueue, 1, &submitInfo, _fence);
+    vkQueueSubmit(_logicalDevice.graphicsQueue, 1, &submitInfo, _fence);
     vkWaitForFences(device, 1, &_fence, VK_TRUE, UINT64_MAX);
 
-    vkFreeCommandBuffers(device, _logicalDevice->_commandPool, 1, &_commandBuffer);
+    vkFreeCommandBuffers(device, _logicalDevice._commandPool, 1, &_commandBuffer);
     vkDestroyFence(device, _fence, nullptr);
 }
 
@@ -42,7 +42,7 @@ VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const {
     return _commandBuffer;
 }
 
-void copyBuffer(LogicalDevice* logicalDevice, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+void copyBuffer(const LogicalDevice& logicalDevice, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
     SingleTimeCommandBuffer handle(logicalDevice);
     VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 

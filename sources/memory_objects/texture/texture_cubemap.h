@@ -10,6 +10,4 @@ class TextureCubemap final : public Texture2DSampler {
 
 public:
 	TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std::string filePath, VkFormat format, float samplerAnisotropy);
-
-	void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) override;
 };

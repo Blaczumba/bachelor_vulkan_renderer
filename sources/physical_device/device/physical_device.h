@@ -21,6 +21,8 @@ public:
     QueueFamilyIndices getQueueFamilyIndices() const;
     SwapChainSupportDetails getSwapChainSupportDetails() const;
     VkSampleCountFlagBits getMaxMsaaSampleCount() const;
+    VkPhysicalDeviceLimits getPhysicalDeviceLimits() const;
+
     bool checkTextureFormatSupport(VkFormat format, VkImageTiling tiling, VkFormatFeatureFlags features) const;
     bool checkBlittingSupport(VkFormat format) const;
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
