@@ -151,7 +151,7 @@ VkImageView LogicalDevice::createImageView(VkImage image, VkFormat format, VkIma
     return imageView;
 }
 
-std::vector<VkCommandBuffer> LogicalDevice::createCommandBuffers(uint32_t commandBuffersCount) {
+std::vector<VkCommandBuffer> LogicalDevice::createCommandBuffers(uint32_t commandBuffersCount) const {
     std::vector<VkCommandBuffer> commandBuffers(commandBuffersCount);
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType                 = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -166,7 +166,7 @@ std::vector<VkCommandBuffer> LogicalDevice::createCommandBuffers(uint32_t comman
     return commandBuffers;
 }
 
-VkCommandBuffer LogicalDevice::createCommandBuffer() {
+VkCommandBuffer LogicalDevice::createCommandBuffer() const {
     return createCommandBuffers(1)[0];
 }
 
@@ -177,4 +177,8 @@ LogicalDevice::~LogicalDevice() {
 
 VkDevice LogicalDevice::getVkDevice() const {
     return _device;
+}
+
+const PhysicalDevice& LogicalDevice::getPhysicalDevice() const {
+    return *_physicalDevice;
 }

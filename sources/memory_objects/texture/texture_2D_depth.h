@@ -7,7 +7,7 @@ public:
 	Texture2DDepth(std::shared_ptr<LogicalDevice> logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent);
     ~Texture2DDepth();
 
-	void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) override;
 private:
 	bool hasStencil(VkFormat format) const;
+	// bool hasDepth(VkFormat format) const;
 };

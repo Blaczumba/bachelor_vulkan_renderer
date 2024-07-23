@@ -6,9 +6,8 @@
 
 class Texture2DSampler : public Texture2D {
 protected:
-    VkSampler _sampler          = VK_NULL_HANDLE;
-    uint32_t _mipLevels         = 1;
-    float _samplerAnisotropy    = 1.0f;
+    VkSampler _sampler;
+    float _samplerAnisotropy;
 
 public:
     Texture2DSampler(std::shared_ptr<LogicalDevice> logicalDevice, float samplerAnisotropy);
@@ -16,4 +15,8 @@ public:
 
     const VkSampler getVkSampler() const;
 
+protected:
+    // VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL -> VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    // This can be changed in the future.
+    void generateMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 };

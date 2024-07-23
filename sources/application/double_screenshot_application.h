@@ -7,7 +7,7 @@
 #include <render_pass/framebuffer/framebuffer.h>
 #include <memory_objects/vertex_buffer.h>
 #include <memory_objects/index_buffer.h>
-#include <memory_objects/uniform_buffer.h>
+#include <memory_objects/uniform_buffer/uniform_buffer.h>
 #include <pipeline/graphics_pipeline.h>
 #include <memory_objects/texture/texture_2D.h>
 #include <model_loader/obj_loader/obj_loader.h>
@@ -36,8 +36,10 @@ class DoubleScreenshotApplication : public ApplicationBase {
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
     VertexData<VertexPT, uint16_t> _vertexData;
 
-    std::vector<std::shared_ptr<UniformBuffer<UniformBufferObject>>> _mvpUnuiformBuffers;
+    std::vector<std::shared_ptr<UniformBufferStruct<UniformBufferObject>>> _mvpUnuiformBuffers;
     std::shared_ptr<UniformBufferTexture> _textureUniform;
+    std::vector<VkPushConstantRange> _pushConstantsLayout;
+    std::unique_ptr<PushConstants> _pushConstants;
 
     std::shared_ptr<Texture2DImage> _texture;
 

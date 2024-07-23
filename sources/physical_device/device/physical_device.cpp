@@ -28,12 +28,12 @@ PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_p
 
         bool discreteGPU = _propertyManager.checkDiscreteGPU(device);
 
-        std::array<bool, 4> conditions = {
+        std::array<bool, 5> conditions = {
             indices.isComplete(),
             extensionsSupported,
             swapChainAdequate,
             supportedFeatures.samplerAnisotropy,
-            // discreteGPU
+            discreteGPU
         };
 
         bool suitable = std::all_of(conditions.cbegin(), conditions.cend(), [](bool condition) { return condition; });
@@ -66,6 +66,13 @@ SwapChainSupportDetails PhysicalDevice::getSwapChainSupportDetails() const {
 
 VkSampleCountFlagBits PhysicalDevice::getMaxMsaaSampleCount() const {
     return _msaaSampleCount;
+}
+
+VkPhysicalDeviceLimits PhysicalDevice::getPhysicalDeviceLimits() const {
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(_device, &properties);
+
+    return properties.limits;
 }
 
 bool PhysicalDevice::checkTextureFormatSupport(VkFormat format, VkImageTiling tiling, VkFormatFeatureFlags features) const {

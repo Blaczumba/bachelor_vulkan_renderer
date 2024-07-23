@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>>& uniformBuffers)
+DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::shared_ptr<UniformBuffer>>>& uniformBuffers)
 	: _logicalDevice(logicalDevice) {
 
     checkInputDataCoherence(uniformBuffers);
@@ -69,39 +69,10 @@ DescriptorSets::DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, con
     }
 
     for (size_t i = 0; i < numSets; i++) {
-        std::vector<VkWriteDescriptorSet> descriptorWrites(uniformBuffers[i].size());
-
-        std::vector<VkDescriptorImageInfo> imageInfos(uniformBuffers[i].size());
-        std::vector<VkDescriptorBufferInfo> bufferInfos(uniformBuffers[i].size());
+        std::vector<VkWriteDescriptorSet> descriptorWrites;
 
         for (size_t j = 0; j < uniformBuffers[i].size(); j++) {
-            descriptorWrites[j].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[j].dstSet          = _descriptorSets[i];
-            descriptorWrites[j].dstBinding      = j;
-            descriptorWrites[j].dstArrayElement = 0;
-            descriptorWrites[j].descriptorType  = uniformBuffers[i][j]->getVkDescriptorType();
-            descriptorWrites[j].descriptorCount = 1;
-
-            if (const auto& ptr = std::dynamic_pointer_cast<UniformBufferStruct>(uniformBuffers[i][j])) {
-                bufferInfos[j] = {
-                    .buffer = ptr->getVkBuffer(),
-                    .offset = 0,
-                    .range  = ptr->getBufferSize(),
-                };
-                descriptorWrites[j].pBufferInfo = &bufferInfos[j];
-            }
-            else if (const auto& ptr = std::dynamic_pointer_cast<UniformBufferTexture>(uniformBuffers[i][j])) {
-                auto texturePtr     = ptr->getTexturePtr();
-                const auto& image   = texturePtr->getImage();
-
-                imageInfos[j] = {
-                    .sampler        = texturePtr->getVkSampler(),
-                    .imageView      = image.view,
-                    .imageLayout    = image.layout,
-                };
-
-                descriptorWrites[j].pImageInfo = &imageInfos[j];
-            }
+            descriptorWrites.emplace_back(uniformBuffers[i][j]->getVkWriteDescriptorSet(_descriptorSets[i], j));
         }
 
         vkUpdateDescriptorSets(_logicalDevice->getVkDevice(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -123,12 +94,12 @@ VkDescriptorSet& DescriptorSets::getVkDescriptorSet(size_t i) {
     return _descriptorSets[i];
 }
 
-bool DescriptorSets::checkInputDataCoherence(const std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>>& uniformBuffers) const {
+bool DescriptorSets::checkInputDataCoherence(const std::vector<std::vector<std::shared_ptr<UniformBuffer>>>& uniformBuffers) const {
     bool coherent = true;
 
     const auto& firstRow = uniformBuffers.at(0);
     size_t size = firstRow.size();
-    bool allRowsEqualSize = std::all_of(uniformBuffers.cbegin(), uniformBuffers.cend(), [size](const std::vector<std::shared_ptr<UniformBufferAbstraction>>& row) { return row.size() == size; });
+    bool allRowsEqualSize = std::all_of(uniformBuffers.cbegin(), uniformBuffers.cend(), [size](const std::vector<std::shared_ptr<UniformBuffer>>& row) { return row.size() == size; });
     
     if (!allRowsEqualSize) {
         throw std::runtime_error("All rows of uniform buffer matrix must be equal in size!");
@@ -138,7 +109,7 @@ bool DescriptorSets::checkInputDataCoherence(const std::vector<std::vector<std::
         VkDescriptorType descriptorType = firstRow[i]->getVkDescriptorType();
         VkShaderStageFlags stageFlags   = firstRow[i]->getVkShaderStageFlags();
         
-        bool equalColumsTraits = std::all_of(uniformBuffers.cbegin(), uniformBuffers.cend(), [=](const std::vector<std::shared_ptr<UniformBufferAbstraction>>& row) { return row[i]->getVkDescriptorType() == descriptorType && row[i]->getVkShaderStageFlags() == stageFlags; });
+        bool equalColumsTraits = std::all_of(uniformBuffers.cbegin(), uniformBuffers.cend(), [=](const std::vector<std::shared_ptr<UniformBuffer>>& row) { return row[i]->getVkDescriptorType() == descriptorType && row[i]->getVkShaderStageFlags() == stageFlags; });
         if (!equalColumsTraits) {
             throw std::runtime_error("All rows of uniform buffer matrix must have the same layout (descriptor types and stage flags - comparing by columns)!");
         }

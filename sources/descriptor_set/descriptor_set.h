@@ -1,7 +1,7 @@
 #pragma once
 
 #include <logical_device/logical_device.h>
-#include <memory_objects/uniform_buffer.h>
+#include <memory_objects/uniform_buffer/uniform_buffer.h>
 
 #include <vulkan/vulkan.h>
 
@@ -23,13 +23,12 @@ class DescriptorSets {
 	std::shared_ptr<DescriptorSetLayout> _layout;
 
 public:
-	// Maybe && move semantics?
-	DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>>& uniformBuffers);
+	DescriptorSets(std::shared_ptr<LogicalDevice> logicalDevice, const std::vector<std::vector<std::shared_ptr<UniformBuffer>>>& uniformBuffers);
 	~DescriptorSets();
 
 	VkDescriptorSetLayout getVkDescriptorSetLayout() const;
 	VkDescriptorSet& getVkDescriptorSet(size_t i);
 
 private:
-	bool checkInputDataCoherence(const std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>>& uniformBuffers) const;
+	bool checkInputDataCoherence(const std::vector<std::vector<std::shared_ptr<UniformBuffer>>>& uniformBuffers) const;
 };

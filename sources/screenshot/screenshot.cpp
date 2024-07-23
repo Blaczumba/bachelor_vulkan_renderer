@@ -83,7 +83,7 @@ void Screenshot::saveImage(const std::string& filePath, const Image& srcImage) {
 	);
 
 	{
-		SingleTimeCommandBuffer commandBufferGuard(_logicalDevice.get());
+		SingleTimeCommandBuffer commandBufferGuard(*_logicalDevice);
 		VkCommandBuffer copyCmd = commandBufferGuard.getCommandBuffer();
 
 		transitionImageLayout(copyCmd, dstImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);

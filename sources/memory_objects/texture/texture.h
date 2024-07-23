@@ -8,6 +8,8 @@
 class Texture {
 protected:
 	Image _image;
+	uint32_t _mipLevels;
+	uint32_t _layerCount;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
@@ -16,5 +18,5 @@ public:
 
 	const Image& getImage() const;
 
-	virtual void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) =0;
+	void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
 };

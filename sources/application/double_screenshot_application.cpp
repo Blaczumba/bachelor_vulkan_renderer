@@ -31,20 +31,31 @@ DoubleScreenshotApplication::DoubleScreenshotApplication()
 }
 
 void DoubleScreenshotApplication::createDescriptorSets() {
-    _texture = std::make_shared<Texture2DImage>(_logicalDevice, TEXTURES_PATH "viking_room.png", _physicalDevice->getMaxSamplerAnisotropy());
+    _texture = std::make_shared<Texture2DImage>(_logicalDevice, TEXTURES_PATH "viking_room.png", VK_FORMAT_R8G8B8A8_SRGB, _physicalDevice->getMaxSamplerAnisotropy());
 
     // Object
-    std::vector<std::vector<std::shared_ptr<UniformBufferAbstraction>>> uniformBuffers(MAX_FRAMES_IN_FLIGHT);
+    std::vector<std::vector<std::shared_ptr<UniformBuffer>>> uniformBuffers(MAX_FRAMES_IN_FLIGHT);
     _mvpUnuiformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
     _textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        _mvpUnuiformBuffers.emplace_back(std::make_shared<UniformBuffer<UniformBufferObject>>(_logicalDevice, VK_SHADER_STAGE_VERTEX_BIT));
+        _mvpUnuiformBuffers.emplace_back(std::make_shared<UniformBufferStruct<UniformBufferObject>>(_logicalDevice, VK_SHADER_STAGE_VERTEX_BIT));
 
         uniformBuffers[i] = { _mvpUnuiformBuffers[i], _textureUniform };
     }
 
     _descriptorSets = std::make_unique<DescriptorSets>(_logicalDevice, uniformBuffers);
+
+    _pushConstantsLayout = {
+        VkPushConstantRange{
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = static_cast<uint32_t>(sizeof(UniformBufferObject)),
+        }
+    };
+
+    _pushConstants = std::make_unique<PushConstants>(_physicalDevice);
+    _pushConstants->addPushConstant<UniformBufferObject>(VK_SHADER_STAGE_VERTEX_BIT);
 }
 
 void DoubleScreenshotApplication::createPresentResources() {
@@ -54,17 +65,17 @@ void DoubleScreenshotApplication::createPresentResources() {
     // There must be at least one "Present" attachment (Color or Resolve).
     // There must be the same number of ColorAttachments and ColorResolveAttachments.
     // Every attachment must have the same number of MSAA samples.
-    std::vector<std::unique_ptr<Attachment>> presentAttachments;
-    presentAttachments.reserve(5);
-    presentAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
-    presentAttachments.emplace_back(std::make_unique<ColorResolvePresentAttachment>(swapchainImageFormat));
-    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-    presentAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, msaaSamples));
-    presentAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), msaaSamples));
 
-    _renderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(presentAttachments));
+    AttachmentLayout presentLayout;
+    presentLayout.addAttachment(ColorResolveAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE));
+    presentLayout.addAttachment(ColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE));
+    presentLayout.addAttachment(ColorAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples));
+    presentLayout.addAttachment(ColorAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples));
+    presentLayout.addAttachment(DepthAttachment(findDepthFormat(), VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples));
+
+    _renderPass = std::make_shared<Renderpass>(_logicalDevice, presentLayout);
     _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
-    _graphicsPipeline = std::make_unique<GraphicsPipeline<VertexPT>>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), msaaSamples, "vert.spv", "frag.spv");
+    _graphicsPipeline = std::make_unique<GraphicsPipeline<VertexPT>>(_logicalDevice, _renderPass, _descriptorSets->getVkDescriptorSetLayout(), *_pushConstants, msaaSamples, "vert.spv", "frag.spv");
 }
 
 void DoubleScreenshotApplication::createOffscreenResources() {
@@ -73,12 +84,11 @@ void DoubleScreenshotApplication::createOffscreenResources() {
     VkExtent2D extent = _swapchain->getExtent();
     VkExtent2D lowResExtent = { extent.width / 4, extent.height / 4 };
 
-    std::vector<std::unique_ptr<Attachment>> offscreenAttachments;
-    // offscreenAttachments.emplace_back(std::make_unique<ColorResolveAttachment>(swapchainImageFormat));
-    offscreenAttachments.emplace_back(std::make_unique<ColorAttachment>(swapchainImageFormat, lowResMsaaSamples));
-    offscreenAttachments.emplace_back(std::make_unique<DepthAttachment>(findDepthFormat(), lowResMsaaSamples));
+    AttachmentLayout attachmentLayout;
+    attachmentLayout.addAttachment(ColorAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE, lowResMsaaSamples));
+    attachmentLayout.addAttachment(DepthAttachment(findDepthFormat(), VK_ATTACHMENT_STORE_OP_DONT_CARE, lowResMsaaSamples));
 
-    _lowResRenderPass = std::make_shared<Renderpass>(_logicalDevice, std::move(offscreenAttachments));
+    _lowResRenderPass = std::make_shared<Renderpass>(_logicalDevice, attachmentLayout);
 
     _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
     _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
@@ -93,7 +103,7 @@ void DoubleScreenshotApplication::createOffscreenResources() {
     };
 
     _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
-    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline<VertexPT>>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), lowResMsaaSamples, "off.vert.spv", "off.frag.spv");
+    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline<VertexPT>>(_logicalDevice, _lowResRenderPass, _descriptorSets->getVkDescriptorSetLayout(), *_pushConstants, lowResMsaaSamples, "off.vert.spv", "off.frag.spv");
 }
 
 

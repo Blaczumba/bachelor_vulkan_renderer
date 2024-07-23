@@ -30,7 +30,7 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
     : _logicalDevice(logicaldevice), _swapchain(swapchain), _renderPass(renderpass) {
     const auto& images              = _swapchain->getImages();
     const auto& swapchainExtent     = _swapchain->getExtent();
-    const auto& attachments         = _renderPass->getAttachments();
+    const auto& attachments         = _renderPass->getAttachmentsLayout().getAttachments();
 
     std::vector<VkImageView> swapchainImageViews;
     std::transform(images.cbegin(), images.cend(), std::back_inserter(swapchainImageViews), [](const Image& image) { return image.view; });
@@ -42,7 +42,7 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
     _colorImages.reserve(attachments.size());
     _depthImages.reserve(attachments.size());
     for (size_t i = 0; i < attachments.size(); i++) {
-        const VkAttachmentDescription& description = attachments[i]->getDescription();
+        const VkAttachmentDescription& description = attachments[i].getDescription();
         switch (description.finalLayout) {
 
         case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:

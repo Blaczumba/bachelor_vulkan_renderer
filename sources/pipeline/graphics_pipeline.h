@@ -4,21 +4,23 @@
 #include "render_pass/render_pass.h"
 #include "shader_utils.h"
 #include "primitives/vk_primitives.h"
+#include "memory_objects/uniform_buffer/push_constants.h"
 
 #include <vulkan/vulkan.h>
 
+#include <algorithm>
 #include <string>
 #include <stdexcept>
 
 template<typename VertexType>
 class GraphicsPipeline : public Pipeline {
 public:
-	GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace = true);
+	GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, const PushConstants& pushConstants, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace = true);
 	~GraphicsPipeline();
 };
 
 template<typename VertexType>
-GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace)
+GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, const PushConstants& pushConstants, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace)
     : Pipeline(logicalDevice) {
     auto vertShaderCode = readFile(SHADERS_PATH + vertexShader);
     auto fragShaderCode = readFile(SHADERS_PATH + fragmentShader);
@@ -106,10 +108,15 @@ GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> lo
     dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
     dynamicState.pDynamicStates = dynamicStates.data();
 
+    const auto& pushConstantsLayout = pushConstants.getVkPushConstantRange();
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+    if(!pushConstantsLayout.empty())
+       pipelineLayoutInfo.pPushConstantRanges = pushConstantsLayout.data();
+    pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstantsLayout.size());
 
     if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &_pipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout!");

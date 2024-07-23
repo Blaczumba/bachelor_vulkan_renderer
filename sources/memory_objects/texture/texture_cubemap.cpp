@@ -14,16 +14,18 @@ TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std
 	ktxResult result;
 	ktxTexture* ktxTexture;
 
-	_image.format = format;
-
 	result = ktxTexture_CreateFromNamedFile(filePath.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
 	if (result != KTX_SUCCESS) {
 		throw std::runtime_error("failed to load ktx file");
 	}
 
-	_image.extent.width		= ktxTexture->baseWidth;
-	_image.extent.height	= ktxTexture->baseHeight;
-	_mipLevels				= ktxTexture->numLevels;
+	_image.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+	_image.format = format;
+	_image.extent	= { ktxTexture->baseWidth, ktxTexture->baseHeight, 1 };
+
+	_layerCount		= 6;
+	_mipLevels		= ktxTexture->numLevels;
+	_sampleCount	= VK_SAMPLE_COUNT_1_BIT;
 
 	ktx_uint8_t* ktxTextureData = ktxTexture_GetData(ktxTexture);
 	ktx_size_t ktxTextureSize = ktxTexture_GetSize(ktxTexture);
@@ -42,7 +44,7 @@ TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std
 	std::vector<VkBufferImageCopy> bufferCopyRegions;
 	uint32_t offset = 0;
 
-	for (uint32_t face = 0; face < 6; face++)
+	for (uint32_t face = 0; face < _layerCount; face++)
 	{
 		for (uint32_t level = 0; level < _mipLevels; level++)
 		{
@@ -54,7 +56,7 @@ TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std
 			}
 
 			VkBufferImageCopy bufferCopyRegion = {};
-			bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			bufferCopyRegion.imageSubresource.aspectMask = _image.aspect;
 			bufferCopyRegion.imageSubresource.mipLevel = level;
 			bufferCopyRegion.imageSubresource.baseArrayLayer = face;
 			bufferCopyRegion.imageSubresource.layerCount = 1;
@@ -67,26 +69,24 @@ TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std
 	}
 
 	VkImageSubresourceRange subresourceRange = {};
-	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subresourceRange.aspectMask = _image.aspect;
 	subresourceRange.baseMipLevel = 0;
 	subresourceRange.levelCount = _mipLevels;
-	subresourceRange.layerCount = 6;
+	subresourceRange.layerCount = _layerCount;
 
-	_logicalDevice->createImage(_image.extent.width, _image.extent.height, _mipLevels, VK_SAMPLE_COUNT_1_BIT, _image.format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image.image, _image.memory, 6);
+	_logicalDevice->createImage(_image.extent.width, _image.extent.height, _mipLevels, VK_SAMPLE_COUNT_1_BIT, _image.format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image.image, _image.memory, _layerCount);
 	{
-		SingleTimeCommandBuffer handle(_logicalDevice.get());
+		SingleTimeCommandBuffer handle(*_logicalDevice);
 		VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 		transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		copyBufferToImage(commandBuffer, stagingBuffer, _image.image, std::move(bufferCopyRegions));
 		transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-		//generateMipmaps(commandBuffer, _image.image, _image.format, _image.layout, _image.extent.width, _image.extent.height, _mipLevels);
 	}
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-	_image.view = _logicalDevice->createImageView(_image.image, _image.format, VK_IMAGE_ASPECT_COLOR_BIT, _mipLevels, 6);
+	_image.view = _logicalDevice->createImageView(_image.image, _image.format, _image.aspect, _mipLevels, _layerCount);
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -109,9 +109,4 @@ TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std
 	if (vkCreateSampler(device, &samplerInfo, nullptr, &_sampler) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
-}
-
-void TextureCubemap::transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) {
-	transitionImageLayout(commandBuffer, _image.image, _image.layout, newLayout, VK_IMAGE_ASPECT_COLOR_BIT, _mipLevels, 6);
-	_image.layout = newLayout;
 }
