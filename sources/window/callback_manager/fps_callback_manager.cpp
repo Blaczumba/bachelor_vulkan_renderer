@@ -56,14 +56,19 @@ void FPSCallbackManager::processKeyboard() {
 }
 
 void FPSCallbackManager::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	auto camera = reinterpret_cast<FPSCamera*>(glfwGetWindowUserPointer(window));
+	// auto camera = reinterpret_cast<FPSCamera*>(glfwGetWindowUserPointer(window));
 
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-		glfwSetWindowShouldClose(window, true);
+	switch (key) {
+	case GLFW_KEY_ESCAPE:
+		if(action == GLFW_PRESS)
+			glfwSetWindowShouldClose(window, true);
+		break;
+	case GLFW_KEY_P:
+		if(action == GLFW_PRESS)
+			_data.keys.push_back(Keyboard::Key::P);
+		break;
 	}
-	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
-		_data.keys.push_back(Keyboard::Key::P);
-	}
+
 }
 
 void FPSCallbackManager::mouseCallback(GLFWwindow* window, double xposIn, double yposIn) {

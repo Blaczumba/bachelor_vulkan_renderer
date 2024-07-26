@@ -21,7 +21,7 @@ public:
 
 template<typename VertexType>
 GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, const PushConstants& pushConstants, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace)
-    : Pipeline(logicalDevice) {
+    : Pipeline(logicalDevice, VK_PIPELINE_BIND_POINT_GRAPHICS) {
     auto vertShaderCode = readFile(SHADERS_PATH + vertexShader);
     auto fragShaderCode = readFile(SHADERS_PATH + fragmentShader);
 

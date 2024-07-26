@@ -54,7 +54,7 @@ void DoubleScreenshotApplication::createDescriptorSets() {
         }
     };
 
-    _pushConstants = std::make_unique<PushConstants>(_physicalDevice);
+    _pushConstants = std::make_unique<PushConstants>(*_physicalDevice);
     _pushConstants->addPushConstant<UniformBufferObject>(VK_SHADER_STAGE_VERTEX_BIT);
 }
 

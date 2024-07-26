@@ -10,20 +10,18 @@
 
 class UniformBuffer {
 protected:
-	const VkShaderStageFlags _shaderStages;
 	const VkDescriptorType _type;
+	uint32_t _size;
 
 public:
-	UniformBuffer(VkShaderStageFlags shaderStages, VkDescriptorType type) : _shaderStages(shaderStages), _type(type) {}
-	VkShaderStageFlags getVkShaderStageFlags() const { return _shaderStages; }
-
+	UniformBuffer(VkDescriptorType type) : _type(type) {}
 	virtual ~UniformBuffer() = default;
 
 	virtual VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const =0;
 
-	VkDescriptorType getVkDescriptorType() const {
-		return _type;
-	}
+	VkDescriptorType getVkDescriptorType() const { return _type; }
+	uint32_t getSize() const { return _size; }
+
 };
 
 class UniformBufferTexture : public UniformBuffer {
@@ -35,13 +33,15 @@ protected:
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 
 public:
-	UniformBufferTexture(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Texture2DSampler> texture, VkShaderStageFlags stageFlags) 
-		: UniformBuffer(stageFlags, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER), _logicalDevice(logicalDevice), _texture(texture) {
+	UniformBufferTexture(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Texture2DSampler> texture) 
+		: UniformBuffer(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER), _logicalDevice(logicalDevice), _texture(texture) {
 		const Image& image = _texture->getImage();
 
 		_imageInfo.sampler = _texture->getVkSampler();
 		_imageInfo.imageView = image.view;
 		_imageInfo.imageLayout = image.layout;
+
+		_size = 0; // TODO set exact size
 	}
 
 	virtual ~UniformBufferTexture() = default;
@@ -72,7 +72,7 @@ protected:
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 
 public:
-	UniformBufferData(std::shared_ptr<LogicalDevice> logicalDevice, VkShaderStageFlags shaderStages, VkDescriptorType type) : UniformBuffer(shaderStages, type), _logicalDevice(logicalDevice) {}
+	UniformBufferData(std::shared_ptr<LogicalDevice> logicalDevice, VkDescriptorType type) : UniformBuffer(type), _logicalDevice(logicalDevice) {}
 	virtual ~UniformBufferData() = default;
 
 	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override {
@@ -89,34 +89,29 @@ public:
 	}
 
 	virtual VkBuffer getVkBuffer() const { return _uniformBuffer; }
-	virtual size_t getBufferSize() const =0;
 };
 
 template<typename UniformBufferType>
 class UniformBufferStruct : public UniformBufferData {
 public:
-	UniformBufferStruct(std::shared_ptr<LogicalDevice> logicalDevice, VkShaderStageFlags stageFlags);
+	UniformBufferStruct(std::shared_ptr<LogicalDevice> logicalDevice);
 	~UniformBufferStruct();
 
 	void updateUniformBuffer(UniformBufferType* object);
-
-	size_t getBufferSize() const override {
-		return sizeof(UniformBufferType);
-	}
 };
 
 template<typename UniformBufferType>
-UniformBufferStruct<UniformBufferType>::UniformBufferStruct(std::shared_ptr<LogicalDevice> logicalDevice, VkShaderStageFlags stageFlags)
-	: UniformBufferData(logicalDevice, stageFlags, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+UniformBufferStruct<UniformBufferType>::UniformBufferStruct(std::shared_ptr<LogicalDevice> logicalDevice)
+	: UniformBufferData(logicalDevice, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
 
-	VkDeviceSize bufferSize = sizeof(UniformBufferType);
+	_size = sizeof(UniformBufferType);
 
-	_logicalDevice->createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, _uniformBuffer, _uniformBufferMemory);
+	_logicalDevice->createBuffer(_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, _uniformBuffer, _uniformBufferMemory);
 
-	vkMapMemory(_logicalDevice->getVkDevice(), _uniformBufferMemory, 0, bufferSize, 0, &_uniformBufferMapped);
+	vkMapMemory(_logicalDevice->getVkDevice(), _uniformBufferMemory, 0, _size, 0, &_uniformBufferMapped);
 
 	_bufferInfo.buffer	= _uniformBuffer;
-	_bufferInfo.range	= static_cast<uint32_t>(sizeof(UniformBufferType));
+	_bufferInfo.range	= _size;
 	_bufferInfo.offset	= 0;
 }
 
@@ -142,29 +137,26 @@ void UniformBufferStruct<UniformBufferType>::updateUniformBuffer(UniformBufferTy
 
 template<typename UniformBufferType>
 class UniformBufferDynamic : public UniformBufferData {
-	size_t _size;
 	uint32_t _count;
 
 public:
-	UniformBufferDynamic(std::shared_ptr<LogicalDevice> logicalDevice, VkShaderStageFlags stageFlags, uint32_t count);
+	UniformBufferDynamic(std::shared_ptr<LogicalDevice> logicalDevice, uint32_t count);
 	~UniformBufferDynamic();
 
 	void updateUniformBuffer(UniformBufferType* object, uint32_t index);
 	void makeUpdatesVisible();
 
-	size_t getBufferSize() const override {
-		return _size;
-	}
 };
 
 template<typename UniformBufferType>
-UniformBufferDynamic<UniformBufferType>::UniformBufferDynamic(std::shared_ptr<LogicalDevice> logicalDevice, VkShaderStageFlags stageFlags, uint32_t count)
-	: UniformBufferData(logicalDevice, stageFlags, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC), _count(count) {
+UniformBufferDynamic<UniformBufferType>::UniformBufferDynamic(std::shared_ptr<LogicalDevice> logicalDevice, uint32_t count)
+	: UniformBufferData(logicalDevice, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC), _count(count) {
 
 	const PhysicalDevice& physicalDevice = _logicalDevice->getPhysicalDevice();
 
 	const auto limits = physicalDevice.getPhysicalDeviceLimits();
 	size_t minUboAlignment = limits.minUniformBufferOffsetAlignment;
+
 	_size = sizeof(UniformBufferType);
 	if (minUboAlignment > 0) {
 		_size = (_size + minUboAlignment - 1) & ~(minUboAlignment - 1);

@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 ComputePipeline::ComputePipeline(std::shared_ptr<LogicalDevice> logicalDevice, VkDescriptorSetLayout descriptorSetLayout, const std::string& computeShader)
-    : Pipeline(logicalDevice) {
+    : Pipeline(logicalDevice, VK_PIPELINE_BIND_POINT_COMPUTE) {
     VkDevice device = _logicalDevice->getVkDevice();
     
     auto computeShaderCode = readFile(computeShader);

@@ -8,12 +8,14 @@ class Pipeline {
 protected:
 	VkPipeline _pipeline;
 	VkPipelineLayout _pipelineLayout;
+	VkPipelineBindPoint _pipelineBindPoint;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	Pipeline(std::shared_ptr<LogicalDevice> logicalDevice);
+	Pipeline(std::shared_ptr<LogicalDevice> logicalDevice, VkPipelineBindPoint pipelineBindPoint);
 	virtual ~Pipeline() = default;
 
 	VkPipeline getVkPipeline() const;
 	VkPipelineLayout getVkPipelineLayout() const;
+	VkPipelineBindPoint getVkPipelineBindPoint() const;
 };
