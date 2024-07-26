@@ -48,13 +48,18 @@ class OffscreenRendering : public ApplicationBase {
     std::shared_ptr<UniformBufferTexture> _textureUniform;
     std::shared_ptr<UniformBufferTexture> _skyboxTextureUniform;
     std::unique_ptr<PushConstants> _pushConstants;
+
+    std::shared_ptr<DescriptorSetLayout> _descriptorSetLayout;
+    std::shared_ptr<DescriptorSetLayout> _descriptorSetLayoutSkybox;
+    std::shared_ptr<DescriptorPool> _descriptorPool;
+    std::shared_ptr<DescriptorPool> _descriptorPoolSkybox;
     UniformBufferObject _ubo;
 
     std::shared_ptr<Texture2DImage> _texture;
     std::shared_ptr<TextureCubemap> _textureCubemap;
 
-    std::unique_ptr<DescriptorSets> _descriptorSets;
-    std::unique_ptr<DescriptorSets> _descriptorSetsSkybox;
+    std::unique_ptr<DescriptorSet> _descriptorSet;
+    std::unique_ptr<DescriptorSet> _descriptorSetSkybox;
     std::unique_ptr<Screenshot> _screenshot;
 
     std::unique_ptr<CallbackManager> _callbackManager;

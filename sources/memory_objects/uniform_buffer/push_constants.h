@@ -14,8 +14,8 @@ class PushConstants {
 
 	uint32_t _maxSize;
 public:
-	PushConstants(const std::shared_ptr<PhysicalDevice>& physicalDevice) {
-		auto limits = physicalDevice->getPhysicalDeviceLimits();
+	PushConstants(const PhysicalDevice& physicalDevice) {
+		auto limits = physicalDevice.getPhysicalDeviceLimits();
 
 		_maxSize = limits.maxPushConstantsSize;
 	}

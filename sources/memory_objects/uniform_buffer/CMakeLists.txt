@@ -1,4 +1,4 @@
-add_library(UniformBuffer uniform_buffer.cpp uniform_buffer_layout.cpp push_constants.cpp)
+add_library(UniformBuffer uniform_buffer.cpp push_constants.cpp)
 
 target_link_libraries(UniformBuffer PUBLIC Vulkan::Vulkan)
 target_link_libraries(UniformBuffer PUBLIC LogicalDevice Texture)
