@@ -45,6 +45,10 @@ const glm::mat4& FPSCamera::getProjectionMatrix() const {
     return _projectionMatrix;
 }
 
+const glm::vec3& FPSCamera::getPosition() const {
+    return _position;
+}
+
 void FPSCamera::setAspectRatio(float aspectRatio) {
     _aspectRatio = aspectRatio;
     _projectionMatrix = glm::perspective(_fovy, _aspectRatio, _zNear, _zFar);

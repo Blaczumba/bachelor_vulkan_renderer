@@ -9,7 +9,6 @@
 #include <vulkan/vulkan.h>
 
 #include <vector>
-#include <array>
 #include <memory>
 
 class DescriptorSet {
@@ -17,7 +16,7 @@ class DescriptorSet {
 	std::shared_ptr<DescriptorSetLayout> _descriptorSetLayout;
 
 	std::vector<uint32_t> _dynamicBuffersBaseSizes;
-	std::array<uint32_t, 100> _offsets;
+	std::vector<std::vector<uint32_t>> _offsets;
 
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 
@@ -25,10 +24,8 @@ public:
 	DescriptorSet(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<DescriptorSetLayout> descriptorSetLayout, VkDescriptorPool descriptorPool);
 	~DescriptorSet();
 
-	void updateDescriptorSet(const std::vector<std::shared_ptr<UniformBuffer>>& uniformBuffers);
-
-	void bindDescriptorSet(VkCommandBuffer commandBuffer, const Pipeline& pipeline);
-	void updateDynamicOffsets(uint32_t index);
+	void updateDescriptorSet(const std::vector<std::shared_ptr<UniformBuffer>>& uniformBuffers, uint32_t dynamicOffsetCount = 1);
+	void bindDescriptorSet(VkCommandBuffer commandBuffer, const Pipeline& pipeline, uint32_t dynamicOffsetStride = 0);
 
 	VkDescriptorSetLayout getVkDescriptorSetLayout() const;
 	VkDescriptorSet& getVkDescriptorSet(size_t i);

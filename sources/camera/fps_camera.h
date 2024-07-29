@@ -8,13 +8,13 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 class FPSCamera : public Camera, public CallbackObserver {
-    glm::vec3 _position     = glm::vec3(0.0f, 0.0f, -1.0f);
+    glm::vec3 _position     = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 _worldUp      = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 _up           = _worldUp;
     glm::vec3 _front        = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 _right;
 
-    float _yaw      = -90.0f;
+    float _yaw      = 0.0f;
     float _pitch    = 0.0f;
 
     float _movementSpeed    = 2.5f;
@@ -39,6 +39,7 @@ public:
 
     glm::mat4 getViewMatrix() const override;
     const glm::mat4& getProjectionMatrix() const;
+    const glm::vec3& getPosition() const;
 
     void move(glm::vec3 direction);
     void rotate(float theta, float phi);

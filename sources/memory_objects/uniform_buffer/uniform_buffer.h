@@ -104,14 +104,22 @@ template<typename UniformBufferType>
 UniformBufferStruct<UniformBufferType>::UniformBufferStruct(std::shared_ptr<LogicalDevice> logicalDevice)
 	: UniformBufferData(logicalDevice, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
 
+	const PhysicalDevice& physicalDevice = _logicalDevice->getPhysicalDevice();
+
+	const auto limits = physicalDevice.getPhysicalDeviceLimits();
+	size_t minUboAlignment = limits.minUniformBufferOffsetAlignment;
+
 	_size = sizeof(UniformBufferType);
+	if (minUboAlignment > 0) {
+		_size = (_size + minUboAlignment - 1) & ~(minUboAlignment - 1);
+	}
 
 	_logicalDevice->createBuffer(_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, _uniformBuffer, _uniformBufferMemory);
 
 	vkMapMemory(_logicalDevice->getVkDevice(), _uniformBufferMemory, 0, _size, 0, &_uniformBufferMapped);
 
 	_bufferInfo.buffer	= _uniformBuffer;
-	_bufferInfo.range	= _size;
+	_bufferInfo.range	= sizeof(UniformBufferType);
 	_bufferInfo.offset	= 0;
 }
 
@@ -128,11 +136,11 @@ template<typename UniformBufferType>
 void UniformBufferStruct<UniformBufferType>::updateUniformBuffer(UniformBufferType* object) {
 	std::memcpy(_uniformBufferMapped, object, sizeof(UniformBufferType));
 	
-	//VkMappedMemoryRange memoryRange{};
-	//memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-	//memoryRange.memory = _uniformBufferMemory;
-	//memoryRange.size = sizeof(UniformBufferType);
-	//vkFlushMappedMemoryRanges(_logicalDevice->getVkDevice(), 1, &memoryRange);
+	VkMappedMemoryRange memoryRange{};
+	memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	memoryRange.memory = _uniformBufferMemory;
+	memoryRange.size = _size;
+	vkFlushMappedMemoryRanges(_logicalDevice->getVkDevice(), 1, &memoryRange);
 }
 
 template<typename UniformBufferType>
@@ -144,7 +152,6 @@ public:
 	~UniformBufferDynamic();
 
 	void updateUniformBuffer(UniformBufferType* object, uint32_t index);
-	void makeUpdatesVisible();
 
 };
 
@@ -169,7 +176,7 @@ UniformBufferDynamic<UniformBufferType>::UniformBufferDynamic(std::shared_ptr<Lo
 	vkMapMemory(_logicalDevice->getVkDevice(), _uniformBufferMemory, 0, bufferSize, 0, &_uniformBufferMapped);
 
 	_bufferInfo.buffer = _uniformBuffer;
-	_bufferInfo.range = static_cast<uint32_t>(sizeof(UniformBufferType));
+	_bufferInfo.range = sizeof(UniformBufferType);
 	_bufferInfo.offset = 0;
 }
 
@@ -185,10 +192,7 @@ UniformBufferDynamic<UniformBufferType>::~UniformBufferDynamic() {
 template<typename UniformBufferType>
 void UniformBufferDynamic<UniformBufferType>::updateUniformBuffer(UniformBufferType* object, uint32_t index) {
 	std::memcpy(static_cast<uint8_t*>(_uniformBufferMapped) + index * _size, object, sizeof(UniformBufferType));
-}
 
-template<typename UniformBufferType>
-void UniformBufferDynamic<UniformBufferType>::makeUpdatesVisible() {
 	VkMappedMemoryRange memoryRange{};
 	memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 	memoryRange.memory = _uniformBufferMemory;
