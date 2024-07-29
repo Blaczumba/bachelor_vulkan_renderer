@@ -35,16 +35,21 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<Pipeline> _lowResGraphicsPipeline;
     std::unique_ptr<Pipeline> _lowResGraphicsPipelineSkybox;
 
-    std::unique_ptr<VertexBuffer<VertexPT>> _vertexBuffer;
+    std::unique_ptr<VertexBuffer<VertexPTN>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
-    VertexData<VertexPT, uint16_t> _vertexData;
+    VertexData<VertexPTN, uint16_t> _vertexData;
 
     std::unique_ptr<VertexBuffer<VertexP>> _vertexBufferCube;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBufferCube;
     VertexData<VertexP, uint16_t> _vertexDataCube;
 
-    std::vector<std::shared_ptr<UniformBufferStruct<UniformBufferObject>>> _mvpUnuiformBuffers;
-    std::shared_ptr<UniformBufferDynamic<UniformBufferObject>> _dynammicUniformBuffers;
+    UniformBufferCamera _ubCamera;
+    UniformBufferObject _ubObject;
+    UniformBufferLight _ubLight;
+
+    std::shared_ptr<UniformBufferStruct<UniformBufferObject>> _uniformBuffersObject;
+    std::shared_ptr<UniformBufferStruct<UniformBufferLight>> _uniformBuffersLight;
+    std::shared_ptr<UniformBufferDynamic<UniformBufferCamera>> _dynamicUniformBuffersCamera;
     std::shared_ptr<UniformBufferTexture> _textureUniform;
     std::shared_ptr<UniformBufferTexture> _skyboxTextureUniform;
     std::unique_ptr<PushConstants> _pushConstants;
@@ -53,7 +58,6 @@ class OffscreenRendering : public ApplicationBase {
     std::shared_ptr<DescriptorSetLayout> _descriptorSetLayoutSkybox;
     std::shared_ptr<DescriptorPool> _descriptorPool;
     std::shared_ptr<DescriptorPool> _descriptorPoolSkybox;
-    UniformBufferObject _ubo;
 
     std::shared_ptr<Texture2DImage> _texture;
     std::shared_ptr<TextureCubemap> _textureCubemap;

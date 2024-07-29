@@ -24,13 +24,18 @@ struct VertexPTN {
     glm::vec3 normal;
 };
 
-struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
-    alignas(16) glm::mat4 view;
-    alignas(16) glm::mat4 proj;
+struct UniformBufferLight {
+    alignas(16) glm::vec3 pos;
 };
 
-struct UniformBufferObjectMP {
+struct UniformBufferObject {
     alignas(16) glm::mat4 model;
-    alignas(16) glm::mat4 proj;
+
 };
+
+struct UniformBufferCamera {
+    alignas(16) glm::mat4 view;
+    alignas(16) glm::mat4 proj;
+    alignas(16) glm::vec3 pos;
+};
+
