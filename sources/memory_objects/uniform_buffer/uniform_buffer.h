@@ -152,6 +152,7 @@ public:
 	~UniformBufferDynamic();
 
 	void updateUniformBuffer(UniformBufferType* object, uint32_t index);
+	void makeUpdatesVisible();
 
 };
 
@@ -192,7 +193,10 @@ UniformBufferDynamic<UniformBufferType>::~UniformBufferDynamic() {
 template<typename UniformBufferType>
 void UniformBufferDynamic<UniformBufferType>::updateUniformBuffer(UniformBufferType* object, uint32_t index) {
 	std::memcpy(static_cast<uint8_t*>(_uniformBufferMapped) + index * _size, object, sizeof(UniformBufferType));
+}
 
+template<typename UniformBufferType>
+void UniformBufferDynamic<UniformBufferType>::makeUpdatesVisible() {
 	VkMappedMemoryRange memoryRange{};
 	memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 	memoryRange.memory = _uniformBufferMemory;

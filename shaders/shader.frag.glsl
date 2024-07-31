@@ -9,6 +9,8 @@ layout(binding=0) uniform CameraUniform {
 layout(binding = 1) uniform sampler2D texSampler;
 
 layout(binding = 2) uniform Light {
+    mat4 projView;
+
     vec3 pos;
 
 } light;
@@ -18,16 +20,49 @@ layout(binding = 3) uniform ObjectUniform {
 
 } object;
 
+layout(binding = 4) uniform sampler2DShadow shadowMap;
+
 layout(location = 0) in vec3 fragPosition;
 layout(location = 1) in vec2 fragTexCoord;
 layout(location = 2) in vec3 fragNormal;
+layout(location = 3) in vec4 lightFragPosition;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outColor1;
 
+const int KELNER_SIZE = 9;  // size of offsets
+const ivec2 offsets[] = ivec2[](
+	ivec2(-1, 1), ivec2(0, 1), ivec2(1, 1),
+	ivec2(-1, 0), ivec2(0, 0), ivec2(1, 0),
+	ivec2(-1, -1), ivec2(0, -1), ivec2(1, -1)
+);
+
+
+float calculateShadow(vec3 lightDir) {
+    vec3 lightFrag = lightFragPosition.xyz / lightFragPosition.w;
+    if(lightFrag.z >= 1.0)
+        return 1.0;
+
+    float sum = 0.0;
+    {
+        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[0]);
+        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[1]);
+        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[2]);
+        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[3]);
+        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[4]);
+        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[5]);
+        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[6]);
+        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[7]);
+        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[8]);
+    }
+
+    return sum / KELNER_SIZE;
+}
+
+
 void main() {
     vec3 color = texture(texSampler, fragTexCoord).rgb;
-    bool blinn = true;
+    const bool blinn = true;
 
     vec3 ambient = 0.05 * color;
     // diffuse
@@ -52,6 +87,6 @@ void main() {
     vec3 specular = vec3(0.3) * spec; // assuming bright white light color
 
 
-    outColor = vec4(ambient + diffuse + specular, 1.0);
+    outColor = vec4(ambient + calculateShadow(lightDir)*(diffuse + specular), 1.0);
     outColor1 = outColor;
 }

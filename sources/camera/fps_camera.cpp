@@ -38,6 +38,7 @@ void FPSCamera::updateInput(const CallbackData& cbData) {
 }
 
 glm::mat4 FPSCamera::getViewMatrix() const {
+    //return glm::lookAt(glm::vec3(2.0f, 6.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     return glm::lookAt(_position, _position + _front, _up);
 }
 

@@ -10,7 +10,6 @@ public:
         DEPTH_ATTACHMENT
     };
 
-    VkImageLayout getLayout() const { return layout; };
     VkClearValue getClearValue() const { return clearValue; };
     const VkAttachmentDescription& getDescription() const { return description; }
     Type getAttachmentRefType() const { return type; }
@@ -18,8 +17,8 @@ public:
     VkSampleCountFlagBits getMsaaSampleCount() const { return description.samples; }
 
     virtual ~Attachment() = default;
+
 protected:
-    VkImageLayout layout;
     VkClearValue clearValue;
     VkAttachmentDescription description{};
     Type type;
@@ -36,7 +35,6 @@ struct ColorAttachment : public Attachment {
         description.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // VK_IMAGE_LAYOUT_UNDEFINED
         description.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         type = Type::COLOR_ATTACHMENT;
         clearValue = { { 0.0f, 0.0f, 0.0f, 1.0f } };
     }
@@ -53,7 +51,6 @@ struct ColorPresentAttachment : public Attachment {
         description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-        layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         type = Type::COLOR_ATTACHMENT;
         clearValue = { { 0.0f, 0.0f, 0.0f, 1.0f } };
     }
@@ -70,7 +67,22 @@ struct DepthAttachment : public Attachment {
         description.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; // VK_IMAGE_LAYOUT_UNDEFINED
         description.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        type = Type::DEPTH_ATTACHMENT;
+        clearValue = { 1.0f, 0 };
+    }
+};
+
+struct ShadowAttachment : public Attachment {
+    ShadowAttachment(VkFormat format, VkImageLayout finalLayout) {
+        description.format = format;
+        description.samples = VK_SAMPLE_COUNT_1_BIT;
+        description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        description.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
         type = Type::DEPTH_ATTACHMENT;
         clearValue = { 1.0f, 0 };
     }
@@ -87,7 +99,6 @@ struct ColorResolveAttachment : public Attachment {
         description.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // VK_IMAGE_LAYOUT_UNDEFINED
         description.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         type = Type::COLOR_ATTACHMENT_RESOLVE;
         clearValue = { { 0.0f, 0.0f, 0.0f, 1.0f } };
     }
@@ -104,7 +115,6 @@ struct ColorResolvePresentAttachment : public Attachment {
         description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-        layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         type = Type::COLOR_ATTACHMENT_RESOLVE;
         clearValue = { { 0.0f, 0.0f, 0.0f, 1.0f } };
     }

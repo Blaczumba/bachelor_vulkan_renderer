@@ -25,6 +25,7 @@ struct VertexPTN {
 };
 
 struct UniformBufferLight {
+    alignas(16) glm::mat4 projView;
     alignas(16) glm::vec3 pos;
 };
 

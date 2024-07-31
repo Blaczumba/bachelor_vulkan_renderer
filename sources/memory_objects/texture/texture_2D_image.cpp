@@ -42,8 +42,6 @@ Texture2DImage::Texture2DImage(std::shared_ptr<LogicalDevice> logicalDevice, con
 
     stbi_image_free(pixels);
 
-    _image.format = format;
-
     _logicalDevice->createImage(_image.extent.width, _image.extent.height, _mipLevels, _sampleCount, _image.format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image.image, _image.memory, _layerCount);
     {
         SingleTimeCommandBuffer handle(*_logicalDevice);

@@ -15,12 +15,12 @@
 template<typename VertexType>
 class GraphicsPipeline : public Pipeline {
 public:
-	GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, const PushConstants& pushConstants, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace = true);
+	GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, const PushConstants& pushConstants, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace, float depthBiasConstantFactor, float depthBiasSlopeFactor);
 	~GraphicsPipeline();
 };
 
 template<typename VertexType>
-GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, const PushConstants& pushConstants, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace)
+GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, const PushConstants& pushConstants, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace, float depthBiasConstantFactor, float depthBiasSlopeFactor)
     : Pipeline(logicalDevice, VK_PIPELINE_BIND_POINT_GRAPHICS) {
     auto vertShaderCode = readFile(SHADERS_PATH + vertexShader);
     auto fragShaderCode = readFile(SHADERS_PATH + fragmentShader);
@@ -74,6 +74,10 @@ GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> lo
     rasterizer.cullMode = (backFace) ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_FRONT_BIT;
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
+    if (depthBiasConstantFactor != 0.0f && depthBiasSlopeFactor != 0.0f)
+        rasterizer.depthBiasEnable = VK_TRUE;
+    rasterizer.depthBiasConstantFactor = depthBiasConstantFactor;
+    rasterizer.depthBiasSlopeFactor = depthBiasSlopeFactor;
 
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
