@@ -11,3 +11,6 @@ glslc.exe -fshader-stage=frag "%SCRIPT_DIR%\skybox.frag.glsl" -O -o "%SCRIPT_DIR
 
 glslc.exe -fshader-stage=vert "%SCRIPT_DIR%\skybox_offscreen.vert.glsl" -O -o "%SCRIPT_DIR%\skybox_offscreen.vert.spv"
 glslc.exe -fshader-stage=frag "%SCRIPT_DIR%\skybox_offscreen.frag.glsl" -O -o "%SCRIPT_DIR%\skybox_offscreen.frag.spv"
+
+glslc.exe -fshader-stage=vert "%SCRIPT_DIR%\shadow.vert.glsl" -O -o "%SCRIPT_DIR%\shadow.vert.spv"
+glslc.exe -fshader-stage=frag "%SCRIPT_DIR%\shadow.frag.glsl" -O -o "%SCRIPT_DIR%\shadow.frag.spv"

@@ -4,71 +4,30 @@
 #include <stdexcept>
 #include <iostream>
 
-Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const AttachmentLayout& layout)
+Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const AttachmentLayout& layout) 
     : _logicalDevice(logicalDevice), _attachmentsLayout(layout) {
-    std::vector<VkAttachmentReference> colorAttachmentRefs;
-    std::vector<VkAttachmentReference> depthAttachmentRefs;
-    std::vector<VkAttachmentReference> colorAttachmentResolveRefs;
-    std::vector<VkAttachmentDescription> attachmentDescriptions;
+    _clearValues = _attachmentsLayout.getVkClearValues();
+    _colorAttachmentsCount = _attachmentsLayout.getColorAttachmentsCount();
+}
 
-    const auto& attachments = _attachmentsLayout.getAttachments();
+void Renderpass::create() {
+    if (_renderpass)
+        throw std::runtime_error("Renderpass has already been created!");
 
-    for (uint32_t i = 0; i < attachments.size(); i++) {
-        const Attachment attachment = attachments[i];
+    std::vector<VkAttachmentDescription> attachmentDescriptions = _attachmentsLayout.getVkAttachmentDescriptions();
 
-        VkAttachmentReference attachmentReference{};
-        attachmentReference.layout = attachment.getLayout();
-        attachmentReference.attachment = i;
-
-        attachmentDescriptions.push_back(attachment.getDescription());
-        VkClearValue clearValue = attachment.getClearValue();
-
-        switch (attachment.getAttachmentRefType()) {
-        case Attachment::Type::COLOR_ATTACHMENT:
-            colorAttachmentRefs.push_back(attachmentReference);
-            break;
-        case Attachment::Type::COLOR_ATTACHMENT_RESOLVE:
-            colorAttachmentResolveRefs.push_back(attachmentReference);
-            break;
-        case Attachment::Type::DEPTH_ATTACHMENT:
-            depthAttachmentRefs.push_back(attachmentReference);
-            break;
-        default:
-            throw std::runtime_error("Unknown attachment type");
-        }
-
-        _clearValues.push_back(clearValue);
-    }
-
-    _colorAttachmentsCount = static_cast<uint32_t>(colorAttachmentRefs.size());
-
-    VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = _colorAttachmentsCount;
-    if(!colorAttachmentRefs.empty())
-        subpass.pColorAttachments = colorAttachmentRefs.data();
-    if(!depthAttachmentRefs.empty())
-        subpass.pDepthStencilAttachment = depthAttachmentRefs.data();
-    if(!colorAttachmentResolveRefs.empty())
-        subpass.pResolveAttachments = colorAttachmentResolveRefs.data();
-
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    std::vector<VkSubpassDescription> subpassDescriptions;
+    std::transform(_subpasses.cbegin(), _subpasses.cend(), std::back_inserter(subpassDescriptions), [](const Subpass& subpass) { return subpass.getVkSubpassDescription(); });
 
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size());
     renderPassInfo.pAttachments = attachmentDescriptions.data();
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpass;
-    renderPassInfo.dependencyCount = 1;
-    renderPassInfo.pDependencies = &dependency;
-  
+    renderPassInfo.subpassCount = static_cast<uint32_t>(subpassDescriptions.size());
+    renderPassInfo.pSubpasses = subpassDescriptions.data();
+    renderPassInfo.dependencyCount = static_cast<uint32_t>(_subpassDepencies.size());
+    renderPassInfo.pDependencies = _subpassDepencies.data();
+
     if (vkCreateRenderPass(_logicalDevice->getVkDevice(), &renderPassInfo, nullptr, &_renderpass) != VK_SUCCESS) {
         throw std::runtime_error("failed to create render pass!");
     }
@@ -92,4 +51,20 @@ const AttachmentLayout& Renderpass::getAttachmentsLayout() const {
 
 uint32_t Renderpass::getColorAttachmentsCount() const {
     return _colorAttachmentsCount;
+}
+
+void Renderpass::addSubpass(const Subpass& subpass) {
+    _subpasses.push_back(subpass);
+}
+
+void Renderpass::addDependency(uint32_t srcSubpassIndex, uint32_t dstSubpassIndex, VkPipelineStageFlags srcStageMask, VkAccessFlags srcAccessMask, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask) {
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = srcSubpassIndex;
+    dependency.dstSubpass = dstSubpassIndex;
+    dependency.srcStageMask = srcStageMask;
+    dependency.srcAccessMask = srcAccessMask;
+    dependency.dstStageMask = dstStageMask;
+    dependency.dstAccessMask = dstAccessMask;
+
+    _subpassDepencies.push_back(dependency);
 }

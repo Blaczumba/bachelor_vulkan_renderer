@@ -1,6 +1,6 @@
 add_subdirectory(framebuffer)
 
-add_library(Renderpass render_pass.cpp)
+add_library(Renderpass render_pass.cpp subpass/subpass.h subpass/subpass.cpp)
 
 target_link_libraries(Renderpass PUBLIC LogicalDevice)
 target_link_libraries(Renderpass PUBLIC Vulkan::Vulkan)
