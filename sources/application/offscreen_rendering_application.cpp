@@ -37,7 +37,7 @@ OffscreenRendering::OffscreenRendering()
 }
 
 void OffscreenRendering::createDescriptorSets() {
-    _texture = std::make_shared<Texture2DImage>(_logicalDevice, TEXTURES_PATH "drakan.jpg", VK_FORMAT_R8G8B8A8_SRGB, _physicalDevice->getMaxSamplerAnisotropy());
+    _texture = std::make_shared<Texture2DImage>(_logicalDevice, TEXTURES_PATH "texture.jpg", VK_FORMAT_R8G8B8A8_SRGB, _physicalDevice->getMaxSamplerAnisotropy());
     _textureCubemap = std::make_shared<TextureCubemap>(_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, _physicalDevice->getMaxSamplerAnisotropy());
     _shadowMap = std::make_shared<Texture2DShadow>(_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
 
