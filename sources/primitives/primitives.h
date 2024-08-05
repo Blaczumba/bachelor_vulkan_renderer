@@ -24,6 +24,14 @@ struct VertexPTN {
     glm::vec3 normal;
 };
 
+struct VertexPTNTB {
+    glm::vec3 pos;
+    glm::vec2 texCoord;
+    glm::vec3 normal;
+    glm::vec3 tangent;
+    glm::vec3 bitangent;
+};
+
 struct UniformBufferLight {
     alignas(16) glm::mat4 projView;
     alignas(16) glm::vec3 pos;

@@ -61,8 +61,8 @@ public:
 	}
 };
 
-class UniformBufferData : public UniformBuffer {
-protected:
+template<typename UniformBufferType>
+class UniformBufferStruct : public UniformBuffer {
 	VkBuffer _uniformBuffer;
 	VkDeviceMemory _uniformBufferMemory;
 	void* _uniformBufferMapped;
@@ -72,41 +72,20 @@ protected:
 	std::shared_ptr<LogicalDevice> _logicalDevice;
 
 public:
-	UniformBufferData(std::shared_ptr<LogicalDevice> logicalDevice, VkDescriptorType type) : UniformBuffer(type), _logicalDevice(logicalDevice) {}
-	virtual ~UniformBufferData() = default;
-
-	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override {
-		VkWriteDescriptorSet descriptorWrite{};
-		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite.dstSet = descriptorSet;
-		descriptorWrite.dstBinding = binding;
-		descriptorWrite.dstArrayElement = 0;
-		descriptorWrite.descriptorType = _type;
-		descriptorWrite.descriptorCount = 1;
-		descriptorWrite.pBufferInfo = &_bufferInfo;
-
-		return descriptorWrite;
-	}
-
-	virtual VkBuffer getVkBuffer() const { return _uniformBuffer; }
-};
-
-template<typename UniformBufferType>
-class UniformBufferStruct : public UniformBufferData {
-public:
 	UniformBufferStruct(std::shared_ptr<LogicalDevice> logicalDevice);
 	~UniformBufferStruct();
 
+	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override;
 	void updateUniformBuffer(UniformBufferType* object);
 };
 
 template<typename UniformBufferType>
 UniformBufferStruct<UniformBufferType>::UniformBufferStruct(std::shared_ptr<LogicalDevice> logicalDevice)
-	: UniformBufferData(logicalDevice, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+	: UniformBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER), _logicalDevice(logicalDevice) {
 
 	const PhysicalDevice& physicalDevice = _logicalDevice->getPhysicalDevice();
 
-	const auto limits = physicalDevice.getPhysicalDeviceLimits();
+	const auto& limits = physicalDevice.getPropertyManager().getPhysicalDeviceLimits();
 	size_t minUboAlignment = limits.minUniformBufferOffsetAlignment;
 
 	_size = sizeof(UniformBufferType);
@@ -118,9 +97,9 @@ UniformBufferStruct<UniformBufferType>::UniformBufferStruct(std::shared_ptr<Logi
 
 	vkMapMemory(_logicalDevice->getVkDevice(), _uniformBufferMemory, 0, _size, 0, &_uniformBufferMapped);
 
-	_bufferInfo.buffer	= _uniformBuffer;
-	_bufferInfo.range	= sizeof(UniformBufferType);
-	_bufferInfo.offset	= 0;
+	_bufferInfo.buffer = _uniformBuffer;
+	_bufferInfo.offset = 0;
+	_bufferInfo.range = sizeof(UniformBufferType);
 }
 
 template<typename UniformBufferType>
@@ -130,6 +109,20 @@ UniformBufferStruct<UniformBufferType>::~UniformBufferStruct() {
 	vkUnmapMemory(device, _uniformBufferMemory);
 	vkFreeMemory(device, _uniformBufferMemory, nullptr);
 	vkDestroyBuffer(device, _uniformBuffer, nullptr);
+}
+
+template<typename UniformBufferType>
+VkWriteDescriptorSet UniformBufferStruct<UniformBufferType>::getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const {
+	VkWriteDescriptorSet descriptorWrite{};
+	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite.dstSet = descriptorSet;
+	descriptorWrite.dstBinding = binding;
+	descriptorWrite.dstArrayElement = 0;
+	descriptorWrite.descriptorType = _type;
+	descriptorWrite.descriptorCount = 1;
+	descriptorWrite.pBufferInfo = &_bufferInfo;
+
+	return descriptorWrite;
 }
 
 template<typename UniformBufferType>
@@ -144,13 +137,22 @@ void UniformBufferStruct<UniformBufferType>::updateUniformBuffer(UniformBufferTy
 }
 
 template<typename UniformBufferType>
-class UniformBufferDynamic : public UniformBufferData {
+class UniformBufferDynamic : public UniformBuffer {
+	VkBuffer _uniformBuffer;
+	VkDeviceMemory _uniformBufferMemory;
+	void* _uniformBufferMapped;
+
+	VkDescriptorBufferInfo _bufferInfo;
+
+	std::shared_ptr<LogicalDevice> _logicalDevice;
+
 	uint32_t _count;
 
 public:
 	UniformBufferDynamic(std::shared_ptr<LogicalDevice> logicalDevice, uint32_t count);
 	~UniformBufferDynamic();
 
+	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override;
 	void updateUniformBuffer(UniformBufferType* object, uint32_t index);
 	void makeUpdatesVisible();
 
@@ -158,11 +160,11 @@ public:
 
 template<typename UniformBufferType>
 UniformBufferDynamic<UniformBufferType>::UniformBufferDynamic(std::shared_ptr<LogicalDevice> logicalDevice, uint32_t count)
-	: UniformBufferData(logicalDevice, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC), _count(count) {
+	: UniformBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC), _logicalDevice(logicalDevice), _count(count) {
 
 	const PhysicalDevice& physicalDevice = _logicalDevice->getPhysicalDevice();
 
-	const auto limits = physicalDevice.getPhysicalDeviceLimits();
+	const auto& limits = physicalDevice.getPropertyManager().getPhysicalDeviceLimits();
 	size_t minUboAlignment = limits.minUniformBufferOffsetAlignment;
 
 	_size = sizeof(UniformBufferType);
@@ -177,8 +179,8 @@ UniformBufferDynamic<UniformBufferType>::UniformBufferDynamic(std::shared_ptr<Lo
 	vkMapMemory(_logicalDevice->getVkDevice(), _uniformBufferMemory, 0, bufferSize, 0, &_uniformBufferMapped);
 
 	_bufferInfo.buffer = _uniformBuffer;
-	_bufferInfo.range = sizeof(UniformBufferType);
 	_bufferInfo.offset = 0;
+	_bufferInfo.range = sizeof(UniformBufferType);
 }
 
 template<typename UniformBufferType>
@@ -188,6 +190,20 @@ UniformBufferDynamic<UniformBufferType>::~UniformBufferDynamic() {
 	vkUnmapMemory(device, _uniformBufferMemory);
 	vkFreeMemory(device, _uniformBufferMemory, nullptr);
 	vkDestroyBuffer(device, _uniformBuffer, nullptr);
+}
+
+template<typename UniformBufferType>
+VkWriteDescriptorSet UniformBufferDynamic<UniformBufferType>::getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const {
+	VkWriteDescriptorSet descriptorWrite{};
+	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite.dstSet = descriptorSet;
+	descriptorWrite.dstBinding = binding;
+	descriptorWrite.dstArrayElement = 0;
+	descriptorWrite.descriptorType = _type;
+	descriptorWrite.descriptorCount = 1;
+	descriptorWrite.pBufferInfo = &_bufferInfo;
+
+	return descriptorWrite;
 }
 
 template<typename UniformBufferType>
@@ -203,3 +219,40 @@ void UniformBufferDynamic<UniformBufferType>::makeUpdatesVisible() {
 	memoryRange.size = _count * _size;
 	vkFlushMappedMemoryRanges(_logicalDevice->getVkDevice(), 1, &memoryRange);
 }
+
+template<typename UniformBufferType>
+class UniformBufferInlineBlock : public UniformBuffer {
+	UniformBufferType _data;
+public:
+	UniformBufferInlineBlock(const UniformBufferType& object);
+	~UniformBufferInlineBlock() = default;
+
+	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override;
+	// void updateUniformBuffer(UniformBufferType* object);
+};
+
+template<typename UniformBufferType>
+UniformBufferInlineBlock<UniformBufferType>::UniformBufferInlineBlock(const UniformBufferType& object)
+	: UniformBuffer(VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK), _data(object) {
+	_size = sizeof(UniformBufferType);
+}
+
+template<typename UniformBufferType>
+VkWriteDescriptorSet UniformBufferInlineBlock<UniformBufferType>::getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const {
+	static VkWriteDescriptorSetInlineUniformBlock inlineUniformBlock = {};
+	inlineUniformBlock.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK;
+	inlineUniformBlock.dataSize = sizeof(UniformBufferType);
+	inlineUniformBlock.pData = &_data;
+
+	VkWriteDescriptorSet descriptorWrite{};
+	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite.dstSet = descriptorSet;
+	descriptorWrite.dstBinding = binding;
+	descriptorWrite.dstArrayElement = 0;
+	descriptorWrite.descriptorType = _type;
+	descriptorWrite.descriptorCount = 1;
+	descriptorWrite.pNext = &inlineUniformBlock;
+
+	return descriptorWrite;
+}
+

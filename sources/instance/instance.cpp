@@ -79,6 +79,7 @@ std::vector<const char*> Instance::getRequiredExtensions() {
 #ifdef VALIDATION_LAYERS_ENABLED
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif // VALIDATION_LAYERS_ENABLED
+    extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
     return extensions;
 }

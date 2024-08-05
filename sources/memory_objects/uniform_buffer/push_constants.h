@@ -1,6 +1,6 @@
 #pragma once
 
-#include "physical_device/device/physical_device.h"
+#include "physical_device/physical_device.h"
 
 #include <vulkan/vulkan.h>
 
@@ -15,7 +15,7 @@ class PushConstants {
 	uint32_t _maxSize;
 public:
 	PushConstants(const PhysicalDevice& physicalDevice) {
-		auto limits = physicalDevice.getPhysicalDeviceLimits();
+		const auto& limits = physicalDevice.getPropertyManager().getPhysicalDeviceLimits();
 
 		_maxSize = limits.maxPushConstantsSize;
 	}

@@ -41,9 +41,11 @@ void Swapchain::cleanup() {
 }
 
 void Swapchain::create() {
-    SwapChainSupportDetails swapChainSupport = _physicalDevice->getSwapChainSupportDetails();
+    const auto& propertyManager = _physicalDevice->getPropertyManager();
+
+    const SwapChainSupportDetails swapChainSupport = propertyManager.getSwapChainSupportDetails();
     VkDevice device = _logicalDevice->getVkDevice();
-    VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_B8G8R8A8_SRGB);
+    VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_R8G8B8A8_SRGB);
     VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_MAILBOX_KHR);
     VkExtent2D windowExtent = _window->getFramebufferSize();
     std::vector<VkImage> images;
@@ -66,7 +68,7 @@ void Swapchain::create() {
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    QueueFamilyIndices indices = _physicalDevice->getQueueFamilyIndices();
+    const QueueFamilyIndices& indices = propertyManager.getQueueFamilyIndices();
     uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
     if (indices.graphicsFamily != indices.presentFamily) {

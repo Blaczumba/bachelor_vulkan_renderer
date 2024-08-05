@@ -132,3 +132,47 @@ VertexData<VertexPTN, uint32_t> TinyOBJLoaderVertex::templatedExtractor<VertexPT
     }
     return { vertices, indices };
 }
+
+template<>
+VertexData<VertexPTNTB, uint32_t> TinyOBJLoaderVertex::templatedExtractor<VertexPTNTB>(const std::string& filePath) {
+    VertexData<VertexPTN, uint32_t> baseData = templatedExtractor<VertexPTN>(filePath);
+
+    std::vector<VertexPTNTB> vertices;
+    std::vector<uint32_t> indices = std::move(baseData.indices);
+
+    std::transform(baseData.vertices.cbegin(), baseData.vertices.cend(), std::back_inserter(vertices), [](const VertexPTN& vertex) {
+        return VertexPTNTB{
+            .pos        = vertex.pos,
+            .texCoord   = vertex.texCoord,
+            .normal     = glm::normalize(vertex.normal)
+        };
+        }
+    );
+
+    // Calculate tangents and bitangents
+    for (size_t i = 0; i < indices.size(); i += 3) {
+        VertexPTNTB& v0 = vertices[indices[i + 0]];
+        VertexPTNTB& v1 = vertices[indices[i + 1]];
+        VertexPTNTB& v2 = vertices[indices[i + 2]];
+
+        glm::vec3 edge1 = v1.pos - v0.pos;
+        glm::vec3 edge2 = v2.pos - v0.pos;
+        glm::vec2 deltaUV1 = v1.texCoord - v0.texCoord;
+        glm::vec2 deltaUV2 = v2.texCoord - v0.texCoord;
+
+        float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+        glm::vec3 tangent = glm::normalize(f * (deltaUV2.y * edge1 - deltaUV1.y * edge2));
+        glm::vec3 bitangent = glm::normalize(f * (-deltaUV2.x * edge1 + deltaUV1.x * edge2));
+
+        v0.tangent = tangent;
+        v1.tangent = tangent;
+        v2.tangent = tangent;
+
+        v0.bitangent = bitangent;
+        v1.bitangent = bitangent;
+        v2.bitangent = bitangent;
+    }
+
+    return { vertices, indices };
+}
