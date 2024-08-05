@@ -8,5 +8,10 @@ const std::vector<const char*> validationLayers = {
 
 const std::vector<const char*> deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    // VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME
+    VK_EXT_INLINE_UNIFORM_BLOCK_EXTENSION_NAME,
+    VK_KHR_MAINTENANCE1_EXTENSION_NAME
+};
+
+const std::vector<const char*> instanceExtensions = {
+    VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
 };

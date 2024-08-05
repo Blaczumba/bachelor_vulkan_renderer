@@ -1,6 +1,0 @@
-add_library(PhysicalDevicePropertyManager "property_manager.cpp")
-
-target_link_libraries(PhysicalDevicePropertyManager PRIVATE Vulkan::Vulkan)
-
-target_include_directories(PhysicalDevicePropertyManager PUBLIC ${CMAKE_SOURCE_DIR}/sources)
-target_include_directories(PhysicalDevicePropertyManager PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

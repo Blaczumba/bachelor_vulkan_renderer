@@ -4,7 +4,7 @@
 #include <instance/instance.h>
 #include <debug_messenger/debug_messenger.h>
 #include <surface/surface.h>
-#include <physical_device/device/physical_device.h>
+#include <physical_device/physical_device.h>
 #include <swapchain/swapchain.h>
 
 class ApplicationBase {

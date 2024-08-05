@@ -26,6 +26,7 @@ class OffscreenRendering : public ApplicationBase {
     std::shared_ptr<Renderpass> _renderPass;
     std::unique_ptr<Framebuffer> _framebuffer;
     std::unique_ptr<Pipeline> _graphicsPipeline;
+    std::unique_ptr<Pipeline> _graphicsPipelineObject;
     std::unique_ptr<Pipeline> _graphicsPipelineSkybox;
 
     std::shared_ptr<Renderpass> _lowResRenderPass;
@@ -34,6 +35,7 @@ class OffscreenRendering : public ApplicationBase {
     std::shared_ptr<Texture2DColor> _lowResTextureColorAttachment;
     std::shared_ptr<Texture2DDepth> _lowResTextureDepthAttachment;
     std::unique_ptr<Pipeline> _lowResGraphicsPipeline;
+    std::unique_ptr<Pipeline> _lowResGraphicsPipelineObject;
     std::unique_ptr<Pipeline> _lowResGraphicsPipelineSkybox;
 
     std::shared_ptr<Renderpass> _shadowRenderPass;
@@ -43,11 +45,12 @@ class OffscreenRendering : public ApplicationBase {
 
     std::unique_ptr<VertexBuffer<VertexPTN>> _vertexBuffer;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
-    VertexData<VertexPTN, uint16_t> _vertexData;
 
     std::unique_ptr<VertexBuffer<VertexP>> _vertexBufferCube;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBufferCube;
-    VertexData<VertexP, uint16_t> _vertexDataCube;
+
+    std::unique_ptr<VertexBuffer<VertexPTNTB>> _vertexBufferTBN;
+    std::unique_ptr<IndexBuffer<uint16_t>> _indexBufferTBN;
 
     UniformBufferCamera _ubCamera;
     UniformBufferObject _ubObject;
@@ -59,19 +62,27 @@ class OffscreenRendering : public ApplicationBase {
     std::shared_ptr<UniformBufferTexture> _textureUniform;
     std::shared_ptr<UniformBufferTexture> _skyboxTextureUniform;
     std::shared_ptr<UniformBufferTexture> _shadowTextureUniform;
+    std::shared_ptr<UniformBufferTexture> _diffuseTBNTextureUniform;
+    std::shared_ptr<UniformBufferTexture> _normalTBNTextureUniform;
+    std::shared_ptr<UniformBufferInlineBlock<UniformBufferLight>> _inlineBlock;
     std::unique_ptr<PushConstants> _pushConstants;
 
     std::shared_ptr<DescriptorSetLayout> _descriptorSetLayout;
+    std::shared_ptr<DescriptorSetLayout> _descriptorSetLayoutObject;
     std::shared_ptr<DescriptorSetLayout> _descriptorSetLayoutSkybox;
     std::shared_ptr<DescriptorSetLayout> _descriptorSetLayoutShadow;
     std::shared_ptr<DescriptorPool> _descriptorPool;
+    std::shared_ptr<DescriptorPool> _descriptorPoolObject;
     std::shared_ptr<DescriptorPool> _descriptorPoolSkybox;
     std::shared_ptr<DescriptorPool> _descriptorPoolShadow;
 
     std::shared_ptr<Texture2DImage> _texture;
+    std::shared_ptr<Texture2DImage> _diffuseTBNtexture;
+    std::shared_ptr<Texture2DImage> _normalTBNtexture;
     std::shared_ptr<TextureCubemap> _textureCubemap;
 
     std::unique_ptr<DescriptorSet> _descriptorSet;
+    std::unique_ptr<DescriptorSet> _descriptorSetObject;
     std::unique_ptr<DescriptorSet> _descriptorSetSkybox;
     std::unique_ptr<DescriptorSet> _descriptorSetShadow;
     std::unique_ptr<Screenshot> _screenshot;

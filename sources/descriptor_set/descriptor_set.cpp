@@ -31,7 +31,7 @@ void DescriptorSet::updateDescriptorSet(const std::vector<std::shared_ptr<Unifor
     std::vector<VkWriteDescriptorSet> descriptorWrites;
     _offsets = std::vector<std::vector<uint32_t>>(dynamicOffsetCount);
 
-    for (size_t j = 0, dynUniformIndex = 0; j < uniformBuffers.size(); j++) {
+    for (size_t j = 0; j < uniformBuffers.size(); j++) {
         const auto& uniformBuffer = uniformBuffers[j];
 
         descriptorWrites.emplace_back(uniformBuffer->getVkWriteDescriptorSet(_descriptorSet, j));

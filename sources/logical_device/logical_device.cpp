@@ -4,9 +4,9 @@
 #include <set>
 #include <stdexcept>
 
-LogicalDevice::LogicalDevice(std::shared_ptr<PhysicalDevice> physicalDevice)
+LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
     : _physicalDevice(physicalDevice) {
-    QueueFamilyIndices indices = physicalDevice->getQueueFamilyIndices();
+    const QueueFamilyIndices& indices = physicalDevice.getPropertyManager().getQueueFamilyIndices();
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = { 
@@ -37,6 +37,7 @@ LogicalDevice::LogicalDevice(std::shared_ptr<PhysicalDevice> physicalDevice)
     createInfo.pEnabledFeatures         = &deviceFeatures;
     createInfo.enabledExtensionCount    = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames  = deviceExtensions.data();
+    
 
 #ifdef VALIDATION_LAYERS_ENABLED
         createInfo.enabledLayerCount    = static_cast<uint32_t>(validationLayers.size());
@@ -45,7 +46,7 @@ LogicalDevice::LogicalDevice(std::shared_ptr<PhysicalDevice> physicalDevice)
         createInfo.enabledLayerCount    = 0;
 #endif  // VALIDATION_LAYERS_ENABLED
 
-    if (vkCreateDevice(_physicalDevice->getVkPhysicalDevice(), &createInfo, nullptr, &_device) != VK_SUCCESS) {
+    if (vkCreateDevice(_physicalDevice.getVkPhysicalDevice(), &createInfo, nullptr, &_device) != VK_SUCCESS) {
         throw std::runtime_error("failed to create logical device!");
     }
 
@@ -75,13 +76,15 @@ void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Vk
         throw std::runtime_error("failed to create buffer!");
     }
 
+    const auto& propertyManager = _physicalDevice.getPropertyManager();
+
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(_device, buffer, &memRequirements);
 
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType             = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize    = memRequirements.size;
-    allocInfo.memoryTypeIndex   = _physicalDevice->findMemoryType(memRequirements.memoryTypeBits, properties);
+    allocInfo.memoryTypeIndex   = propertyManager.findMemoryType(memRequirements.memoryTypeBits, properties);
 
     if (vkAllocateMemory(_device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate buffer memory!");
@@ -113,13 +116,15 @@ void LogicalDevice::createImage(uint32_t width, uint32_t height, uint32_t mipLev
         throw std::runtime_error("failed to create image!");
     }
 
+    const auto& propertyManager = _physicalDevice.getPropertyManager();
+
     VkMemoryRequirements memRequirements;
     vkGetImageMemoryRequirements(_device, outImage, &memRequirements);
 
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType             = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize    = memRequirements.size;
-    allocInfo.memoryTypeIndex   = _physicalDevice->findMemoryType(memRequirements.memoryTypeBits, properties);
+    allocInfo.memoryTypeIndex   = propertyManager.findMemoryType(memRequirements.memoryTypeBits, properties);
 
     if (vkAllocateMemory(_device, &allocInfo, nullptr, &outImageMemory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate image memory!");
@@ -180,5 +185,5 @@ VkDevice LogicalDevice::getVkDevice() const {
 }
 
 const PhysicalDevice& LogicalDevice::getPhysicalDevice() const {
-    return *_physicalDevice;
+    return _physicalDevice;
 }

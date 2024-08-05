@@ -1,6 +1,6 @@
 #pragma once
 
-#include "physical_device/device/physical_device.h"
+#include "physical_device/physical_device.h"
 
 #include <memory>
 
@@ -8,9 +8,9 @@ class LogicalDevice {
 	VkDevice _device;
 	VkCommandPool _commandPool;
 
-	std::shared_ptr<PhysicalDevice> _physicalDevice;
+	const PhysicalDevice& _physicalDevice;
 public:
-	LogicalDevice(std::shared_ptr<PhysicalDevice> physicalDevice);
+	LogicalDevice(const PhysicalDevice& physicalDevice);
 	~LogicalDevice();
 
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
