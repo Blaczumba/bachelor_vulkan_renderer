@@ -1,11 +1,13 @@
 #include "texture_2D_sampler.h"
+#include "logical_device/logical_device.h"
+#include "memory_objects/image.h"
 
-Texture2DSampler::Texture2DSampler(std::shared_ptr<LogicalDevice> logicalDevice, float samplerAnisotropy)
-    : Texture2D(std::move(logicalDevice)), _samplerAnisotropy(samplerAnisotropy) {
+Texture2DSampler::Texture2DSampler(const LogicalDevice& logicalDevice, float samplerAnisotropy)
+    : Texture2D(logicalDevice), _samplerAnisotropy(samplerAnisotropy) {
 }
 
 Texture2DSampler::~Texture2DSampler() {
-    VkDevice device = _logicalDevice->getVkDevice();
+    const VkDevice device = _logicalDevice.getVkDevice();
     
     vkDestroySampler(device, _sampler, nullptr);
     vkDestroyImageView(device, _image.view, nullptr);

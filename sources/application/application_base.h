@@ -1,6 +1,6 @@
 #pragma once
 
-#include <window/window/window.h>
+#include <window/window/window_glfw.h>
 #include <instance/instance.h>
 #include <debug_messenger/debug_messenger.h>
 #include <surface/surface.h>

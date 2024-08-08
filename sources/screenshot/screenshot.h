@@ -1,9 +1,6 @@
 #pragma once
 
 #include "window/callback_observer/callback_observer.h"
-#include "physical_device/physical_device.h"
-#include "swapchain/swapchain.h"
-#include "memory_objects/image.h"
 
 #include <vulkan/vulkan.h>
 
@@ -14,6 +11,11 @@
 #include <atomic>
 #include <condition_variable>
 #include <queue>
+
+class CallbackObserver;
+class LogicalDevice;
+struct Image;
+struct CallbackData;
 
 class Screenshot : public CallbackObserver {
 	std::shared_ptr<LogicalDevice> _logicalDevice;

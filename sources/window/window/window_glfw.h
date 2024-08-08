@@ -2,10 +2,9 @@
 
 #include "window.h"
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
 #include <string_view>
+
+class GLFWwindow;
 
 class WindowGLFW : public Window {
 	GLFWwindow* _window;

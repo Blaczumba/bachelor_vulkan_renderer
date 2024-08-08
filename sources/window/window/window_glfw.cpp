@@ -1,5 +1,7 @@
 #include "window_glfw.h"
 
+#include <GLFW/glfw3.h>
+
 #include <stdexcept>
 
 WindowGLFW::WindowGLFW(std::string_view windowName, uint32_t width, uint32_t height) {

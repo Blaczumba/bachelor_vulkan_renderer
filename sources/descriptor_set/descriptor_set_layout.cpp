@@ -1,14 +1,15 @@
 #include "descriptor_set_layout.h"
+#include "logical_device/logical_device.h"
 
 #include <stdexcept>
 
-DescriptorSetLayout::DescriptorSetLayout(std::shared_ptr<LogicalDevice> logicalDevice) 
+DescriptorSetLayout::DescriptorSetLayout(const LogicalDevice& logicalDevice) 
 	: _logicalDevice(logicalDevice), _binding(0) {
 
 }
 
 DescriptorSetLayout::~DescriptorSetLayout() {
-    vkDestroyDescriptorSetLayout(_logicalDevice->getVkDevice(), _descriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(_logicalDevice.getVkDevice(), _descriptorSetLayout, nullptr);
 }
 
 void DescriptorSetLayout::addLayoutBinding(VkDescriptorType descriptorType, VkShaderStageFlags stageFlags, uint32_t descriptorCount, const VkSampler* pImmutableSamplers) {
@@ -27,7 +28,7 @@ void DescriptorSetLayout::create() {
     layoutInfo.bindingCount = static_cast<uint32_t>(_bindings.size());
     layoutInfo.pBindings = _bindings.data();
 
-    if (vkCreateDescriptorSetLayout(_logicalDevice->getVkDevice(), &layoutInfo, nullptr, &_descriptorSetLayout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(_logicalDevice.getVkDevice(), &layoutInfo, nullptr, &_descriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 }

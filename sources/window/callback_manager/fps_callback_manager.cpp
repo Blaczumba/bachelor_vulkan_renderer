@@ -1,4 +1,9 @@
+#include "window/window/window_glfw.h"
+
 #include "fps_callback_manager.h"
+#include "window/callback_observer/callback_observer.h"
+
+#include <glfw/glfw3.h>
 
 #include <iostream>
 

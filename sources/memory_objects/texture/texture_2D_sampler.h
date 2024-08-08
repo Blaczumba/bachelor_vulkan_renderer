@@ -10,7 +10,7 @@ protected:
     float _samplerAnisotropy;
 
 public:
-    Texture2DSampler(std::shared_ptr<LogicalDevice> logicalDevice, float samplerAnisotropy);
+    Texture2DSampler(const LogicalDevice& logicalDevice, float samplerAnisotropy);
     ~Texture2DSampler();
 
     const VkSampler getVkSampler() const;

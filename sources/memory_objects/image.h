@@ -1,8 +1,8 @@
 #pragma once
 
-#include "logical_device/logical_device.h"
-
 #include <vulkan/vulkan.h>
+
+#include <vector>
 
 struct Image {
 	VkImage image				= VK_NULL_HANDLE;

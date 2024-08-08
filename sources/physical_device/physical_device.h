@@ -12,15 +12,15 @@ class LogicalDevice;
 
 class PhysicalDevice {
     VkPhysicalDevice _device;
-	std::shared_ptr<Instance> _instance;
-    std::shared_ptr<Surface> _surface;
+	const std::shared_ptr<Instance> _instance;
+    const std::shared_ptr<Surface> _surface;
 
     PhysicalDevicePropertyManager _propertyManager;
 
 public:
-	PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_ptr<Surface> surface);
+	PhysicalDevice(const std::shared_ptr<Instance>& instance, const std::shared_ptr<Surface>& surface);
 
-    VkPhysicalDevice getVkPhysicalDevice() const;
+    const VkPhysicalDevice getVkPhysicalDevice() const;
     const PhysicalDevicePropertyManager& getPropertyManager() const;
 
     std::shared_ptr<LogicalDevice> createLogicalDevice();

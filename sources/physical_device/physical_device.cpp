@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <iostream>
 
-PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_ptr<Surface> surface)
+PhysicalDevice::PhysicalDevice(const std::shared_ptr<Instance>& instance, const std::shared_ptr<Surface>& surface)
 	: _instance(instance), _surface(surface), _device(VK_NULL_HANDLE) {
 
     std::vector<VkPhysicalDevice> devices = _instance->getAvailablePhysicalDevices();
@@ -29,7 +29,7 @@ PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_p
 
         bool discreteGPU = _propertyManager.checkDiscreteGPU();
 
-        std::array<bool, 5> conditions = {
+        const std::array<bool, 5> conditions = {
             indices.isComplete(),
             extensionsSupported,
             swapChainAdequate,
@@ -50,7 +50,7 @@ PhysicalDevice::PhysicalDevice(std::shared_ptr<Instance> instance, std::shared_p
     }
 }
 
-VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const {
+const VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const {
     return _device;
 }
 

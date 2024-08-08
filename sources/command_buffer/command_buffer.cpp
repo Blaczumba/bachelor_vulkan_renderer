@@ -1,6 +1,9 @@
+#include "logical_device/logical_device.h"
 #include "command_buffer.h"
 
 #include <stdexcept>
+
+class LogicalDevice;
 
 SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDevice)
     : _logicalDevice(logicalDevice) {
@@ -22,7 +25,7 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDev
 }
 
 SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
-    VkDevice device = _logicalDevice._device;
+    const VkDevice device = _logicalDevice._device;
 
     vkEndCommandBuffer(_commandBuffer);
 

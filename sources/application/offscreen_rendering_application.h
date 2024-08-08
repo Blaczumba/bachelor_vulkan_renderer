@@ -20,69 +20,74 @@
 #include <memory_objects/texture/texture_2D_shadow.h>
 #include <memory_objects/texture/texture_cubemap.h>
 #include <memory_objects/uniform_buffer/push_constants.h>
+#include <descriptor_set/descriptor_set_layout.h>
+#include <descriptor_set/descriptor_pool.h>
 #include <screenshot/screenshot.h>
 
+#include <unordered_map>
+
+struct Object {
+    std::unique_ptr<VertexBuffer<VertexPTNTB>> vertexBufferPTNTB;
+    std::unique_ptr<VertexBuffer<VertexP>> vertexBufferP;
+    std::unique_ptr<IndexBuffer<uint32_t>> indexBuffer;
+
+    uint32_t dynamicUniformIndex;
+
+    std::unique_ptr<DescriptorSet> _descriptorSet;
+
+    glm::mat4 model;
+};
+
 class OffscreenRendering : public ApplicationBase {
+    std::vector<VertexData<VertexPTNTB, uint32_t>> _newVertexDataTBN;
+    std::vector<std::unique_ptr<Texture2DImage>> _textures;
+    std::unordered_map<std::string, std::unique_ptr<UniformBufferTexture>> _uniformMap;
+    std::unordered_map<std::string, std::unique_ptr<VertexBuffer<VertexPTNTB>>> _vertexBufferMap;
+    std::unordered_map<std::string, std::unique_ptr<IndexBuffer<uint32_t>>> _indexBufferMap;
+    std::vector<Object> _objects;
+
     std::shared_ptr<Renderpass> _renderPass;
     std::unique_ptr<Framebuffer> _framebuffer;
     std::unique_ptr<Pipeline> _graphicsPipeline;
-    std::unique_ptr<Pipeline> _graphicsPipelineObject;
     std::unique_ptr<Pipeline> _graphicsPipelineSkybox;
 
     std::shared_ptr<Renderpass> _lowResRenderPass;
     std::unique_ptr<Framebuffer> _lowResFramebuffer;
-    // std::shared_ptr<Texture2DColor> _lowResTextureColorResolveAttachment;
-    std::shared_ptr<Texture2DColor> _lowResTextureColorAttachment;
-    std::shared_ptr<Texture2DDepth> _lowResTextureDepthAttachment;
+    std::unique_ptr<Texture2DColor> _lowResTextureColorAttachment;
+    std::unique_ptr<Texture2DDepth> _lowResTextureDepthAttachment;
     std::unique_ptr<Pipeline> _lowResGraphicsPipeline;
-    std::unique_ptr<Pipeline> _lowResGraphicsPipelineObject;
     std::unique_ptr<Pipeline> _lowResGraphicsPipelineSkybox;
 
     std::shared_ptr<Renderpass> _shadowRenderPass;
     std::unique_ptr<Framebuffer> _shadowFramebuffer;
-    std::shared_ptr<Texture2DShadow> _shadowMap;
+    std::unique_ptr<Texture2DShadow> _shadowMap;
     std::unique_ptr<Pipeline> _shadowPipeline;
-
-    std::unique_ptr<VertexBuffer<VertexPTN>> _vertexBuffer;
-    std::unique_ptr<IndexBuffer<uint16_t>> _indexBuffer;
 
     std::unique_ptr<VertexBuffer<VertexP>> _vertexBufferCube;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBufferCube;
 
-    std::unique_ptr<VertexBuffer<VertexPTNTB>> _vertexBufferTBN;
-    std::unique_ptr<IndexBuffer<uint16_t>> _indexBufferTBN;
-
+    std::vector<Object> objects;
     UniformBufferCamera _ubCamera;
     UniformBufferObject _ubObject;
     UniformBufferLight _ubLight;
 
-    std::shared_ptr<UniformBufferDynamic<UniformBufferObject>> _uniformBuffersObjects;
-    std::shared_ptr<UniformBufferStruct<UniformBufferLight>> _uniformBuffersLight;
-    std::shared_ptr<UniformBufferStruct<UniformBufferCamera>> _dynamicUniformBuffersCamera;
-    std::shared_ptr<UniformBufferTexture> _textureUniform;
-    std::shared_ptr<UniformBufferTexture> _skyboxTextureUniform;
-    std::shared_ptr<UniformBufferTexture> _shadowTextureUniform;
-    std::shared_ptr<UniformBufferTexture> _diffuseTBNTextureUniform;
-    std::shared_ptr<UniformBufferTexture> _normalTBNTextureUniform;
-    std::shared_ptr<UniformBufferInlineBlock<UniformBufferLight>> _inlineBlock;
+    std::unique_ptr<UniformBufferDynamic<UniformBufferObject>> _uniformBuffersObjects;
+    std::unique_ptr<UniformBufferStruct<UniformBufferLight>> _uniformBuffersLight;
+    std::unique_ptr<UniformBufferStruct<UniformBufferCamera>> _dynamicUniformBuffersCamera;
+    std::unique_ptr<UniformBufferTexture> _skyboxTextureUniform;
+    std::unique_ptr<UniformBufferTexture> _shadowTextureUniform;
     std::unique_ptr<PushConstants> _pushConstants;
 
     std::shared_ptr<DescriptorSetLayout> _descriptorSetLayout;
-    std::shared_ptr<DescriptorSetLayout> _descriptorSetLayoutObject;
     std::shared_ptr<DescriptorSetLayout> _descriptorSetLayoutSkybox;
     std::shared_ptr<DescriptorSetLayout> _descriptorSetLayoutShadow;
-    std::shared_ptr<DescriptorPool> _descriptorPool;
-    std::shared_ptr<DescriptorPool> _descriptorPoolObject;
-    std::shared_ptr<DescriptorPool> _descriptorPoolSkybox;
-    std::shared_ptr<DescriptorPool> _descriptorPoolShadow;
+    std::unique_ptr<DescriptorPool> _descriptorPool;
+    std::unique_ptr<DescriptorPool> _descriptorPoolSkybox;
+    std::unique_ptr<DescriptorPool> _descriptorPoolShadow;
 
-    std::shared_ptr<Texture2DImage> _texture;
-    std::shared_ptr<Texture2DImage> _diffuseTBNtexture;
-    std::shared_ptr<Texture2DImage> _normalTBNtexture;
-    std::shared_ptr<TextureCubemap> _textureCubemap;
+    std::unique_ptr<TextureCubemap> _textureCubemap;
 
     std::unique_ptr<DescriptorSet> _descriptorSet;
-    std::unique_ptr<DescriptorSet> _descriptorSetObject;
     std::unique_ptr<DescriptorSet> _descriptorSetSkybox;
     std::unique_ptr<DescriptorSet> _descriptorSetShadow;
     std::unique_ptr<Screenshot> _screenshot;
@@ -99,7 +104,7 @@ class OffscreenRendering : public ApplicationBase {
     std::vector<VkSemaphore> _renderFinishedSemaphores;
     std::vector<VkFence> _inFlightFences;
 
-    uint32_t _currentFrame              = 0;
+    uint32_t _currentFrame = 0;
     const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
 
     OffscreenRendering();
@@ -126,4 +131,6 @@ private:
     void createOffscreenResources();
     void createPresentResources();
     void createShadowResources();
+
+    void loadObjects();
 };
