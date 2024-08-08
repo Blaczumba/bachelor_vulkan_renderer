@@ -2,10 +2,11 @@
 
 #include "callback_manager.h"
 
-#include "camera/fps_camera.h"
-
 #include <iostream>
 #include <functional>
+
+class CallbackData;
+class GLFWwindow;
 
 class FPSCallbackManager : public CallbackManager {
 public:

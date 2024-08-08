@@ -1,27 +1,24 @@
 #include "offscreen_rendering_application.h"
 
+#include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
+
 #include <algorithm>
 #include <array>
 
 OffscreenRendering::OffscreenRendering()
     : ApplicationBase() {
 
+    _newVertexDataTBN = LoadGLTF(MODELS_PATH "sponza/scene.gltf");
+    
     createDescriptorSets();
+    loadObjects();
     createPresentResources();
     createOffscreenResources();
     createShadowResources();
-    
-    VertexData<VertexPTNTB, uint16_t> vertexDataTBN = TinyOBJLoaderVertex::extract<VertexPTNTB, uint16_t>(MODELS_PATH "cube.obj");
-    _vertexBufferTBN = std::make_unique<VertexBuffer<VertexPTNTB>>(_logicalDevice, vertexDataTBN.vertices);
-    _indexBufferTBN = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, vertexDataTBN.indices);
-
-    VertexData<VertexPTN, uint16_t> vertexData = TinyOBJLoaderVertex::extract<VertexPTN, uint16_t>(MODELS_PATH "cube.obj");
-    _vertexBuffer = std::make_unique<VertexBuffer<VertexPTN>>(_logicalDevice, vertexData.vertices);
-    _indexBuffer = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, vertexData.indices);
 
     VertexData<VertexP, uint16_t> vertexDataCube = TinyOBJLoaderVertex::extract<VertexP, uint16_t>(MODELS_PATH "cube.obj");
-    _vertexBufferCube = std::make_unique<VertexBuffer<VertexP>>(_logicalDevice, vertexDataCube.vertices);
-    _indexBufferCube = std::make_unique<IndexBuffer<uint16_t>>(_logicalDevice, vertexDataCube.indices);
+    _vertexBufferCube = std::make_unique<VertexBuffer<VertexP>>(*_logicalDevice, vertexDataCube.vertices);
+    _indexBufferCube = std::make_unique<IndexBuffer<uint16_t>>(*_logicalDevice, vertexDataCube.indices);
 
     _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     _offscreenCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
@@ -40,81 +37,103 @@ OffscreenRendering::OffscreenRendering()
     createSyncObjects();
 }
 
+void OffscreenRendering::loadObjects() {
+    const auto& propertyManager = _physicalDevice->getPropertyManager();
+    float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
+    uint32_t index = 0;
+    
+    for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
+        if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
+            continue;
+        const std::string diffusePath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0];
+        const std::string metallicRoughnessPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0];
+        const std::string normalPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0];
+
+        if (_uniformMap.find(diffusePath) == _uniformMap.cend()) {
+            _textures.emplace_back(std::make_unique<Texture2DImage>(*_logicalDevice, diffusePath, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
+            _uniformMap.emplace(std::make_pair(diffusePath, std::make_unique<UniformBufferTexture>(*_textures.back())));
+        }
+        if (_uniformMap.find(normalPath) == _uniformMap.cend()) {
+            _textures.emplace_back(std::make_unique<Texture2DImage>(*_logicalDevice, normalPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
+            _uniformMap.emplace(std::make_pair(normalPath, std::make_unique<UniformBufferTexture>(*_textures.back())));
+        }
+        if (_uniformMap.find(metallicRoughnessPath) == _uniformMap.cend()) {
+            _textures.emplace_back(std::make_unique<Texture2DImage>(*_logicalDevice, metallicRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
+            _uniformMap.emplace(std::make_pair(metallicRoughnessPath, std::make_unique<UniformBufferTexture>(*_textures.back())));
+        }
+
+        auto descriptorSet = _descriptorPool->createDesriptorSet();
+        descriptorSet->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _uniformMap[diffusePath].get(), _uniformBuffersLight.get(), _uniformBuffersObjects.get(), _shadowTextureUniform.get(), _uniformMap[normalPath].get(), _uniformMap[metallicRoughnessPath].get() }, _newVertexDataTBN.size());
+        
+        std::vector<VertexP> pVertexData;
+        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNTB& vertex) { return VertexP{ vertex.pos }; });
+        _objects.push_back(Object{
+            std::make_unique<VertexBuffer<VertexPTNTB>>(*_logicalDevice, std::move(_newVertexDataTBN[i].vertices)),
+            std::make_unique<VertexBuffer<VertexP>>(*_logicalDevice, std::move(pVertexData)),
+            std::make_unique<IndexBuffer<uint32_t>>(*_logicalDevice, std::move(_newVertexDataTBN[i].indices)),
+            index,
+            std::move(descriptorSet),
+            _newVertexDataTBN[i].model }
+
+        );
+
+        _ubObject.model = _newVertexDataTBN[i].model;
+        _uniformBuffersObjects->updateUniformBuffer(&_ubObject, index++);
+    }
+    _uniformBuffersObjects->makeUpdatesVisible();
+}
+
 void OffscreenRendering::createDescriptorSets() {
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
-    _texture = std::make_shared<Texture2DImage>(_logicalDevice, TEXTURES_PATH "texture.jpg", VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy);
-    _diffuseTBNtexture = std::make_shared<Texture2DImage>(_logicalDevice, TEXTURES_PATH "brickwall.jpg", VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy);
-    _normalTBNtexture = std::make_shared<Texture2DImage>(_logicalDevice, TEXTURES_PATH "brickwall_normal.jpg", VK_FORMAT_R8G8B8A8_UNORM, 1.0f);
-    _textureCubemap = std::make_shared<TextureCubemap>(_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
-    _shadowMap = std::make_shared<Texture2DShadow>(_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
+    _textureCubemap = std::make_unique<TextureCubemap>(*_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
 
-    _uniformBuffersObjects = std::make_shared<UniformBufferDynamic<UniformBufferObject>>(_logicalDevice, 2);
-    _uniformBuffersLight = std::make_shared<UniformBufferStruct<UniformBufferLight>>(_logicalDevice);
-    _dynamicUniformBuffersCamera = std::make_shared<UniformBufferStruct<UniformBufferCamera>>(_logicalDevice);
+    _shadowMap = std::make_unique<Texture2DShadow>(*_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
 
-    _textureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _texture);
-    _skyboxTextureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _textureCubemap);
-    _shadowTextureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _shadowMap);
-    _diffuseTBNTextureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _diffuseTBNtexture);
-    _normalTBNTextureUniform = std::make_shared<UniformBufferTexture>(_logicalDevice, _normalTBNtexture);
+    _uniformBuffersObjects = std::make_unique<UniformBufferDynamic<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
+    _uniformBuffersLight = std::make_unique<UniformBufferStruct<UniformBufferLight>>(*_logicalDevice);
+    _dynamicUniformBuffersCamera = std::make_unique<UniformBufferStruct<UniformBufferCamera>>(*_logicalDevice);
 
-    _descriptorSetLayout = std::make_shared<DescriptorSetLayout>(_logicalDevice);
+    _skyboxTextureUniform = std::make_unique<UniformBufferTexture>(*_textureCubemap);
+    _shadowTextureUniform = std::make_unique<UniformBufferTexture>(*_shadowMap);
+
+    _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(*_logicalDevice);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
 
-    _descriptorSetLayoutObject = std::make_shared<DescriptorSetLayout>(_logicalDevice);
-    _descriptorSetLayoutObject->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayoutObject->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayoutObject->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayoutObject->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayoutObject->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayoutObject->create();
-
-    _descriptorSetLayoutSkybox = std::make_shared<DescriptorSetLayout>(_logicalDevice);
+    _descriptorSetLayoutSkybox = std::make_shared<DescriptorSetLayout>(*_logicalDevice);
     _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayoutSkybox->create();
 
-    _descriptorSetLayoutShadow = std::make_shared<DescriptorSetLayout>(_logicalDevice);
+    _descriptorSetLayoutShadow = std::make_shared<DescriptorSetLayout>(*_logicalDevice);
     _descriptorSetLayoutShadow->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayoutShadow->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayoutShadow->create();
 
-    _descriptorPool = std::make_shared<DescriptorPool>(_logicalDevice, _descriptorSetLayout, 5);
-    _descriptorPoolObject = std::make_shared<DescriptorPool>(_logicalDevice, _descriptorSetLayoutObject, 5);
-    _descriptorPoolSkybox = std::make_shared<DescriptorPool>(_logicalDevice, _descriptorSetLayoutSkybox, 5);
-    _descriptorPoolShadow = std::make_shared<DescriptorPool>(_logicalDevice, _descriptorSetLayoutShadow, 5);
+    _descriptorPool = std::make_unique<DescriptorPool>(*_logicalDevice, _descriptorSetLayout, 150);
+    _descriptorPoolSkybox = std::make_unique<DescriptorPool>(*_logicalDevice, _descriptorSetLayoutSkybox, 1);
+    _descriptorPoolShadow = std::make_unique<DescriptorPool>(*_logicalDevice, _descriptorSetLayoutShadow, 1);
 
-    _descriptorSet = _descriptorPool->createDesriptorSet();
-    _descriptorSetObject = _descriptorPoolObject->createDesriptorSet();
     _descriptorSetSkybox = _descriptorPoolSkybox->createDesriptorSet();
     _descriptorSetShadow = _descriptorPoolShadow->createDesriptorSet();
 
-    _descriptorSet->updateDescriptorSet({ _dynamicUniformBuffersCamera, _diffuseTBNTextureUniform, _uniformBuffersLight, _uniformBuffersObjects, _shadowTextureUniform, _normalTBNTextureUniform }, 2);
-    _descriptorSetObject->updateDescriptorSet({ _dynamicUniformBuffersCamera, _textureUniform, _uniformBuffersLight, _uniformBuffersObjects, _shadowTextureUniform }, 2);
-    _descriptorSetSkybox->updateDescriptorSet({ _dynamicUniformBuffersCamera, _skyboxTextureUniform });
-    _descriptorSetShadow->updateDescriptorSet({ _uniformBuffersLight,  _uniformBuffersObjects }, 2);
+    _descriptorSetSkybox->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _skyboxTextureUniform.get() });
+    _descriptorSetShadow->updateDescriptorSet({ _uniformBuffersLight.get(),  _uniformBuffersObjects.get()}, _newVertexDataTBN.size());
 
     _pushConstants = std::make_unique<PushConstants>(*_physicalDevice);
     _pushConstants->addPushConstant<UniformBufferObject>(VK_SHADER_STAGE_VERTEX_BIT);
 
-    // Initializing static uniform buffers as they do not need to be updated each frame.
-    _ubObject.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.f, 1.f, 1.f));
-    _uniformBuffersObjects->updateUniformBuffer(&_ubObject, 0);
-    _ubObject.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.75f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(5.0f, 0.1f, 5.0f));
-    _uniformBuffersObjects->updateUniformBuffer(&_ubObject, 1);
-    _uniformBuffersObjects->makeUpdatesVisible();
-
-    _ubLight.pos = glm::vec3(3.0f, 3.0f, -3.0f);
-    _ubLight.projView = glm::perspective(glm::radians(60.0f), 1.0f, 0.01f, 15.0f);
+    _ubLight.pos = glm::vec3(13.0485f, 1.45034f, -6.06021f);
+    _ubLight.projView = glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 40.0f);
     _ubLight.projView[1][1] = -_ubLight.projView[1][1];
-    _ubLight.projView = _ubLight.projView * glm::lookAt(_ubLight.pos, glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    _ubLight.projView = _ubLight.projView * glm::lookAt(_ubLight.pos, glm::vec3(-1.37963f, -0.158828f, -4.6137f), glm::vec3(0.0f, 1.0f, 0.0f));
     _uniformBuffersLight->updateUniformBuffer(&_ubLight);
 }
 
@@ -148,9 +167,8 @@ void OffscreenRendering::createPresentResources() {
     _renderPass->create();
 
     _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
-    _graphicsPipeline = std::make_unique<GraphicsPipeline<VertexPTNTB>>(_logicalDevice, _renderPass, _descriptorSet->getVkDescriptorSetLayout(), *_pushConstants, msaaSamples, "shader_normal_mapping.vert.spv", "shader_normal_mapping.frag.spv", true, 0.0f, 0.0f);
-    _graphicsPipelineObject = std::make_unique<GraphicsPipeline<VertexPTN>>(_logicalDevice, _renderPass, _descriptorSetObject->getVkDescriptorSetLayout(), *_pushConstants, msaaSamples, "vert.spv", "frag.spv", true, 0.0f, 0.0f);
-    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _renderPass, _descriptorSetSkybox->getVkDescriptorSetLayout(), *_pushConstants, msaaSamples, "skybox.vert.spv", "skybox.frag.spv", false, 0.0f, 0.0f);
+    _graphicsPipeline = std::make_unique<GraphicsPipeline<VertexPTNTB>>(_logicalDevice, _renderPass, _descriptorSetLayout->getVkDescriptorSetLayout(), *_pushConstants, msaaSamples, "shader_normal_mapping.vert.spv", "shader_normal_mapping.frag.spv", true, 0.0f, 0.0f);
+    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _renderPass, _descriptorSetLayoutSkybox->getVkDescriptorSetLayout(), *_pushConstants, msaaSamples, "skybox.vert.spv", "skybox.frag.spv", false, 0.0f, 0.0f);
 }
 
 void OffscreenRendering::createOffscreenResources() {
@@ -171,8 +189,8 @@ void OffscreenRendering::createOffscreenResources() {
     _lowResRenderPass->addSubpass(subpass);
     _lowResRenderPass->create();
 
-    _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
-    _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
+    _lowResTextureColorAttachment = std::make_unique<Texture2DColor>(*_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
+    _lowResTextureDepthAttachment = std::make_unique<Texture2DDepth>(*_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
 
     // auto lowResTextureColorResolveView = _lowResTextureColorResolveAttachment->getImage().view;
     auto lowResTextureColorView = _lowResTextureColorAttachment->getImage().view;
@@ -184,9 +202,8 @@ void OffscreenRendering::createOffscreenResources() {
     };
 
     _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
-    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline<VertexPTNTB>>(_logicalDevice, _lowResRenderPass, _descriptorSet->getVkDescriptorSetLayout(), *_pushConstants, lowResMsaaSamples, "shader_normal_mapping.vert.spv", "offscreen_shader_normal_mapping.frag.spv", true, 0.0f, 0.0f);
-    _lowResGraphicsPipelineObject = std::make_unique<GraphicsPipeline<VertexPTN>>(_logicalDevice, _lowResRenderPass, _descriptorSetObject->getVkDescriptorSetLayout(), *_pushConstants, lowResMsaaSamples, "vert.spv", "off.frag.spv", true, 0.0f, 0.0f);
-    _lowResGraphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _lowResRenderPass, _descriptorSetSkybox->getVkDescriptorSetLayout(), *_pushConstants, lowResMsaaSamples, "skybox_offscreen.vert.spv", "skybox_offscreen.frag.spv", false, 0.0f, 0.0f);
+    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline<VertexPTNTB>>(_logicalDevice, _lowResRenderPass, _descriptorSetLayout->getVkDescriptorSetLayout(), *_pushConstants, lowResMsaaSamples, "shader_normal_mapping.vert.spv", "offscreen_shader_normal_mapping.frag.spv", true, 0.0f, 0.0f);
+    _lowResGraphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _lowResRenderPass, _descriptorSetLayoutSkybox->getVkDescriptorSetLayout(), *_pushConstants, lowResMsaaSamples, "skybox_offscreen.vert.spv", "skybox_offscreen.frag.spv", false, 0.0f, 0.0f);
 }
 
 void OffscreenRendering::createShadowResources() {
@@ -213,7 +230,7 @@ void OffscreenRendering::createShadowResources() {
     };
 
     _shadowFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(shadowViews), _shadowRenderPass, extent, MAX_FRAMES_IN_FLIGHT);
-    _shadowPipeline = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _shadowRenderPass, _descriptorSetShadow->getVkDescriptorSetLayout(), *_pushConstants, shadowMsaaSamples, "shadow.vert.spv", "shadow.frag.spv", true, 0.7f, 2.0f);
+    _shadowPipeline = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _shadowRenderPass, _descriptorSetLayoutShadow->getVkDescriptorSetLayout(), *_pushConstants, shadowMsaaSamples, "shadow.vert.spv", "shadow.frag.spv", true, 0.7f, 2.0f);
 }
 
 OffscreenRendering::~OffscreenRendering() {
@@ -237,6 +254,10 @@ void OffscreenRendering::run() {
         SingleTimeCommandBuffer handle(*_logicalDevice);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         recordShadowCommandBuffer(commandBuffer, 0);
+    }
+
+    for (auto& object : _objects) {
+        object.vertexBufferP = nullptr;
     }
 
     while (_window->open()) {
@@ -283,7 +304,7 @@ void OffscreenRendering::draw() {
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
 
-    std::array<VkCommandBuffer, 2> submitCommands = { _commandBuffers[_currentFrame], _offscreenCommandBuffers[_currentFrame] };
+    std::array<VkCommandBuffer, 2> submitCommands = { _commandBuffers[_currentFrame], _offscreenCommandBuffers[_currentFrame]};
     submitInfo.commandBufferCount = static_cast<uint32_t>(submitCommands.size());
     submitInfo.pCommandBuffers = submitCommands.data();
 
@@ -294,7 +315,7 @@ void OffscreenRendering::draw() {
     if (vkQueueSubmit(_logicalDevice->graphicsQueue, 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
-
+    vkQueueWaitIdle(_logicalDevice->graphicsQueue);
     result = _swapchain->present(imageIndex, signalSemaphores[0]);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
@@ -355,9 +376,11 @@ void OffscreenRendering::updateUniformBuffer(uint32_t currentFrame) {
 
     _ubCamera.view = _camera->getViewMatrix();
     _ubCamera.proj = _camera->getProjectionMatrix();
-    _ubCamera.pos  = _camera->getPosition();
+    _ubCamera.pos = _camera->getPosition();
 
     _dynamicUniformBuffersCamera->updateUniformBuffer(&_ubCamera);
+
+    // std::cout << _ubCamera.pos.x << " " << _ubCamera.pos.y << " " << _ubCamera.pos.z << std::endl;
 }
 
 void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -401,28 +424,17 @@ void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuf
     // TBN OBJECT
     vkCmdBindPipeline(commandBuffer, _lowResGraphicsPipeline->getVkPipelineBindPoint(), _lowResGraphicsPipeline->getVkPipeline());
 
-    VkBuffer vertexBuffers[] = { _vertexBufferTBN->getVkBuffer() };
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    for (const auto& object : _objects) {
+        VkBuffer vertexBuffers[] = { object.vertexBufferPTNTB->getVkBuffer() };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, _indexBufferTBN->getVkBuffer(), 0, _indexBufferTBN->getIndexType());
+        vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
 
-    _descriptorSet->bindDescriptorSet(commandBuffer, *_lowResGraphicsPipeline, 0);
- 
-    vkCmdDrawIndexed(commandBuffer, _indexBufferTBN->getIndexCount(), 1, 0, 0, 0);
+        object._descriptorSet->bindDescriptorSet(commandBuffer, *_lowResGraphicsPipeline, object.dynamicUniformIndex);
 
+        vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
+    }
 
-    // N OBJECT
-
-    vkCmdBindPipeline(commandBuffer, _lowResGraphicsPipelineObject->getVkPipelineBindPoint(), _lowResGraphicsPipelineObject->getVkPipeline());
-
-    vertexBuffers[0] = _vertexBuffer->getVkBuffer();
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-    vkCmdBindIndexBuffer(commandBuffer, _indexBuffer->getVkBuffer(), 0, _indexBuffer->getIndexType());
-
-    _descriptorSetObject->bindDescriptorSet(commandBuffer, *_lowResGraphicsPipelineObject, 1);
-
-    vkCmdDrawIndexed(commandBuffer, _indexBuffer->getIndexCount(), 1, 0, 0, 0);
 
     // SKYBOX
     vkCmdBindPipeline(commandBuffer, _lowResGraphicsPipelineSkybox->getVkPipelineBindPoint(), _lowResGraphicsPipelineSkybox->getVkPipeline());
@@ -484,36 +496,24 @@ void OffscreenRendering::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
     // TBN OBJECT
     vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
+    for (const auto& object : _objects) {
 
-    VkBuffer vertexBuffers[] = { _vertexBufferTBN->getVkBuffer() };
+        VkBuffer vertexBuffers[] = { object.vertexBufferPTNTB->getVkBuffer() };
 
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, _indexBufferTBN->getVkBuffer(), 0, _indexBufferTBN->getIndexType());
+        vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
 
-    _descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, 0);
+        object._descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, object.dynamicUniformIndex);
 
-    vkCmdDrawIndexed(commandBuffer, _indexBufferTBN->getIndexCount(), 1, 0, 0, 0);
-
-    // N OBJECT
-
-    vkCmdBindPipeline(commandBuffer, _graphicsPipelineObject->getVkPipelineBindPoint(), _graphicsPipelineObject->getVkPipeline());
-
-    vertexBuffers[0] = _vertexBuffer->getVkBuffer();
-
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-    vkCmdBindIndexBuffer(commandBuffer, _indexBuffer->getVkBuffer(), 0, _indexBuffer->getIndexType());
-
-    _descriptorSetObject->bindDescriptorSet(commandBuffer, *_graphicsPipelineObject, 1);
-
-    vkCmdDrawIndexed(commandBuffer, _indexBuffer->getIndexCount(), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
+    }
 
     // SKYBOX
     vkCmdBindPipeline(commandBuffer, _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
 
     VkBuffer vertexBuffersCube[] = { _vertexBufferCube->getVkBuffer() };
-    
+
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersCube, offsets);
 
     vkCmdBindIndexBuffer(commandBuffer, _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
@@ -567,27 +567,21 @@ void OffscreenRendering::recordShadowCommandBuffer(VkCommandBuffer commandBuffer
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
     VkDeviceSize offsets[] = { 0 };
-
     // OBJECT TBN
     vkCmdBindPipeline(commandBuffer, _shadowPipeline->getVkPipelineBindPoint(), _shadowPipeline->getVkPipeline());
+    for (const auto& object : _objects) {
 
-    VkBuffer vertexBuffers[] = { _vertexBufferCube->getVkBuffer() };
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        VkBuffer vertexBuffers[] = { object.vertexBufferP->getVkBuffer() };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, _indexBufferTBN->getVkBuffer(), 0, _indexBufferTBN->getIndexType());
+        vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
 
-    _descriptorSetShadow->bindDescriptorSet(commandBuffer, *_shadowPipeline, 0);
+        _descriptorSetShadow->bindDescriptorSet(commandBuffer, *_shadowPipeline, object.dynamicUniformIndex);
 
-    vkCmdDrawIndexed(commandBuffer, _indexBufferTBN->getIndexCount(), 1, 0, 0, 0);
-
-    // OBJECT N
-
-    _descriptorSetShadow->bindDescriptorSet(commandBuffer, *_shadowPipeline, 1);
-
-    vkCmdDrawIndexed(commandBuffer, _indexBuffer->getIndexCount(), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
+    }
 
     vkCmdEndRenderPass(commandBuffer);
-
     //if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     //    throw std::runtime_error("failed to record command buffer!");
     //}
@@ -597,7 +591,7 @@ void OffscreenRendering::recreateSwapChain() {
     VkExtent2D extent{};
     while (extent.width == 0 || extent.height == 0) {
         extent = _window->getFramebufferSize();
-        glfwWaitEvents();
+        //glfwWaitEvents();
     }
 
     _camera->setAspectRatio(static_cast<float>(extent.width) / extent.height);

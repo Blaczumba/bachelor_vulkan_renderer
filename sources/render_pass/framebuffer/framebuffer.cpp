@@ -51,11 +51,11 @@ Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shar
             swapchainPlace = i;
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            _colorImages.emplace_back(_logicalDevice, description.format, description.samples, swapchainExtent);
+            _colorImages.emplace_back(*_logicalDevice, description.format, description.samples, swapchainExtent);
             attachmentViews.push_back(_colorImages.back().getImage().view);
             break;
         case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            _depthImages.emplace_back(_logicalDevice, description.format, description.samples, swapchainExtent);
+            _depthImages.emplace_back(*_logicalDevice, description.format, description.samples, swapchainExtent);
             attachmentViews.push_back(_depthImages.back().getImage().view);
             break;
         default:

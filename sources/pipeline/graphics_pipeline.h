@@ -71,8 +71,8 @@ GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> lo
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = (backFace) ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_FRONT_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    // rasterizer.cullMode = (backFace) ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_FRONT_BIT;
+    // rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
     if (depthBiasConstantFactor != 0.0f && depthBiasSlopeFactor != 0.0f)
         rasterizer.depthBiasEnable = VK_TRUE;

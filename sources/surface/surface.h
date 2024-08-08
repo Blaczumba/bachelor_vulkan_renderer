@@ -1,16 +1,17 @@
 #pragma once
 
-#include "instance/instance.h"
-#include "window/window/window.h"
-
 #include <memory>
+
+class Instance;
+class Window;
 
 class Surface {
 	VkSurfaceKHR _surface;
-	std::shared_ptr<Window> _window;
-	std::shared_ptr<Instance> _instance;
+	const std::shared_ptr<Window> _window;
+	const std::shared_ptr<Instance> _instance;
+
 public:
-	Surface(std::shared_ptr<Instance> instance, std::shared_ptr<Window> window);
+	Surface(const std::shared_ptr<Instance>& instance, const std::shared_ptr<Window>& window);
 	~Surface();
-	VkSurfaceKHR getVkSurface();
+	const VkSurfaceKHR getVkSurface() const;
 };

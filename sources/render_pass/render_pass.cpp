@@ -1,5 +1,6 @@
 #include "render_pass.h"
-#include "attachment/attachment.h"
+
+#include "logical_device/logical_device.h"
 
 #include <stdexcept>
 #include <iostream>

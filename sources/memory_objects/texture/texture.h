@@ -1,9 +1,12 @@
 #pragma once
 
-#include "logical_device/logical_device.h"
 #include "memory_objects/image.h"
 
+#include <vulkan/vulkan.h>
+
 #include <memory>
+
+class LogicalDevice;
 
 class Texture {
 protected:
@@ -11,9 +14,9 @@ protected:
 	uint32_t _mipLevels;
 	uint32_t _layerCount;
 
-	std::shared_ptr<LogicalDevice> _logicalDevice;
+	const LogicalDevice& _logicalDevice;
 public:
-	Texture(std::shared_ptr<LogicalDevice> logicalDevice);
+	Texture(const LogicalDevice& logicalDevice);
 	virtual ~Texture() = default;
 
 	const Image& getImage() const;

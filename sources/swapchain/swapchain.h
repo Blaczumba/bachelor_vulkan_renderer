@@ -1,24 +1,27 @@
 #pragma once
 
-#include "physical_device/physical_device.h"
-#include "logical_device/logical_device.h"
-#include "surface/surface.h"
-#include "memory_objects/image.h"
-
 #include <vulkan/vulkan.h>
 
+#include <vector>
+
+class Surface;
+class Window;
+class LogicalDevice;
+class PhysicalDevice;
+struct Image;
+
 class Swapchain {
-	std::shared_ptr<Surface> _surface;
-	std::shared_ptr<Window> _window;
-	std::shared_ptr<LogicalDevice> _logicalDevice;
-	std::shared_ptr<PhysicalDevice> _physicalDevice;
+	const Surface& _surface;
+	const Window& _window;
+	const LogicalDevice& _logicalDevice;
+	const PhysicalDevice& _physicalDevice;
 
 	std::vector<Image> _images;
 
 	VkSwapchainKHR _swapchain;
 
 public:
-	Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice);
+	Swapchain(const Surface& surface, const Window& window, const LogicalDevice& logicalDevice, const PhysicalDevice& physicalDevice);
 	~Swapchain();
 
 	const VkSwapchainKHR getVkSwapchain() const;

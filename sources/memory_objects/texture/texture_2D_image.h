@@ -3,8 +3,8 @@
 #include "texture_2D_sampler.h"
 
 class Texture2DImage final : public Texture2DSampler {
-	std::string _texturePath;
+	const std::string _texturePath;
 
 public:
-	Texture2DImage(std::shared_ptr<LogicalDevice> logicalDevice, const std::string& texturePath, VkFormat format, float samplerAnisotropy);
+	Texture2DImage(const LogicalDevice& logicalDevice, const std::string& texturePath, VkFormat format, float samplerAnisotropy);
 };

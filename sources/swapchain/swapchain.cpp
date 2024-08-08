@@ -1,10 +1,15 @@
 #include "swapchain.h"
 #include "features/swapchain_utils.h"
+#include "physical_device/physical_device.h"
+#include "logical_device/logical_device.h"
+#include "surface/surface.h"
+#include "window/window/window.h"
+#include "memory_objects/image.h"
 
 #include <algorithm>
 #include <stdexcept>
 
-Swapchain::Swapchain(std::shared_ptr<Surface> surface, std::shared_ptr<Window> window, std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<PhysicalDevice> physicalDevice)
+Swapchain::Swapchain(const Surface& surface, const Window& window, const LogicalDevice& logicalDevice, const PhysicalDevice& physicalDevice)
 	: _surface(surface), _window(window), _logicalDevice(logicalDevice), _physicalDevice(physicalDevice) {
     create();
 }
@@ -31,7 +36,7 @@ const std::vector<Image>& Swapchain::getImages() const {
 }
 
 void Swapchain::cleanup() {
-    VkDevice device = _logicalDevice->getVkDevice();
+    VkDevice device = _logicalDevice.getVkDevice();
 
     for (auto image : _images) {
         vkDestroyImageView(device, image.view, nullptr);
@@ -41,13 +46,13 @@ void Swapchain::cleanup() {
 }
 
 void Swapchain::create() {
-    const auto& propertyManager = _physicalDevice->getPropertyManager();
+    const auto& propertyManager = _physicalDevice.getPropertyManager();
 
     const SwapChainSupportDetails swapChainSupport = propertyManager.getSwapChainSupportDetails();
-    VkDevice device = _logicalDevice->getVkDevice();
-    VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_R8G8B8A8_SRGB);
-    VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_MAILBOX_KHR);
-    VkExtent2D windowExtent = _window->getFramebufferSize();
+    const VkDevice device = _logicalDevice.getVkDevice();
+    const VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_R8G8B8A8_SRGB);
+    const VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_MAILBOX_KHR);
+    const VkExtent2D windowExtent = _window.getFramebufferSize();
     std::vector<VkImage> images;
 
     VkExtent2D extent = chooseSwapExtent({ windowExtent.width, windowExtent.height }, swapChainSupport.capabilities);
@@ -59,7 +64,7 @@ void Swapchain::create() {
 
     VkSwapchainCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface = _surface->getVkSurface();
+    createInfo.surface = _surface.getVkSurface();
 
     createInfo.minImageCount = imageCount;
     createInfo.imageFormat = surfaceFormat.format;
@@ -99,7 +104,7 @@ void Swapchain::create() {
         _images[i] = {
             .image  = images[i],
             .memory = VK_NULL_HANDLE,
-            .view   = _logicalDevice->createImageView(images[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1),
+            .view   = _logicalDevice.createImageView(images[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1),
             .format = surfaceFormat.format,
             .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             .extent = { extent.width, extent.height, 1 },
@@ -114,7 +119,7 @@ void Swapchain::recrete() {
 }
 
 VkResult Swapchain::acquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t* imageIndex) const {
-    return vkAcquireNextImageKHR(_logicalDevice->getVkDevice(), _swapchain, UINT64_MAX, presentCompleteSemaphore, (VkFence)nullptr, imageIndex);
+    return vkAcquireNextImageKHR(_logicalDevice.getVkDevice(), _swapchain, UINT64_MAX, presentCompleteSemaphore, (VkFence)nullptr, imageIndex);
 }
 
 VkResult Swapchain::present(uint32_t imageIndex, VkSemaphore waitSemaphore) const {
@@ -126,5 +131,5 @@ VkResult Swapchain::present(uint32_t imageIndex, VkSemaphore waitSemaphore) cons
     presentInfo.pSwapchains = &_swapchain;
     presentInfo.pImageIndices = &imageIndex;
 
-    return vkQueuePresentKHR(_logicalDevice->presentQueue, &presentInfo);
+    return vkQueuePresentKHR(_logicalDevice.presentQueue, &presentInfo);
 }

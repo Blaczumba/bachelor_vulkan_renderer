@@ -1,8 +1,8 @@
+#include "logical_device/logical_device.h"
+
 #include "texture.h"
 
-#include "memory_objects/image.h"
-
-Texture::Texture(std::shared_ptr<LogicalDevice> logicalDevice)
+Texture::Texture(const LogicalDevice& logicalDevice)
 	: _logicalDevice(logicalDevice) {
 }
 

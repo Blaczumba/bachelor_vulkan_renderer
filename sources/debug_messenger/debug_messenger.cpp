@@ -1,10 +1,11 @@
 #include "debug_messenger.h"
 #include "debug_messenger_utils.h"
+#include "instance/instance.h"
 
 #include <iostream>
 #include <stdexcept>
 
-DebugMessenger::DebugMessenger(std::shared_ptr<Instance> instance) : _instance(instance) {
+DebugMessenger::DebugMessenger(const std::shared_ptr<Instance>& instance) : _instance(instance) {
     VkDebugUtilsMessengerCreateInfoEXT createInfo;
     populateDebugMessengerCreateInfoUtility(createInfo);
 

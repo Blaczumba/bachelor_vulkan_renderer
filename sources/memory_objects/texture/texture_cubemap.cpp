@@ -1,4 +1,6 @@
 #include "texture_cubemap.h"
+#include "logical_device/logical_device.h"
+#include "memory_objects/image.h"
 #include "command_buffer/command_buffer.h"
 
 #include <ktx.h>
@@ -7,9 +9,9 @@
 #include <stdexcept>
 #include <cstring>
 
-TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std::string filePath, VkFormat format, float samplerAnisotropy)
+TextureCubemap::TextureCubemap(const LogicalDevice& logicalDevice, std::string filePath, VkFormat format, float samplerAnisotropy)
 	: Texture2DSampler(logicalDevice, samplerAnisotropy), _filePath(filePath) {
-	VkDevice device = _logicalDevice->getVkDevice();
+	const VkDevice device = _logicalDevice.getVkDevice();
 
 	ktxResult result;
 	ktxTexture* ktxTexture;
@@ -34,7 +36,7 @@ TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std
 
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
-	_logicalDevice->createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+	_logicalDevice.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
 	void* data;
 	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
@@ -74,9 +76,9 @@ TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std
 	subresourceRange.levelCount = _mipLevels;
 	subresourceRange.layerCount = _layerCount;
 
-	_logicalDevice->createImage(_image.extent.width, _image.extent.height, _mipLevels, VK_SAMPLE_COUNT_1_BIT, _image.format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image.image, _image.memory, _layerCount);
+	_logicalDevice.createImage(_image.extent.width, _image.extent.height, _mipLevels, VK_SAMPLE_COUNT_1_BIT, _image.format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image.image, _image.memory, _layerCount);
 	{
-		SingleTimeCommandBuffer handle(*_logicalDevice);
+		SingleTimeCommandBuffer handle(_logicalDevice);
 		VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 		transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		copyBufferToImage(commandBuffer, stagingBuffer, _image.image, std::move(bufferCopyRegions));
@@ -86,7 +88,7 @@ TextureCubemap::TextureCubemap(std::shared_ptr<LogicalDevice> logicalDevice, std
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-	_image.view = _logicalDevice->createImageView(_image.image, _image.format, _image.aspect, _mipLevels, _layerCount);
+	_image.view = _logicalDevice.createImageView(_image.image, _image.format, _image.aspect, _mipLevels, _layerCount);
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

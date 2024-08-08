@@ -1,7 +1,8 @@
-#include "screenshot.h"
-
+#include "logical_device/logical_device.h"
 #include "command_buffer/command_buffer.h"
 #include "memory_objects/image.h"
+
+#include "screenshot.h"
 
 #include <algorithm>
 #include <fstream>

@@ -10,9 +10,10 @@ class Instance {
 
 	bool checkValidationLayerSupport() const;
 	std::vector<const char*> getRequiredExtensions();
+
 public:
 	Instance(std::string_view engineName);
 	~Instance();
-	VkInstance getVkInstance();
+	const VkInstance getVkInstance() const;
 	std::vector<VkPhysicalDevice> getAvailablePhysicalDevices() const;
 };

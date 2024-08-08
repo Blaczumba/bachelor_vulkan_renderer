@@ -1,12 +1,12 @@
 #pragma once
 
-#include "logical_device/logical_device.h"
-#include "attachment/attachment.h"
 #include "subpass/subpass.h"
 
 #include <vector>
 #include <variant>
 #include <memory>
+
+class LogicalDevice;
 
 class Renderpass {
 	VkRenderPass _renderpass = nullptr;

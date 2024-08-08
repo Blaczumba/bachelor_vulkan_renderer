@@ -7,8 +7,8 @@
 #include <iostream>
 #include <stdexcept>
 
-Texture2D::Texture2D(std::shared_ptr<LogicalDevice> logicalDevice)
-    : Texture(std::move(logicalDevice)) {
+Texture2D::Texture2D(const LogicalDevice& logicalDevice)
+    : Texture(logicalDevice) {
 }
 
 VkExtent2D Texture2D::getVkExtent2D() const {
