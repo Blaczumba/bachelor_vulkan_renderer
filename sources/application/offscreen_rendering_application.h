@@ -73,7 +73,7 @@ class OffscreenRendering : public ApplicationBase {
 
     std::unique_ptr<UniformBufferDynamic<UniformBufferObject>> _uniformBuffersObjects;
     std::unique_ptr<UniformBufferStruct<UniformBufferLight>> _uniformBuffersLight;
-    std::unique_ptr<UniformBufferStruct<UniformBufferCamera>> _dynamicUniformBuffersCamera;
+    std::unique_ptr<UniformBufferDynamic<UniformBufferCamera>> _dynamicUniformBuffersCamera;
     std::unique_ptr<UniformBufferTexture> _skyboxTextureUniform;
     std::unique_ptr<UniformBufferTexture> _shadowTextureUniform;
     std::unique_ptr<PushConstants> _pushConstants;

@@ -7,19 +7,6 @@ layout(binding=0) uniform CameraUniform {
 } camera;
 
 layout(binding = 1) uniform sampler2D texSampler;
-
-layout(binding = 2) uniform Light {
-    mat4 projView;
-
-    vec3 pos;
-
-} light;
-
-layout(binding = 3) uniform ObjectUniform {
-    mat4 model;
-
-} object;
-
 layout(binding = 4) uniform sampler2DShadow shadowMap;
 layout(binding = 5) uniform sampler2D normalMap;
 layout(binding = 6) uniform sampler2D metallicRoughnessMap;
