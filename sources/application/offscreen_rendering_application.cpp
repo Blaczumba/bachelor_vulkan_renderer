@@ -63,7 +63,7 @@ void OffscreenRendering::loadObjects() {
         }
 
         auto descriptorSet = _descriptorPool->createDesriptorSet();
-        descriptorSet->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _uniformMap[diffusePath].get(), _uniformBuffersLight.get(), _uniformBuffersObjects.get(), _shadowTextureUniform.get(), _uniformMap[normalPath].get(), _uniformMap[metallicRoughnessPath].get() }, _newVertexDataTBN.size());
+        descriptorSet->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _uniformMap[diffusePath].get(), _uniformBuffersLight.get(), _uniformBuffersObjects.get(), _shadowTextureUniform.get(), _uniformMap[normalPath].get(), _uniformMap[metallicRoughnessPath].get() });
         
         std::vector<VertexP> pVertexData;
         std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNTB& vertex) { return VertexP{ vertex.pos }; });
@@ -92,23 +92,23 @@ void OffscreenRendering::createDescriptorSets() {
 
     _uniformBuffersObjects = std::make_unique<UniformBufferDynamic<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
     _uniformBuffersLight = std::make_unique<UniformBufferStruct<UniformBufferLight>>(*_logicalDevice);
-    _dynamicUniformBuffersCamera = std::make_unique<UniformBufferStruct<UniformBufferCamera>>(*_logicalDevice);
+    _dynamicUniformBuffersCamera = std::make_unique<UniformBufferDynamic<UniformBufferCamera>>(*_logicalDevice, MAX_FRAMES_IN_FLIGHT);
 
     _skyboxTextureUniform = std::make_unique<UniformBufferTexture>(*_textureCubemap);
     _shadowTextureUniform = std::make_unique<UniformBufferTexture>(*_shadowMap);
 
     _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(*_logicalDevice);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
 
     _descriptorSetLayoutSkybox = std::make_shared<DescriptorSetLayout>(*_logicalDevice);
-    _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+    _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayoutSkybox->create();
 
@@ -125,7 +125,7 @@ void OffscreenRendering::createDescriptorSets() {
     _descriptorSetShadow = _descriptorPoolShadow->createDesriptorSet();
 
     _descriptorSetSkybox->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _skyboxTextureUniform.get() });
-    _descriptorSetShadow->updateDescriptorSet({ _uniformBuffersLight.get(),  _uniformBuffersObjects.get()}, _newVertexDataTBN.size());
+    _descriptorSetShadow->updateDescriptorSet({ _uniformBuffersLight.get(),  _uniformBuffersObjects.get()});
 
     _pushConstants = std::make_unique<PushConstants>(*_physicalDevice);
     _pushConstants->addPushConstant<UniformBufferObject>(VK_SHADER_STAGE_VERTEX_BIT);
@@ -315,7 +315,7 @@ void OffscreenRendering::draw() {
     if (vkQueueSubmit(_logicalDevice->graphicsQueue, 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
-    vkQueueWaitIdle(_logicalDevice->graphicsQueue);
+
     result = _swapchain->present(imageIndex, signalSemaphores[0]);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
@@ -378,7 +378,7 @@ void OffscreenRendering::updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.proj = _camera->getProjectionMatrix();
     _ubCamera.pos = _camera->getPosition();
 
-    _dynamicUniformBuffersCamera->updateUniformBuffer(&_ubCamera);
+    _dynamicUniformBuffersCamera->updateUniformBuffer(&_ubCamera, currentFrame);
 
     // std::cout << _ubCamera.pos.x << " " << _ubCamera.pos.y << " " << _ubCamera.pos.z << std::endl;
 }
@@ -430,7 +430,7 @@ void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuf
 
         vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
 
-        object._descriptorSet->bindDescriptorSet(commandBuffer, *_lowResGraphicsPipeline, object.dynamicUniformIndex);
+        object._descriptorSet->bindDescriptorSet(commandBuffer, *_lowResGraphicsPipeline, { _currentFrame, object.dynamicUniformIndex });
 
         vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
@@ -445,7 +445,7 @@ void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuf
 
     vkCmdBindIndexBuffer(commandBuffer, _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
 
-    _descriptorSetSkybox->bindDescriptorSet(commandBuffer, *_lowResGraphicsPipelineSkybox);
+    _descriptorSetSkybox->bindDescriptorSet(commandBuffer, *_lowResGraphicsPipelineSkybox, { _currentFrame });
 
     vkCmdDrawIndexed(commandBuffer, _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
 
@@ -504,9 +504,10 @@ void OffscreenRendering::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
         vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
 
-        object._descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, object.dynamicUniformIndex);
+        object._descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, { _currentFrame, object.dynamicUniformIndex });
 
         vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
+
     }
 
     // SKYBOX
@@ -518,7 +519,7 @@ void OffscreenRendering::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
     vkCmdBindIndexBuffer(commandBuffer, _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
 
-    _descriptorSetSkybox->bindDescriptorSet(commandBuffer, *_graphicsPipelineSkybox);
+    _descriptorSetSkybox->bindDescriptorSet(commandBuffer, *_graphicsPipelineSkybox, { _currentFrame });
 
     vkCmdDrawIndexed(commandBuffer, _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
 
@@ -576,7 +577,7 @@ void OffscreenRendering::recordShadowCommandBuffer(VkCommandBuffer commandBuffer
 
         vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
 
-        _descriptorSetShadow->bindDescriptorSet(commandBuffer, *_shadowPipeline, object.dynamicUniformIndex);
+        _descriptorSetShadow->bindDescriptorSet(commandBuffer, *_shadowPipeline, { object.dynamicUniformIndex });
 
         vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }

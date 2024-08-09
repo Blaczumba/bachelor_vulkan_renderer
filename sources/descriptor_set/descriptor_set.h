@@ -14,7 +14,6 @@ class DescriptorSet {
 	VkDescriptorSet _descriptorSet;
 
 	std::vector<uint32_t> _dynamicBuffersBaseSizes;
-	std::vector<std::vector<uint32_t>> _offsets;
 
 	const LogicalDevice& _logicalDevice;
 
@@ -22,8 +21,8 @@ public:
 	DescriptorSet(const LogicalDevice& logicalDevice, const DescriptorPool& descriptorPool);
 	~DescriptorSet();
 
-	void updateDescriptorSet(const std::vector<UniformBuffer*>& uniformBuffers, uint32_t dynamicOffsetCount = 1);
-	void bindDescriptorSet(VkCommandBuffer commandBuffer, const Pipeline& pipeline, uint32_t dynamicOffsetStride = 0);
+	void updateDescriptorSet(const std::vector<UniformBuffer*>& uniformBuffers);
+	void bindDescriptorSet(VkCommandBuffer commandBuffer, const Pipeline& pipeline, const std::vector<uint32_t>& dynamicOffsetStrides = {});
 
 	const VkDescriptorSet getVkDescriptorSet(size_t i) const;
 
