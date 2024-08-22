@@ -2,47 +2,44 @@
 
 #include "pipeline.h"
 #include "render_pass/render_pass.h"
-#include "shader_utils.h"
 #include "primitives/vk_primitives.h"
 #include "memory_objects/uniform_buffer/push_constants.h"
+#include "shader/shader.h"
 
 #include <vulkan/vulkan.h>
 
+#include <unordered_map>
 #include <algorithm>
 #include <string>
 #include <stdexcept>
 
 template<typename VertexType>
 class GraphicsPipeline : public Pipeline {
+    std::unordered_map<VkShaderStageFlagBits, VkPipelineShaderStageCreateInfo> _shaderInfos;
+
 public:
 	GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, const PushConstants& pushConstants, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace, float depthBiasConstantFactor, float depthBiasSlopeFactor);
 	~GraphicsPipeline();
+
+    void addShader(const Shader& shader);
 };
+
+template<typename VertexType>
+void GraphicsPipeline<VertexType>::addShader(const Shader& shader) {
+    if (_shaderInfos.contains(shader.getVkShaderStageFlagBits()))
+        throw std::runtime_error("Shader staged attached to graphics pipeline twice!");
+    _shaderInfos.insert({ shader.getVkShaderStageFlagBits(), shader.getVkPipelineStageCreateInfo() });
+}
 
 template<typename VertexType>
 GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> logicalDevice, std::shared_ptr<Renderpass> renderpass, VkDescriptorSetLayout descriptorSetLayout, const PushConstants& pushConstants, VkSampleCountFlagBits msaaSamples, const std::string& vertexShader, const std::string& fragmentShader, bool backFace, float depthBiasConstantFactor, float depthBiasSlopeFactor)
     : Pipeline(logicalDevice, VK_PIPELINE_BIND_POINT_GRAPHICS) {
-    auto vertShaderCode = readFile(SHADERS_PATH + vertexShader);
-    auto fragShaderCode = readFile(SHADERS_PATH + fragmentShader);
+    const Shader vertShader(*logicalDevice, SHADERS_PATH + vertexShader, VK_SHADER_STAGE_VERTEX_BIT);
+    const Shader fragShader(*logicalDevice, SHADERS_PATH + fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     VkDevice device = _logicalDevice->getVkDevice();
 
-    VkShaderModule vertShaderModule = createShaderModule(device, vertShaderCode);
-    VkShaderModule fragShaderModule = createShaderModule(device, fragShaderCode);
-
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = vertShaderModule;
-    vertShaderStageInfo.pName = "main";
-
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = fragShaderModule;
-    fragShaderStageInfo.pName = "main";
-
-    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages = { vertShaderStageInfo, fragShaderStageInfo };
+    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages = { vertShader.getVkPipelineStageCreateInfo(), fragShader.getVkPipelineStageCreateInfo() };
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -158,9 +155,6 @@ GraphicsPipeline<VertexType>::GraphicsPipeline(std::shared_ptr<LogicalDevice> lo
     if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_pipeline) != VK_SUCCESS) {
         throw std::runtime_error("failed to create graphics pipeline!");
     }
-
-    vkDestroyShaderModule(device, fragShaderModule, nullptr);
-    vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
 
 template<typename VertexType>

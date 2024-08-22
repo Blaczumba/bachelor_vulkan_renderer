@@ -30,8 +30,7 @@ public:
 
 template<typename IndexType>
 IndexBuffer<IndexType>::IndexBuffer(const LogicalDevice& logicalDevice, const std::vector<IndexType>& indices)
-    : _logicalDevice(logicalDevice) {
-    _indexCount = indices.size();
+    : _logicalDevice(logicalDevice), _indexCount(indices.size()) {
     const VkDeviceSize bufferSize = sizeof(IndexType) * _indexCount;
     const VkDevice device = _logicalDevice.getVkDevice();
 

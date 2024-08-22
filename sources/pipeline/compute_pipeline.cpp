@@ -1,21 +1,20 @@
 #include "compute_pipeline.h"
 #include "shader_utils.h"
+#include "shader/shader.h"
 
 #include <stdexcept>
 
 ComputePipeline::ComputePipeline(std::shared_ptr<LogicalDevice> logicalDevice, VkDescriptorSetLayout descriptorSetLayout, const std::string& computeShader)
     : Pipeline(logicalDevice, VK_PIPELINE_BIND_POINT_COMPUTE) {
-    VkDevice device = _logicalDevice->getVkDevice();
+    const VkDevice device = _logicalDevice->getVkDevice();
     
-    auto computeShaderCode = readFile(computeShader);
-
-    VkShaderModule computeShaderModule = createShaderModule(device, computeShaderCode);
+    const Shader shader(*logicalDevice, "", VK_SHADER_STAGE_COMPUTE_BIT);
 
     VkPipelineShaderStageCreateInfo computeShaderStageInfo{};
     computeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    computeShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-    computeShaderStageInfo.module = computeShaderModule;
-    computeShaderStageInfo.pName = "main";
+    computeShaderStageInfo.stage = shader.getVkShaderStageFlagBits();
+    computeShaderStageInfo.module = shader.getVkShaderModule();
+    computeShaderStageInfo.pName = shader.getName().data();
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -34,8 +33,6 @@ ComputePipeline::ComputePipeline(std::shared_ptr<LogicalDevice> logicalDevice, V
     if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_pipeline) != VK_SUCCESS) {
         throw std::runtime_error("failed to create compute pipeline!");
     }
-
-    vkDestroyShaderModule(device, computeShaderModule, nullptr);
 }
 
 ComputePipeline::~ComputePipeline() {
