@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <vector>
 #include <unordered_map>
 
 using DescriptorTypeCounterDict = std::unordered_map<VkDescriptorType, uint8_t>;
@@ -9,7 +10,7 @@ using DescriptorTypeCounterDict = std::unordered_map<VkDescriptorType, uint8_t>;
 class LogicalDevice;
 
 class DescriptorSetLayout {
-	VkDescriptorSetLayout _descriptorSetLayout = nullptr;
+	VkDescriptorSetLayout _descriptorSetLayout = VK_NULL_HANDLE;
 	std::vector<VkDescriptorSetLayoutBinding> _bindings;
 	DescriptorTypeCounterDict _descriptorTypeOccurances;
 	uint32_t _binding;

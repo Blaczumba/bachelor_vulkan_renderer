@@ -3,8 +3,6 @@
 
 #include <stdexcept>
 
-class LogicalDevice;
-
 SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDevice)
     : _logicalDevice(logicalDevice) {
 

@@ -9,8 +9,8 @@
 #include <algorithm>
 #include <stdexcept>
 
-Swapchain::Swapchain(const Surface& surface, const Window& window, const LogicalDevice& logicalDevice, const PhysicalDevice& physicalDevice)
-	: _surface(surface), _window(window), _logicalDevice(logicalDevice), _physicalDevice(physicalDevice) {
+Swapchain::Swapchain(const Surface& surface, const Window& window, const LogicalDevice& logicalDevice)
+	: _surface(surface), _window(window), _logicalDevice(logicalDevice) {
     create();
 }
 
@@ -46,7 +46,7 @@ void Swapchain::cleanup() {
 }
 
 void Swapchain::create() {
-    const auto& propertyManager = _physicalDevice.getPropertyManager();
+    const auto& propertyManager = _logicalDevice.getPhysicalDevice().getPropertyManager();
 
     const SwapChainSupportDetails swapChainSupport = propertyManager.getSwapChainSupportDetails();
     const VkDevice device = _logicalDevice.getVkDevice();

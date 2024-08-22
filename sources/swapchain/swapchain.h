@@ -14,14 +14,13 @@ class Swapchain {
 	const Surface& _surface;
 	const Window& _window;
 	const LogicalDevice& _logicalDevice;
-	const PhysicalDevice& _physicalDevice;
 
 	std::vector<Image> _images;
 
 	VkSwapchainKHR _swapchain;
 
 public:
-	Swapchain(const Surface& surface, const Window& window, const LogicalDevice& logicalDevice, const PhysicalDevice& physicalDevice);
+	Swapchain(const Surface& surface, const Window& window, const LogicalDevice& logicalDevice);
 	~Swapchain();
 
 	const VkSwapchainKHR getVkSwapchain() const;
