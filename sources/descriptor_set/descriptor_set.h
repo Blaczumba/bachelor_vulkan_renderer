@@ -16,10 +16,10 @@ class DescriptorSet {
 	std::vector<uint32_t> _dynamicBuffersBaseSizes;
 
 	const LogicalDevice& _logicalDevice;
-	const std::shared_ptr<DescriptorPool> _descriptorPool;
+	const std::shared_ptr<const DescriptorPool> _descriptorPool;
 
 public:
-	DescriptorSet(const LogicalDevice& logicalDevice, const std::shared_ptr<DescriptorPool>& descriptorPool);
+	DescriptorSet(const LogicalDevice& logicalDevice, const std::shared_ptr<const DescriptorPool>& descriptorPool);
 	~DescriptorSet();
 
 	void updateDescriptorSet(const std::vector<UniformBuffer*>& uniformBuffers);

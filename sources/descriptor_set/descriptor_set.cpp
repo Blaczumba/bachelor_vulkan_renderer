@@ -12,9 +12,8 @@
 #include <iterator>
 #include <stdexcept>
 
-DescriptorSet::DescriptorSet(const LogicalDevice& logicalDevice, const std::shared_ptr<DescriptorPool>& descriptorPool)
+DescriptorSet::DescriptorSet(const LogicalDevice& logicalDevice, const std::shared_ptr<const DescriptorPool>& descriptorPool)
 	: _logicalDevice(logicalDevice), _descriptorPool(descriptorPool) {
-
     const VkDescriptorSetLayout layout = _descriptorPool->getDescriptorSetLayout().getVkDescriptorSetLayout();
 
     VkDescriptorSetAllocateInfo allocInfo{};

@@ -38,6 +38,6 @@ const DescriptorSetLayout& DescriptorPool::getDescriptorSetLayout() const {
 	return _descriptorSetLayout;
 }
 
-std::unique_ptr<DescriptorSet> DescriptorPool::createDesriptorSet() {
+std::unique_ptr<DescriptorSet> DescriptorPool::createDesriptorSet() const {
 	return std::make_unique<DescriptorSet>(_logicalDevice, shared_from_this());
 }
