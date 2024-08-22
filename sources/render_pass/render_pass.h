@@ -9,7 +9,7 @@
 class LogicalDevice;
 
 class Renderpass {
-	VkRenderPass _renderpass = nullptr;
+	VkRenderPass _renderpass = VK_NULL_HANDLE;
 	AttachmentLayout _attachmentsLayout;
 	uint32_t _colorAttachmentsCount;
 

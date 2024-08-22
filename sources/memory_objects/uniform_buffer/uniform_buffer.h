@@ -153,6 +153,7 @@ public:
 	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override;
 	void updateUniformBuffer(UniformBufferType* object, uint32_t index);
 	void makeUpdatesVisible();
+	void makeUpdatesVisible(uint32_t objectIndex);
 
 };
 
@@ -215,6 +216,16 @@ void UniformBufferDynamic<UniformBufferType>::makeUpdatesVisible() {
 	memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 	memoryRange.memory = _uniformBufferMemory;
 	memoryRange.size = _count * _size;
+	vkFlushMappedMemoryRanges(_logicalDevice.getVkDevice(), 1, &memoryRange);
+}
+
+template<typename UniformBufferType>
+void UniformBufferDynamic<UniformBufferType>::makeUpdatesVisible(uint32_t objectIndex) {
+	VkMappedMemoryRange memoryRange{};
+	memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	memoryRange.memory = _uniformBufferMemory;
+	memoryRange.size = _size;
+	memoryRange.offset = objectIndex * _size;
 	vkFlushMappedMemoryRanges(_logicalDevice.getVkDevice(), 1, &memoryRange);
 }
 

@@ -3,11 +3,11 @@
 #include "descriptor_set_layout.h"
 #include "logical_device/logical_device.h"
 
-DescriptorPool::DescriptorPool(const LogicalDevice& logicalDevice, const std::shared_ptr<DescriptorSetLayout>& descriptorSetLayout, uint32_t maxNumSets)
+DescriptorPool::DescriptorPool(const LogicalDevice& logicalDevice, const DescriptorSetLayout& descriptorSetLayout, uint32_t maxNumSets)
 	: _logicalDevice(logicalDevice), _descriptorSetLayout(descriptorSetLayout), _maxNumSets(maxNumSets), _allocatedSets(0) {
 
 	std::vector<VkDescriptorPoolSize> poolSizes;
-	for (const auto [descriptorType, numOccurances] : _descriptorSetLayout->getDescriptorTypeCounter()) {
+	for (const auto [descriptorType, numOccurances] : _descriptorSetLayout.getDescriptorTypeCounter()) {
 		poolSizes.emplace_back(VkDescriptorPoolSize{
 				.type = descriptorType,
 				.descriptorCount = _maxNumSets * numOccurances,
@@ -35,9 +35,9 @@ const VkDescriptorPool DescriptorPool::getVkDescriptorPool() const {
 }
 
 const DescriptorSetLayout& DescriptorPool::getDescriptorSetLayout() const {
-	return *_descriptorSetLayout;
+	return _descriptorSetLayout;
 }
 
 std::unique_ptr<DescriptorSet> DescriptorPool::createDesriptorSet() {
-	return std::make_unique<DescriptorSet>(_logicalDevice, *this);
+	return std::make_unique<DescriptorSet>(_logicalDevice, shared_from_this());
 }

@@ -3,7 +3,7 @@
 #include "fps_callback_manager.h"
 #include "window/callback_observer/callback_observer.h"
 
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 #include <iostream>
 

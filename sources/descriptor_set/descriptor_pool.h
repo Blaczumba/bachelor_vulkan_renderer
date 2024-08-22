@@ -11,16 +11,16 @@ class LogicalDevice;
 class DescriptorSetLayout;
 class DescriptorSet;
 
-class DescriptorPool {
+class DescriptorPool : public std::enable_shared_from_this<DescriptorPool> {
 	VkDescriptorPool _descriptorPool;
 	const uint32_t _maxNumSets;
-	uint32_t _allocatedSets;
+	uint32_t _allocatedSets;	// TODO make use of it
 
 	const LogicalDevice& _logicalDevice;
-	const std::shared_ptr<DescriptorSetLayout> _descriptorSetLayout; // Not needed in fact but for better optimization.
+	const DescriptorSetLayout& _descriptorSetLayout; // Not needed in fact but for better optimization.
 
 public:
-	DescriptorPool(const LogicalDevice& logicalDevice, const std::shared_ptr<DescriptorSetLayout>& descriptorSetLayout, uint32_t maxNumSets);
+	DescriptorPool(const LogicalDevice& logicalDevice, const DescriptorSetLayout& descriptorSetLayout, uint32_t maxNumSets);
 	~DescriptorPool();
 
 	const VkDescriptorPool getVkDescriptorPool() const;

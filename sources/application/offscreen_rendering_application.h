@@ -78,12 +78,12 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<UniformBufferTexture> _shadowTextureUniform;
     std::unique_ptr<PushConstants> _pushConstants;
 
-    std::shared_ptr<DescriptorSetLayout> _descriptorSetLayout;
-    std::shared_ptr<DescriptorSetLayout> _descriptorSetLayoutSkybox;
-    std::shared_ptr<DescriptorSetLayout> _descriptorSetLayoutShadow;
-    std::unique_ptr<DescriptorPool> _descriptorPool;
-    std::unique_ptr<DescriptorPool> _descriptorPoolSkybox;
-    std::unique_ptr<DescriptorPool> _descriptorPoolShadow;
+    std::unique_ptr<DescriptorSetLayout> _descriptorSetLayout;
+    std::unique_ptr<DescriptorSetLayout> _descriptorSetLayoutSkybox;
+    std::unique_ptr<DescriptorSetLayout> _descriptorSetLayoutShadow;
+    std::shared_ptr<DescriptorPool> _descriptorPool;
+    std::shared_ptr<DescriptorPool> _descriptorPoolSkybox;
+    std::shared_ptr<DescriptorPool> _descriptorPoolShadow;
 
     std::unique_ptr<TextureCubemap> _textureCubemap;
 

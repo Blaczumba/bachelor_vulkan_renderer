@@ -107,19 +107,19 @@ void OffscreenRendering::createDescriptorSets() {
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
 
-    _descriptorSetLayoutSkybox = std::make_shared<DescriptorSetLayout>(*_logicalDevice);
+    _descriptorSetLayoutSkybox = std::make_unique<DescriptorSetLayout>(*_logicalDevice);
     _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayoutSkybox->create();
 
-    _descriptorSetLayoutShadow = std::make_shared<DescriptorSetLayout>(*_logicalDevice);
+    _descriptorSetLayoutShadow = std::make_unique<DescriptorSetLayout>(*_logicalDevice);
     _descriptorSetLayoutShadow->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayoutShadow->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayoutShadow->create();
 
-    _descriptorPool = std::make_unique<DescriptorPool>(*_logicalDevice, _descriptorSetLayout, 150);
-    _descriptorPoolSkybox = std::make_unique<DescriptorPool>(*_logicalDevice, _descriptorSetLayoutSkybox, 1);
-    _descriptorPoolShadow = std::make_unique<DescriptorPool>(*_logicalDevice, _descriptorSetLayoutShadow, 1);
+    _descriptorPool = std::make_shared<DescriptorPool>(*_logicalDevice, *_descriptorSetLayout, 150);
+    _descriptorPoolSkybox = std::make_shared<DescriptorPool>(*_logicalDevice, *_descriptorSetLayoutSkybox, 1);
+    _descriptorPoolShadow = std::make_shared<DescriptorPool>(*_logicalDevice, *_descriptorSetLayoutShadow, 1);
 
     _descriptorSetSkybox = _descriptorPoolSkybox->createDesriptorSet();
     _descriptorSetShadow = _descriptorPoolShadow->createDesriptorSet();
@@ -130,10 +130,10 @@ void OffscreenRendering::createDescriptorSets() {
     _pushConstants = std::make_unique<PushConstants>(*_physicalDevice);
     _pushConstants->addPushConstant<UniformBufferObject>(VK_SHADER_STAGE_VERTEX_BIT);
 
-    _ubLight.pos = glm::vec3(13.0485f, 1.45034f, -6.06021f);
-    _ubLight.projView = glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 40.0f);
+    _ubLight.pos = glm::vec3(15.1891f, 2.66408f, -0.841221f);
+    _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.01f, 40.0f);
     _ubLight.projView[1][1] = -_ubLight.projView[1][1];
-    _ubLight.projView = _ubLight.projView * glm::lookAt(_ubLight.pos, glm::vec3(-1.37963f, -0.158828f, -4.6137f), glm::vec3(0.0f, 1.0f, 0.0f));
+    _ubLight.projView = _ubLight.projView * glm::lookAt(_ubLight.pos, glm::vec3(-3.82383f, 3.66503f, 1.30751f), glm::vec3(0.0f, 1.0f, 0.0f));
     _uniformBuffersLight->updateUniformBuffer(&_ubLight);
 }
 
@@ -379,6 +379,7 @@ void OffscreenRendering::updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.pos = _camera->getPosition();
 
     _dynamicUniformBuffersCamera->updateUniformBuffer(&_ubCamera, currentFrame);
+    _dynamicUniformBuffersCamera->makeUpdatesVisible(currentFrame);
 
     // std::cout << _ubCamera.pos.x << " " << _ubCamera.pos.y << " " << _ubCamera.pos.z << std::endl;
 }
@@ -434,7 +435,6 @@ void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuf
 
         vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
-
 
     // SKYBOX
     vkCmdBindPipeline(commandBuffer, _lowResGraphicsPipelineSkybox->getVkPipelineBindPoint(), _lowResGraphicsPipelineSkybox->getVkPipeline());

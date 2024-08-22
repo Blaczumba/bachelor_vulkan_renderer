@@ -12,14 +12,14 @@
 #include <iterator>
 #include <stdexcept>
 
-DescriptorSet::DescriptorSet(const LogicalDevice& logicalDevice, const DescriptorPool& descriptorPool)
-	: _logicalDevice(logicalDevice) {
+DescriptorSet::DescriptorSet(const LogicalDevice& logicalDevice, const std::shared_ptr<DescriptorPool>& descriptorPool)
+	: _logicalDevice(logicalDevice), _descriptorPool(descriptorPool) {
 
-    const VkDescriptorSetLayout layout = descriptorPool.getDescriptorSetLayout().getVkDescriptorSetLayout();
+    const VkDescriptorSetLayout layout = _descriptorPool->getDescriptorSetLayout().getVkDescriptorSetLayout();
 
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType                 = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool        = descriptorPool.getVkDescriptorPool();
+    allocInfo.descriptorPool        = _descriptorPool->getVkDescriptorPool();
     allocInfo.descriptorSetCount    = 1;
     allocInfo.pSetLayouts           = &layout;
 
