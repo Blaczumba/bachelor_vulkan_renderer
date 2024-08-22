@@ -48,20 +48,20 @@ class OffscreenRendering : public ApplicationBase {
 
     std::shared_ptr<Renderpass> _renderPass;
     std::unique_ptr<Framebuffer> _framebuffer;
-    std::unique_ptr<Pipeline> _graphicsPipeline;
-    std::unique_ptr<Pipeline> _graphicsPipelineSkybox;
+    std::unique_ptr<GraphicsPipeline> _graphicsPipeline;
+    std::unique_ptr<GraphicsPipeline> _graphicsPipelineSkybox;
 
     std::shared_ptr<Renderpass> _lowResRenderPass;
     std::unique_ptr<Framebuffer> _lowResFramebuffer;
     std::unique_ptr<Texture2DColor> _lowResTextureColorAttachment;
     std::unique_ptr<Texture2DDepth> _lowResTextureDepthAttachment;
-    std::unique_ptr<Pipeline> _lowResGraphicsPipeline;
-    std::unique_ptr<Pipeline> _lowResGraphicsPipelineSkybox;
+    std::unique_ptr<GraphicsPipeline> _lowResGraphicsPipeline;
+    std::unique_ptr<GraphicsPipeline> _lowResGraphicsPipelineSkybox;
 
     std::shared_ptr<Renderpass> _shadowRenderPass;
     std::unique_ptr<Framebuffer> _shadowFramebuffer;
     std::unique_ptr<Texture2DShadow> _shadowMap;
-    std::unique_ptr<Pipeline> _shadowPipeline;
+    std::unique_ptr<GraphicsPipeline> _shadowPipeline;
 
     std::unique_ptr<VertexBuffer<VertexP>> _vertexBufferCube;
     std::unique_ptr<IndexBuffer<uint16_t>> _indexBufferCube;

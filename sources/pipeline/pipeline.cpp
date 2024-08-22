@@ -1,6 +1,6 @@
 #include "pipeline.h"
 
-Pipeline::Pipeline(std::shared_ptr<LogicalDevice> logicalDevice, VkPipelineBindPoint pipelineBindPoint)
+Pipeline::Pipeline(const LogicalDevice& logicalDevice, VkPipelineBindPoint pipelineBindPoint)
 	: _logicalDevice(logicalDevice), _pipelineBindPoint(pipelineBindPoint) {
 
 }

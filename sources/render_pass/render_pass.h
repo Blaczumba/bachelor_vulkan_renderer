@@ -24,7 +24,7 @@ public:
 	~Renderpass();
 	void create();
 
-	VkRenderPass getVkRenderPass();
+	const VkRenderPass getVkRenderPass() const;
 	const std::vector<VkClearValue>& getClearValues() const;
 	const AttachmentLayout& getAttachmentsLayout() const;
 	uint32_t getColorAttachmentsCount() const;

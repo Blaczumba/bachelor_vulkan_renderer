@@ -19,6 +19,7 @@ public:
 
 		_maxSize = limits.maxPushConstantsSize;
 	}
+	PushConstants() = default;
 
 	template<typename StructObject>
 	void addPushConstant(VkShaderStageFlags shaderStages);

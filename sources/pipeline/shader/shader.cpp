@@ -40,14 +40,6 @@ VkPipelineShaderStageCreateInfo Shader::getVkPipelineStageCreateInfo() const {
     return vertShaderStageInfo;
 }
 
-const VkShaderModule Shader::getVkShaderModule() const {
-    return _shaderModule;
-}
-
 VkShaderStageFlagBits Shader::getVkShaderStageFlagBits() const {
     return _shaderStage;
-}
-
-const std::string_view Shader::getName() const {
-    return _name;
 }

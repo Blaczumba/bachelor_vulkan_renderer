@@ -18,8 +18,5 @@ public:
 	~Shader();
 
 	VkPipelineShaderStageCreateInfo getVkPipelineStageCreateInfo() const;
-
-	const VkShaderModule getVkShaderModule() const;
 	VkShaderStageFlagBits getVkShaderStageFlagBits() const;
-	const std::string_view getName() const;
 };

@@ -167,8 +167,29 @@ void OffscreenRendering::createPresentResources() {
     _renderPass->create();
 
     _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
-    _graphicsPipeline = std::make_unique<GraphicsPipeline<VertexPTNTB>>(_logicalDevice, _renderPass, _descriptorSetLayout->getVkDescriptorSetLayout(), *_pushConstants, msaaSamples, "shader_normal_mapping.vert.spv", "shader_normal_mapping.frag.spv", true, 0.0f, 0.0f);
-    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _renderPass, _descriptorSetLayoutSkybox->getVkDescriptorSetLayout(), *_pushConstants, msaaSamples, "skybox.vert.spv", "skybox.frag.spv", false, 0.0f, 0.0f);
+
+    GraphicsPipelineParameters parameters;
+    parameters.msaaSamples = msaaSamples;
+    _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_renderPass);
+    _graphicsPipeline->setVertexDescriptions<VertexPTNTB>();
+    _graphicsPipeline->setDescriptorSetLayout(_descriptorSetLayout->getVkDescriptorSetLayout());
+    _graphicsPipeline->setPipelineParameters(parameters);
+    Shader vert(*_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    Shader frag(*_logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    _graphicsPipeline->setShader(vert);
+    _graphicsPipeline->setShader(frag);
+    _graphicsPipeline->create();
+    
+    parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
+    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_renderPass);
+    _graphicsPipelineSkybox->setVertexDescriptions<VertexP>();
+    _graphicsPipelineSkybox->setDescriptorSetLayout(_descriptorSetLayoutSkybox->getVkDescriptorSetLayout());
+    _graphicsPipelineSkybox->setPipelineParameters(parameters);
+    Shader vertSky(*_logicalDevice, SHADERS_PATH "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    Shader fragSky(*_logicalDevice, SHADERS_PATH "skybox.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    _graphicsPipelineSkybox->setShader(vertSky);
+    _graphicsPipelineSkybox->setShader(fragSky);
+    _graphicsPipelineSkybox->create();
 }
 
 void OffscreenRendering::createOffscreenResources() {
@@ -202,8 +223,29 @@ void OffscreenRendering::createOffscreenResources() {
     };
 
     _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
-    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline<VertexPTNTB>>(_logicalDevice, _lowResRenderPass, _descriptorSetLayout->getVkDescriptorSetLayout(), *_pushConstants, lowResMsaaSamples, "shader_normal_mapping.vert.spv", "offscreen_shader_normal_mapping.frag.spv", true, 0.0f, 0.0f);
-    _lowResGraphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _lowResRenderPass, _descriptorSetLayoutSkybox->getVkDescriptorSetLayout(), *_pushConstants, lowResMsaaSamples, "skybox_offscreen.vert.spv", "skybox_offscreen.frag.spv", false, 0.0f, 0.0f);
+
+    GraphicsPipelineParameters parameters;
+    parameters.msaaSamples = lowResMsaaSamples;
+    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_lowResRenderPass);
+    _lowResGraphicsPipeline->setVertexDescriptions<VertexPTNTB>();
+    _lowResGraphicsPipeline->setDescriptorSetLayout(_descriptorSetLayout->getVkDescriptorSetLayout());
+    _lowResGraphicsPipeline->setPipelineParameters(parameters);
+    Shader vert(*_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    Shader frag(*_logicalDevice, SHADERS_PATH "offscreen_shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    _lowResGraphicsPipeline->setShader(vert);
+    _lowResGraphicsPipeline->setShader(frag);
+    _lowResGraphicsPipeline->create();
+
+    parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
+    _lowResGraphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_lowResRenderPass);
+    _lowResGraphicsPipelineSkybox->setVertexDescriptions<VertexP>();
+    _lowResGraphicsPipelineSkybox->setDescriptorSetLayout(_descriptorSetLayoutSkybox->getVkDescriptorSetLayout());
+    _lowResGraphicsPipelineSkybox->setPipelineParameters(parameters);
+    Shader vertSky(*_logicalDevice, SHADERS_PATH "skybox_offscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    Shader fragSky(*_logicalDevice, SHADERS_PATH "skybox_offscreen.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    _lowResGraphicsPipelineSkybox->setShader(vertSky);
+    _lowResGraphicsPipelineSkybox->setShader(fragSky);
+    _lowResGraphicsPipelineSkybox->create();
 }
 
 void OffscreenRendering::createShadowResources() {
@@ -230,7 +272,19 @@ void OffscreenRendering::createShadowResources() {
     };
 
     _shadowFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(shadowViews), _shadowRenderPass, extent, MAX_FRAMES_IN_FLIGHT);
-    _shadowPipeline = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _shadowRenderPass, _descriptorSetLayoutShadow->getVkDescriptorSetLayout(), *_pushConstants, shadowMsaaSamples, "shadow.vert.spv", "shadow.frag.spv", true, 0.7f, 2.0f);
+
+    GraphicsPipelineParameters parameters;
+    parameters.depthBiasConstantFactor  = 0.7f;
+    parameters.depthBiasSlopeFactor     = 2.0f;
+    _shadowPipeline = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_shadowRenderPass);
+    _shadowPipeline->setVertexDescriptions<VertexP>();
+    _shadowPipeline->setDescriptorSetLayout(_descriptorSetLayoutShadow->getVkDescriptorSetLayout());
+    _shadowPipeline->setPipelineParameters(parameters);
+    Shader vert(*_logicalDevice, SHADERS_PATH "shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    Shader frag(*_logicalDevice, SHADERS_PATH "shadow.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    _shadowPipeline->setShader(vert);
+    _shadowPipeline->setShader(frag);
+    _shadowPipeline->create();
 }
 
 OffscreenRendering::~OffscreenRendering() {
