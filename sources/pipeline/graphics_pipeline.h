@@ -22,7 +22,7 @@ struct GraphicsPipelineParameters {
 
 class GraphicsPipeline : public Pipeline {
     std::unordered_map<VkShaderStageFlagBits, VkPipelineShaderStageCreateInfo> _shaderInfos;
-    VkDescriptorSetLayout _descriptorSetLayout;
+    VkDescriptorSetLayout _descriptorSetLayout = VK_NULL_HANDLE;
     VkVertexInputBindingDescription _bindingDescription;
     std::vector<VkVertexInputAttributeDescription> _attributeDescriptions;
     PushConstants _pushConstants;

@@ -23,6 +23,7 @@ public:
 	Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const AttachmentLayout& layout);
 	~Renderpass();
 	void create();
+	void cleanup();
 
 	const VkRenderPass getVkRenderPass() const;
 	const std::vector<VkClearValue>& getClearValues() const;

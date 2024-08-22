@@ -12,8 +12,7 @@ Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const Attac
 }
 
 void Renderpass::create() {
-    if (_renderpass)
-        throw std::runtime_error("Renderpass has already been created!");
+    cleanup();
 
     std::vector<VkAttachmentDescription> attachmentDescriptions = _attachmentsLayout.getVkAttachmentDescriptions();
 
@@ -34,8 +33,15 @@ void Renderpass::create() {
     }
 }
 
+void Renderpass::cleanup() {
+    if (_renderpass != VK_NULL_HANDLE)
+        vkDestroyRenderPass(_logicalDevice->getVkDevice(), _renderpass, nullptr);
+
+    _renderpass = VK_NULL_HANDLE;
+}
+
 Renderpass::~Renderpass() {
-    vkDestroyRenderPass(_logicalDevice->getVkDevice(), _renderpass, nullptr);
+    cleanup();
 }
 
 const VkRenderPass Renderpass::getVkRenderPass() const {

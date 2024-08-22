@@ -2,6 +2,8 @@
 
 
 void GraphicsPipeline::create() {
+    cleanup();
+
     VkDevice device = _logicalDevice.getVkDevice();
 
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
