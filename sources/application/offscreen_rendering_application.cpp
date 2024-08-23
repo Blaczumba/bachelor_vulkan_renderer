@@ -97,38 +97,21 @@ void OffscreenRendering::createDescriptorSets() {
     _skyboxTextureUniform = std::make_unique<UniformBufferTexture>(*_textureCubemap);
     _shadowTextureUniform = std::make_unique<UniformBufferTexture>(*_shadowMap);
 
-    _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(*_logicalDevice);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->create();
+    _pbrShaderProgram = std::make_unique<PBRShaderProgram>(*_logicalDevice);
+    _pbrOffscreenShaderProgram = std::make_unique<PBRShaderOffscreenProgram>(*_logicalDevice);
+    _skyboxShaderProgram = std::make_unique<SkyboxShaderProgram>(*_logicalDevice);
+    _skyboxOffscreenShaderProgram = std::make_unique<SkyboxOffscreenShaderProgram>(*_logicalDevice);
+    _shadowShaderProgram = std::make_unique<ShadowShaderProgram>(*_logicalDevice);
 
-    _descriptorSetLayoutSkybox = std::make_unique<DescriptorSetLayout>(*_logicalDevice);
-    _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
-    _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayoutSkybox->create();
-
-    _descriptorSetLayoutShadow = std::make_unique<DescriptorSetLayout>(*_logicalDevice);
-    _descriptorSetLayoutShadow->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
-    _descriptorSetLayoutShadow->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
-    _descriptorSetLayoutShadow->create();
-
-    _descriptorPool = std::make_shared<DescriptorPool>(*_logicalDevice, *_descriptorSetLayout, 150);
-    _descriptorPoolSkybox = std::make_shared<DescriptorPool>(*_logicalDevice, *_descriptorSetLayoutSkybox, 1);
-    _descriptorPoolShadow = std::make_shared<DescriptorPool>(*_logicalDevice, *_descriptorSetLayoutShadow, 1);
+    _descriptorPool = std::make_shared<DescriptorPool>(*_logicalDevice, _pbrShaderProgram->getDescriptorSetLayout(), 150);
+    _descriptorPoolSkybox = std::make_shared<DescriptorPool>(*_logicalDevice, _skyboxShaderProgram->getDescriptorSetLayout(), 1);
+    _descriptorPoolShadow = std::make_shared<DescriptorPool>(*_logicalDevice, _shadowShaderProgram->getDescriptorSetLayout(), 1);
 
     _descriptorSetSkybox = _descriptorPoolSkybox->createDesriptorSet();
     _descriptorSetShadow = _descriptorPoolShadow->createDesriptorSet();
 
     _descriptorSetSkybox->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _skyboxTextureUniform.get() });
     _descriptorSetShadow->updateDescriptorSet({ _uniformBuffersLight.get(),  _uniformBuffersObjects.get()});
-
-    _pushConstants = std::make_unique<PushConstants>(*_physicalDevice);
-    _pushConstants->addPushConstant<UniformBufferObject>(VK_SHADER_STAGE_VERTEX_BIT);
 
     _ubLight.pos = glm::vec3(15.1891f, 2.66408f, -0.841221f);
     _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.01f, 40.0f);
@@ -171,24 +154,14 @@ void OffscreenRendering::createPresentResources() {
     GraphicsPipelineParameters parameters;
     parameters.msaaSamples = msaaSamples;
     _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_renderPass);
-    _graphicsPipeline->setVertexDescriptions<VertexPTNTB>();
-    _graphicsPipeline->setDescriptorSetLayout(_descriptorSetLayout->getVkDescriptorSetLayout());
+    _graphicsPipeline->setShaderProgram(_pbrShaderProgram.get());
     _graphicsPipeline->setPipelineParameters(parameters);
-    Shader vert(*_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    Shader frag(*_logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-    _graphicsPipeline->setShader(vert);
-    _graphicsPipeline->setShader(frag);
     _graphicsPipeline->create();
-    
+
     parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
     _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_renderPass);
-    _graphicsPipelineSkybox->setVertexDescriptions<VertexP>();
-    _graphicsPipelineSkybox->setDescriptorSetLayout(_descriptorSetLayoutSkybox->getVkDescriptorSetLayout());
+    _graphicsPipelineSkybox->setShaderProgram(_skyboxShaderProgram.get());
     _graphicsPipelineSkybox->setPipelineParameters(parameters);
-    Shader vertSky(*_logicalDevice, SHADERS_PATH "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    Shader fragSky(*_logicalDevice, SHADERS_PATH "skybox.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-    _graphicsPipelineSkybox->setShader(vertSky);
-    _graphicsPipelineSkybox->setShader(fragSky);
     _graphicsPipelineSkybox->create();
 }
 
@@ -227,24 +200,14 @@ void OffscreenRendering::createOffscreenResources() {
     GraphicsPipelineParameters parameters;
     parameters.msaaSamples = lowResMsaaSamples;
     _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_lowResRenderPass);
-    _lowResGraphicsPipeline->setVertexDescriptions<VertexPTNTB>();
-    _lowResGraphicsPipeline->setDescriptorSetLayout(_descriptorSetLayout->getVkDescriptorSetLayout());
+    _lowResGraphicsPipeline->setShaderProgram(_pbrOffscreenShaderProgram.get());
     _lowResGraphicsPipeline->setPipelineParameters(parameters);
-    Shader vert(*_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    Shader frag(*_logicalDevice, SHADERS_PATH "offscreen_shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-    _lowResGraphicsPipeline->setShader(vert);
-    _lowResGraphicsPipeline->setShader(frag);
     _lowResGraphicsPipeline->create();
 
     parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
     _lowResGraphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_lowResRenderPass);
-    _lowResGraphicsPipelineSkybox->setVertexDescriptions<VertexP>();
-    _lowResGraphicsPipelineSkybox->setDescriptorSetLayout(_descriptorSetLayoutSkybox->getVkDescriptorSetLayout());
+    _lowResGraphicsPipelineSkybox->setShaderProgram(_skyboxOffscreenShaderProgram.get());
     _lowResGraphicsPipelineSkybox->setPipelineParameters(parameters);
-    Shader vertSky(*_logicalDevice, SHADERS_PATH "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    Shader fragSky(*_logicalDevice, SHADERS_PATH "skybox_offscreen.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-    _lowResGraphicsPipelineSkybox->setShader(vertSky);
-    _lowResGraphicsPipelineSkybox->setShader(fragSky);
     _lowResGraphicsPipelineSkybox->create();
 }
 
@@ -274,16 +237,11 @@ void OffscreenRendering::createShadowResources() {
     _shadowFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(shadowViews), _shadowRenderPass, extent, MAX_FRAMES_IN_FLIGHT);
 
     GraphicsPipelineParameters parameters;
-    parameters.depthBiasConstantFactor  = 0.7f;
-    parameters.depthBiasSlopeFactor     = 2.0f;
+    parameters.depthBiasConstantFactor = 0.7f;
+    parameters.depthBiasSlopeFactor = 2.0f;
     _shadowPipeline = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_shadowRenderPass);
-    _shadowPipeline->setVertexDescriptions<VertexP>();
-    _shadowPipeline->setDescriptorSetLayout(_descriptorSetLayoutShadow->getVkDescriptorSetLayout());
+    _shadowPipeline->setShaderProgram(_shadowShaderProgram.get());
     _shadowPipeline->setPipelineParameters(parameters);
-    Shader vert(*_logicalDevice, SHADERS_PATH "shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    Shader frag(*_logicalDevice, SHADERS_PATH "shadow.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-    _shadowPipeline->setShader(vert);
-    _shadowPipeline->setShader(frag);
     _shadowPipeline->create();
 }
 

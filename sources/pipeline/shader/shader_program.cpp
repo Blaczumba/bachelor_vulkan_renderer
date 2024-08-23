@@ -85,7 +85,7 @@ ShadowShaderProgram::ShadowShaderProgram(const LogicalDevice& logicalDevice) : G
 PBRShaderOffscreenProgram::PBRShaderOffscreenProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
     _shaders.reserve(2);
     _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "offscreen_shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);

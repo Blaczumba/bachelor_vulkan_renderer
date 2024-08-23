@@ -71,7 +71,6 @@ void SingleApp::loadObjects() {
             index,
             std::move(descriptorSet),
             _newVertexDataTBN[i].model }
-
         );
 
         _ubObject.model = _newVertexDataTBN[i].model;
