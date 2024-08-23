@@ -6,19 +6,21 @@ void GraphicsPipeline::create() {
 
     VkDevice device = _logicalDevice.getVkDevice();
 
-    std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-    std::transform(_shaderInfos.cbegin(), _shaderInfos.cend(), std::back_inserter(shaderStages), [](const std::pair<VkShaderStageFlagBits, VkPipelineShaderStageCreateInfo>& elem) { return elem.second; });
-
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    if (_attributeDescriptions.empty())
+    const auto& descriptorSetLayout     = _shaderProgram->getDescriptorSetLayout();
+    const auto& attributeDescriptions   = _shaderProgram->getVkVertexInputAttributeDescriptions();
+    const auto& bindingDescription      = _shaderProgram->getVkVertexInputBindingDescription();
+    const auto& shaderStages            = _shaderProgram->getVkPipelineShaderStageCreateInfos();
+
+    if (attributeDescriptions.empty())
         throw std::runtime_error("Vertex input layout not specified!");
 
     vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(_attributeDescriptions.size());
-    vertexInputInfo.pVertexBindingDescriptions = &_bindingDescription;
-    vertexInputInfo.pVertexAttributeDescriptions = _attributeDescriptions.data();
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -77,12 +79,13 @@ void GraphicsPipeline::create() {
     dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
     dynamicState.pDynamicStates = dynamicStates.data();
 
-    const auto& pushConstantsLayout = _pushConstants.getVkPushConstantRange();
+    const auto& pushConstantsLayout = _shaderProgram->getPushConstants().getVkPushConstantRange();
+    VkDescriptorSetLayout vkDescriptorSetLayout = descriptorSetLayout.getVkDescriptorSetLayout();
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &_descriptorSetLayout;
+    pipelineLayoutInfo.pSetLayouts = &vkDescriptorSetLayout;
     if (!pushConstantsLayout.empty())
         pipelineLayoutInfo.pPushConstantRanges = pushConstantsLayout.data();
     pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstantsLayout.size());
@@ -147,18 +150,22 @@ GraphicsPipeline::~GraphicsPipeline() {
 }
 
 
-void GraphicsPipeline::setShader(const Shader& shader) {
-    _shaderInfos[shader.getVkShaderStageFlagBits()] = shader.getVkPipelineStageCreateInfo();
-}
-
-void GraphicsPipeline::setDescriptorSetLayout(VkDescriptorSetLayout descriptorSetLayout) {
-    _descriptorSetLayout = descriptorSetLayout;
-}
-
-void GraphicsPipeline::setPushConstants(const PushConstants& pushConstants) {
-    _pushConstants = pushConstants;
-}
+//void GraphicsPipeline::setShader(const Shader& shader) {
+//    _shaderInfos[shader.getVkShaderStageFlagBits()] = shader.getVkPipelineStageCreateInfo();
+//}
+//
+//void GraphicsPipeline::setDescriptorSetLayout(VkDescriptorSetLayout descriptorSetLayout) {
+//    _descriptorSetLayout = descriptorSetLayout;
+//}
+//
+//void GraphicsPipeline::setPushConstants(const PushConstants& pushConstants) {
+//    _pushConstants = pushConstants;
+//}
 
 void GraphicsPipeline::setPipelineParameters(const GraphicsPipelineParameters& parameters) {
     _parameters = parameters;
+}
+
+void GraphicsPipeline::setShaderProgram(GraphicsShaderProgram* shaderProgram) {
+    _shaderProgram = shaderProgram;
 }

@@ -1,28 +1,30 @@
 #pragma once
 
 #include "shader.h"
+#include "descriptor_set/descriptor_set_layout.h"
+#include "memory_objects/uniform_buffer/push_constants.h"
 
 #include <vulkan/vulkan.h>
 
 #include <vector>
 #include <memory>
 
-class DescriptorSetLayout;
 class LogicalDevice;
 
 class ShaderProgram {
-
 protected:
 	std::unique_ptr<DescriptorSetLayout> _descriptorSetLayout;
 	std::vector<Shader> _shaders;
 	
 	const LogicalDevice& _logicalDevice;
+	PushConstants _pushConstants;
 
 public:
 	ShaderProgram(const LogicalDevice& logicalDevice);
 	std::vector<VkPipelineShaderStageCreateInfo> getVkPipelineShaderStageCreateInfos() const;
 
 	const DescriptorSetLayout& getDescriptorSetLayout() const;
+	const PushConstants& getPushConstants() const;
 };
 
 class GraphicsShaderProgram : public ShaderProgram {

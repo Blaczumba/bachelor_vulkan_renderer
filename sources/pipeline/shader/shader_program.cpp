@@ -13,6 +13,10 @@ const DescriptorSetLayout& ShaderProgram::getDescriptorSetLayout() const {
     return *_descriptorSetLayout;
 }
 
+const PushConstants& ShaderProgram::getPushConstants() const {
+    return _pushConstants;
+}
+
 std::vector<VkPipelineShaderStageCreateInfo> ShaderProgram::getVkPipelineShaderStageCreateInfos() const {
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
     std::transform(_shaders.cbegin(), _shaders.cend(), std::back_inserter(shaderStages), [](const Shader& shader) { return shader.getVkPipelineStageCreateInfo(); });
@@ -77,7 +81,6 @@ ShadowShaderProgram::ShadowShaderProgram(const LogicalDevice& logicalDevice) : G
     _bindingDescription = getBindingDescription<VertexP>();
     _attributeDescriptions = getAttributeDescriptions<VertexP>();
 }
-
 
 PBRShaderOffscreenProgram::PBRShaderOffscreenProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
     _shaders.reserve(2);

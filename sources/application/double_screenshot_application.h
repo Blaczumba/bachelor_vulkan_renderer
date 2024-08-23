@@ -69,18 +69,17 @@ class SingleApp : public ApplicationBase {
     std::unique_ptr<UniformBufferDynamic<UniformBufferCamera>> _dynamicUniformBuffersCamera;
     std::unique_ptr<UniformBufferTexture> _skyboxTextureUniform;
     std::unique_ptr<UniformBufferTexture> _shadowTextureUniform;
-    std::unique_ptr<PushConstants> _pushConstants;
 
-    std::unique_ptr<DescriptorSetLayout> _descriptorSetLayout;
-    std::unique_ptr<DescriptorSetLayout> _descriptorSetLayoutSkybox;
-    std::unique_ptr<DescriptorSetLayout> _descriptorSetLayoutShadow;
     std::shared_ptr<DescriptorPool> _descriptorPool;
     std::shared_ptr<DescriptorPool> _descriptorPoolSkybox;
     std::shared_ptr<DescriptorPool> _descriptorPoolShadow;
 
+    std::unique_ptr<ShadowShaderProgram> _shadowShaderProgram;
+    std::unique_ptr<PBRShaderProgram> _pbrShaderProgram;
+    std::unique_ptr<SkyboxShaderProgram> _skyboxShaderProgram;
+
     std::unique_ptr<TextureCubemap> _textureCubemap;
 
-    std::unique_ptr<DescriptorSet> _descriptorSet;
     std::unique_ptr<DescriptorSet> _descriptorSetSkybox;
     std::unique_ptr<DescriptorSet> _descriptorSetShadow;
     std::unique_ptr<Screenshot> _screenshot;
