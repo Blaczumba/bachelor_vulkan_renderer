@@ -29,7 +29,7 @@
 struct Object {
     std::unique_ptr<VertexBuffer<VertexPTNTB>> vertexBufferPTNTB;
     std::unique_ptr<VertexBuffer<VertexP>> vertexBufferP;
-    std::unique_ptr<IndexBuffer<uint32_t>> indexBuffer;
+    std::unique_ptr<IndexBuffer> indexBuffer;
 
     uint32_t dynamicUniformIndex;
 
@@ -43,7 +43,7 @@ class SingleApp : public ApplicationBase {
     std::vector<std::unique_ptr<Texture2DImage>> _textures;
     std::unordered_map<std::string, std::unique_ptr<UniformBufferTexture>> _uniformMap;
     std::unordered_map<std::string, std::unique_ptr<VertexBuffer<VertexPTNTB>>> _vertexBufferMap;
-    std::unordered_map<std::string, std::unique_ptr<IndexBuffer<uint32_t>>> _indexBufferMap;
+    std::unordered_map<std::string, std::unique_ptr<IndexBuffer>> _indexBufferMap;
     std::vector<Object> _objects;
 
     std::shared_ptr<Renderpass> _renderPass;
@@ -57,7 +57,7 @@ class SingleApp : public ApplicationBase {
     std::unique_ptr<GraphicsPipeline> _shadowPipeline;
 
     std::unique_ptr<VertexBuffer<VertexP>> _vertexBufferCube;
-    std::unique_ptr<IndexBuffer<uint16_t>> _indexBufferCube;
+    std::unique_ptr<IndexBuffer> _indexBufferCube;
 
     std::vector<Object> objects;
     UniformBufferCamera _ubCamera;

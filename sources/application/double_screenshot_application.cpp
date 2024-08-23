@@ -17,7 +17,7 @@ SingleApp::SingleApp()
 
     VertexData<VertexP, uint16_t> vertexDataCube = TinyOBJLoaderVertex::extract<VertexP, uint16_t>(MODELS_PATH "cube.obj");
     _vertexBufferCube = std::make_unique<VertexBuffer<VertexP>>(*_logicalDevice, vertexDataCube.vertices);
-    _indexBufferCube = std::make_unique<IndexBuffer<uint16_t>>(*_logicalDevice, vertexDataCube.indices);
+    _indexBufferCube = std::make_unique<IndexBuffer>(*_logicalDevice, vertexDataCube.indices);
 
     _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     _shadowCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
@@ -67,7 +67,7 @@ void SingleApp::loadObjects() {
         _objects.push_back(Object{
             std::make_unique<VertexBuffer<VertexPTNTB>>(*_logicalDevice, std::move(_newVertexDataTBN[i].vertices)),
             std::make_unique<VertexBuffer<VertexP>>(*_logicalDevice, std::move(pVertexData)),
-            std::make_unique<IndexBuffer<uint32_t>>(*_logicalDevice, std::move(_newVertexDataTBN[i].indices)),
+            std::make_unique<IndexBuffer>(*_logicalDevice, std::move(_newVertexDataTBN[i].indices)),
             index,
             std::move(descriptorSet),
             _newVertexDataTBN[i].model }
