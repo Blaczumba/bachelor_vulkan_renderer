@@ -241,7 +241,7 @@ void OffscreenRendering::createOffscreenResources() {
     _lowResGraphicsPipelineSkybox->setVertexDescriptions<VertexP>();
     _lowResGraphicsPipelineSkybox->setDescriptorSetLayout(_descriptorSetLayoutSkybox->getVkDescriptorSetLayout());
     _lowResGraphicsPipelineSkybox->setPipelineParameters(parameters);
-    Shader vertSky(*_logicalDevice, SHADERS_PATH "skybox_offscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    Shader vertSky(*_logicalDevice, SHADERS_PATH "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
     Shader fragSky(*_logicalDevice, SHADERS_PATH "skybox_offscreen.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
     _lowResGraphicsPipelineSkybox->setShader(vertSky);
     _lowResGraphicsPipelineSkybox->setShader(fragSky);
