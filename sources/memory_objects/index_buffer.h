@@ -1,8 +1,5 @@
 #pragma once
 
-#include "logical_device/logical_device.h"
-#include "command_buffer/command_buffer.h"
-
 #include <vulkan/vulkan.h>
 
 #include <vector>

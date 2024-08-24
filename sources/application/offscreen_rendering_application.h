@@ -27,8 +27,8 @@
 #include <unordered_map>
 
 struct Object {
-    std::unique_ptr<VertexBuffer<VertexPTNTB>> vertexBufferPTNTB;
-    std::unique_ptr<VertexBuffer<VertexP>> vertexBufferP;
+    std::unique_ptr<VertexBuffer> vertexBufferPTNTB;
+    std::unique_ptr<VertexBuffer> vertexBufferP;
     std::unique_ptr<IndexBuffer> indexBuffer;
 
     uint32_t dynamicUniformIndex;
@@ -42,7 +42,7 @@ class OffscreenRendering : public ApplicationBase {
     std::vector<VertexData<VertexPTNTB, uint32_t>> _newVertexDataTBN;
     std::vector<std::unique_ptr<Texture2DImage>> _textures;
     std::unordered_map<std::string, std::unique_ptr<UniformBufferTexture>> _uniformMap;
-    std::unordered_map<std::string, std::unique_ptr<VertexBuffer<VertexPTNTB>>> _vertexBufferMap;
+    std::unordered_map<std::string, std::unique_ptr<VertexBuffer>> _vertexBufferMap;
     std::unordered_map<std::string, std::unique_ptr<IndexBuffer>> _indexBufferMap;
     std::vector<Object> _objects;
 
@@ -63,7 +63,7 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<Texture2DShadow> _shadowMap;
     std::unique_ptr<GraphicsPipeline> _shadowPipeline;
 
-    std::unique_ptr<VertexBuffer<VertexP>> _vertexBufferCube;
+    std::unique_ptr<VertexBuffer> _vertexBufferCube;
     std::unique_ptr<IndexBuffer> _indexBufferCube;
 
     std::vector<Object> objects;

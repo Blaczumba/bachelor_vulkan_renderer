@@ -9,7 +9,6 @@
 #include <memory>
 #include <cstring>
 
-template<typename VertexType>
 class VertexBuffer {
     VkBuffer _vertexBuffer;
     VkDeviceMemory _vertexBufferMemory;
@@ -17,6 +16,7 @@ class VertexBuffer {
 	const LogicalDevice& _logicalDevice;
 
 public:
+    template<typename VertexType>
 	VertexBuffer(const LogicalDevice& logicalDevice, const std::vector<VertexType>& vertices);
     ~VertexBuffer();
 
@@ -24,7 +24,7 @@ public:
 };
 
 template<typename VertexType>
-VertexBuffer<VertexType>::VertexBuffer(const LogicalDevice& logicalDevice, const std::vector<VertexType>& vertices)
+VertexBuffer::VertexBuffer(const LogicalDevice& logicalDevice, const std::vector<VertexType>& vertices)
     : _logicalDevice(logicalDevice) {
     const VkDeviceSize bufferSize = sizeof(VertexType) * vertices.size();
     const VkDevice device = _logicalDevice.getVkDevice();
@@ -44,16 +44,4 @@ VertexBuffer<VertexType>::VertexBuffer(const LogicalDevice& logicalDevice, const
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
-}
-
-template<typename VertexType>
-VertexBuffer<VertexType>::~VertexBuffer() {
-    const VkDevice device = _logicalDevice.getVkDevice();
-    vkDestroyBuffer(device, _vertexBuffer, nullptr);
-    vkFreeMemory(device, _vertexBufferMemory, nullptr);
-}
-
-template<typename VertexType>
-const VkBuffer VertexBuffer<VertexType>::getVkBuffer() const {
-    return _vertexBuffer;
 }

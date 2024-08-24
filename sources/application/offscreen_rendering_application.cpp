@@ -17,7 +17,7 @@ OffscreenRendering::OffscreenRendering()
     createShadowResources();
 
     VertexData<VertexP, uint16_t> vertexDataCube = TinyOBJLoaderVertex::extract<VertexP, uint16_t>(MODELS_PATH "cube.obj");
-    _vertexBufferCube = std::make_unique<VertexBuffer<VertexP>>(*_logicalDevice, vertexDataCube.vertices);
+    _vertexBufferCube = std::make_unique<VertexBuffer>(*_logicalDevice, vertexDataCube.vertices);
     _indexBufferCube = std::make_unique<IndexBuffer>(*_logicalDevice, vertexDataCube.indices);
 
     _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
@@ -68,8 +68,8 @@ void OffscreenRendering::loadObjects() {
         std::vector<VertexP> pVertexData;
         std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNTB& vertex) { return VertexP{ vertex.pos }; });
         _objects.push_back(Object{
-            std::make_unique<VertexBuffer<VertexPTNTB>>(*_logicalDevice, std::move(_newVertexDataTBN[i].vertices)),
-            std::make_unique<VertexBuffer<VertexP>>(*_logicalDevice, std::move(pVertexData)),
+            std::make_unique<VertexBuffer>(*_logicalDevice, std::move(_newVertexDataTBN[i].vertices)),
+            std::make_unique<VertexBuffer>(*_logicalDevice, std::move(pVertexData)),
             std::make_unique<IndexBuffer>(*_logicalDevice, std::move(_newVertexDataTBN[i].indices)),
             index,
             std::move(descriptorSet),

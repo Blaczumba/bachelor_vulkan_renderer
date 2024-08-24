@@ -1,5 +1,7 @@
 #include "index_buffer.h"
 
+#include "logical_device/logical_device.h"
+#include "command_buffer/command_buffer.h"
 
 IndexBuffer::IndexBuffer(const LogicalDevice& logicalDevice, const std::vector<uint8_t>& indices)
     : _logicalDevice(logicalDevice), _indexCount(indices.size()), _indexType(VK_INDEX_TYPE_UINT8_EXT) {
