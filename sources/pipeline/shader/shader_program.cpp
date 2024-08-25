@@ -104,7 +104,7 @@ PBRShaderOffscreenProgram::PBRShaderOffscreenProgram(const LogicalDevice& logica
 SkyboxOffscreenShaderProgram::SkyboxOffscreenShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
     _shaders.reserve(2);
     _shaders.emplace_back(_logicalDevice, SHADERS_PATH "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "skybox.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "skybox_offscreen.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);

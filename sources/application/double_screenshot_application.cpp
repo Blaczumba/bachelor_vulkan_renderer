@@ -132,7 +132,7 @@ void SingleApp::createPresentResources() {
     subpass.addSubpassOutputAttachment(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     subpass.addSubpassOutputAttachment(4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    _renderPass = std::make_shared<Renderpass>(_logicalDevice, attachmentsLayout);
+    _renderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentsLayout);
     _renderPass->addSubpass(subpass);
     _renderPass->addDependency(VK_SUBPASS_EXTERNAL,
         0,
@@ -143,7 +143,7 @@ void SingleApp::createPresentResources() {
     );
     _renderPass->create();
 
-    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+    _framebuffer = std::make_unique<Framebuffer>(*_logicalDevice, _swapchain.get(), *_renderPass);
 
     
     GraphicsPipelineParameters parameters;
@@ -173,7 +173,7 @@ void SingleApp::createShadowResources() {
     Subpass subpass(attachmentLayout);
     subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    _shadowRenderPass = std::make_shared<Renderpass>(_logicalDevice, attachmentLayout);
+    _shadowRenderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentLayout);
     _shadowRenderPass->addSubpass(subpass);
     _shadowRenderPass->create();
 
@@ -183,7 +183,7 @@ void SingleApp::createShadowResources() {
         {_shadowMap->getImage().view},
     };
 
-    _shadowFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(shadowViews), _shadowRenderPass, extent, MAX_FRAMES_IN_FLIGHT);
+    _shadowFramebuffer = std::make_unique<Framebuffer>(*_logicalDevice, std::move(shadowViews), *_shadowRenderPass, extent, MAX_FRAMES_IN_FLIGHT);
 
     GraphicsPipelineParameters parameters;
     parameters.depthBiasConstantFactor = 0.7f;
@@ -488,5 +488,5 @@ void SingleApp::recreateSwapChain() {
 
     _swapchain->recrete();
 
-    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+    _framebuffer = std::make_unique<Framebuffer>(*_logicalDevice, _swapchain.get(), *_renderPass);
 }

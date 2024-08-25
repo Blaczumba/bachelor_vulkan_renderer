@@ -58,6 +58,6 @@ const PhysicalDevicePropertyManager& PhysicalDevice::getPropertyManager() const 
     return _propertyManager;
 }
 
-std::shared_ptr<LogicalDevice> PhysicalDevice::createLogicalDevice() {
-    return std::make_shared<LogicalDevice>(*this);
+std::unique_ptr<LogicalDevice> PhysicalDevice::createLogicalDevice() {
+    return std::make_unique<LogicalDevice>(*this);
 }

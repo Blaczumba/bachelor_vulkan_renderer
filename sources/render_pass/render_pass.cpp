@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <iostream>
 
-Renderpass::Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const AttachmentLayout& layout) 
+Renderpass::Renderpass(const LogicalDevice& logicalDevice, const AttachmentLayout& layout) 
     : _logicalDevice(logicalDevice), _attachmentsLayout(layout) {
     _clearValues = _attachmentsLayout.getVkClearValues();
     _colorAttachmentsCount = _attachmentsLayout.getColorAttachmentsCount();
@@ -28,14 +28,14 @@ void Renderpass::create() {
     renderPassInfo.dependencyCount = static_cast<uint32_t>(_subpassDepencies.size());
     renderPassInfo.pDependencies = _subpassDepencies.data();
 
-    if (vkCreateRenderPass(_logicalDevice->getVkDevice(), &renderPassInfo, nullptr, &_renderpass) != VK_SUCCESS) {
+    if (vkCreateRenderPass(_logicalDevice.getVkDevice(), &renderPassInfo, nullptr, &_renderpass) != VK_SUCCESS) {
         throw std::runtime_error("failed to create render pass!");
     }
 }
 
 void Renderpass::cleanup() {
     if (_renderpass != VK_NULL_HANDLE)
-        vkDestroyRenderPass(_logicalDevice->getVkDevice(), _renderpass, nullptr);
+        vkDestroyRenderPass(_logicalDevice.getVkDevice(), _renderpass, nullptr);
 
     _renderpass = VK_NULL_HANDLE;
 }

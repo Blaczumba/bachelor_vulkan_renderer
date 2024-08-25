@@ -17,10 +17,10 @@ class Renderpass {
 	std::vector<VkSubpassDependency> _subpassDepencies;
 	std::vector<VkClearValue> _clearValues;
 
-	std::shared_ptr<LogicalDevice> _logicalDevice;
+	const LogicalDevice& _logicalDevice;
 
 public:
-	Renderpass(std::shared_ptr<LogicalDevice> logicalDevice, const AttachmentLayout& layout);
+	Renderpass(const LogicalDevice& logicalDevice, const AttachmentLayout& layout);
 	~Renderpass();
 	void create();
 	void cleanup();

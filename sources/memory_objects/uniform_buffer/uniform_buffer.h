@@ -97,7 +97,7 @@ UniformBufferStruct<UniformBufferType>::UniformBufferStruct(const LogicalDevice&
 
 	_bufferInfo.buffer = _uniformBuffer;
 	_bufferInfo.offset = 0;
-	_bufferInfo.range = sizeof(UniformBufferType);
+	_bufferInfo.range = _size;
 }
 
 template<typename UniformBufferType>
@@ -179,7 +179,7 @@ UniformBufferDynamic<UniformBufferType>::UniformBufferDynamic(const LogicalDevic
 
 	_bufferInfo.buffer = _uniformBuffer;
 	_bufferInfo.offset = 0;
-	_bufferInfo.range = sizeof(UniformBufferType);
+	_bufferInfo.range = _size;
 }
 
 template<typename UniformBufferType>

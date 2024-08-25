@@ -18,13 +18,13 @@ struct Image;
 struct CallbackData;
 
 class Screenshot : public CallbackObserver {
-	std::shared_ptr<LogicalDevice> _logicalDevice;
+	const LogicalDevice& _logicalDevice;
 
 	std::vector<Image> _images;
 	std::vector<std::string> _imageNames;
 
 public:
-	Screenshot(std::shared_ptr<LogicalDevice> logicalDevice);
+	Screenshot(const LogicalDevice& logicalDevice);
 	~Screenshot();
 
 	void updateInput(const CallbackData& cbData) override;

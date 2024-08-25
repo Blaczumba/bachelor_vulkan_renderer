@@ -6,10 +6,11 @@
 #include <surface/surface.h>
 #include <physical_device/physical_device.h>
 #include <swapchain/swapchain.h>
+#include <logical_device/logical_device.h>
 
 class ApplicationBase {
 protected:
-    std::shared_ptr<Window> _window;
+    std::shared_ptr<WindowGLFW> _window;
     std::shared_ptr<Instance> _instance;
 
 #ifdef VALIDATION_LAYERS_ENABLED
@@ -17,9 +18,9 @@ protected:
 #endif // VALIDATION_LAYERS_ENABLED
 
     std::shared_ptr<Surface> _surface;
-    std::shared_ptr<PhysicalDevice> _physicalDevice;
-    std::shared_ptr<LogicalDevice> _logicalDevice;
-    std::shared_ptr<Swapchain> _swapchain;
+    std::unique_ptr<PhysicalDevice> _physicalDevice;
+    std::unique_ptr<LogicalDevice> _logicalDevice;
+    std::unique_ptr<Swapchain> _swapchain;
 
 public:
     ApplicationBase();

@@ -24,7 +24,7 @@ OffscreenRendering::OffscreenRendering()
     _offscreenCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     _shadowCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
 
-    _screenshot = std::make_unique<Screenshot>(_logicalDevice);
+    _screenshot = std::make_unique<Screenshot>(*_logicalDevice);
     _screenshot->addImageToObserved(_framebuffer->getColorTextures()[0].getImage(), "hig_res_screenshot.ppm");
     _screenshot->addImageToObserved(_lowResTextureColorAttachment->getImage(), "low_res_screenshot.ppm");
 
@@ -138,7 +138,7 @@ void OffscreenRendering::createPresentResources() {
     subpass.addSubpassOutputAttachment(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     subpass.addSubpassOutputAttachment(4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    _renderPass = std::make_shared<Renderpass>(_logicalDevice, attachmentsLayout);
+    _renderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentsLayout);
     _renderPass->addSubpass(subpass);
     _renderPass->addDependency(VK_SUBPASS_EXTERNAL,
         0,
@@ -149,7 +149,7 @@ void OffscreenRendering::createPresentResources() {
     );
     _renderPass->create();
 
-    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+    _framebuffer = std::make_unique<Framebuffer>(*_logicalDevice, _swapchain.get(), *_renderPass);
 
     GraphicsPipelineParameters parameters;
     parameters.msaaSamples = msaaSamples;
@@ -179,7 +179,7 @@ void OffscreenRendering::createOffscreenResources() {
     subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     subpass.addSubpassOutputAttachment(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    _lowResRenderPass = std::make_shared<Renderpass>(_logicalDevice, attachmentLayout);
+    _lowResRenderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentLayout);
     _lowResRenderPass->addSubpass(subpass);
     _lowResRenderPass->create();
 
@@ -195,7 +195,7 @@ void OffscreenRendering::createOffscreenResources() {
         {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
     };
 
-    _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
+    _lowResFramebuffer = std::make_unique<Framebuffer>(*_logicalDevice, std::move(lowResViews), *_lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
 
     GraphicsPipelineParameters parameters;
     parameters.msaaSamples = lowResMsaaSamples;
@@ -224,7 +224,7 @@ void OffscreenRendering::createShadowResources() {
     Subpass subpass(attachmentLayout);
     subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    _shadowRenderPass = std::make_shared<Renderpass>(_logicalDevice, attachmentLayout);
+    _shadowRenderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentLayout);
     _shadowRenderPass->addSubpass(subpass);
     _shadowRenderPass->create();
 
@@ -234,7 +234,7 @@ void OffscreenRendering::createShadowResources() {
         {_shadowMap->getImage().view},
     };
 
-    _shadowFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(shadowViews), _shadowRenderPass, extent, MAX_FRAMES_IN_FLIGHT);
+    _shadowFramebuffer = std::make_unique<Framebuffer>(*_logicalDevice, std::move(shadowViews), *_shadowRenderPass, extent, MAX_FRAMES_IN_FLIGHT);
 
     GraphicsPipelineParameters parameters;
     parameters.depthBiasConstantFactor = 0.7f;
@@ -613,5 +613,5 @@ void OffscreenRendering::recreateSwapChain() {
 
     _swapchain->recrete();
 
-    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+    _framebuffer = std::make_unique<Framebuffer>(*_logicalDevice, _swapchain.get(), *_renderPass);
 }

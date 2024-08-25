@@ -14,15 +14,15 @@
 
 class Framebuffer {
 	std::vector<VkFramebuffer> _framebuffers;
-	std::shared_ptr<LogicalDevice> _logicalDevice;
-	std::shared_ptr<Swapchain> _swapchain;
-	std::shared_ptr<Renderpass> _renderPass;
+	const LogicalDevice& _logicalDevice;
+	const Swapchain* _swapchain;
+	const Renderpass& _renderPass;
 
 	std::vector<Texture2DColor> _colorImages;
 	std::vector<Texture2DDepth> _depthImages;
 public:
-	Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::vector<std::vector<VkImageView>>&& images, std::shared_ptr<Renderpass> renderpass, VkExtent2D extent, uint32_t count);
-	Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shared_ptr<Swapchain> swapchain, std::shared_ptr<Renderpass> renderpass);
+	Framebuffer(const LogicalDevice& logicaldevice, std::vector<std::vector<VkImageView>>&& images, const Renderpass& renderpass, VkExtent2D extent, uint32_t count);
+	Framebuffer(const LogicalDevice& logicaldevice, const Swapchain* swapchain, const Renderpass& renderpass);
 	~Framebuffer();
 
 	const std::vector<Texture2DColor>& getColorTextures() const;

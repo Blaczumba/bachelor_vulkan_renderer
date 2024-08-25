@@ -8,7 +8,7 @@
 #include <fstream>
 #include <iostream>
 
-Screenshot::Screenshot(std::shared_ptr<LogicalDevice> logicalDevice)
+Screenshot::Screenshot(const LogicalDevice& logicalDevice)
 	: _logicalDevice(logicalDevice), _counter(0), _shouldStop(false) {
 	_savingThread = std::thread(&Screenshot::savingThread, this);
 }
@@ -66,12 +66,12 @@ void Screenshot::savingThread() {
 }
 
 void Screenshot::saveImage(const std::string& filePath, const Image& srcImage) {
-	VkDevice device = _logicalDevice->getVkDevice();
+	VkDevice device = _logicalDevice.getVkDevice();
 	VkExtent2D extent = { srcImage.extent.width, srcImage.extent.height };
 	Image dstImage;
 	dstImage.extent = { extent.width, extent.height, 1 };
 
-	_logicalDevice->createImage(
+	_logicalDevice.createImage(
 		dstImage.extent.width,
 		dstImage.extent.height,
 		1,
@@ -85,7 +85,7 @@ void Screenshot::saveImage(const std::string& filePath, const Image& srcImage) {
 	);
 
 	{
-		SingleTimeCommandBuffer commandBufferGuard(*_logicalDevice);
+		SingleTimeCommandBuffer commandBufferGuard(_logicalDevice);
 		VkCommandBuffer copyCmd = commandBufferGuard.getCommandBuffer();
 
 		transitionImageLayout(copyCmd, dstImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -109,7 +109,7 @@ void Screenshot::savePixels(const CommandData& imagesData) {
 	const auto& srcImage = imagesData.srcImage;
 	const VkExtent2D extent = { dstImage.extent.width, dstImage.extent.height };
 
-	VkDevice device = _logicalDevice->getVkDevice();
+	VkDevice device = _logicalDevice.getVkDevice();
 
 	// Get layout of the image (including row pitch)
 	VkImageSubresource subResource{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
@@ -153,7 +153,7 @@ void Screenshot::savePixels(const CommandData& imagesData) {
 }
 
 void Screenshot::freeImageResources(const Image& image) const {
-	VkDevice device = _logicalDevice->getVkDevice();
+	VkDevice device = _logicalDevice.getVkDevice();
 
 	vkFreeMemory(device, image.memory, nullptr);
 	vkDestroyImage(device, image.image, nullptr);

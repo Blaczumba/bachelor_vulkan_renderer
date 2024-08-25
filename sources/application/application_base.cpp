@@ -14,9 +14,9 @@ ApplicationBase::ApplicationBase() {
 #endif // VALIDATION_LAYERS_ENABLED
 
 	_surface = std::make_shared<Surface>(_instance, _window);
-	_physicalDevice = std::make_shared<PhysicalDevice>(_instance, _surface);
+	_physicalDevice = std::make_unique<PhysicalDevice>(_instance, _surface);
 	_logicalDevice = _physicalDevice->createLogicalDevice();
-	_swapchain = std::make_shared<Swapchain>(*_surface, *_window, *_logicalDevice);
+	_swapchain = std::make_unique<Swapchain>(*_surface, *_window, *_logicalDevice);
 }
 
 ApplicationBase::~ApplicationBase() {
