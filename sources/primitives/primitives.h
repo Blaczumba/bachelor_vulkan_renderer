@@ -24,6 +24,13 @@ struct VertexPTN {
     glm::vec3 normal;
 };
 
+struct VertexPTNT {
+    glm::vec3 pos;
+    glm::vec2 texCoord;
+    glm::vec3 normal;
+    glm::vec3 tangent;
+};
+
 struct VertexPTNTB {
     glm::vec3 pos;
     glm::vec2 texCoord;

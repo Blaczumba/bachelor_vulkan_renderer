@@ -13,6 +13,54 @@
 #include <map>
 #include <iostream>
 
+template <typename VertexType>
+struct VertexTraits;
+
+template <>
+struct VertexTraits<VertexP> {
+    static constexpr bool hasPosition = true;
+    static constexpr bool hasTexCoord = false;
+    static constexpr bool hasNormal = false;
+    static constexpr bool hasTangent = false;
+    static constexpr bool hasBitangent = false;
+};
+
+template <>
+struct VertexTraits<VertexPT> {
+    static constexpr bool hasPosition = true;
+    static constexpr bool hasTexCoord = true;
+    static constexpr bool hasNormal = false;
+    static constexpr bool hasTangent = false;
+    static constexpr bool hasBitangent = false;
+};
+
+template <>
+struct VertexTraits<VertexPTN> {
+    static constexpr bool hasPosition = true;
+    static constexpr bool hasTexCoord = true;
+    static constexpr bool hasNormal = true;
+    static constexpr bool hasTangent = false;
+    static constexpr bool hasBitangent = false;
+};
+
+template <>
+struct VertexTraits<VertexPTNT> {
+    static constexpr bool hasPosition = true;
+    static constexpr bool hasTexCoord = true;
+    static constexpr bool hasNormal = true;
+    static constexpr bool hasTangent = true;
+    static constexpr bool hasBitangent = false;
+};
+
+template <>
+struct VertexTraits<VertexPTNTB> {
+    static constexpr bool hasPosition = true;
+    static constexpr bool hasTexCoord = true;
+    static constexpr bool hasNormal = true;
+    static constexpr bool hasTangent = true;
+    static constexpr bool hasBitangent = true;
+};
+
 glm::mat4 GetNodeTransform(const tinygltf::Node& node) {
     glm::mat4 mat(1.0f);
 
@@ -35,13 +83,14 @@ glm::mat4 GetNodeTransform(const tinygltf::Node& node) {
     return mat;
 }
 
-void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::mat4 parentTransform, std::vector<VertexData<VertexPTNTB, uint32_t>>& vertexDataList) {
+template<typename VertexType, typename IndexType>
+void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::mat4 parentTransform, std::vector<VertexData<VertexType, IndexType>>& vertexDataList) {
     glm::mat4 currentTransform = parentTransform * GetNodeTransform(node);
 
     if (node.mesh >= 0) {
         const auto& mesh = model.meshes[node.mesh];
 
-        VertexData<VertexPTNTB, uint32_t> vertexData;
+        VertexData<VertexType, IndexType> vertexData;
         vertexData.model = currentTransform;
 
         for (const auto& primitive : mesh.primitives) {
@@ -53,62 +102,71 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
             std::vector<glm::vec3> tangents;
             std::vector<glm::vec3> bitangents;
 
-            // Load positions
-            if (attributes.find("POSITION") != attributes.end()) {
-                const tinygltf::Accessor& accessor = model.accessors[attributes.at("POSITION")];
-                const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-                const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+            if constexpr (VertexTraits<VertexType>::hasPosition) {
+                if (attributes.find("POSITION") != attributes.end()) {
+                    const tinygltf::Accessor& accessor = model.accessors[attributes.at("POSITION")];
+                    const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+                    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
-                const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-                for (size_t i = 0; i < accessor.count; ++i) {
-                    positions.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+                    const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+                    for (size_t i = 0; i < accessor.count; ++i) {
+                        positions.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+                    }
                 }
             }
 
-            // Load texture coordinates
-            if (attributes.find("TEXCOORD_0") != attributes.end()) {
-                const tinygltf::Accessor& accessor = model.accessors[attributes.at("TEXCOORD_0")];
-                const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-                const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+            if constexpr (VertexTraits<VertexType>::hasTexCoord) {
+                if (attributes.find("TEXCOORD_0") != attributes.end()) {
+                    const tinygltf::Accessor& accessor = model.accessors[attributes.at("TEXCOORD_0")];
+                    const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+                    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
-                const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-                for (size_t i = 0; i < accessor.count; ++i) {
-                    texCoords.emplace_back(data[i * 2], data[i * 2 + 1]);
+                    const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+                    for (size_t i = 0; i < accessor.count; ++i) {
+                        texCoords.emplace_back(data[i * 2], data[i * 2 + 1]);
+                    }
                 }
             }
 
-            // Load normals
-            if (attributes.find("NORMAL") != attributes.end()) {
-                const tinygltf::Accessor& accessor = model.accessors[attributes.at("NORMAL")];
-                const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-                const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+            if constexpr (VertexTraits<VertexType>::hasNormal) {
+                if (attributes.find("NORMAL") != attributes.end()) {
+                    const tinygltf::Accessor& accessor = model.accessors[attributes.at("NORMAL")];
+                    const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+                    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
-                const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-                for (size_t i = 0; i < accessor.count; ++i) {
-                    normals.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+                    const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+                    for (size_t i = 0; i < accessor.count; ++i) {
+                        normals.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+                    }
                 }
             }
 
-            // Load tangents and bitangents (optional)
-            if (attributes.find("TANGENT") != attributes.end()) {
-                const tinygltf::Accessor& accessor = model.accessors[attributes.at("TANGENT")];
-                const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-                const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+            if constexpr (VertexTraits<VertexType>::hasTangent) {
+                if (attributes.find("TANGENT") != attributes.end()) {
+                    const tinygltf::Accessor& accessor = model.accessors[attributes.at("TANGENT")];
+                    const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+                    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
-                const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-                for (size_t i = 0; i < accessor.count; ++i) {
-                    tangents.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+                    const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+                    for (size_t i = 0; i < accessor.count; ++i) {
+                        tangents.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+                    }
                 }
             }
 
-            // Compute bitangents (optional, if not provided)
-            if (tangents.size() > 0 && normals.size() > 0 && texCoords.size() > 0) {
-                for (size_t i = 0; i < positions.size(); ++i) {
-                    glm::vec3 tangent = tangents[i];
-                    glm::vec3 normal = normals[i];
-                    glm::vec3 bitangent = glm::normalize(glm::cross(normal, tangent));
-                    bitangents.push_back(bitangent);
-                }
+            // Combine vertex attributes into VertexType
+            for (size_t i = 0; i < positions.size(); ++i) {
+                VertexType vertex{};
+                if constexpr (VertexTraits<VertexType>::hasPosition) vertex.pos = positions[i];
+                if constexpr (VertexTraits<VertexType>::hasTexCoord) 
+                    if (i < texCoords.size()) vertex.texCoord = texCoords[i];
+                if constexpr (VertexTraits<VertexType>::hasNormal)
+                    if (i < normals.size()) vertex.normal = normals[i];
+                if constexpr (VertexTraits<VertexType>::hasTangent)
+                    if (i < tangents.size()) vertex.tangent = tangents[i];
+                if constexpr (VertexTraits<VertexType>::hasBitangent)
+                    if (i < bitangents.size()) vertex.bitangent = bitangents[i];
+                vertexData.vertices.push_back(vertex);
             }
 
             // Load indices
@@ -120,26 +178,15 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
                 if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
                     const uint16_t* data = reinterpret_cast<const uint16_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
                     for (size_t i = 0; i < accessor.count; ++i) {
-                        vertexData.indices.push_back(data[i]);
+                        vertexData.indices.push_back(static_cast<IndexType>(data[i]));
                     }
                 }
                 else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
                     const uint32_t* data = reinterpret_cast<const uint32_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
                     for (size_t i = 0; i < accessor.count; ++i) {
-                        vertexData.indices.push_back(data[i]);
+                        vertexData.indices.push_back(static_cast<IndexType>(data[i]));
                     }
                 }
-            }
-
-            // Combine vertex attributes into VertexPTNTB
-            for (size_t i = 0; i < positions.size(); ++i) {
-                VertexPTNTB vertex;
-                vertex.pos = positions[i];
-                vertex.texCoord = (i < texCoords.size()) ? texCoords[i] : glm::vec2(0.0f, 0.0f);
-                vertex.normal = (i < normals.size()) ? normals[i] : glm::vec3(0.0f, 0.0f, 0.0f);
-                vertex.tangent = (i < tangents.size()) ? tangents[i] : glm::vec3(0.0f, 0.0f, 0.0f);
-                vertex.bitangent = (i < bitangents.size()) ? bitangents[i] : glm::vec3(0.0f, 0.0f, 0.0f);
-                vertexData.vertices.push_back(vertex);
             }
 
             // Load textures
@@ -165,39 +212,45 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
         }
 
         vertexDataList.push_back(vertexData);
-        // Calculate tangents and bitangents
-        for (size_t i = 0; i < vertexDataList.back().indices.size(); i += 3) {
-            VertexPTNTB& v0 = vertexDataList.back().vertices[vertexDataList.back().indices[i + 0]];
-            VertexPTNTB& v1 = vertexDataList.back().vertices[vertexDataList.back().indices[i + 1]];
-            VertexPTNTB& v2 = vertexDataList.back().vertices[vertexDataList.back().indices[i + 2]];
 
-            glm::vec3 edge1 = v1.pos - v0.pos;
-            glm::vec3 edge2 = v2.pos - v0.pos;
-            glm::vec2 deltaUV1 = v1.texCoord - v0.texCoord;
-            glm::vec2 deltaUV2 = v2.texCoord - v0.texCoord;
+        // Calculate tangents and bitangents (only if the vertex type has them)
+        if constexpr (VertexTraits<VertexType>::hasTangent || VertexTraits<VertexType>::hasBitangent) {
+            for (size_t i = 0; i < vertexDataList.back().indices.size(); i += 3) {
+                VertexType& v0 = vertexDataList.back().vertices[vertexDataList.back().indices[i + 0]];
+                VertexType& v1 = vertexDataList.back().vertices[vertexDataList.back().indices[i + 1]];
+                VertexType& v2 = vertexDataList.back().vertices[vertexDataList.back().indices[i + 2]];
 
-            float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+                glm::vec3 edge1 = v1.pos - v0.pos;
+                glm::vec3 edge2 = v2.pos - v0.pos;
+                glm::vec2 deltaUV1 = v1.texCoord - v0.texCoord;
+                glm::vec2 deltaUV2 = v2.texCoord - v0.texCoord;
 
-            glm::vec3 tangent = glm::normalize(f * (deltaUV2.y * edge1 - deltaUV1.y * edge2));
-            glm::vec3 bitangent = glm::normalize(f * (-deltaUV2.x * edge1 + deltaUV1.x * edge2));
+                // float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
 
-            v0.tangent = tangent;
-            v1.tangent = tangent;
-            v2.tangent = tangent;
+                if constexpr (VertexTraits<VertexType>::hasTangent) {
+                    glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2); // f scale
+                    v0.tangent = tangent;
+                    v1.tangent = tangent;
+                    v2.tangent = tangent;
+                }
 
-            v0.bitangent = bitangent;
-            v1.bitangent = bitangent;
-            v2.bitangent = bitangent;
+                if constexpr (VertexTraits<VertexType>::hasBitangent) {
+                    glm::vec3 bitangent = glm::normalize(-deltaUV2.x * edge1 + deltaUV1.x * edge2); // f scale
+                    v0.bitangent = bitangent;
+                    v1.bitangent = bitangent;
+                    v2.bitangent = bitangent;
+                }
+            }
         }
     }
 
-    // Recursively process children nodes
     for (const auto& childIndex : node.children) {
-        ProcessNode(model, model.nodes[childIndex], currentTransform, vertexDataList);
+        ProcessNode<VertexType, IndexType>(model, model.nodes[childIndex], currentTransform, vertexDataList);
     }
 }
 
-std::vector<VertexData<VertexPTNTB, uint32_t>> LoadGLTF(const std::string& filePath) {
+template<typename VertexType, typename IndexType>
+std::vector<VertexData<VertexType, IndexType>> LoadGLTF(const std::string& filePath) {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;
@@ -215,13 +268,12 @@ std::vector<VertexData<VertexPTNTB, uint32_t>> LoadGLTF(const std::string& fileP
         throw std::runtime_error("Failed to load GLTF file: " + filePath + "\n" + err);
     }
 
-    std::vector<VertexData<VertexPTNTB, uint32_t>> vertexDataList;
+    std::vector<VertexData<VertexType, IndexType>> vertexDataList;
 
-    // Process each scene in the model
     for (const auto& scene : model.scenes) {
         for (const auto& nodeIndex : scene.nodes) {
             const tinygltf::Node& node = model.nodes[nodeIndex];
-            ProcessNode(model, node, glm::mat4(1.0f), vertexDataList);
+            ProcessNode<VertexType, IndexType>(model, node, glm::mat4(1.0f), vertexDataList);
         }
     }
 

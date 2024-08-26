@@ -39,7 +39,7 @@ struct Object {
 };
 
 class SingleApp : public ApplicationBase {
-    std::vector<VertexData<VertexPTNTB, uint32_t>> _newVertexDataTBN;
+    std::vector<VertexData<VertexPTNT, uint16_t>> _newVertexDataTBN;
     std::vector<std::unique_ptr<Texture2DImage>> _textures;
     std::unordered_map<std::string, std::unique_ptr<UniformBufferTexture>> _uniformMap;
     std::unordered_map<std::string, std::unique_ptr<VertexBuffer>> _vertexBufferMap;

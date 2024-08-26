@@ -50,8 +50,8 @@ PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : Graphic
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
 
-    _bindingDescription = getBindingDescription<VertexPTNTB>();
-    _attributeDescriptions = getAttributeDescriptions<VertexPTNTB>();
+    _bindingDescription = getBindingDescription<VertexPTNT>();
+    _attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
 }
 
 SkyboxShaderProgram::SkyboxShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
@@ -97,8 +97,8 @@ PBRShaderOffscreenProgram::PBRShaderOffscreenProgram(const LogicalDevice& logica
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
 
-    _bindingDescription = getBindingDescription<VertexPTNTB>();
-    _attributeDescriptions = getAttributeDescriptions<VertexPTNTB>();
+    _bindingDescription = getBindingDescription<VertexPTNT>();
+    _attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
 }
 
 SkyboxOffscreenShaderProgram::SkyboxOffscreenShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {

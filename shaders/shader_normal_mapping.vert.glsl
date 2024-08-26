@@ -23,7 +23,7 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTexCoord;
 layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec3 inTangent;
-layout(location = 4) in vec3 inBitangent;
+// layout(location = 4) in vec3 inBitangent;
 
 layout(location = 0) out vec3 TBNfragPosition;
 layout(location = 1) out vec2 fragTexCoord;
@@ -43,11 +43,11 @@ const mat4 BiasMat = mat4(
 
 void main() {
     mat3 normalMatrix = transpose(inverse(mat3(object.model)));
-    vec3 tangent = normalize(normalMatrix * inTangent);
     vec3 normal = normalize(normalMatrix * inNormal);
-    // tangent = normalize(tangent - dot(tangent, normal) * normal);
-    // vec3 bitangent = cross(normal, tangent);
-    vec3 bitangent = normalize(normalMatrix * inBitangent);
+    // vec3 tangent = normalize(normalMatrix * inTangent);
+    // vec3 bitangent = normalize(normalMatrix * inBitangent);
+    vec3 tangent = normalize(inTangent - dot(inTangent, normal) * normal);
+    vec3 bitangent = cross(normal, tangent);
     mat3 TBNMat = transpose(mat3(tangent, bitangent, normal));
 
     gl_Position = object.model * vec4(inPosition, 1.0);

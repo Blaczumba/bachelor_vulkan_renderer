@@ -8,7 +8,7 @@
 SingleApp::SingleApp()
     : ApplicationBase() {
 
-    _newVertexDataTBN = LoadGLTF(MODELS_PATH "sponza/scene.gltf");
+    _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
     createDescriptorSets();
     loadObjects();
@@ -63,7 +63,7 @@ void SingleApp::loadObjects() {
         descriptorSet->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _uniformMap[diffusePath].get(), _uniformBuffersLight.get(), _uniformBuffersObjects.get(), _shadowTextureUniform.get(), _uniformMap[normalPath].get(), _uniformMap[metallicRoughnessPath].get() });
 
         std::vector<VertexP> pVertexData;
-        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNTB& vertex) { return VertexP{ vertex.pos }; });
+        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return VertexP{ vertex.pos }; });
         _objects.push_back(Object{
             std::make_unique<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices),
             std::make_unique<VertexBuffer>(*_logicalDevice, pVertexData),
