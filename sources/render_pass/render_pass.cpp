@@ -8,7 +8,6 @@
 Renderpass::Renderpass(const LogicalDevice& logicalDevice, const AttachmentLayout& layout) 
     : _logicalDevice(logicalDevice), _attachmentsLayout(layout) {
     _clearValues = _attachmentsLayout.getVkClearValues();
-    _colorAttachmentsCount = _attachmentsLayout.getColorAttachmentsCount();
 }
 
 void Renderpass::create() {
@@ -54,10 +53,6 @@ const std::vector<VkClearValue>& Renderpass::getClearValues() const {
 
 const AttachmentLayout& Renderpass::getAttachmentsLayout() const {
     return _attachmentsLayout;
-}
-
-uint32_t Renderpass::getColorAttachmentsCount() const {
-    return _colorAttachmentsCount;
 }
 
 void Renderpass::addSubpass(const Subpass& subpass) {

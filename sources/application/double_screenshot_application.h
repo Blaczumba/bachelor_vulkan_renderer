@@ -53,7 +53,7 @@ class SingleApp : public ApplicationBase {
 
     std::shared_ptr<Renderpass> _shadowRenderPass;
     std::unique_ptr<Framebuffer> _shadowFramebuffer;
-    std::unique_ptr<Texture2DShadow> _shadowMap;
+    std::shared_ptr<Texture2DShadow> _shadowMap;
     std::unique_ptr<GraphicsPipeline> _shadowPipeline;
 
     std::unique_ptr<VertexBuffer> _vertexBufferCube;

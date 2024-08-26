@@ -52,7 +52,7 @@ void GraphicsPipeline::create() {
     multisampling.sampleShadingEnable = VK_TRUE;
     multisampling.minSampleShading = 0.2f;
 
-    uint32_t colorBlendAttachmentsCount = _renderpass.getColorAttachmentsCount();
+    uint32_t colorBlendAttachmentsCount = _renderpass.getAttachmentsLayout().getColorAttachmentsCount();
     std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments(colorBlendAttachmentsCount);
     for (VkPipelineColorBlendAttachmentState& colorBlendAttachment : colorBlendAttachments) {
         colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;

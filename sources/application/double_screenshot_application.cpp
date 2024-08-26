@@ -1,6 +1,8 @@
 #include "double_screenshot_application.h"
 
 #include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
+#include "framebuffer/framebuffer_from_textures.h"
+#include "framebuffer/framebuffer_from_swapchain.h"
 
 #include <algorithm>
 #include <array>
@@ -22,8 +24,8 @@ SingleApp::SingleApp()
     _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     _shadowCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
 
-    _screenshot = std::make_unique<Screenshot>(_logicalDevice);
-    _screenshot->addImageToObserved(_framebuffer->getColorTextures()[0].getImage(), "hig_res_screenshot.ppm");
+    _screenshot = std::make_unique<Screenshot>(*_logicalDevice);
+    _screenshot->addImageToObserved(_framebuffer->getColorTextures()[0]->getImage(), "hig_res_screenshot.ppm");
 
     _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 100.0f);
 
@@ -84,7 +86,7 @@ void SingleApp::createDescriptorSets() {
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     _textureCubemap = std::make_unique<TextureCubemap>(*_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
 
-    _shadowMap = std::make_unique<Texture2DShadow>(*_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
+    _shadowMap = std::make_shared<Texture2DShadow>(*_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
 
     _uniformBuffersObjects = std::make_unique<UniformBufferDynamic<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
     _uniformBuffersLight = std::make_unique<UniformBufferStruct<UniformBufferLight>>(*_logicalDevice);
@@ -143,7 +145,7 @@ void SingleApp::createPresentResources() {
     );
     _renderPass->create();
 
-    _framebuffer = std::make_unique<Framebuffer>(*_logicalDevice, _swapchain.get(), *_renderPass);
+    _framebuffer = std::make_unique<FramebufferFromSwapchain>(*_logicalDevice, *_swapchain, *_renderPass);
 
     
     GraphicsPipelineParameters parameters;
@@ -177,13 +179,13 @@ void SingleApp::createShadowResources() {
     _shadowRenderPass->addSubpass(subpass);
     _shadowRenderPass->create();
 
-    std::vector<std::vector<VkImageView>> shadowViews = {
-        {_shadowMap->getImage().view},
-        {_shadowMap->getImage().view},
-        {_shadowMap->getImage().view},
+    std::vector<std::vector<std::shared_ptr<Texture2D>>> shadowViews = {
+        {_shadowMap},
+        {_shadowMap},
+        {_shadowMap},
     };
 
-    _shadowFramebuffer = std::make_unique<Framebuffer>(*_logicalDevice, std::move(shadowViews), *_shadowRenderPass, extent, MAX_FRAMES_IN_FLIGHT);
+    _shadowFramebuffer = std::make_unique<FramebufferFromTextures>(*_logicalDevice, *_shadowRenderPass, std::move(shadowViews));
 
     GraphicsPipelineParameters parameters;
     parameters.depthBiasConstantFactor = 0.7f;
@@ -488,5 +490,5 @@ void SingleApp::recreateSwapChain() {
 
     _swapchain->recrete();
 
-    _framebuffer = std::make_unique<Framebuffer>(*_logicalDevice, _swapchain.get(), *_renderPass);
+    _framebuffer = std::make_unique<FramebufferFromSwapchain>(*_logicalDevice, *_swapchain, *_renderPass);
 }

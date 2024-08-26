@@ -1,5 +1,7 @@
 #include "offscreen_rendering_application.h"
 
+#include <framebuffer/framebuffer_from_swapchain.h>
+#include <framebuffer/framebuffer_from_textures.h>
 #include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
 
 #include <algorithm>
@@ -25,7 +27,7 @@ OffscreenRendering::OffscreenRendering()
     _shadowCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
 
     _screenshot = std::make_unique<Screenshot>(*_logicalDevice);
-    _screenshot->addImageToObserved(_framebuffer->getColorTextures()[0].getImage(), "hig_res_screenshot.ppm");
+    _screenshot->addImageToObserved(_framebuffer->getColorTextures()[0]->getImage(), "hig_res_screenshot.ppm");
     _screenshot->addImageToObserved(_lowResTextureColorAttachment->getImage(), "low_res_screenshot.ppm");
 
     _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 100.0f);
@@ -88,7 +90,7 @@ void OffscreenRendering::createDescriptorSets() {
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     _textureCubemap = std::make_unique<TextureCubemap>(*_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
 
-    _shadowMap = std::make_unique<Texture2DShadow>(*_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
+    _shadowMap = std::make_shared<Texture2DShadow>(*_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
 
     _uniformBuffersObjects = std::make_unique<UniformBufferDynamic<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
     _uniformBuffersLight = std::make_unique<UniformBufferStruct<UniformBufferLight>>(*_logicalDevice);
@@ -149,7 +151,7 @@ void OffscreenRendering::createPresentResources() {
     );
     _renderPass->create();
 
-    _framebuffer = std::make_unique<Framebuffer>(*_logicalDevice, _swapchain.get(), *_renderPass);
+    _framebuffer = std::make_unique<FramebufferFromSwapchain>(*_logicalDevice, *_swapchain, *_renderPass);
 
     GraphicsPipelineParameters parameters;
     parameters.msaaSamples = msaaSamples;
@@ -183,19 +185,16 @@ void OffscreenRendering::createOffscreenResources() {
     _lowResRenderPass->addSubpass(subpass);
     _lowResRenderPass->create();
 
-    _lowResTextureColorAttachment = std::make_unique<Texture2DColor>(*_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
-    _lowResTextureDepthAttachment = std::make_unique<Texture2DDepth>(*_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
+    _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(*_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
+    _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(*_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
 
-    // auto lowResTextureColorResolveView = _lowResTextureColorResolveAttachment->getImage().view;
-    auto lowResTextureColorView = _lowResTextureColorAttachment->getImage().view;
-    auto lowResTextureDepthView = _lowResTextureDepthAttachment->getImage().view;
-    std::vector<std::vector<VkImageView>> lowResViews = {
-        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
-        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
-        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
+    std::vector<std::vector<std::shared_ptr<Texture2D>>> lowResViews = {
+        {/* lowResTextureColorResolveView,*/ _lowResTextureColorAttachment, _lowResTextureDepthAttachment },
+        {/* lowResTextureColorResolveView,*/ _lowResTextureColorAttachment, _lowResTextureDepthAttachment },
+        {/* lowResTextureColorResolveView,*/ _lowResTextureColorAttachment, _lowResTextureDepthAttachment },
     };
 
-    _lowResFramebuffer = std::make_unique<Framebuffer>(*_logicalDevice, std::move(lowResViews), *_lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
+    _lowResFramebuffer = std::make_unique<FramebufferFromTextures>(*_logicalDevice, *_lowResRenderPass, std::move(lowResViews));
 
     GraphicsPipelineParameters parameters;
     parameters.msaaSamples = lowResMsaaSamples;
@@ -228,13 +227,13 @@ void OffscreenRendering::createShadowResources() {
     _shadowRenderPass->addSubpass(subpass);
     _shadowRenderPass->create();
 
-    std::vector<std::vector<VkImageView>> shadowViews = {
-        {_shadowMap->getImage().view},
-        {_shadowMap->getImage().view},
-        {_shadowMap->getImage().view},
+    std::vector<std::vector<std::shared_ptr<Texture2D>>> shadowViews = {
+        { _shadowMap },
+        { _shadowMap },
+        { _shadowMap },
     };
 
-    _shadowFramebuffer = std::make_unique<Framebuffer>(*_logicalDevice, std::move(shadowViews), *_shadowRenderPass, extent, MAX_FRAMES_IN_FLIGHT);
+    _shadowFramebuffer = std::make_unique<FramebufferFromTextures>(*_logicalDevice, *_shadowRenderPass, std::move(shadowViews));
 
     GraphicsPipelineParameters parameters;
     parameters.depthBiasConstantFactor = 0.7f;
@@ -613,5 +612,5 @@ void OffscreenRendering::recreateSwapChain() {
 
     _swapchain->recrete();
 
-    _framebuffer = std::make_unique<Framebuffer>(*_logicalDevice, _swapchain.get(), *_renderPass);
+    _framebuffer = std::make_unique<FramebufferFromSwapchain>(*_logicalDevice, *_swapchain, *_renderPass);
 }
