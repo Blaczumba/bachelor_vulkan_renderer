@@ -2,6 +2,7 @@
 
 #include "memory_objects/texture/texture_2D.h"
 #include "render_pass/render_pass.h"
+#include "render_pass/framebuffer/framebuffer.h"
 
 #include <vector>
 #include <memory>

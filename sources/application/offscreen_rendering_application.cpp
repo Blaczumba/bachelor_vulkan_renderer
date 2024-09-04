@@ -621,7 +621,8 @@ void OffscreenRendering::recreateSwapChain() {
     }
 
     _lowResFramebuffers.clear();
-    _lowResFramebufferTextures = std::move(createTexturesFromRenderpass(*_logicalDevice, *_lowResRenderPass, { extent.width / 4, extent.height / 4 }));
+    extent = { extent.width / 4, extent.height / 4 };
+    _lowResFramebufferTextures = std::move(createTexturesFromRenderpass(*_logicalDevice, *_lowResRenderPass, extent));
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
         std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].view; });
