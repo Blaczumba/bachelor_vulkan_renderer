@@ -16,6 +16,7 @@ add_subdirectory(model_loader)
 add_subdirectory(descriptor_set)
 add_subdirectory(camera)
 add_subdirectory(screenshot)
+add_subdirectory(utils)
 
 add_compile_definitions(SHADERS_PATH="${CMAKE_SOURCE_DIR}/shaders/")
 add_compile_definitions(TEXTURES_PATH="${CMAKE_SOURCE_DIR}/assets/textures/")

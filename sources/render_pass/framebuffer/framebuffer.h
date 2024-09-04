@@ -1,31 +1,26 @@
 #pragma once
 
-#include "logical_device/logical_device.h"
-#include "swapchain/swapchain.h"
-#include "render_pass/render_pass.h"
-
-#include "memory_objects/texture/texture_2D_color.h"
-#include "memory_objects/texture/texture_2D_depth.h"
+#include "memory_objects/image.h"
 
 #include <vulkan/vulkan.h>
 
 #include <memory>
 #include <vector>
 
+class LogicalDevice;
+class Renderpass;
+
+// std::vector<std::unique_ptr<Texture2D>> createTexturesFromRenderpass(const LogicalDevice& logicalDevice, const Renderpass& renderpass, const VkExtent2D& extent);
+
 class Framebuffer {
 protected:
-	std::vector<VkFramebuffer> _framebuffers;
+	VkFramebuffer _framebuffer;
 	const LogicalDevice& _logicalDevice;
 	const Renderpass& _renderPass;
 
-	std::vector<std::shared_ptr<Texture2DColor>> _colorImages;
-	std::vector<std::shared_ptr<Texture2D>> _depthImages;
-
 public:
-	Framebuffer(const LogicalDevice& logicaldevice, const Renderpass& renderpass);
-	virtual ~Framebuffer() = default;
+	Framebuffer(const LogicalDevice& logicaldevice, const Renderpass& renderpass, const VkExtent2D& extent, const std::vector<VkImageView>& imageViews);
+	~Framebuffer();
 
-	const std::vector<std::shared_ptr<Texture2DColor>>& getColorTextures() const;
-
-	std::vector<VkFramebuffer> getVkFramebuffers() const;
+	VkFramebuffer getVkFramebuffer() const;
 };

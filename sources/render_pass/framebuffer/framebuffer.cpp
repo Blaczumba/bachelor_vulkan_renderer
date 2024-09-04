@@ -1,19 +1,38 @@
 #include "framebuffer.h"
+#include "logical_device/logical_device.h"
+#include "render_pass/render_pass.h"
+#include "memory_objects/texture/texture_2D.h"
+#include "memory_objects/texture/texture_2D_color.h"
+#include "memory_objects/texture/texture_2D_depth.h"
 
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
 
 
-Framebuffer::Framebuffer(const LogicalDevice& logicaldevice, const Renderpass& renderpass)
+Framebuffer::Framebuffer(const LogicalDevice& logicaldevice, const Renderpass& renderpass, const VkExtent2D& extent, const std::vector<VkImageView>& imageViews)
     : _logicalDevice(logicaldevice), _renderPass(renderpass) {
-    
+
+    VkFramebufferCreateInfo framebufferInfo{};
+    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    framebufferInfo.renderPass = _renderPass.getVkRenderPass();
+    framebufferInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
+    framebufferInfo.pAttachments = imageViews.data();
+    framebufferInfo.width = extent.width;
+    framebufferInfo.height = extent.height;
+    framebufferInfo.layers = 1;
+
+    if (vkCreateFramebuffer(_logicalDevice.getVkDevice(), &framebufferInfo, nullptr, &_framebuffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create framebuffer!");
+    }
 }
 
-const std::vector<std::shared_ptr<Texture2DColor>>& Framebuffer::getColorTextures() const {
-    return _colorImages;
+Framebuffer::~Framebuffer() {
+    VkDevice device = _logicalDevice.getVkDevice();
+
+    vkDestroyFramebuffer(device, _framebuffer, nullptr);
 }
 
-std::vector<VkFramebuffer> Framebuffer::getVkFramebuffers() const {
-    return _framebuffers;
+VkFramebuffer Framebuffer::getVkFramebuffer() const {
+    return _framebuffer;
 }

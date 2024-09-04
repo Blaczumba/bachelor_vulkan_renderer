@@ -47,7 +47,8 @@ class SingleApp : public ApplicationBase {
     std::vector<Object> _objects;
 
     std::shared_ptr<Renderpass> _renderPass;
-    std::unique_ptr<Framebuffer> _framebuffer;
+    std::vector<std::unique_ptr<Texture2D>> _framebufferTextures;
+    std::vector<std::unique_ptr<Framebuffer>> _framebuffers;
     std::unique_ptr<GraphicsPipeline> _graphicsPipeline;
     std::unique_ptr<GraphicsPipeline> _graphicsPipelineSkybox;
 

@@ -1,8 +1,7 @@
 #include "offscreen_rendering_application.h"
 
-#include <framebuffer/framebuffer_from_swapchain.h>
-#include <framebuffer/framebuffer_from_textures.h>
 #include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
+#include "utils/utils.h"
 
 #include <algorithm>
 #include <array>
@@ -27,8 +26,8 @@ OffscreenRendering::OffscreenRendering()
     _shadowCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
 
     _screenshot = std::make_unique<Screenshot>(*_logicalDevice);
-    _screenshot->addImageToObserved(_framebuffer->getColorTextures()[0]->getImage(), "hig_res_screenshot.ppm");
-    _screenshot->addImageToObserved(_lowResTextureColorAttachment->getImage(), "low_res_screenshot.ppm");
+    _screenshot->addImageToObserved(_framebufferTextures[1]->getImage(), "hig_res_screenshot.ppm");
+    _screenshot->addImageToObserved(_lowResFramebufferTextures[0]->getImage(), "low_res_screenshot.ppm");
 
     _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 100.0f);
 
@@ -125,6 +124,7 @@ void OffscreenRendering::createDescriptorSets() {
 void OffscreenRendering::createPresentResources() {
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
     VkFormat swapchainImageFormat = _swapchain->getVkFormat();
+    VkExtent2D extent = _swapchain->getExtent();
 
     AttachmentLayout attachmentsLayout;
     attachmentsLayout.addAttachment(ColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE));
@@ -151,7 +151,13 @@ void OffscreenRendering::createPresentResources() {
     );
     _renderPass->create();
 
-    _framebuffer = std::make_unique<FramebufferFromSwapchain>(*_logicalDevice, *_swapchain, *_renderPass);
+    _framebufferTextures = createTexturesFromRenderpass(*_logicalDevice, *_renderPass, extent);
+    size_t swapchainImagesCount = _swapchain->getImages().size();
+    for (size_t i = 0; i < swapchainImagesCount; i++) {
+        std::vector<VkImageView> imageViews;
+        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].view; });
+        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_logicalDevice, *_renderPass, extent, imageViews));
+    }
 
     GraphicsPipelineParameters parameters;
     parameters.msaaSamples = msaaSamples;
@@ -185,16 +191,13 @@ void OffscreenRendering::createOffscreenResources() {
     _lowResRenderPass->addSubpass(subpass);
     _lowResRenderPass->create();
 
-    _lowResTextureColorAttachment = std::make_shared<Texture2DColor>(*_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
-    _lowResTextureDepthAttachment = std::make_shared<Texture2DDepth>(*_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
-
-    std::vector<std::vector<std::shared_ptr<Texture2D>>> lowResViews = {
-        {/* lowResTextureColorResolveView,*/ _lowResTextureColorAttachment, _lowResTextureDepthAttachment },
-        {/* lowResTextureColorResolveView,*/ _lowResTextureColorAttachment, _lowResTextureDepthAttachment },
-        {/* lowResTextureColorResolveView,*/ _lowResTextureColorAttachment, _lowResTextureDepthAttachment },
-    };
-
-    _lowResFramebuffer = std::make_unique<FramebufferFromTextures>(*_logicalDevice, *_lowResRenderPass, std::move(lowResViews));
+    _lowResFramebufferTextures = createTexturesFromRenderpass(*_logicalDevice, *_lowResRenderPass, lowResExtent);
+    size_t swapchainImagesCount = _swapchain->getImages().size();
+    for (size_t i = 0; i < swapchainImagesCount; i++) {
+        std::vector<VkImageView> imageViews;
+        std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture->getImage().view; });
+        _lowResFramebuffers.emplace_back(std::make_unique<Framebuffer>(*_logicalDevice, *_lowResRenderPass, lowResExtent, imageViews));
+    }
 
     GraphicsPipelineParameters parameters;
     parameters.msaaSamples = lowResMsaaSamples;
@@ -227,13 +230,8 @@ void OffscreenRendering::createShadowResources() {
     _shadowRenderPass->addSubpass(subpass);
     _shadowRenderPass->create();
 
-    std::vector<std::vector<std::shared_ptr<Texture2D>>> shadowViews = {
-        { _shadowMap },
-        { _shadowMap },
-        { _shadowMap },
-    };
-
-    _shadowFramebuffer = std::make_unique<FramebufferFromTextures>(*_logicalDevice, *_shadowRenderPass, std::move(shadowViews));
+    std::vector<VkImageView> imageViews = { _shadowMap->getImage().view };
+    _shadowFramebuffer = std::make_unique<Framebuffer>(*_logicalDevice, *_shadowRenderPass, extent, imageViews);
 
     GraphicsPipelineParameters parameters;
     parameters.depthBiasConstantFactor = 0.7f;
@@ -406,9 +404,10 @@ void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuf
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = _lowResRenderPass->getVkRenderPass();
-    renderPassInfo.framebuffer = _lowResFramebuffer->getVkFramebuffers()[imageIndex];
+    renderPassInfo.framebuffer = _lowResFramebuffers[imageIndex]->getVkFramebuffer();
     renderPassInfo.renderArea.offset = { 0, 0 };
-    VkExtent2D extent = { _lowResTextureColorAttachment->getImage().extent.width, _lowResTextureColorAttachment->getImage().extent.height };
+    VkExtent2D extent = _swapchain->getExtent();
+    extent = { extent.width / 4, extent.height / 4 };
     renderPassInfo.renderArea.extent = extent;
 
     const auto& clearValues = _lowResRenderPass->getClearValues();
@@ -478,7 +477,7 @@ void OffscreenRendering::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = _renderPass->getVkRenderPass();
-    renderPassInfo.framebuffer = _framebuffer->getVkFramebuffers()[imageIndex];
+    renderPassInfo.framebuffer = _framebuffers[imageIndex]->getVkFramebuffer();
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = _swapchain->getExtent();
 
@@ -554,7 +553,7 @@ void OffscreenRendering::recordShadowCommandBuffer(VkCommandBuffer commandBuffer
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = _shadowRenderPass->getVkRenderPass();
-    renderPassInfo.framebuffer = _shadowFramebuffer->getVkFramebuffers()[imageIndex];
+    renderPassInfo.framebuffer = _shadowFramebuffer->getVkFramebuffer();
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = extent;
 
@@ -612,5 +611,20 @@ void OffscreenRendering::recreateSwapChain() {
 
     _swapchain->recrete();
 
-    _framebuffer = std::make_unique<FramebufferFromSwapchain>(*_logicalDevice, *_swapchain, *_renderPass);
+    _framebuffers.clear();
+    _framebufferTextures = std::move(createTexturesFromRenderpass(*_logicalDevice, *_renderPass, extent));
+    size_t swapchainImagesCount = _swapchain->getImages().size();
+    for (size_t i = 0; i < swapchainImagesCount; i++) {
+        std::vector<VkImageView> imageViews;
+        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].view; });
+        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_logicalDevice, *_renderPass, extent, imageViews));
+    }
+
+    _lowResFramebuffers.clear();
+    _lowResFramebufferTextures = std::move(createTexturesFromRenderpass(*_logicalDevice, *_lowResRenderPass, { extent.width / 4, extent.height / 4 }));
+    for (size_t i = 0; i < swapchainImagesCount; i++) {
+        std::vector<VkImageView> imageViews;
+        std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].view; });
+        _lowResFramebuffers.emplace_back(std::make_unique<Framebuffer>(*_logicalDevice, *_lowResRenderPass, extent, imageViews));
+    }
 }
