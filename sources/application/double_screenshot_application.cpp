@@ -24,7 +24,7 @@ SingleApp::SingleApp()
     MovementSystem movementSystem(registry);
 
     // Run system logic
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 100; ++i) {
         movementSystem.update(1);
     }
 
@@ -241,6 +241,7 @@ void SingleApp::run() {
     for (auto& object : _objects) {
         object.vertexBufferP = nullptr;
     }
+
 
     while (_window->open()) {
         _callbackManager->pollEvents();
