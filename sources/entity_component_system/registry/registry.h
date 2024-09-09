@@ -55,22 +55,20 @@ public:
     }
 
     // Query entities that have all specified components
-    template <typename T, typename... Ts>
+    template <typename... Ts>
     std::vector<Entity> getEntitiesWithComponents() {
         std::bitset<MAX_COMPONENTS> requiredMask;
 
-        // Ustawienie bitów dla komponentu T
-        requiredMask[T::componentID] = true;
+        //requiredMask[T::componentID] = true;
 
-        // Ustawienie bitów dla pozosta³ych komponentów (Ts...)
         ((requiredMask[Ts::componentID] = true), ...);
 
         std::vector<Entity> result;
+        result.reserve(MAX_COMPONENTS);
 
         for (const auto& [entity, mask] : entityComponentMask) {
-            // SprawdŸ, czy maska encji zawiera wszystkie wymagane komponenty
             if ((mask & requiredMask) == requiredMask) {
-                result.push_back(entity);
+                result.emplace_back(entity);
             }
         }
         return result;

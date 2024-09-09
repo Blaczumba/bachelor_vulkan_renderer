@@ -21,5 +21,5 @@ struct Velocity : Component {
     float dx, dy;
     Velocity(float dx = 0.0f, float dy = 0.0f) : dx(dx), dy(dy) {}
 
-    static constexpr uint64_t componentID = 1;
+    static constexpr uint64_t componentID = 4;
 };
