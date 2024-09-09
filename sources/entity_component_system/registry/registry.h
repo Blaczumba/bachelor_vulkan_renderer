@@ -20,48 +20,53 @@ public:
     Entity createEntity();
 
     // Add component to entity
-    template <typename T>
-    void addComponent(Entity entity, T component) {
-        constexpr auto typeID = T::componentID;
+    template <typename Component>
+    void addComponent(Entity entity, Component component) {
+        constexpr auto typeID = Component::componentID;
         auto ptr = componentStorage.find(typeID);
         if (ptr == componentStorage.end()) {
-            ptr = componentStorage.emplace(typeID, std::make_unique<ComponentStorage<T>>()).first;
+            ptr = componentStorage.emplace(typeID, std::make_unique<ComponentStorage<Component>>()).first;
         }
 
-        auto* storage = static_cast<ComponentStorage<T>*>(ptr->second.get());
+        auto* storage = static_cast<ComponentStorage<Component>*>(ptr->second.get());
         storage->addComponent(entity, component);
 
         entityComponentMask[entity][typeID] = true;
     }
 
+    template <typename... Components>
+    void addComponents(Entity entity, Components... components) {
+        (addComponent(entity, components), ...);
+    }
+
     // Get a component from entity
-    template <typename T>
-    T* getComponent(Entity entity) {
-        constexpr auto typeID = T::componentID;
+    template <typename Component>
+    Component* getComponent(Entity entity) {
+        constexpr auto typeID = Component::componentID;
         if (entityComponentMask[entity][typeID]) {
-            auto* storage = static_cast<ComponentStorage<T>*>(componentStorage[typeID].get());
+            auto* storage = static_cast<ComponentStorage<Component>*>(componentStorage[typeID].get());
             return storage->getComponent(entity);
         }
         return nullptr;
     }
 
     // Remove component from entity
-    template <typename T>
+    template <typename Component>
     void removeComponent(Entity entity) {
-        constexpr auto typeID = T::componentID;
-        auto* storage = static_cast<ComponentStorage<T>*>(componentStorage[typeID].get());
+        constexpr auto typeID = Component::componentID;
+        auto* storage = static_cast<ComponentStorage<Component>*>(componentStorage[typeID].get());
         storage->removeComponent(entity);
         entityComponentMask[entity][typeID] = false;
     }
 
     // Query entities that have all specified components
-    template <typename... Ts>
+    template <typename... Components>
     std::vector<Entity> getEntitiesWithComponents() {
         std::bitset<MAX_COMPONENTS> requiredMask;
 
         //requiredMask[T::componentID] = true;
 
-        ((requiredMask[Ts::componentID] = true), ...);
+        ((requiredMask[Components::componentID] = true), ...);
 
         std::vector<Entity> result;
         result.reserve(MAX_COMPONENTS);
