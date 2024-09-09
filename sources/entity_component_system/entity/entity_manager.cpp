@@ -7,7 +7,6 @@ Entity EntityManager::createEntity() {
 }
 
 void EntityManager::destroyEntity(Entity entity) {
-    // Simple implementation: remove entity from the list
     entities.erase(std::remove(entities.begin(), entities.end(), entity), entities.end());
 }
 
