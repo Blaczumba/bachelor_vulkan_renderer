@@ -9,6 +9,28 @@
 SingleApp::SingleApp()
     : ApplicationBase() {
 
+    Registry registry;
+
+    // Create entities
+    Entity e1 = registry.createEntity();
+    Entity e2 = registry.createEntity();
+
+    // Add components
+    registry.addComponent(e1, Position{ 0.0f, 0.0f });
+    registry.addComponent(e1, Velocity{ 1.0f, 1.0f });
+
+    registry.addComponent(e2, Position{ 10.0f, 10.0f });
+    registry.addComponent(e2, Velocity{ 0.5f, -0.5f });
+
+    // Create systems
+    MovementSystem movementSystem(registry);
+
+    // Run system logic
+    for (int i = 0; i < 10; ++i) {
+        movementSystem.update(1);
+    }
+
+
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
     createDescriptorSets();

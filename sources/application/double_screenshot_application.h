@@ -23,6 +23,7 @@
 #include <descriptor_set/descriptor_set_layout.h>
 #include <descriptor_set/descriptor_pool.h>
 #include <screenshot/screenshot.h>
+#include <entity_component_system/system/movement_system.h>
 
 #include <unordered_map>
 
