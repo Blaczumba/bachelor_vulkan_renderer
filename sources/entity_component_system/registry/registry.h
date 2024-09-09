@@ -4,17 +4,19 @@
 #include "entity_component_system/component/component_storage.h"
 #include "entity_component_system/component/component.h"
 
+#include <array>
 #include <unordered_map>
 #include <memory>
 #include <bitset>
 
-constexpr size_t MAX_COMPONENTS = 64;
+
 using ComponentMask = std::bitset<MAX_COMPONENTS>;
 
 class Registry {
     EntityManager entityManager;
 
     std::unordered_map<ComponentType, std::unique_ptr<BaseStorage>> componentStorage;
+    // std::array<std::unique_ptr<BaseStorage>, MAX_COMPONENTS> componentStorage;
     std::unordered_map<Entity, ComponentMask> entityComponentMask;
 
 public:
@@ -22,7 +24,7 @@ public:
 
     template <typename Component>
     void addComponent(Entity entity, Component component) {
-        constexpr auto typeID = Component::componentID;
+        constexpr auto typeID = Component::getComponentID();
         auto ptr = componentStorage.find(typeID);
         if (ptr == componentStorage.end()) {
             ptr = componentStorage.emplace(typeID, std::make_unique<ComponentStorage<Component>>()).first;
@@ -41,7 +43,7 @@ public:
 
     template <typename Component>
     Component* getComponent(Entity entity) {
-        constexpr auto typeID = Component::componentID;
+        constexpr auto typeID = Component::getComponentID();
         if (entityComponentMask[entity][typeID]) {
             auto* storage = static_cast<ComponentStorage<Component>*>(componentStorage[typeID].get());
             return storage->getComponent(entity);
@@ -51,7 +53,7 @@ public:
 
     template <typename Component>
     void removeComponent(Entity entity) {
-        constexpr auto typeID = Component::componentID;
+        constexpr auto typeID = Component::getComponentID();
         auto* storage = static_cast<ComponentStorage<Component>*>(componentStorage[typeID].get());
         storage->removeComponent(entity);
         entityComponentMask[entity][typeID] = false;
@@ -61,7 +63,7 @@ public:
     std::vector<Entity> getEntitiesWithComponents() {
         ComponentMask requiredMask;
 
-        ((requiredMask[Components::componentID] = true), ...);
+        ((requiredMask[Components::getComponentID()] = true), ...);
 
         std::vector<Entity> result;
         result.reserve(MAX_COMPONENTS);

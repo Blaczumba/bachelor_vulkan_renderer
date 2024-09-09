@@ -15,7 +15,7 @@ class ComponentStorage : public BaseStorage {
 
 public:
     void addComponent(Entity entity, ComponentType component) {
-        components[entity] = component;
+        components.emplace(entity, component);
     }
 
     void removeComponent(Entity entity) {
@@ -23,8 +23,8 @@ public:
     }
 
     ComponentType* getComponent(Entity entity) {
-        if (components.find(entity) != components.end())
-            return &components[entity];
+        if (auto ptr = components.find(entity); ptr != components.end())
+            return &ptr->second;
         return nullptr;
     }
 };
