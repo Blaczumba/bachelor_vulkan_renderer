@@ -15,7 +15,9 @@ SingleApp::SingleApp()
     Entity e1 = registry.createEntity();
     Entity e2 = registry.createEntity();
 
-    registry.addComponents(e1, Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
+    // Add components
+    registry.addComponent(e1, Position{ 0.0f, 0.0f });
+    registry.addComponent(e1, Velocity{ 1.0f, 1.0f });
 
     registry.addComponent(e2, Position{ 10.0f, 10.0f });
     registry.addComponent(e2, Velocity{ 0.5f, -0.5f });
@@ -24,7 +26,7 @@ SingleApp::SingleApp()
     MovementSystem movementSystem(registry);
 
     // Run system logic
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 10; ++i) {
         movementSystem.update(1);
     }
 
@@ -241,7 +243,6 @@ void SingleApp::run() {
     for (auto& object : _objects) {
         object.vertexBufferP = nullptr;
     }
-
 
     while (_window->open()) {
         _callbackManager->pollEvents();

@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <memory>
 #include <bitset>
-
+#include <tuple>
 
 using ComponentMask = std::bitset<MAX_COMPONENTS>;
 
@@ -38,7 +38,8 @@ public:
 
     template <typename... Components>
     void addComponents(Entity entity, Components... components) {
-        (addComponent(entity, components), ...);
+        auto& signature = entityComponentMask[entity];
+        (addComponentHelper(entity, signature, components), ...);
     }
 
     template <typename Component>
@@ -49,6 +50,13 @@ public:
             return storage->getComponent(entity);
         }
         return nullptr;
+    }
+
+    template<typename... Components>
+    std::tuple<Components*...> getComponents(Entity entity) {
+        const ComponentMask& componentMask = entityComponentMask[entity];
+        std::tuple<Components*...> components = std::make_tuple(getComponentHelper<Components>(componentMask, entity)...);
+        return components;
     }
 
     template <typename Component>
@@ -63,7 +71,7 @@ public:
     std::vector<Entity> getEntitiesWithComponents() {
         ComponentMask requiredMask;
 
-        ((requiredMask[Components::getComponentID()] = true), ...);
+        ((requiredMask.set(Components::getComponentID())), ...);
 
         std::vector<Entity> result;
         result.reserve(MAX_COMPONENTS);
@@ -75,4 +83,30 @@ public:
         }
         return result;
     }
+
+private:
+    template <typename Component>
+    void addComponentHelper(Entity entity, ComponentMask& componentMask, Component component) {
+        constexpr ComponentType typeID = Component::getComponentID();
+
+        if (!componentStorage[typeID]) {
+            componentStorage[typeID] = std::make_unique<ComponentStorage<Component>>();
+        }
+
+        auto* storage = static_cast<ComponentStorage<Component>*>(componentStorage[typeID].get());
+        storage->addComponent(entity, component);
+
+        componentMask[typeID] = true;
+    }
+
+    template<typename Component>
+    Component* getComponentHelper(const ComponentMask& componentMask, Entity entity) {
+        constexpr ComponentType typeID = Component::getComponentID();
+        if (componentMask[typeID]) {
+            auto* storage = static_cast<ComponentStorage<Component>*>(componentStorage[typeID].get());
+            return storage->getComponent(entity);
+        }
+        return nullptr;
+    }
+
 };
