@@ -1,12 +1,11 @@
 #pragma once
 
 #include <bitset>
-#pragma once
-
 #include <unordered_map>
 
 using ComponentType = uint64_t;
 constexpr size_t MAX_COMPONENTS = 64;
+using Signature = std::bitset<MAX_COMPONENTS>;
 
 class Component {
 public:
@@ -28,3 +27,10 @@ struct Velocity : Component {
     static constexpr ComponentType componentID = 1; // Do not use outside struct!
     static constexpr std::enable_if_t<componentID < MAX_COMPONENTS, ComponentType> getComponentID() { return componentID; } // Use this instead!
 };
+
+template<typename... Components>
+Signature createSignature() {
+    Signature signature;
+    (signature.set(Components::getComponentID()), ...);
+    return signature;
+}

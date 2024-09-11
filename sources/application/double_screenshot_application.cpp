@@ -13,21 +13,22 @@ SingleApp::SingleApp()
     Archetype<Position, Velocity> arch;
 
     Registry registry;
+    registry.getEntityComponentsData<Position>();
 
     // Create entities
-    Entity e1 = registry.createEntity();
-    Entity e2 = registry.createEntity();
+    Entity e1 = registry.createEntity(Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
+    Entity e2 = registry.createEntity(Position{ 1.0f, 0.0f }, Velocity{ -1.0f, -1.0f });
 
     arch.addEntity(e1, Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
     arch.addEntity(e2, Position{ 1.0f, 0.0f }, Velocity{ -1.0f, -1.0f });
     auto tpl = arch.getComponents(e2);
 
-    // Add components
-    registry.addComponent(e1, Position{ 0.0f, 0.0f });
-    registry.addComponent(e1, Velocity{ 1.0f, 1.0f });
+    //// Add components
+    //registry.addComponent(e1, Position{ 0.0f, 0.0f });
+    //registry.addComponent(e1, Velocity{ 1.0f, 1.0f });
 
-    registry.addComponent(e2, Position{ 10.0f, 10.0f });
-    registry.addComponent(e2, Velocity{ 0.5f, -0.5f });
+    //registry.addComponent(e2, Position{ 10.0f, 10.0f });
+    //registry.addComponent(e2, Velocity{ 0.5f, -0.5f });
 
     // Create systems
     MovementSystem movementSystem(registry);
@@ -257,13 +258,18 @@ void SingleApp::run() {
         _callbackManager->pollEvents();
         draw();
 
-        Archetype<Position, Velocity> arch;
-
+        Registry registry;
+        MovementSystem movementSystem(registry);
         // Create entities
-        for (Entity e = 0; e < 100000; e++) {
-            arch.addEntity(e, Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
-            tpl = arch.getComponents(e);
+        for (int i = 0; i < 300000; i++) {
+            Entity e = registry.createEntity(Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
         }
+        movementSystem.update(1);
+        //movementSystem.update(2);
+        //movementSystem.update(3);
+        //movementSystem.update(4);
+        //movementSystem.update(5);
+        //movementSystem.update(6);
 
     }
     vkDeviceWaitIdle(_logicalDevice->getVkDevice());
