@@ -1,6 +1,7 @@
 #include "double_screenshot_application.h"
 
 #include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
+#include "entity_component_system/component/archetype.h"
 #include "utils/utils.h"
 
 #include <algorithm>
@@ -9,11 +10,17 @@
 SingleApp::SingleApp()
     : ApplicationBase() {
 
+    Archetype<Position, Velocity> arch;
+
     Registry registry;
 
     // Create entities
     Entity e1 = registry.createEntity();
     Entity e2 = registry.createEntity();
+
+    arch.addEntity(e1, Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
+    arch.addEntity(e2, Position{ 1.0f, 0.0f }, Velocity{ -1.0f, -1.0f });
+    auto tpl = arch.getComponents(e2);
 
     // Add components
     registry.addComponent(e1, Position{ 0.0f, 0.0f });
@@ -232,6 +239,8 @@ SingleApp& SingleApp::getInstance() {
     return application;
 }
 
+std::tuple<Position*, Velocity*> tpl;
+
 void SingleApp::run() {
     updateUniformBuffer(_currentFrame);
     {
@@ -247,6 +256,15 @@ void SingleApp::run() {
     while (_window->open()) {
         _callbackManager->pollEvents();
         draw();
+
+        Archetype<Position, Velocity> arch;
+
+        // Create entities
+        for (Entity e = 0; e < 100000; e++) {
+            arch.addEntity(e, Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
+            tpl = arch.getComponents(e);
+        }
+
     }
     vkDeviceWaitIdle(_logicalDevice->getVkDevice());
 }
