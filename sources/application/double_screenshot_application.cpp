@@ -263,6 +263,7 @@ void SingleApp::run() {
         // Create entities
         for (int i = 0; i < 300000; i++) {
             Entity e = registry.createEntity(Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
+            tpl = &registry.getComponents<Position, Velocity>(e);
         }
         movementSystem.update(1);
         //movementSystem.update(2);
