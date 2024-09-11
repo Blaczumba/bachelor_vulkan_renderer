@@ -239,7 +239,7 @@ SingleApp& SingleApp::getInstance() {
     return application;
 }
 
-std::tuple<Position*, Velocity*> tpl;
+std::tuple<Position, Velocity>* tpl;
 
 void SingleApp::run() {
     updateUniformBuffer(_currentFrame);
