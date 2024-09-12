@@ -1,10 +1,7 @@
 #pragma once
 
 #include "entity_component_system/entity/entity_manager.h"
-#include "entity_component_system/component/component_storage.h"
 #include "entity_component_system/component/component.h"
-
-#include "entity_component_system/component/archetype.h"
 
 #include <array>
 #include <unordered_map>
@@ -12,43 +9,37 @@
 #include <bitset>
 #include <tuple>
 
+template<typename... Components>
 class Registry {
-    EntityManager entityManager;
-
-    std::unordered_map<Signature, std::unique_ptr<BaseArchetype>> archetypes;
+	EntityManager entityManager;
+	std::tuple<std::vector<std::unique_ptr<Components>>...> componentsData;
 
 public:
-    template<typename... Components>
-    Entity createEntity(const Components&... components) {
-        Entity entity = entityManager.createEntity();
-        Signature signature = createSignature<Components...>();
-        auto ptr = archetypes.find(signature);
-        if (ptr != archetypes.cend()) {
-            auto archetype = static_cast<Archetype<Components...>*>(ptr->second.get());
-            archetype->addEntity(entity, components...);
-        }
-        else {
-            auto archetype = std::make_unique<Archetype<Components...>>();
-            archetype->addEntity(entity, components...);
-            archetypes.emplace(signature, std::move(archetype));
-        }
-        return entity;
-    }
+	Registry(size_t maxEntities) : entityManager(maxEntities) {
+		(std::get<std::vector<std::unique_ptr<Components>>>(componentsData).resize(maxEntities), ...);
+	}
 
-    template<typename... Components>
-    std::tuple<Components...>& getComponents(Entity entity) {
-        return getEntityComponentsData<Components...>()[entity];
-    }
+	Entity createEntity() {
+		return entityManager.createEntity();
+	}
 
-#ifdef BOOST_ENABLED
-    template<typename... Components>
-    boost::unordered_flat_map<Entity, std::tuple<Components...>>& getEntityComponentsData() {
-        return static_cast<Archetype<Components...>*>(archetypes[createSignature<Components...>()].get())->getData();
-    }
-#else
-    std::unordered_map<Entity, std::tuple<Components...>>& getEntityComponentsData() {
-        return archetypes[createSignature<Components...>()].getData<Components...>();
-    }
-#endif // BOOST_ENABLED
+	void destroyEntity(Entity entity) {
+		entityManager.destroyEntity(entity);
+	}
 
+	template<typename Component>
+	void addComponent(Entity entity, std::unique_ptr<Component> component) {
+		std::get<std::vector<std::unique_ptr<Component>>>(componentsData)[entity] = std::move(component);
+	}
+
+	template<typename Component>
+	Component* getComponent(Entity entity) {
+		return std::get<std::vector<std::unique_ptr<Component>>>(componentsData)[entity].get();
+	}
+
+	//template<typename... Comps>
+	//std::tuple<std::vector<std::unique_ptr<Components>>*...> getComponentsData() {
+	//	std::tuple<std::vector<std::unique_ptr<Components>>*...> outputTuple = std::make_tuple(&std::get<std::vector<std::unique_ptr<Components>>>(componentsData)...);
+	//	return outputTuple;
+	//}
 };

@@ -1,7 +1,6 @@
 #include "double_screenshot_application.h"
 
 #include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
-#include "entity_component_system/component/archetype.h"
 #include "utils/utils.h"
 
 #include <algorithm>
@@ -10,33 +9,15 @@
 SingleApp::SingleApp()
     : ApplicationBase() {
 
-    Archetype<Position, Velocity> arch;
-
-    Registry registry;
-    registry.getEntityComponentsData<Position>();
+    Registry<Position, Velocity> registry(1000);
 
     // Create entities
-    Entity e1 = registry.createEntity(Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
-    Entity e2 = registry.createEntity(Position{ 1.0f, 0.0f }, Velocity{ -1.0f, -1.0f });
+    Entity e1 = registry.createEntity();
+    Entity e2 = registry.createEntity();
 
-    arch.addEntity(e1, Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
-    arch.addEntity(e2, Position{ 1.0f, 0.0f }, Velocity{ -1.0f, -1.0f });
-    auto tpl = arch.getComponents(e2);
-
-    //// Add components
-    //registry.addComponent(e1, Position{ 0.0f, 0.0f });
-    //registry.addComponent(e1, Velocity{ 1.0f, 1.0f });
-
-    //registry.addComponent(e2, Position{ 10.0f, 10.0f });
-    //registry.addComponent(e2, Velocity{ 0.5f, -0.5f });
-
-    // Create systems
-    MovementSystem movementSystem(registry);
-
-    // Run system logic
-    for (int i = 0; i < 10; ++i) {
-        movementSystem.update(1);
-    }
+    registry.addComponent(e1, std::make_unique<Position>(Position{ 1.0f, 2.0f }));
+    registry.addComponent(e1, std::make_unique<Velocity>(Velocity{ 1.0f, 1.0f }));
+    auto ptr = registry.getComponent<Position>(e1);
 
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
@@ -258,14 +239,15 @@ void SingleApp::run() {
         _callbackManager->pollEvents();
         draw();
 
-        Registry registry;
-        MovementSystem movementSystem(registry);
+        const size_t maxEnt = 100000;
+        Registry registry(maxEnt);
+
         // Create entities
-        for (int i = 0; i < 300000; i++) {
-            Entity e = registry.createEntity(Position{ 0.0f, 0.0f }, Velocity{ 1.0f, 1.0f });
-            tpl = &registry.getComponents<Position, Velocity>(e);
+        for (int i = 0; i < maxEnt; i++) {
+            Entity e = registry.createEntity();
+            //registry.getComponent<Position>(e);
         }
-        movementSystem.update(1);
+
         //movementSystem.update(2);
         //movementSystem.update(3);
         //movementSystem.update(4);

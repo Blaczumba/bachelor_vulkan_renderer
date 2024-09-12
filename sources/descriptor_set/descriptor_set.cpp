@@ -50,7 +50,8 @@ void DescriptorSet::updateDescriptorSet(const std::vector<UniformBuffer*>& unifo
 
 void DescriptorSet::bindDescriptorSet(VkCommandBuffer commandBuffer, const Pipeline& pipeline, const std::vector<uint32_t>& dynamicOffsetStrides) {
     std::vector<uint32_t> sizes;
-    std::transform(dynamicOffsetStrides.begin(), dynamicOffsetStrides.end(), _dynamicBuffersBaseSizes.begin(), std::back_inserter(sizes), std::multiplies<uint32_t>());
+    sizes.reserve(dynamicOffsetStrides.size());
+    std::transform(dynamicOffsetStrides.cbegin(), dynamicOffsetStrides.cend(), _dynamicBuffersBaseSizes.cbegin(), std::back_inserter(sizes), std::multiplies<uint32_t>());
 
     vkCmdBindDescriptorSets(commandBuffer, pipeline.getVkPipelineBindPoint(), pipeline.getVkPipelineLayout(), 0, 1, &_descriptorSet, sizes.size(), sizes.data());
 }

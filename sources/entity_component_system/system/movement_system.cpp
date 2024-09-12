@@ -3,7 +3,7 @@
 #include <iostream>
 #include <tuple>
 
-MovementSystem::MovementSystem(Registry& reg) : registry(reg) {}
+// MovementSystem::MovementSystem(Registry& reg) : registry(reg) {}
 
 /*
     Registry registry;
@@ -27,16 +27,16 @@ MovementSystem::MovementSystem(Registry& reg) : registry(reg) {}
         movementSystem.update(1);
     }
 */
-void MovementSystem::update(float deltaTime) {
-    auto& entityComponentsData = registry.getEntityComponentsData<Position, Velocity>();
-
-    for (auto& [entity, components] : entityComponentsData) {
-        auto& [pos, vel] = components;
-
-        pos.x += vel.dx * deltaTime;
-        pos.y += vel.dy * deltaTime;
-
-        //std::cout << "Entity " << entity << " moved to ("
-        //    << pos->x << ", " << pos->y << ")\n";
-    }
-}
+//void MovementSystem::update(float deltaTime) {
+//    /*auto& entityComponentsData = registry.getEntityComponentsData<Position, Velocity>();
+//
+//    for (auto& [entity, components] : entityComponentsData) {
+//        auto& [pos, vel] = components;
+//
+//        pos.x += vel.dx * deltaTime;
+//        pos.y += vel.dy * deltaTime;
+//
+//        std::cout << "Entity " << entity << " moved to ("
+//            << pos.x << ", " << pos.y << ")\n";
+//    }*/
+//}

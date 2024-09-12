@@ -1,15 +1,24 @@
 #include "entity_manager.h"
 
+#include <algorithm>
+#include <iterator>
+
+EntityManager::EntityManager(size_t maxEntities) {
+    availableEntities.reserve(maxEntities);
+    std::generate_n(std::back_inserter(availableEntities), maxEntities, [val = 0]() mutable { return val++; });
+}
+
 Entity EntityManager::createEntity() {
-    Entity entity = nextEntity++;
-    entities.emplace_back(entity);
+    Entity entity = availableEntities.back();
+    usedEntities.push_back(entity);
+    availableEntities.pop_back();
     return entity;
 }
 
 void EntityManager::destroyEntity(Entity entity) {
-    entities.erase(std::remove(entities.begin(), entities.end(), entity), entities.end());
-}
-
-bool EntityManager::isAlive(Entity entity) {
-    return std::find(entities.begin(), entities.end(), entity) != entities.end();
+    auto ptr = std::find(usedEntities.cbegin(), usedEntities.cend(), entity);
+    if (ptr != usedEntities.cend()) {
+        availableEntities.push_back(*ptr);
+        usedEntities.erase(ptr);
+    }
 }

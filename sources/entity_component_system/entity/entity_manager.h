@@ -6,11 +6,12 @@
 
 class EntityManager {
 private:
-    std::vector<Entity> entities;
-    Entity nextEntity = 0;
+    std::vector<Entity> availableEntities;
+    std::vector<Entity> usedEntities;
 
 public:
+    EntityManager(size_t maxEntities);
+
     Entity createEntity();
     void destroyEntity(Entity entity);
-    bool isAlive(Entity entity);
 };
