@@ -29,14 +29,17 @@ MovementSystem::MovementSystem(Registry& reg) : registry(reg) {}
     }
 */
 void MovementSystem::update(float deltaTime) {
-    auto [positions, velocities] = registry.getComponentsDataPointers<Position, Velocity>();
     const auto& entities = registry.getEntities();
 
+    Position* pos;
+    Velocity* vel;
+
     for (Entity entity : entities) {
-        auto& pos = *(*positions)[entity];
-        auto& vel = *(*velocities)[entity];
-        pos.x += vel.dx * deltaTime;
-        pos.y += vel.dy * deltaTime;
+        pos = registry.getComponent<Position>(entity);
+        vel = registry.getComponent<Velocity>(entity);
+        // auto [pos, vel] = registry.getComponents<Position, Velocity>(entity);
+        pos->x += vel->dx * deltaTime;
+        pos->y += vel->dy * deltaTime;
 
         //std::cout << "Entity " << entity << " moved to ("
         //    << pos.x << ", " << pos.y << ")\n";

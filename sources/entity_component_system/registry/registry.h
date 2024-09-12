@@ -25,6 +25,9 @@ public:
 
 	void destroyEntity(Entity entity) {
 		entityManager.destroyEntity(entity);
+		for (size_t i = 0; i < MAX_COMPONENTS; i++)
+			if(componentsData[i][entity])
+				componentsData[i][entity].reset();
 	}
 
 	const std::vector<Entity>& getEntities() const {
@@ -41,8 +44,9 @@ public:
 		return static_cast<Component*>(componentsData[Component::getComponentID()][entity].get());
 	}
 
-	template<typename... Components>
-	std::tuple<std::vector<std::unique_ptr<Components>>*...> getComponentsDataPointers() {
-		return std::make_tuple(reinterpret_cast<std::vector<std::unique_ptr<Components>>*>(&componentsData[Components::getComponentID()])...);
-	}
+	// not efficient!
+	//template<typename... Components>
+	//std::tuple<Components*...> getComponents(Entity entity) {
+	//	return std::make_tuple(static_cast<Components*>(componentsData[Components::getComponentID()][entity].get())...);
+	//}
 };

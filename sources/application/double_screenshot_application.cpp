@@ -32,8 +32,6 @@ SingleApp::SingleApp()
     registry.addComponent(e4, std::make_unique<Velocity>(Velocity{ -4.0f, -4.0f }));
 
     auto ptr = registry.getComponent<Position>(e1);
-    auto [positions, velocities] = registry.getComponentsDataPointers<Position, Velocity>();
-    
 
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
@@ -237,7 +235,7 @@ SingleApp& SingleApp::getInstance() {
     return application;
 }
 
-std::tuple<Position, Velocity>* tpl;
+Position* tpl;
 
 void SingleApp::run() {
     updateUniformBuffer(_currentFrame);
@@ -251,7 +249,7 @@ void SingleApp::run() {
         object.vertexBufferP = nullptr;
     }
 
-    const size_t maxEnt = 10000000;
+    const size_t maxEnt = 100000;
     Registry registry(maxEnt);
     MovementSystem system(registry);
 
@@ -265,10 +263,14 @@ void SingleApp::run() {
         _callbackManager->pollEvents();
         draw();
 
-        auto start = std::chrono::high_resolution_clock::now();
+        for (Entity i = 0; i < 100000; i++) {
+            registry.destroyEntity(i);
+        }
+
+        /*auto start = std::chrono::high_resolution_clock::now();
         system.update(1);
         auto stop = std::chrono::high_resolution_clock::now();
-        std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start) << std::endl;
+        std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start) << std::endl;*/
 
     }
     vkDeviceWaitIdle(_logicalDevice->getVkDevice());
