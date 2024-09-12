@@ -9,14 +9,14 @@
 #include <bitset>
 #include <tuple>
 
-template<typename... Components>
 class Registry {
 	EntityManager entityManager;
-	std::tuple<std::vector<std::unique_ptr<Components>>...> componentsData;
+	std::array<std::vector<std::unique_ptr<Component>>, MAX_COMPONENTS> componentsData;
 
 public:
 	Registry(size_t maxEntities) : entityManager(maxEntities) {
-		(std::get<std::vector<std::unique_ptr<Components>>>(componentsData).resize(maxEntities), ...);
+		for (auto& el : componentsData)
+			el.resize(maxEntities);
 	}
 
 	Entity createEntity() {
@@ -27,19 +27,22 @@ public:
 		entityManager.destroyEntity(entity);
 	}
 
+	const std::vector<Entity>& getEntities() const {
+		return entityManager.getUsedEntities();
+	}
+
 	template<typename Component>
 	void addComponent(Entity entity, std::unique_ptr<Component> component) {
-		std::get<std::vector<std::unique_ptr<Component>>>(componentsData)[entity] = std::move(component);
+		componentsData[Component::getComponentID()][entity] = std::move(component);
 	}
 
 	template<typename Component>
 	Component* getComponent(Entity entity) {
-		return std::get<std::vector<std::unique_ptr<Component>>>(componentsData)[entity].get();
+		return static_cast<Component*>(componentsData[Component::getComponentID()][entity].get());
 	}
 
-	//template<typename... Comps>
-	//std::tuple<std::vector<std::unique_ptr<Components>>*...> getComponentsData() {
-	//	std::tuple<std::vector<std::unique_ptr<Components>>*...> outputTuple = std::make_tuple(&std::get<std::vector<std::unique_ptr<Components>>>(componentsData)...);
-	//	return outputTuple;
-	//}
+	template<typename... Components>
+	std::tuple<std::vector<std::unique_ptr<Components>>*...> getComponentsDataPointers() {
+		return std::make_tuple(reinterpret_cast<std::vector<std::unique_ptr<Components>>*>(&componentsData[Components::getComponentID()])...);
+	}
 };

@@ -1,23 +1,39 @@
 #include "double_screenshot_application.h"
 
 #include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
+#include "entity_component_system/system/movement_system.h"
 #include "utils/utils.h"
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 
 SingleApp::SingleApp()
     : ApplicationBase() {
 
-    Registry<Position, Velocity> registry(1000);
+    Registry registry(5);
 
     // Create entities
     Entity e1 = registry.createEntity();
     Entity e2 = registry.createEntity();
+    Entity e3 = registry.createEntity();
+    Entity e4 = registry.createEntity();
 
-    registry.addComponent(e1, std::make_unique<Position>(Position{ 1.0f, 2.0f }));
-    registry.addComponent(e1, std::make_unique<Velocity>(Velocity{ 1.0f, 1.0f }));
+    registry.addComponent(e1, std::make_unique<Position>(Position{ 1.0f, 1.0f }));
+    registry.addComponent(e1, std::make_unique<Velocity>(Velocity{ -1.0f, -1.0f }));
+
+    registry.addComponent(e2, std::make_unique<Position>(Position{ 2.0f, 2.0f }));
+    registry.addComponent(e2, std::make_unique<Velocity>(Velocity{ -2.0f, -2.0f }));
+
+    registry.addComponent(e3, std::make_unique<Position>(Position{ 3.0f, 3.0f }));
+    registry.addComponent(e3, std::make_unique<Velocity>(Velocity{ -3.0f, -3.0f }));
+
+    registry.addComponent(e4, std::make_unique<Position>(Position{ 4.0f, 4.0f }));
+    registry.addComponent(e4, std::make_unique<Velocity>(Velocity{ -4.0f, -4.0f }));
+
     auto ptr = registry.getComponent<Position>(e1);
+    auto [positions, velocities] = registry.getComponentsDataPointers<Position, Velocity>();
+    
 
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
@@ -235,24 +251,24 @@ void SingleApp::run() {
         object.vertexBufferP = nullptr;
     }
 
+    const size_t maxEnt = 10000000;
+    Registry registry(maxEnt);
+    MovementSystem system(registry);
+
+    for (int i = 0; i < maxEnt; i++) {
+        Entity e = registry.createEntity();
+        registry.addComponent(e, std::make_unique<Position>(1.0f, 2.0f));
+        registry.addComponent(e, std::make_unique<Velocity>(-1.0f, -1.0f));
+    }
+
     while (_window->open()) {
         _callbackManager->pollEvents();
         draw();
 
-        const size_t maxEnt = 100000;
-        Registry registry(maxEnt);
-
-        // Create entities
-        for (int i = 0; i < maxEnt; i++) {
-            Entity e = registry.createEntity();
-            //registry.getComponent<Position>(e);
-        }
-
-        //movementSystem.update(2);
-        //movementSystem.update(3);
-        //movementSystem.update(4);
-        //movementSystem.update(5);
-        //movementSystem.update(6);
+        auto start = std::chrono::high_resolution_clock::now();
+        system.update(1);
+        auto stop = std::chrono::high_resolution_clock::now();
+        std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start) << std::endl;
 
     }
     vkDeviceWaitIdle(_logicalDevice->getVkDevice());

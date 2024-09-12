@@ -14,4 +14,5 @@ public:
 
     Entity createEntity();
     void destroyEntity(Entity entity);
+    const std::vector<Entity>& getUsedEntities() const;
 };

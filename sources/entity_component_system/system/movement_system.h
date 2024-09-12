@@ -5,10 +5,10 @@
 #include "entity_component_system/registry/registry.h"
 
 class MovementSystem : public System {
-    // Registry<>& registry;
+    Registry& registry;
 
 public:
-    // MovementSystem(Registry& reg);
+    MovementSystem(Registry& reg);
 
     void update(float deltaTime) override;
 };

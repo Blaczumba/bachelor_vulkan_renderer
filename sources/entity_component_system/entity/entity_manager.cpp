@@ -22,3 +22,7 @@ void EntityManager::destroyEntity(Entity entity) {
         usedEntities.erase(ptr);
     }
 }
+
+const std::vector<Entity>& EntityManager::getUsedEntities() const {
+    return usedEntities;
+}
