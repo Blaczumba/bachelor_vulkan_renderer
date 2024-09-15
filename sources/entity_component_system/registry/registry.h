@@ -9,6 +9,8 @@
 #include <bitset>
 #include <tuple>
 
+constexpr size_t a = sizeof(std::unique_ptr<int>);
+
 class Registry {
 	EntityManager entityManager;
 	std::array<std::vector<std::unique_ptr<Component>>, MAX_COMPONENTS> componentsData;

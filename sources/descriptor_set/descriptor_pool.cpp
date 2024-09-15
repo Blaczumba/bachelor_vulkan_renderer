@@ -40,9 +40,13 @@ const DescriptorSetLayout& DescriptorPool::getDescriptorSetLayout() const {
 
 std::unique_ptr<DescriptorSet> DescriptorPool::createDesriptorSet() const {
 	++_allocatedSets;
-	return std::make_unique<DescriptorSet>(_logicalDevice, shared_from_this());
+	return std::make_unique<DescriptorSet>(shared_from_this());
 }
 
 bool DescriptorPool::maxSetsReached() const {
 	return _allocatedSets >= _maxNumSets;
+}
+
+const LogicalDevice& DescriptorPool::getLogicalDevice() const {
+	return _logicalDevice;
 }

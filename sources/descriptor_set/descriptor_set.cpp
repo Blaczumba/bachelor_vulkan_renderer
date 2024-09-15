@@ -12,8 +12,8 @@
 #include <iterator>
 #include <stdexcept>
 
-DescriptorSet::DescriptorSet(const LogicalDevice& logicalDevice, const std::shared_ptr<const DescriptorPool>& descriptorPool)
-	: _logicalDevice(logicalDevice), _descriptorPool(descriptorPool) {
+DescriptorSet::DescriptorSet(const std::shared_ptr<const DescriptorPool>& descriptorPool)
+	: _descriptorPool(descriptorPool) {
     const VkDescriptorSetLayout layout = _descriptorPool->getDescriptorSetLayout().getVkDescriptorSetLayout();
 
     VkDescriptorSetAllocateInfo allocInfo{};
@@ -22,7 +22,7 @@ DescriptorSet::DescriptorSet(const LogicalDevice& logicalDevice, const std::shar
     allocInfo.descriptorSetCount    = 1;
     allocInfo.pSetLayouts           = &layout;
 
-    if (vkAllocateDescriptorSets(_logicalDevice.getVkDevice(), &allocInfo, &_descriptorSet) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(_descriptorPool->getLogicalDevice().getVkDevice(), &allocInfo, &_descriptorSet) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 }
@@ -45,7 +45,7 @@ void DescriptorSet::updateDescriptorSet(const std::vector<UniformBuffer*>& unifo
         }
     }
 
-    vkUpdateDescriptorSets(_logicalDevice.getVkDevice(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+    vkUpdateDescriptorSets(_descriptorPool->getLogicalDevice().getVkDevice(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
 
 void DescriptorSet::bindDescriptorSet(VkCommandBuffer commandBuffer, const Pipeline& pipeline, const std::vector<uint32_t>& dynamicOffsetStrides) {

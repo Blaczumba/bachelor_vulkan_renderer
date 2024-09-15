@@ -3,10 +3,12 @@
 #include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
 #include "entity_component_system/system/movement_system.h"
 #include "utils/utils.h"
+#include "thread_pool/thread_pool.h"
 
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <any>
 
 SingleApp::SingleApp()
     : ApplicationBase() {
@@ -249,29 +251,9 @@ void SingleApp::run() {
         object.vertexBufferP = nullptr;
     }
 
-    const size_t maxEnt = 100000;
-    Registry registry(maxEnt);
-    MovementSystem system(registry);
-
-    for (int i = 0; i < maxEnt; i++) {
-        Entity e = registry.createEntity();
-        registry.addComponent(e, std::make_unique<Position>(1.0f, 2.0f));
-        registry.addComponent(e, std::make_unique<Velocity>(-1.0f, -1.0f));
-    }
-
     while (_window->open()) {
         _callbackManager->pollEvents();
         draw();
-
-        for (Entity i = 0; i < 100000; i++) {
-            registry.destroyEntity(i);
-        }
-
-        /*auto start = std::chrono::high_resolution_clock::now();
-        system.update(1);
-        auto stop = std::chrono::high_resolution_clock::now();
-        std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start) << std::endl;*/
-
     }
     vkDeviceWaitIdle(_logicalDevice->getVkDevice());
 }
@@ -431,8 +413,8 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
 
     // TBN OBJECT
     vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
-    for (const auto& object : _objects) {
 
+    for (const auto& object : _objects) {
         VkBuffer vertexBuffers[] = { object.vertexBufferPTNTB->getVkBuffer() };
 
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);

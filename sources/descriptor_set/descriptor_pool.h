@@ -28,4 +28,7 @@ public:
 	std::unique_ptr<DescriptorSet> createDesriptorSet() const;
 	bool maxSetsReached() const;
 
+private:
+	const LogicalDevice& getLogicalDevice() const;
+	friend class DescriptorSet;
 };
