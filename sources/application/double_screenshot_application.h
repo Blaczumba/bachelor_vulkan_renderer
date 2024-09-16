@@ -24,6 +24,7 @@
 #include <descriptor_set/descriptor_pool.h>
 #include <screenshot/screenshot.h>
 #include <entity_component_system/system/movement_system.h>
+#include "thread_pool/thread_pool.h"
 
 #include <unordered_map>
 
@@ -89,17 +90,20 @@ class SingleApp : public ApplicationBase {
     std::unique_ptr<CallbackManager> _callbackManager;
     std::unique_ptr<FPSCamera> _camera;
 
-    std::vector<VkCommandBuffer> _commandBuffers;
-    std::vector<VkCommandBuffer> _shadowCommandBuffers;
+    std::vector<std::unique_ptr<CommandPool>> _commandPool;
+    std::vector<std::unique_ptr<CommandBuffer>> _primaryCommandBuffer;
+    std::vector<std::vector<std::unique_ptr<CommandBuffer>>> _commandBuffers;
+    std::vector<std::vector<std::unique_ptr<CommandBuffer>>> _shadowCommandBuffers;
 
+    std::unique_ptr<ThreadPool> _threadPool;
     std::vector<VkSemaphore> _shadowMapSemaphores;
     std::vector<VkSemaphore> _imageAvailableSemaphores;
     std::vector<VkSemaphore> _renderFinishedSemaphores;
     std::vector<VkFence> _inFlightFences;
 
     uint32_t _currentFrame = 0;
-    const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
-    const uint32_t MAX_THREADS_IN_POOL = 10;
+    static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
+    static constexpr uint32_t MAX_THREADS_IN_POOL = 1;
 
     SingleApp();
     ~SingleApp();
@@ -114,9 +118,10 @@ public:
 private:
     void draw();
     VkFormat findDepthFormat() const;
+    void createCommandBuffers();
     void createSyncObjects();
     void updateUniformBuffer(uint32_t currentImage);
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    void recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32_t imageIndex);
     void recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void recreateSwapChain();
 

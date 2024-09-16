@@ -17,7 +17,6 @@ public:
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) const;
 	void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& outImage, VkDeviceMemory& outImageMemory, uint32_t layerCount = 1) const;
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t layerCount = 1) const;
-	std::vector<VkCommandBuffer> createCommandBuffers(uint32_t commandBuffersCount) const;
 	VkCommandBuffer createCommandBuffer() const;
 
 	const VkDevice getVkDevice() const;

@@ -46,8 +46,7 @@ SingleApp::SingleApp()
     _vertexBufferCube = std::make_unique<VertexBuffer>(*_logicalDevice, vertexDataCube.vertices);
     _indexBufferCube = std::make_unique<IndexBuffer>(*_logicalDevice, vertexDataCube.indices);
 
-    _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
-    _shadowCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
+    createCommandBuffers();
 
     _screenshot = std::make_unique<Screenshot>(*_logicalDevice);
     _screenshot->addImageToObserved(_framebufferTextures[1]->getImage(), "hig_res_screenshot.ppm");
@@ -237,8 +236,6 @@ SingleApp& SingleApp::getInstance() {
     return application;
 }
 
-Position* tpl;
-
 void SingleApp::run() {
     updateUniformBuffer(_currentFrame);
     {
@@ -250,6 +247,8 @@ void SingleApp::run() {
     for (auto& object : _objects) {
         object.vertexBufferP = nullptr;
     }
+
+    _threadPool = std::make_unique<ThreadPool>(MAX_THREADS_IN_POOL);
 
     while (_window->open()) {
         _callbackManager->pollEvents();
@@ -278,11 +277,12 @@ void SingleApp::draw() {
 
     vkResetFences(device, 1, &_inFlightFences[_currentFrame]);
 
-    vkResetCommandBuffer(_commandBuffers[_currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-    //vkResetCommandBuffer(_shadowCommandBuffers[_currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+    _primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
+    for(int i = 0; i < MAX_THREADS_IN_POOL; i++)
+        _commandBuffers[_currentFrame][i]->resetCommandBuffer();
 
     //recordShadowCommandBuffer(_shadowCommandBuffers[_currentFrame], imageIndex);
-    recordCommandBuffer(_commandBuffers[_currentFrame], imageIndex);
+    recordCommandBuffer(_primaryCommandBuffer[_currentFrame]->getVkCommandBuffer(), imageIndex);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -293,7 +293,7 @@ void SingleApp::draw() {
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
 
-    std::array<VkCommandBuffer, 1> submitCommands = { _commandBuffers[_currentFrame] };
+    std::array<VkCommandBuffer, 1> submitCommands = { _primaryCommandBuffer[_currentFrame]->getVkCommandBuffer() };
     submitInfo.commandBufferCount = static_cast<uint32_t>(submitCommands.size());
     submitInfo.pCommandBuffers = submitCommands.data();
 
@@ -373,11 +373,31 @@ void SingleApp::updateUniformBuffer(uint32_t currentFrame) {
     // std::cout << _ubCamera.pos.x << " " << _ubCamera.pos.y << " " << _ubCamera.pos.z << std::endl;
 }
 
-void SingleApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+void SingleApp::createCommandBuffers() {
+    _commandPool.reserve(MAX_THREADS_IN_POOL + 1);
+    for (int i = 0; i < MAX_THREADS_IN_POOL + 1; i++) {
+        _commandPool.emplace_back(std::make_unique<CommandPool>(*_logicalDevice));
+    }
+
+    _primaryCommandBuffer.reserve(MAX_FRAMES_IN_FLIGHT);
+    _commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    _shadowCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        _primaryCommandBuffer.emplace_back(_commandPool[MAX_THREADS_IN_POOL]->createPrimaryCommandBuffer());
+        _commandBuffers[i].reserve(MAX_THREADS_IN_POOL);
+        _shadowCommandBuffers[i].reserve(MAX_THREADS_IN_POOL);
+        for (int j = 0; j < MAX_THREADS_IN_POOL; j++) {
+            _commandBuffers[i].emplace_back(_commandPool[j]->createSecondaryCommandBuffer());
+            _shadowCommandBuffers[i].emplace_back(_commandPool[j]->createSecondaryCommandBuffer());
+        }
+    }
+}
+
+void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32_t imageIndex) {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+    if (vkBeginCommandBuffer(primaryCommandBuffer, &beginInfo) != VK_SUCCESS) {
         throw std::runtime_error("failed to begin recording command buffer!");
     }
 
@@ -392,7 +412,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassInfo.pClearValues = clearValues.data();
 
-    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
     const VkExtent2D& swapchainExtent = _swapchain->getExtent();
 
@@ -403,46 +423,94 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
     viewport.height = (float)swapchainExtent.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
     VkRect2D scissor{};
     scissor.offset = { 0, 0 };
     scissor.extent = swapchainExtent;
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+   
+    VkCommandBufferInheritanceInfo inheritanceInfo{};
+    inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+    inheritanceInfo.renderPass = _renderPass->getVkRenderPass();
+    inheritanceInfo.framebuffer = _framebuffers[imageIndex]->getVkFramebuffer();
 
-    VkDeviceSize offsets[] = { 0 };
+    VkCommandBufferBeginInfo cmdBufferBeginInfo{};
+    cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+    cmdBufferBeginInfo.pInheritanceInfo = &inheritanceInfo;
 
-    // TBN OBJECT
-    vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
+    auto recordSecondaryCommandBuffer = [this, &cmdBufferBeginInfo, &scissor, &viewport](const VkCommandBuffer commandBuffer, size_t objectIndexStart, size_t objectIndexEnd) {
+        vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo);
 
-    for (const auto& object : _objects) {
-        VkBuffer vertexBuffers[] = { object.vertexBufferPTNTB->getVkBuffer() };
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
+        vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
 
-        object._descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, { _currentFrame, object.dynamicUniformIndex });
+        const VkDeviceSize offsets[] = { 0 };
 
-        vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
+        for (size_t i = objectIndexStart; i < objectIndexEnd; i++) {
+            const auto& object = _objects[i];
+            VkBuffer vertexBuffers[] = { object.vertexBufferPTNTB->getVkBuffer() };
 
+            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+            vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
+
+            object._descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, { _currentFrame, object.dynamicUniformIndex });
+
+            vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
+        }
+
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to record command buffer!");
+        }
+    };
+
+    std::vector<VkCommandBuffer> commandBuffers;
+    commandBuffers.reserve(MAX_THREADS_IN_POOL);
+    std::transform(_commandBuffers[_currentFrame].cbegin(), _commandBuffers[_currentFrame].cend(), std::back_inserter(commandBuffers), [](const std::unique_ptr<CommandBuffer>& cmdBuff) { return cmdBuff->getVkCommandBuffer(); });
+
+    size_t baseSize = _objects.size() / MAX_THREADS_IN_POOL;
+    size_t remainder = _objects.size() % MAX_THREADS_IN_POOL;
+    size_t currentIndex = 0;
+
+    auto start = std::chrono::high_resolution_clock::now();
+    for (size_t i = 0; i < MAX_THREADS_IN_POOL; i++) {
+        size_t beg = currentIndex;
+        size_t end = beg + baseSize + (i < remainder ? 1 : 0);
+        currentIndex = end;
+
+        _threadPool->getThread(i)->addJob([&, beg, end, i]() { recordSecondaryCommandBuffer(commandBuffers[i], beg, end); });
     }
 
-    // SKYBOX
-    vkCmdBindPipeline(commandBuffer, _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
+    _threadPool->wait();
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
+    
+    vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
-    VkBuffer vertexBuffersCube[] = { _vertexBufferCube->getVkBuffer() };
+    //vkCmdSetViewport(primaryCommandBuffer, 0, 1, &viewport);
 
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersCube, offsets);
+    //vkCmdSetScissor(primaryCommandBuffer, 0, 1, &scissor);
 
-    vkCmdBindIndexBuffer(commandBuffer, _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
+    ////// SKYBOX
+    //vkCmdBindPipeline(primaryCommandBuffer, _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
 
-    _descriptorSetSkybox->bindDescriptorSet(commandBuffer, *_graphicsPipelineSkybox, { _currentFrame });
+    //VkBuffer vertexBuffersCube[] = { _vertexBufferCube->getVkBuffer() };
 
-    vkCmdDrawIndexed(commandBuffer, _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
+    //const VkDeviceSize offsets[] = { 0 };
+    //vkCmdBindVertexBuffers(primaryCommandBuffer, 0, 1, vertexBuffersCube, offsets);
 
-    vkCmdEndRenderPass(commandBuffer);
+    //vkCmdBindIndexBuffer(primaryCommandBuffer, _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
 
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+    //_descriptorSetSkybox->bindDescriptorSet(primaryCommandBuffer, *_graphicsPipelineSkybox, { _currentFrame });
+
+    //vkCmdDrawIndexed(primaryCommandBuffer, _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
+
+    vkCmdEndRenderPass(primaryCommandBuffer);
+
+    if (vkEndCommandBuffer(primaryCommandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to record command buffer!");
     }
 }
@@ -487,6 +555,7 @@ void SingleApp::recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_
     VkDeviceSize offsets[] = { 0 };
     // OBJECT TBN
     vkCmdBindPipeline(commandBuffer, _shadowPipeline->getVkPipelineBindPoint(), _shadowPipeline->getVkPipeline());
+
     for (const auto& object : _objects) {
 
         VkBuffer vertexBuffers[] = { object.vertexBufferP->getVkBuffer() };

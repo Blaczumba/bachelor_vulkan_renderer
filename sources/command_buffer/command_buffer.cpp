@@ -5,9 +5,9 @@
 
 CommandPool::CommandPool(const LogicalDevice& logicalDevice) : _logicalDevice(logicalDevice) {
     VkCommandPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = _logicalDevice.getPhysicalDevice().getPropertyManager().getQueueFamilyIndices().graphicsFamily.value();
+    poolInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags              = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex   = _logicalDevice.getPhysicalDevice().getPropertyManager().getQueueFamilyIndices().graphicsFamily.value();
 
     if (vkCreateCommandPool(_logicalDevice.getVkDevice(), &poolInfo, nullptr, &_commandPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create graphics command pool!");
@@ -17,9 +17,12 @@ CommandPool::CommandPool(const LogicalDevice& logicalDevice) : _logicalDevice(lo
 CommandPool::~CommandPool() {
     vkDestroyCommandPool(_logicalDevice.getVkDevice(), _commandPool, nullptr);
 }
+std::unique_ptr<CommandBuffer> CommandPool::createPrimaryCommandBuffer() const {
+    return std::make_unique<CommandBuffer>(*this, true);
+}
 
-std::unique_ptr<CommandBuffer> CommandPool::createCommandBuffer() const {
-    return std::make_unique<CommandBuffer>(*this);
+std::unique_ptr<CommandBuffer> CommandPool::createSecondaryCommandBuffer() const {
+    return std::make_unique<CommandBuffer>(*this, false);
 }
 
 const VkCommandPool CommandPool::getVkCommandPool() const {
@@ -30,12 +33,12 @@ const LogicalDevice& CommandPool::getLogicalDevice() const {
     return _logicalDevice;
 }
 
-CommandBuffer::CommandBuffer(const CommandPool& commandPool) :_commandPool(commandPool) {
+CommandBuffer::CommandBuffer(const CommandPool& commandPool, bool primary) :_commandPool(commandPool) {
     VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = _commandPool.getVkCommandPool();
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = 1;
+    allocInfo.sType                 = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool           = _commandPool.getVkCommandPool();
+    allocInfo.level                 = (primary) ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+    allocInfo.commandBufferCount    = 1;
 
     if (vkAllocateCommandBuffers(_commandPool.getLogicalDevice().getVkDevice(), &allocInfo, &_commandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate command buffers!");

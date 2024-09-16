@@ -1,4 +1,5 @@
 #include "pipeline.h"
+#include <string>
 
 class ComputePipeline : public Pipeline {
 public:

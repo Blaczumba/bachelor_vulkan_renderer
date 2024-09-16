@@ -16,7 +16,8 @@ public:
 	CommandPool(const LogicalDevice& logicalDevice);
 	~CommandPool();
 
-	std::unique_ptr<CommandBuffer> createCommandBuffer() const;
+	std::unique_ptr<CommandBuffer> createPrimaryCommandBuffer() const;
+	std::unique_ptr<CommandBuffer> createSecondaryCommandBuffer() const;
 	// std::vector<std::unique_ptr<CommandBuffer>> createCommandBuffers(uint32_t count) const;
 
 	const VkCommandPool getVkCommandPool() const;
@@ -31,7 +32,7 @@ class CommandBuffer {
 
 	const CommandPool& _commandPool;
 public:
-	CommandBuffer(const CommandPool& commandPool);
+	CommandBuffer(const CommandPool& commandPool, bool primary = true);
 	void resetCommandBuffer() const;
 	const VkCommandBuffer getVkCommandBuffer() const;
 };
