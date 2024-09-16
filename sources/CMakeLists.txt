@@ -19,6 +19,8 @@ add_subdirectory(camera)
 add_subdirectory(screenshot)
 add_subdirectory(utils)
 add_subdirectory(entity_component_system)
+add_subdirectory(object)
+add_subdirectory(scene)
 add_subdirectory(thread_pool)
 
 add_compile_definitions(SHADERS_PATH="${CMAKE_SOURCE_DIR}/shaders/")

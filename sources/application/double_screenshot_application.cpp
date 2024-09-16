@@ -96,13 +96,23 @@ void SingleApp::loadObjects() {
             std::make_unique<IndexBuffer>(*_logicalDevice, _newVertexDataTBN[i].indices),
             index,
             std::move(descriptorSet),
-            _newVertexDataTBN[i].model }
+            _newVertexDataTBN[i].model,
+            createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model)}
         );
 
         _ubObject.model = _newVertexDataTBN[i].model;
         _uniformBuffersObjects->updateUniformBuffer(&_ubObject, index++);
     }
     _uniformBuffersObjects->makeUpdatesVisible();
+
+    AABB sceneAABB = _objects[0].volume;
+    for (int i = 1; i < _objects.size(); i++) {
+        sceneAABB.extend(_objects[i].volume);
+    }
+    _octree = std::make_unique<Octree>(sceneAABB);
+
+    for (const auto& object : _objects)
+        _octree->addObject(&object);
 }
 
 void SingleApp::createDescriptorSets() {

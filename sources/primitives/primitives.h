@@ -9,9 +9,11 @@ struct Extent {
 	uint32_t height;
 };
 
-struct VertexP {
-    glm::vec3 pos;
-};
+//struct VertexP {
+//    glm::vec3 pos;
+//};
+
+using VertexP = glm::vec3;
 
 struct VertexPT {
     glm::vec3 pos;

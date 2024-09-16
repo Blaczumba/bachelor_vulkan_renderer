@@ -24,21 +24,11 @@
 #include <descriptor_set/descriptor_pool.h>
 #include <screenshot/screenshot.h>
 #include <entity_component_system/system/movement_system.h>
-#include "thread_pool/thread_pool.h"
+#include <object/object.h>
+#include <thread_pool/thread_pool.h>
+#include <scene/octree/octree.h>
 
 #include <unordered_map>
-
-struct Object {
-    std::unique_ptr<VertexBuffer> vertexBufferPTNTB;
-    std::unique_ptr<VertexBuffer> vertexBufferP;
-    std::unique_ptr<IndexBuffer> indexBuffer;
-
-    uint32_t dynamicUniformIndex;
-
-    std::unique_ptr<DescriptorSet> _descriptorSet;
-
-    glm::mat4 model;
-};
 
 class SingleApp : public ApplicationBase {
     std::vector<VertexData<VertexPTNT, uint16_t>> _newVertexDataTBN;
@@ -47,6 +37,8 @@ class SingleApp : public ApplicationBase {
     std::unordered_map<std::string, std::unique_ptr<VertexBuffer>> _vertexBufferMap;
     std::unordered_map<std::string, std::unique_ptr<IndexBuffer>> _indexBufferMap;
     std::vector<Object> _objects;
+    std::unique_ptr<Octree> _octree;
+
 
     std::shared_ptr<Renderpass> _renderPass;
     std::vector<std::unique_ptr<Texture2D>> _framebufferTextures;
