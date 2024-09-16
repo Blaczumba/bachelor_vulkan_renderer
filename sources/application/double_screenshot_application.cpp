@@ -111,8 +111,10 @@ void SingleApp::loadObjects() {
     }
     _octree = std::make_unique<Octree>(sceneAABB);
 
+    int log = 0;
     for (const auto& object : _objects)
-        _octree->addObject(&object);
+        log += _octree->addObject(&object);
+    std::cout << _objects.size() << ' ' << log << ' ' << _octree->getRoot()->getObjects().size() << std::endl;
 }
 
 void SingleApp::createDescriptorSets() {
@@ -403,6 +405,37 @@ void SingleApp::createCommandBuffers() {
     }
 }
 
+static int counter = 0;
+
+void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer commandBuffer, const OctreeNode* node, const glm::mat4& PV) {
+    const VkDeviceSize offsets[] = { 0 };
+
+    for (const Object* object : node->getObjects()) {
+        counter++;
+        VkBuffer vertexBuffers[] = { object->vertexBufferPTNTB->getVkBuffer() };
+
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+        vkCmdBindIndexBuffer(commandBuffer, object->indexBuffer->getVkBuffer(), 0, object->indexBuffer->getIndexType());
+
+        object->_descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, { _currentFrame, object->dynamicUniformIndex });
+
+        vkCmdDrawIndexed(commandBuffer, object->indexBuffer->getIndexCount(), 1, 0, 0, 0);
+    }
+
+    constexpr static OctreeNode::Subvolume options[] = {
+        OctreeNode::Subvolume::LOWER_LEFT_BACK, OctreeNode::Subvolume::LOWER_LEFT_FRONT,
+        OctreeNode::Subvolume::LOWER_RIGHT_BACK, OctreeNode::Subvolume::LOWER_RIGHT_FRONT,
+        OctreeNode::Subvolume::UPPER_LEFT_BACK, OctreeNode::Subvolume::UPPER_LEFT_FRONT,
+        OctreeNode::Subvolume::UPPER_RIGHT_BACK, OctreeNode::Subvolume::UPPER_RIGHT_FRONT
+    };
+
+    for (auto option : options) {
+        const OctreeNode* n = node->getChildIfVisible(option, PV);
+        if (n) recordOctreeSecondaryCommandBuffer(commandBuffer, n, PV);
+    }
+}
+
 void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32_t imageIndex) {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -448,7 +481,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
     cmdBufferBeginInfo.pInheritanceInfo = &inheritanceInfo;
 
-    auto recordSecondaryCommandBuffer = [this, &cmdBufferBeginInfo, &scissor, &viewport](const VkCommandBuffer commandBuffer, size_t objectIndexStart, size_t objectIndexEnd) {
+    auto recordSecondaryCommandBuffer = [this, &cmdBufferBeginInfo, &scissor, &viewport](const VkCommandBuffer commandBuffer, const std::vector<const OctreeNode*>& nodes, const glm::mat4& PV) {
         vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo);
 
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
@@ -457,20 +490,8 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
 
         vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
 
-        const VkDeviceSize offsets[] = { 0 };
-
-        for (size_t i = objectIndexStart; i < objectIndexEnd; i++) {
-            const auto& object = _objects[i];
-            VkBuffer vertexBuffers[] = { object.vertexBufferPTNTB->getVkBuffer() };
-
-            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-            vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
-
-            object._descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, { _currentFrame, object.dynamicUniformIndex });
-
-            vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
-        }
+        for (const OctreeNode* node : nodes)
+            recordOctreeSecondaryCommandBuffer(commandBuffer, node, PV);
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
             throw std::runtime_error("failed to record command buffer!");
@@ -486,25 +507,31 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     size_t currentIndex = 0;
 
     auto start = std::chrono::high_resolution_clock::now();
-    for (size_t i = 0; i < MAX_THREADS_IN_POOL; i++) {
-        size_t beg = currentIndex;
-        size_t end = beg + baseSize + (i < remainder ? 1 : 0);
-        currentIndex = end;
-
-        _threadPool->getThread(i)->addJob([&, beg, end, i]() { recordSecondaryCommandBuffer(commandBuffers[i], beg, end); });
+    const glm::mat4 PV = _camera->getProjectionMatrix() * _camera->getViewMatrix();
+    const OctreeNode* root = _octree->getRootIfVisible(PV);
+    // const std::vector<const OctreeNode*> up = { root->getChild(OctreeNode::Subvolume::LOWER_LEFT_BACK), root->getChild(OctreeNode::Subvolume::LOWER_LEFT_FRONT), root->getChild(OctreeNode::Subvolume::LOWER_RIGHT_BACK), root->getChild(OctreeNode::Subvolume::LOWER_RIGHT_FRONT) };
+    // const std::vector<const OctreeNode*> down = { root->getChild(OctreeNode::Subvolume::UPPER_LEFT_BACK), root->getChild(OctreeNode::Subvolume::UPPER_LEFT_FRONT), root->getChild(OctreeNode::Subvolume::UPPER_RIGHT_BACK), root->getChild(OctreeNode::Subvolume::UPPER_RIGHT_FRONT)};
+    const std::vector<const OctreeNode*> lst = { root };
+    if (root) {
+        _threadPool->getThread(0)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[0], lst, PV ); });
     }
-
+    //_threadPool->getThread(1)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[1], down); });
     _threadPool->wait();
+
+    //std::cout << counter << ' ' << _objects.size() << std::endl;
+    // counter = 0;
+    
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     
-    vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+    if(root)
+        vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
     //vkCmdSetViewport(primaryCommandBuffer, 0, 1, &viewport);
 
     //vkCmdSetScissor(primaryCommandBuffer, 0, 1, &scissor);
 
-    ////// SKYBOX
+    //////// SKYBOX
     //vkCmdBindPipeline(primaryCommandBuffer, _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
 
     //VkBuffer vertexBuffersCube[] = { _vertexBufferCube->getVkBuffer() };

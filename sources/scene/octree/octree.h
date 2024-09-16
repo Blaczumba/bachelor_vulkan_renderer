@@ -10,6 +10,11 @@
 constexpr size_t NUM_OCTREE_NODE_CHILDREN = 8;
 
 class OctreeNode {
+	AABB _volume;
+	std::array<std::unique_ptr<OctreeNode>, NUM_OCTREE_NODE_CHILDREN> _children;
+	std::vector<const Object*> _objects;
+
+public:
     enum class Subvolume : size_t {
         LOWER_LEFT_FRONT = 0,
         LOWER_RIGHT_FRONT,
@@ -21,16 +26,14 @@ class OctreeNode {
         UPPER_RIGHT_BACK
     };
 
-
-	AABB _volume;
-	std::array<std::unique_ptr<OctreeNode>, NUM_OCTREE_NODE_CHILDREN> _children;
-	std::vector<const Object*> _objects;
-
-public:
 	OctreeNode(const AABB& volume);
-	void addObject(const Object* object);
-    OctreeNode* getChild(Subvolume subvolume);
+	bool addObject(const Object* object);
+    const OctreeNode* getChild(Subvolume subvolume) const;
+    const OctreeNode* getChildIfVisible(Subvolume subvolume, const glm::mat4& VPmat) const;
+
     const std::vector<const Object*>& getObjects() const;
+
+    friend class Octree;
 };
 
 class Octree {
@@ -38,8 +41,8 @@ class Octree {
 
 public:
     Octree(const AABB& volume);
-    Octree();
 
-    void addObject(const Object* object);
+    bool addObject(const Object* object);
     OctreeNode* getRoot();
+    OctreeNode* getRootIfVisible(const glm::mat4& VPmat);
 };
