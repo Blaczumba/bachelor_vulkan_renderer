@@ -44,49 +44,16 @@ const OctreeNode* OctreeNode::getChild(Subvolume subvolume) const {
     return _children[static_cast<size_t>(subvolume)].get();
 }
 
-void extractFrustumPlanes(const glm::mat4& VP, glm::vec4 planes[6]) {
-    planes[0] = glm::vec4(VP[0][3] + VP[0][0], VP[1][3] + VP[1][0], VP[2][3] + VP[2][0], VP[3][3] + VP[3][0]);
-    planes[1] = glm::vec4(VP[0][3] - VP[0][0], VP[1][3] - VP[1][0], VP[2][3] - VP[2][0], VP[3][3] - VP[3][0]);
-    planes[2] = glm::vec4(VP[0][3] + VP[0][1], VP[1][3] + VP[1][1], VP[2][3] + VP[2][1], VP[3][3] + VP[3][1]);
-    planes[3] = glm::vec4(VP[0][3] - VP[0][1], VP[1][3] - VP[1][1], VP[2][3] - VP[2][1], VP[3][3] - VP[3][1]);
-    planes[4] = glm::vec4(VP[0][3] + VP[0][2], VP[1][3] + VP[1][2], VP[2][3] + VP[2][2], VP[3][3] + VP[3][2]);
-    planes[5] = glm::vec4(VP[0][3] - VP[0][2], VP[1][3] - VP[1][2], VP[2][3] - VP[2][2], VP[3][3] - VP[3][2]);
-
-    for (int i = 0; i < 6; ++i) {
-        float length = glm::length(glm::vec3(planes[i]));
-        planes[i] /= length;
-    }
-}
-
-bool isAABBVisible(const glm::vec3& lowerCorner, const glm::vec3& upperCorner, const glm::vec4 planes[6]) {
-    for (int i = 0; i < 6; ++i) {
-        const glm::vec4& plane = planes[i];
-        glm::vec3 normal(plane.x, plane.y, plane.z);
-
-        glm::vec3 positiveVertex = glm::vec3(
-            (plane.x >= 0.0f) ? upperCorner.x : lowerCorner.x,
-            (plane.y >= 0.0f) ? upperCorner.y : lowerCorner.y,
-            (plane.z >= 0.0f) ? upperCorner.z : lowerCorner.z
-        );
-
-        if (glm::dot(normal, positiveVertex) + plane.w < 0.0f) {
-            return false; 
-        }
-    }
-
-    return true;
+const AABB& OctreeNode::getVolume() const {
+    return _volume;
 }
 
 const OctreeNode* OctreeNode::getChildIfVisible(Subvolume subvolume, const glm::mat4& VPmat) const {
     const OctreeNode* child = getChild(subvolume);
     if (child) {
-        glm::vec4 frustumPlanes[6];
-        extractFrustumPlanes(VPmat, frustumPlanes);
+        std::array<glm::vec4, NUM_CUBE_FACES> frustumPlanes = extractFrustumPlanes(VPmat);
 
-        const glm::vec3& lowerCorner = child->_volume.lowerCorner;
-        const glm::vec3& upperCorner = child->_volume.upperCorner;
-
-        if (isAABBVisible(lowerCorner, upperCorner, frustumPlanes)) {
+        if (child->_volume.intersectsFrustum(frustumPlanes)) {
             return child;
         }
     }
@@ -111,13 +78,9 @@ OctreeNode* Octree::getRoot() {
 
 OctreeNode* Octree::getRootIfVisible(const glm::mat4& VPmat) {
     if (_root) {
-        glm::vec4 frustumPlanes[6];
-        extractFrustumPlanes(VPmat, frustumPlanes);
+        std::array<glm::vec4, NUM_CUBE_FACES> frustumPlanes = extractFrustumPlanes(VPmat);
 
-        const glm::vec3& lowerCorner = _root->_volume.lowerCorner;
-        const glm::vec3& upperCorner = _root->_volume.upperCorner;
-
-        if (isAABBVisible(lowerCorner, upperCorner, frustumPlanes)) {
+        if (_root->_volume.intersectsFrustum(frustumPlanes)) {
             return _root.get();
         }
     }

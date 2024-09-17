@@ -407,20 +407,21 @@ void SingleApp::createCommandBuffers() {
 
 static int counter = 0;
 
-void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer commandBuffer, const OctreeNode* node, const glm::mat4& PV) {
+void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer commandBuffer, const OctreeNode* node, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
     const VkDeviceSize offsets[] = { 0 };
 
     for (const Object* object : node->getObjects()) {
-        counter++;
+        // counter++;
         VkBuffer vertexBuffers[] = { object->vertexBufferPTNTB->getVkBuffer() };
+        const IndexBuffer* indexBuffer = object->indexBuffer.get();
 
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdBindIndexBuffer(commandBuffer, object->indexBuffer->getVkBuffer(), 0, object->indexBuffer->getIndexType());
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getVkBuffer(), 0, indexBuffer->getIndexType());
 
         object->_descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, { _currentFrame, object->dynamicUniformIndex });
 
-        vkCmdDrawIndexed(commandBuffer, object->indexBuffer->getIndexCount(), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
 
     constexpr static OctreeNode::Subvolume options[] = {
@@ -431,8 +432,9 @@ void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer command
     };
 
     for (auto option : options) {
-        const OctreeNode* n = node->getChildIfVisible(option, PV);
-        if (n) recordOctreeSecondaryCommandBuffer(commandBuffer, n, PV);
+        const OctreeNode* n = node->getChild(option);
+        if (n && n->getVolume().intersectsFrustum(planes)) 
+            recordOctreeSecondaryCommandBuffer(commandBuffer, n, planes);
     }
 }
 
@@ -481,7 +483,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
     cmdBufferBeginInfo.pInheritanceInfo = &inheritanceInfo;
 
-    auto recordSecondaryCommandBuffer = [this, &cmdBufferBeginInfo, &scissor, &viewport](const VkCommandBuffer commandBuffer, const std::vector<const OctreeNode*>& nodes, const glm::mat4& PV) {
+    auto recordSecondaryCommandBuffer = [this, &cmdBufferBeginInfo, &scissor, &viewport](const VkCommandBuffer commandBuffer, const std::vector<const OctreeNode*>& nodes, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
         vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo);
 
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
@@ -491,7 +493,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
 
         for (const OctreeNode* node : nodes)
-            recordOctreeSecondaryCommandBuffer(commandBuffer, node, PV);
+            recordOctreeSecondaryCommandBuffer(commandBuffer, node, planes);
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
             throw std::runtime_error("failed to record command buffer!");
@@ -502,29 +504,25 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     commandBuffers.reserve(MAX_THREADS_IN_POOL);
     std::transform(_commandBuffers[_currentFrame].cbegin(), _commandBuffers[_currentFrame].cend(), std::back_inserter(commandBuffers), [](const std::unique_ptr<CommandBuffer>& cmdBuff) { return cmdBuff->getVkCommandBuffer(); });
 
-    size_t baseSize = _objects.size() / MAX_THREADS_IN_POOL;
-    size_t remainder = _objects.size() % MAX_THREADS_IN_POOL;
-    size_t currentIndex = 0;
-
     auto start = std::chrono::high_resolution_clock::now();
     const glm::mat4 PV = _camera->getProjectionMatrix() * _camera->getViewMatrix();
-    const OctreeNode* root = _octree->getRootIfVisible(PV);
-    // const std::vector<const OctreeNode*> up = { root->getChild(OctreeNode::Subvolume::LOWER_LEFT_BACK), root->getChild(OctreeNode::Subvolume::LOWER_LEFT_FRONT), root->getChild(OctreeNode::Subvolume::LOWER_RIGHT_BACK), root->getChild(OctreeNode::Subvolume::LOWER_RIGHT_FRONT) };
-    // const std::vector<const OctreeNode*> down = { root->getChild(OctreeNode::Subvolume::UPPER_LEFT_BACK), root->getChild(OctreeNode::Subvolume::UPPER_LEFT_FRONT), root->getChild(OctreeNode::Subvolume::UPPER_RIGHT_BACK), root->getChild(OctreeNode::Subvolume::UPPER_RIGHT_FRONT)};
+    const OctreeNode* root = _octree->getRoot();
+
     const std::vector<const OctreeNode*> lst = { root };
-    if (root) {
-        _threadPool->getThread(0)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[0], lst, PV ); });
+    const auto& planes = extractFrustumPlanes(PV);
+    if (root && root->getVolume().intersectsFrustum(planes)) {
+        _threadPool->getThread(0)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[0], lst, planes ); });
     }
     //_threadPool->getThread(1)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[1], down); });
     _threadPool->wait();
 
-    //std::cout << counter << ' ' << _objects.size() << std::endl;
+    auto stop = std::chrono::high_resolution_clock::now();
+    // std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
+    
+    // std::cout << counter << ' ' << _objects.size() << std::endl;
     // counter = 0;
     
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
-    
-    if(root)
+    if(root && root->getVolume().intersectsFrustum(planes))
         vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
     //vkCmdSetViewport(primaryCommandBuffer, 0, 1, &viewport);

@@ -3,7 +3,7 @@
 #include "memory_objects/vertex_buffer.h"
 #include "memory_objects/index_buffer.h"
 #include "descriptor_set/descriptor_set.h"
-#include "volumes.h"
+#include "primitives/geometry.h"
 
 #include <memory>
 

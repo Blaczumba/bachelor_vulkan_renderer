@@ -1,4 +1,4 @@
-add_library(Object object.cpp volumes.cpp)
+add_library(Object object.cpp)
 
 target_link_libraries(Object VertexBuffer IndexBuffer DescriptorSet Scene)
 
