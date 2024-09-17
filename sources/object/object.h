@@ -13,11 +13,8 @@ struct Object {
     std::unique_ptr<VertexBuffer> vertexBufferPTNTB;
     std::unique_ptr<VertexBuffer> vertexBufferP;
     std::unique_ptr<IndexBuffer> indexBuffer;
-
     uint32_t dynamicUniformIndex;
-
     std::unique_ptr<DescriptorSet> _descriptorSet;
-
     glm::mat4 model;
     AABB volume;
 };

@@ -27,10 +27,9 @@ public:
     };
 
 	OctreeNode(const AABB& volume);
-	bool addObject(const Object* object);
+	void addObject(const Object* object);
     const OctreeNode* getChild(Subvolume subvolume) const;
     const AABB& getVolume() const;
-    const OctreeNode* getChildIfVisible(Subvolume subvolume, const glm::mat4& VPmat) const;
 
     const std::vector<const Object*>& getObjects() const;
 
@@ -45,5 +44,4 @@ public:
 
     bool addObject(const Object* object);
     OctreeNode* getRoot();
-    OctreeNode* getRootIfVisible(const glm::mat4& VPmat);
 };

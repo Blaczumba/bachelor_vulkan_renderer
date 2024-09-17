@@ -34,14 +34,13 @@ void MovementSystem::update(float deltaTime) {
     Position* pos;
     Velocity* vel;
 
-    for (Entity entity : entities) {
-        pos = registry.getComponent<Position>(entity);
-        vel = registry.getComponent<Velocity>(entity);
-        // auto [pos, vel] = registry.getComponents<Position, Velocity>(entity);
-        pos->x += vel->dx * deltaTime;
-        pos->y += vel->dy * deltaTime;
+    registry.updateComponents<Position, Velocity>(
+        [deltaTime](Position& pos, Velocity& vel) {
+            pos.x += vel.dx * deltaTime;
+            pos.y += vel.dy * deltaTime;
 
-        //std::cout << "Entity " << entity << " moved to ("
-        //    << pos.x << ", " << pos.y << ")\n";
-    }
+            //std::cout << "Entity " << entity << " moved to ("
+            //    << pos.x << ", " << pos.y << ")\n"; 
+        }
+    );
 }

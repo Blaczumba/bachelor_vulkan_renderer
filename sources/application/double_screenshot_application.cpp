@@ -13,7 +13,7 @@
 SingleApp::SingleApp()
     : ApplicationBase() {
 
-    Registry registry(5);
+    Registry registry(100005);
 
     // Create entities
     Entity e1 = registry.createEntity();
@@ -21,19 +21,48 @@ SingleApp::SingleApp()
     Entity e3 = registry.createEntity();
     Entity e4 = registry.createEntity();
 
-    registry.addComponent(e1, std::make_unique<Position>(Position{ 1.0f, 1.0f }));
-    registry.addComponent(e1, std::make_unique<Velocity>(Velocity{ -1.0f, -1.0f }));
+    registry.addComponent(e1, std::make_unique<Position>(1.0f, 1.0f));
+    registry.addComponent(e1, std::make_unique<Velocity>(-1.0f, -1.0f));
 
-    registry.addComponent(e2, std::make_unique<Position>(Position{ 2.0f, 2.0f }));
-    registry.addComponent(e2, std::make_unique<Velocity>(Velocity{ -2.0f, -2.0f }));
+    registry.addComponent(e2, std::make_unique<Position>(2.0f, 2.0f));
+    registry.addComponent(e2, std::make_unique<Velocity>(-2.0f, -2.0f));
 
-    registry.addComponent(e3, std::make_unique<Position>(Position{ 3.0f, 3.0f }));
-    registry.addComponent(e3, std::make_unique<Velocity>(Velocity{ -3.0f, -3.0f }));
+    registry.addComponent(e3, std::make_unique<Position>(3.0f, 3.0f));
+    registry.addComponent(e3, std::make_unique<Velocity>(-3.0f, -3.0f));
 
-    registry.addComponent(e4, std::make_unique<Position>(Position{ 4.0f, 4.0f }));
-    registry.addComponent(e4, std::make_unique<Velocity>(Velocity{ -4.0f, -4.0f }));
+    registry.addComponent(e4, std::make_unique<Position>(4.0f, 4.0f));
+    registry.addComponent(e4, std::make_unique<Velocity>(-4.0f, -4.0f));
 
-    auto ptr = registry.getComponent<Position>(e1);
+    for (int i = 0; i < 100000; i++) {
+        Entity e = registry.createEntity();
+        registry.addComponent(e, std::make_unique<Position>(2.0f, 2.0f));
+        registry.addComponent(e, std::make_unique<Velocity>(-2.0f, -2.0f));
+    }
+
+    size_t times = 0;
+    size_t count = 0;
+    for (int i = 0; i < 30000; i++) {
+        auto start = std::chrono::high_resolution_clock::now();
+        registry.updateComponents<Position, Velocity>([](Position& pos, Velocity& vel) { pos.x += 4.0f; pos.x -= 20.0f; vel.dx += 10.0f, vel.dy -= 10.0f; });
+        auto stop = std::chrono::high_resolution_clock::now();
+        times += std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
+        ++count;
+    }
+    std::cout << times / count << std::endl;
+    count = times = 0;
+    for (int i = 0; i < 30000; i++) {
+        auto start = std::chrono::high_resolution_clock::now();
+        registry.updateComponents<Position, Velocity>([](Position& pos, Velocity& vel) { pos.x += 4.0f; pos.x -= 20.0f; vel.dx += 10.0f, vel.dy -= 10.0f; });
+        auto stop = std::chrono::high_resolution_clock::now();
+        times += std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
+        ++count;
+    }
+    std::cout << times / count << std::endl;
+    //std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
+
+    MovementSystem movementSystem(registry);
+    movementSystem.update(2.0f);
+
 
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
@@ -457,7 +486,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassInfo.pClearValues = clearValues.data();
 
-    vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+    vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); 
 
     const VkExtent2D& swapchainExtent = _swapchain->getExtent();
 
@@ -477,6 +506,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
     inheritanceInfo.renderPass = _renderPass->getVkRenderPass();
     inheritanceInfo.framebuffer = _framebuffers[imageIndex]->getVkFramebuffer();
+    inheritanceInfo.subpass = 0;
 
     VkCommandBufferBeginInfo cmdBufferBeginInfo{};
     cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

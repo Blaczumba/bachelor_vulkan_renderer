@@ -7,7 +7,7 @@ OctreeNode::OctreeNode(const AABB& volume) : _volume(volume), _children{} {
 
 }
 
-bool OctreeNode::addObject(const Object* object) {
+void OctreeNode::addObject(const Object* object) {
     const glm::vec3& lc = _volume.lowerCorner;
     const glm::vec3& uc = _volume.upperCorner;
 
@@ -31,12 +31,11 @@ bool OctreeNode::addObject(const Object* object) {
 
     if (index == NUM_OCTREE_NODE_CHILDREN) {
         _objects.push_back(object);
-        return true;
     }
     else {
         if(!_children[index])
             _children[index] = std::make_unique<OctreeNode>(subVolumes[index]);
-        return _children[index]->addObject(object);
+        _children[index]->addObject(object);
     }
 }
 
@@ -48,18 +47,6 @@ const AABB& OctreeNode::getVolume() const {
     return _volume;
 }
 
-const OctreeNode* OctreeNode::getChildIfVisible(Subvolume subvolume, const glm::mat4& VPmat) const {
-    const OctreeNode* child = getChild(subvolume);
-    if (child) {
-        std::array<glm::vec4, NUM_CUBE_FACES> frustumPlanes = extractFrustumPlanes(VPmat);
-
-        if (child->_volume.intersectsFrustum(frustumPlanes)) {
-            return child;
-        }
-    }
-    return nullptr;
-}
-
 const std::vector<const Object*>& OctreeNode::getObjects() const {
     return _objects;
 }
@@ -69,20 +56,12 @@ Octree::Octree(const AABB& volume) : _root(std::make_unique<OctreeNode>(volume))
 }
 
 bool Octree::addObject(const Object* object) {
-    return _root->addObject(object);
+    if (!_root->_volume.contains(object->volume))
+        return false;
+    _root->addObject(object);
+    return true;
 }
 
 OctreeNode* Octree::getRoot() {
     return _root.get();
-}
-
-OctreeNode* Octree::getRootIfVisible(const glm::mat4& VPmat) {
-    if (_root) {
-        std::array<glm::vec4, NUM_CUBE_FACES> frustumPlanes = extractFrustumPlanes(VPmat);
-
-        if (_root->_volume.intersectsFrustum(frustumPlanes)) {
-            return _root.get();
-        }
-    }
-    return nullptr;
 }

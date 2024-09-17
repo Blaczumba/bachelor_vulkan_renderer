@@ -8,6 +8,7 @@
 #include <memory>
 #include <bitset>
 #include <tuple>
+#include <functional>
 
 constexpr size_t a = sizeof(std::unique_ptr<int>);
 
@@ -46,9 +47,11 @@ public:
 		return static_cast<Component*>(componentsData[Component::getComponentID()][entity].get());
 	}
 
-	// not efficient!
-	//template<typename... Components>
-	//std::tuple<Components*...> getComponents(Entity entity) {
-	//	return std::make_tuple(static_cast<Components*>(componentsData[Components::getComponentID()][entity].get())...);
-	//}
+	template<typename... Components>
+	void updateComponents(std::function<void(Components&...)> callback) {
+		const auto& entities = entityManager.getUsedEntities();
+		for (const auto entity : entities)
+			callback((static_cast<Components&>(*componentsData[Components::getComponentID()][entity]))...);
+			// callback((*static_cast<Components*>(componentsData[Components::getComponentID()][entity].get()))...);
+	}
 };
