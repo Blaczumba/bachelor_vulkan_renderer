@@ -13,7 +13,7 @@
 SingleApp::SingleApp()
     : ApplicationBase() {
 
-    Registry registry(100005);
+    Registry registry(1000005);
 
     // Create entities
     Entity e1 = registry.createEntity();
@@ -33,36 +33,30 @@ SingleApp::SingleApp()
     registry.addComponent(e4, std::make_unique<Position>(4.0f, 4.0f));
     registry.addComponent(e4, std::make_unique<Velocity>(-4.0f, -4.0f));
 
-    for (int i = 0; i < 100000; i++) {
+    for (int i = 0; i < 1000000; i++) {
         Entity e = registry.createEntity();
         registry.addComponent(e, std::make_unique<Position>(2.0f, 2.0f));
         registry.addComponent(e, std::make_unique<Velocity>(-2.0f, -2.0f));
     }
 
-    size_t times = 0;
-    size_t count = 0;
-    for (int i = 0; i < 30000; i++) {
-        auto start = std::chrono::high_resolution_clock::now();
-        registry.updateComponents<Position, Velocity>([](Position& pos, Velocity& vel) { pos.x += 4.0f; pos.x -= 20.0f; vel.dx += 10.0f, vel.dy -= 10.0f; });
-        auto stop = std::chrono::high_resolution_clock::now();
-        times += std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
-        ++count;
+    auto start = std::chrono::high_resolution_clock::now();
+    for (Entity e : registry.getEntities()) {
+        auto tpl = registry.getComponents<Position, Velocity>(e);
+        std::get<Position&>(tpl).x += 20.0f;
+        std::get<Velocity&>(tpl).dx += 20.0f;
+        auto& a = registry.getComponent<Position>(e);
+        auto& b = registry.getComponent<Velocity>(e);
+        a.x += 20.0f;
+        b.dx += 20.0f;
     }
-    std::cout << times / count << std::endl;
-    count = times = 0;
-    for (int i = 0; i < 30000; i++) {
-        auto start = std::chrono::high_resolution_clock::now();
-        registry.updateComponents<Position, Velocity>([](Position& pos, Velocity& vel) { pos.x += 4.0f; pos.x -= 20.0f; vel.dx += 10.0f, vel.dy -= 10.0f; });
-        auto stop = std::chrono::high_resolution_clock::now();
-        times += std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
-        ++count;
-    }
-    std::cout << times / count << std::endl;
-    //std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
+
+    registry.updateComponents<Position, Velocity>([](Position& pos, Velocity& vel) { pos.x += 4.0f; pos.y -= 20.0f; vel.dx += 10.0f, vel.dy -= 10.0f; });
 
     MovementSystem movementSystem(registry);
     movementSystem.update(2.0f);
-
 
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
@@ -140,10 +134,8 @@ void SingleApp::loadObjects() {
     }
     _octree = std::make_unique<Octree>(sceneAABB);
 
-    int log = 0;
     for (const auto& object : _objects)
-        log += _octree->addObject(&object);
-    std::cout << _objects.size() << ' ' << log << ' ' << _octree->getRoot()->getObjects().size() << std::endl;
+        _octree->addObject(&object);
 }
 
 void SingleApp::createDescriptorSets() {
@@ -299,11 +291,12 @@ void SingleApp::run() {
 }
 
 void SingleApp::draw() {
+    auto start = std::chrono::high_resolution_clock::now();
     VkDevice device = _logicalDevice->getVkDevice();
 
     vkWaitForFences(device, 1, &_inFlightFences[_currentFrame], VK_TRUE, UINT64_MAX);
+    
     uint32_t imageIndex;
-
     VkResult result = _swapchain->acquireNextImage(_imageAvailableSemaphores[_currentFrame], &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -317,10 +310,12 @@ void SingleApp::draw() {
     updateUniformBuffer(_currentFrame);
 
     vkResetFences(device, 1, &_inFlightFences[_currentFrame]);
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
 
-    _primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
-    for(int i = 0; i < MAX_THREADS_IN_POOL; i++)
-        _commandBuffers[_currentFrame][i]->resetCommandBuffer();
+    //_primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
+    //for(int i = 0; i < MAX_THREADS_IN_POOL; i++)
+    //    _commandBuffers[_currentFrame][i]->resetCommandBuffer();
 
     //recordShadowCommandBuffer(_shadowCommandBuffers[_currentFrame], imageIndex);
     recordCommandBuffer(_primaryCommandBuffer[_currentFrame]->getVkCommandBuffer(), imageIndex);
@@ -342,9 +337,11 @@ void SingleApp::draw() {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
+
     if (vkQueueSubmit(_logicalDevice->graphicsQueue, 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
+
 
     result = _swapchain->present(imageIndex, signalSemaphores[0]);
 
@@ -357,7 +354,6 @@ void SingleApp::draw() {
 
     if (++_currentFrame == MAX_FRAMES_IN_FLIGHT)
         _currentFrame = 0;
-
 }
 
 VkFormat SingleApp::findDepthFormat() const {
@@ -534,7 +530,6 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     commandBuffers.reserve(MAX_THREADS_IN_POOL);
     std::transform(_commandBuffers[_currentFrame].cbegin(), _commandBuffers[_currentFrame].cend(), std::back_inserter(commandBuffers), [](const std::unique_ptr<CommandBuffer>& cmdBuff) { return cmdBuff->getVkCommandBuffer(); });
 
-    auto start = std::chrono::high_resolution_clock::now();
     const glm::mat4 PV = _camera->getProjectionMatrix() * _camera->getViewMatrix();
     const OctreeNode* root = _octree->getRoot();
 
@@ -545,9 +540,6 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     }
     //_threadPool->getThread(1)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[1], down); });
     _threadPool->wait();
-
-    auto stop = std::chrono::high_resolution_clock::now();
-    // std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     
     // std::cout << counter << ' ' << _objects.size() << std::endl;
     // counter = 0;

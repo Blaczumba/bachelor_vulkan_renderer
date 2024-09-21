@@ -10,8 +10,6 @@
 #include <tuple>
 #include <functional>
 
-constexpr size_t a = sizeof(std::unique_ptr<int>);
-
 class Registry {
 	EntityManager entityManager;
 	std::array<std::vector<std::unique_ptr<Component>>, MAX_COMPONENTS> componentsData;
@@ -43,8 +41,13 @@ public:
 	}
 
 	template<typename Component>
-	Component* getComponent(Entity entity) {
-		return static_cast<Component*>(componentsData[Component::getComponentID()][entity].get());
+	Component& getComponent(Entity entity) {
+		return static_cast<Component&>(*componentsData[Component::getComponentID()][entity]);
+	}
+
+	template<typename... Components>
+	std::tuple<Components&...> getComponents(Entity entity) {
+		return std::tie((*static_cast<Components*>(componentsData[Components::getComponentID()][entity].get()))...);
 	}
 
 	template<typename... Components>

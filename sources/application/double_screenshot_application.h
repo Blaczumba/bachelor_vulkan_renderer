@@ -39,7 +39,6 @@ class SingleApp : public ApplicationBase {
     std::vector<Object> _objects;
     std::unique_ptr<Octree> _octree;
 
-
     std::shared_ptr<Renderpass> _renderPass;
     std::vector<std::unique_ptr<Texture2D>> _framebufferTextures;
     std::vector<std::unique_ptr<Framebuffer>> _framebuffers;
