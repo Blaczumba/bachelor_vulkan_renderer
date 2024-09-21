@@ -23,20 +23,12 @@
 #include <descriptor_set/descriptor_set_layout.h>
 #include <descriptor_set/descriptor_pool.h>
 #include <screenshot/screenshot.h>
+#include <entity_component_system/system/movement_system.h>
+#include <object/object.h>
+#include <thread_pool/thread_pool.h>
+#include <scene/octree/octree.h>
 
 #include <unordered_map>
-
-struct Object {
-    std::unique_ptr<VertexBuffer> vertexBufferPTNTB;
-    std::unique_ptr<VertexBuffer> vertexBufferP;
-    std::unique_ptr<IndexBuffer> indexBuffer;
-
-    uint32_t dynamicUniformIndex;
-
-    std::unique_ptr<DescriptorSet> _descriptorSet;
-
-    glm::mat4 model;
-};
 
 class OffscreenRendering : public ApplicationBase {
     std::vector<VertexData<VertexPTNT, uint16_t>> _newVertexDataTBN;
@@ -45,6 +37,7 @@ class OffscreenRendering : public ApplicationBase {
     std::unordered_map<std::string, std::unique_ptr<VertexBuffer>> _vertexBufferMap;
     std::unordered_map<std::string, std::unique_ptr<IndexBuffer>> _indexBufferMap;
     std::vector<Object> _objects;
+    std::unique_ptr<Octree> _octree;
 
     std::shared_ptr<Renderpass> _renderPass;
     std::vector<std::unique_ptr<Texture2D>> _framebufferTextures;
@@ -59,8 +52,8 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<GraphicsPipeline> _lowResGraphicsPipelineSkybox;
 
     std::shared_ptr<Renderpass> _shadowRenderPass;
-    std::shared_ptr<Texture2DShadow> _shadowMap;
     std::unique_ptr<Framebuffer> _shadowFramebuffer;
+    std::shared_ptr<Texture2DShadow> _shadowMap;
     std::unique_ptr<GraphicsPipeline> _shadowPipeline;
 
     std::unique_ptr<VertexBuffer> _vertexBufferCube;
@@ -83,8 +76,8 @@ class OffscreenRendering : public ApplicationBase {
 
     std::unique_ptr<ShadowShaderProgram> _shadowShaderProgram;
     std::unique_ptr<PBRShaderProgram> _pbrShaderProgram;
-    std::unique_ptr<PBRShaderOffscreenProgram> _pbrOffscreenShaderProgram;
     std::unique_ptr<SkyboxShaderProgram> _skyboxShaderProgram;
+    std::unique_ptr<PBRShaderOffscreenProgram> _pbrOffscreenShaderProgram;
     std::unique_ptr<SkyboxOffscreenShaderProgram> _skyboxOffscreenShaderProgram;
 
     std::unique_ptr<TextureCubemap> _textureCubemap;
@@ -96,17 +89,20 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<CallbackManager> _callbackManager;
     std::unique_ptr<FPSCamera> _camera;
 
-    std::vector<VkCommandBuffer> _commandBuffers;
-    std::vector<VkCommandBuffer> _offscreenCommandBuffers;
-    std::vector<VkCommandBuffer> _shadowCommandBuffers;
+    std::unique_ptr<CommandPool> _commandPool;
+    std::vector<std::unique_ptr<CommandBuffer>> _commandBuffers;
+    std::vector<std::unique_ptr<CommandBuffer>> _offscreenCommandBuffers;
+    std::vector<std::unique_ptr<CommandBuffer>> _shadowCommandBuffers;
 
+    std::unique_ptr<ThreadPool> _threadPool;
     std::vector<VkSemaphore> _shadowMapSemaphores;
     std::vector<VkSemaphore> _imageAvailableSemaphores;
     std::vector<VkSemaphore> _renderFinishedSemaphores;
     std::vector<VkFence> _inFlightFences;
 
     uint32_t _currentFrame = 0;
-    const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
+    static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
+    static constexpr uint32_t MAX_THREADS_IN_POOL = 1;
 
     OffscreenRendering();
     ~OffscreenRendering();
@@ -121,16 +117,17 @@ public:
 private:
     void draw();
     VkFormat findDepthFormat() const;
+    void createCommandBuffers();
     void createSyncObjects();
     void updateUniformBuffer(uint32_t currentImage);
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    void recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32_t imageIndex);
     void recordOffscreenCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void recreateSwapChain();
 
     void createDescriptorSets();
-    void createOffscreenResources();
     void createPresentResources();
+    void createOffscreenResources();
     void createShadowResources();
 
     void loadObjects();

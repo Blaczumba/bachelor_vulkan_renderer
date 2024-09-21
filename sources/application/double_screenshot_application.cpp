@@ -54,7 +54,7 @@ SingleApp::SingleApp()
     MovementSystem movementSystem(registry);
     movementSystem.update(2.0f);
 
-    _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.bin");
+    _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
     createDescriptorSets();
     loadObjects();
