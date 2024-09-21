@@ -1,6 +1,6 @@
 #pragma once
 
-#include "logical_device/logical_device.h"
+#include <vulkan/vulkan.h>
 
 #include <memory>
 
@@ -10,9 +10,8 @@ protected:
 	VkPipelineLayout _pipelineLayout	= VK_NULL_HANDLE;
 	VkPipelineBindPoint _pipelineBindPoint;
 
-	const LogicalDevice& _logicalDevice;
 public:
-	Pipeline(const LogicalDevice& logicalDevice, VkPipelineBindPoint pipelineBindPoint);
+	Pipeline(VkPipelineBindPoint pipelineBindPoint);
 	virtual ~Pipeline() = default;
 
 	VkPipeline getVkPipeline() const;

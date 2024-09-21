@@ -1,7 +1,7 @@
 #include "pipeline.h"
 
-Pipeline::Pipeline(const LogicalDevice& logicalDevice, VkPipelineBindPoint pipelineBindPoint)
-	: _logicalDevice(logicalDevice), _pipelineBindPoint(pipelineBindPoint) {
+Pipeline::Pipeline(VkPipelineBindPoint pipelineBindPoint)
+	: _pipelineBindPoint(pipelineBindPoint) {
 
 }
 

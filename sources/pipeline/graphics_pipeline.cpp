@@ -1,10 +1,14 @@
 #include "graphics_pipeline.h"
 
+GraphicsPipeline::GraphicsPipeline(const Renderpass& renderpass)
+    : Pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS), _renderpass(renderpass) {
+
+}
 
 void GraphicsPipeline::create() {
     cleanup();
 
-    VkDevice device = _logicalDevice.getVkDevice();
+    const VkDevice device = _renderpass.getLogicalDevice().getVkDevice();
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -129,7 +133,7 @@ void GraphicsPipeline::create() {
 }
 
 void GraphicsPipeline::cleanup() {
-    VkDevice device = _logicalDevice.getVkDevice();
+    const VkDevice device = _renderpass.getLogicalDevice().getVkDevice();
 
     if (_pipeline != VK_NULL_HANDLE)
         vkDestroyPipeline(device, _pipeline, nullptr);
@@ -138,11 +142,6 @@ void GraphicsPipeline::cleanup() {
 
     _pipeline = VK_NULL_HANDLE;
     _pipelineLayout = VK_NULL_HANDLE;
-}
-
-GraphicsPipeline::GraphicsPipeline(const LogicalDevice& logicalDevice, const Renderpass& renderpass)
-    : Pipeline(logicalDevice, VK_PIPELINE_BIND_POINT_GRAPHICS), _renderpass(renderpass) {
-
 }
 
 GraphicsPipeline::~GraphicsPipeline() {

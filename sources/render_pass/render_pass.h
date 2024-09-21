@@ -1,6 +1,7 @@
 #pragma once
 
 #include "subpass/subpass.h"
+#include "logical_device/logical_device.h"
 
 #include <vector>
 #include <variant>
@@ -30,4 +31,6 @@ public:
 
 	void addSubpass(const Subpass& subpass);
 	void addDependency(uint32_t srcSubpassIndex, uint32_t dstSubpassIndex, VkPipelineStageFlags srcStageMask, VkAccessFlags srcAccessMask, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask);
+
+	const LogicalDevice& getLogicalDevice() const;
 };

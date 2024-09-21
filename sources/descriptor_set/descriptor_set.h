@@ -22,7 +22,7 @@ public:
 	~DescriptorSet();
 
 	void updateDescriptorSet(const std::vector<UniformBuffer*>& uniformBuffers);
-	void bindDescriptorSet(VkCommandBuffer commandBuffer, const Pipeline& pipeline, const std::vector<uint32_t>& dynamicOffsetStrides = {});
+	void bindDescriptorSet(VkCommandBuffer commandBuffer, const Pipeline& pipeline, std::initializer_list<uint32_t> dynamicOffsetStrides = {});
 
 	const VkDescriptorSet getVkDescriptorSet(size_t i) const;
 

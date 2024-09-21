@@ -7,4 +7,4 @@
 #include <vector>
 #include <memory>
 
-std::vector<std::unique_ptr<Texture2D>> createTexturesFromRenderpass(const LogicalDevice& logicalDevice, const Renderpass& renderpass, const VkExtent2D& extent);
+std::vector<std::unique_ptr<Texture2D>> createTexturesFromRenderpass(const Renderpass& renderpass, const VkExtent2D& extent);

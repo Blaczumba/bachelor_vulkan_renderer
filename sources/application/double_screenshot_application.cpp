@@ -39,7 +39,6 @@ SingleApp::SingleApp()
         registry.addComponent(e, std::make_unique<Velocity>(-2.0f, -2.0f));
     }
 
-    auto start = std::chrono::high_resolution_clock::now();
     for (Entity e : registry.getEntities()) {
         auto tpl = registry.getComponents<Position, Velocity>(e);
         std::get<Position&>(tpl).x += 20.0f;
@@ -50,15 +49,12 @@ SingleApp::SingleApp()
         b.dx += 20.0f;
     }
 
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
-
     registry.updateComponents<Position, Velocity>([](Position& pos, Velocity& vel) { pos.x += 4.0f; pos.y -= 20.0f; vel.dx += 10.0f, vel.dy -= 10.0f; });
 
     MovementSystem movementSystem(registry);
     movementSystem.update(2.0f);
 
-    _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
+    _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.bin");
 
     createDescriptorSets();
     loadObjects();
@@ -203,23 +199,23 @@ void SingleApp::createPresentResources() {
     );
     _renderPass->create();
 
-    _framebufferTextures = createTexturesFromRenderpass(*_logicalDevice, *_renderPass, extent);
+    _framebufferTextures = createTexturesFromRenderpass(*_renderPass, extent);
     size_t swapchainImagesCount = _swapchain->getImages().size();
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
         std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].view; });
-        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_logicalDevice, *_renderPass, extent, imageViews));
+        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
     }
     
     GraphicsPipelineParameters parameters;
     parameters.msaaSamples = msaaSamples;
-    _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_renderPass);
+    _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass);
     _graphicsPipeline->setShaderProgram(_pbrShaderProgram.get());
     _graphicsPipeline->setPipelineParameters(parameters);
     _graphicsPipeline->create();
 
     parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
-    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_renderPass);
+    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_renderPass);
     _graphicsPipelineSkybox->setShaderProgram(_skyboxShaderProgram.get());
     _graphicsPipelineSkybox->setPipelineParameters(parameters);
     _graphicsPipelineSkybox->create();
@@ -243,12 +239,12 @@ void SingleApp::createShadowResources() {
     _shadowRenderPass->create();
 
     std::vector<VkImageView> imageViews = { _shadowMap->getImage().view };
-    _shadowFramebuffer = std::make_unique<Framebuffer>(*_logicalDevice, *_shadowRenderPass, extent, imageViews);
+    _shadowFramebuffer = std::make_unique<Framebuffer>(*_shadowRenderPass, extent, imageViews);
 
     GraphicsPipelineParameters parameters;
     parameters.depthBiasConstantFactor = 0.7f;
     parameters.depthBiasSlopeFactor = 2.0f;
-    _shadowPipeline = std::make_unique<GraphicsPipeline>(*_logicalDevice, *_shadowRenderPass);
+    _shadowPipeline = std::make_unique<GraphicsPipeline>(*_shadowRenderPass);
     _shadowPipeline->setShaderProgram(_shadowShaderProgram.get());
     _shadowPipeline->setPipelineParameters(parameters);
     _shadowPipeline->create();
@@ -291,7 +287,6 @@ void SingleApp::run() {
 }
 
 void SingleApp::draw() {
-    auto start = std::chrono::high_resolution_clock::now();
     VkDevice device = _logicalDevice->getVkDevice();
 
     vkWaitForFences(device, 1, &_inFlightFences[_currentFrame], VK_TRUE, UINT64_MAX);
@@ -310,8 +305,6 @@ void SingleApp::draw() {
     updateUniformBuffer(_currentFrame);
 
     vkResetFences(device, 1, &_inFlightFences[_currentFrame]);
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
 
     //_primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
     //for(int i = 0; i < MAX_THREADS_IN_POOL; i++)
@@ -535,11 +528,14 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
 
     const std::vector<const OctreeNode*> lst = { root };
     const auto& planes = extractFrustumPlanes(PV);
+    auto start = std::chrono::high_resolution_clock::now();
     if (root && root->getVolume().intersectsFrustum(planes)) {
         _threadPool->getThread(0)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[0], lst, planes ); });
     }
     //_threadPool->getThread(1)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[1], down); });
     _threadPool->wait();
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     
     // std::cout << counter << ' ' << _objects.size() << std::endl;
     // counter = 0;
@@ -645,11 +641,11 @@ void SingleApp::recreateSwapChain() {
     _swapchain->recrete();
 
     _framebuffers.clear();
-    _framebufferTextures = std::move(createTexturesFromRenderpass(*_logicalDevice, *_renderPass, extent));
+    _framebufferTextures = std::move(createTexturesFromRenderpass(*_renderPass, extent));
     size_t swapchainImagesCount = _swapchain->getImages().size();
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
         std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].view; });
-        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_logicalDevice, *_renderPass, extent, imageViews));
+        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
     }
 }

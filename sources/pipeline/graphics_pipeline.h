@@ -2,6 +2,7 @@
 
 #include "pipeline.h"
 #include "render_pass/render_pass.h"
+#include "logical_device/logical_device.h"
 #include "primitives/vk_primitives.h"
 #include "memory_objects/uniform_buffer/push_constants.h"
 #include "shader/shader.h"
@@ -28,7 +29,7 @@ class GraphicsPipeline : public Pipeline {
     GraphicsShaderProgram* _shaderProgram = nullptr;
 
 public:
-	GraphicsPipeline(const LogicalDevice& logicalDevice, const Renderpass& renderpass);
+	GraphicsPipeline(const Renderpass& renderpass);
 	~GraphicsPipeline();
     void create();
     void cleanup();

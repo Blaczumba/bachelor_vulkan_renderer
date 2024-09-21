@@ -4,11 +4,11 @@
 
 #include <stdexcept>
 
-ComputePipeline::ComputePipeline(std::shared_ptr<LogicalDevice> logicalDevice, VkDescriptorSetLayout descriptorSetLayout, const std::string& computeShader)
-    : Pipeline(*logicalDevice, VK_PIPELINE_BIND_POINT_COMPUTE) {
+ComputePipeline::ComputePipeline(const LogicalDevice& logicalDevice, VkDescriptorSetLayout descriptorSetLayout, const std::string& computeShader)
+    : Pipeline(VK_PIPELINE_BIND_POINT_COMPUTE), _logicalDevice(logicalDevice) {
     const VkDevice device = _logicalDevice.getVkDevice();
     
-    const Shader shader(*logicalDevice, "", VK_SHADER_STAGE_COMPUTE_BIT);
+    const Shader shader(logicalDevice, "", VK_SHADER_STAGE_COMPUTE_BIT);
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

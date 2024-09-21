@@ -1,7 +1,5 @@
 #include "render_pass.h"
 
-#include "logical_device/logical_device.h"
-
 #include <stdexcept>
 #include <iostream>
 
@@ -69,4 +67,8 @@ void Renderpass::addDependency(uint32_t srcSubpassIndex, uint32_t dstSubpassInde
     dependency.dstAccessMask = dstAccessMask;
 
     _subpassDepencies.push_back(dependency);
+}
+
+const LogicalDevice& Renderpass::getLogicalDevice() const {
+    return _logicalDevice;
 }
