@@ -9,26 +9,13 @@
 Texture2DDepth::Texture2DDepth(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
 	: Texture2D(samples), _logicalDevice(logicalDevice) {
 
-    VkImage image;
-    VkDeviceMemory memory;
-    VkImageAspectFlags aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
-    uint32_t mipLevels = 1u;
-
-    _logicalDevice.createImage(extent.width, extent.height, mipLevels, samples, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+    setParameters(format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_ASPECT_DEPTH_BIT, 1, 1, extent.width, extent.height);
+    _logicalDevice.createImage(_width, _height, _mipLevels, _sampleCount, _format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
     
     if (hasStencil(format))
-        aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        _aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-    _view = _logicalDevice.createImageView(image, format, aspect, mipLevels);
-
-    _image      = image;
-    _memory     = memory;
-    _format     = format;
-    _aspect     = aspect;
-    _width      = extent.width;
-    _height     = extent.height;
-    _depth      = 1u;
-    _mipLevels  = mipLevels;
+    _view = _logicalDevice.createImageView(_image, _format, _aspect, _mipLevels);
 
     {
         SingleTimeCommandBuffer handle(_logicalDevice);

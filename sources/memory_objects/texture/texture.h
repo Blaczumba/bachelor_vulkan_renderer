@@ -26,5 +26,6 @@ struct Texture {
 	void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
 
 protected:
+	void setParameters(VkFormat format, VkImageLayout layout, VkImageAspectFlags aspect, uint32_t mipLevels = 1u, uint32_t layerCount = 1u, uint32_t width = 1u, uint32_t height = 1u, uint32_t depth = 1u);
 	void generateMipmaps(VkCommandBuffer commandBuffer);
 };

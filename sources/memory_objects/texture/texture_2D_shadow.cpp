@@ -8,22 +8,8 @@ Texture2DShadow::Texture2DShadow(const LogicalDevice& logicalDevice, uint32_t wi
 	: Texture2D(VK_SAMPLE_COUNT_1_BIT), TextureSampler(1.0f), _logicalDevice(logicalDevice) {
     const VkDevice device = _logicalDevice.getVkDevice();
 
-    VkImage image;
-    VkDeviceMemory memory;
-    VkImageAspectFlags aspect   = VK_IMAGE_ASPECT_DEPTH_BIT;
-    uint32_t mipLevels          = 1u;
-    VkSampleCountFlags samples  = VK_SAMPLE_COUNT_1_BIT;
-
-    _logicalDevice.createImage(width, height, mipLevels, _sampleCount, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
-    
-    _image = image;
-    _memory = memory;
-    _format = depthFormat;
-    _aspect = aspect;
-    _width = width;
-    _height = height;
-    _depth = 1u;
-    _mipLevels = mipLevels;
+    setParameters(depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_ASPECT_DEPTH_BIT, 1u, 1u, width, height);
+    _logicalDevice.createImage(_width, _height, _mipLevels, _sampleCount, _format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
     
     {
         SingleTimeCommandBuffer handle(_logicalDevice);
@@ -31,7 +17,7 @@ Texture2DShadow::Texture2DShadow(const LogicalDevice& logicalDevice, uint32_t wi
         transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
-    _view = _logicalDevice.createImageView(image, depthFormat, aspect, mipLevels);
+    _view = _logicalDevice.createImageView(_image, _format, _aspect, _mipLevels);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

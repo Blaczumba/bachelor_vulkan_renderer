@@ -18,13 +18,11 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::st
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(texturePath.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
-    VkImage image;
-    VkDeviceMemory memory;
-    VkImageAspectFlags aspect   = VK_IMAGE_ASPECT_COLOR_BIT;
     uint32_t width              = static_cast<uint32_t>(texWidth);
     uint32_t height             = static_cast<uint32_t>(texHeight);
     uint32_t mipLevels          = std::floor(std::log2(std::max(width, height))) + 1u;
-    VkSampleCountFlags samples  = VK_SAMPLE_COUNT_1_BIT;
+
+    setParameters(format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_ASPECT_COLOR_BIT, std::floor(std::log2(std::max(width, height))) + 1u, 1u, width, height);
 
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
@@ -43,29 +41,20 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::st
 
     stbi_image_free(pixels);
 
-    _logicalDevice.createImage(width, height, mipLevels, _sampleCount, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
-    
-    _image = image;
-    _memory = memory;
-    _format = format;
-    _aspect = aspect;
-    _width = width;
-    _height = height;
-    _depth = 1u;
-    _mipLevels = mipLevels;
+    _logicalDevice.createImage(_width, _height, _mipLevels, _sampleCount, _format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
     
     {
         SingleTimeCommandBuffer handle(_logicalDevice);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        copyBufferToImage(commandBuffer, stagingBuffer, image, width, height);
+        copyBufferToImage(commandBuffer, stagingBuffer, _image, _width, _height);
         generateMipmaps(commandBuffer);
     }
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-    _view = _logicalDevice.createImageView(image, format, aspect, mipLevels);
+    _view = _logicalDevice.createImageView(_image, _format, _aspect, _mipLevels);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
