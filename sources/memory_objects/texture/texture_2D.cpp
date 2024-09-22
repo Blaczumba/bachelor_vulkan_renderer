@@ -7,10 +7,11 @@
 #include <iostream>
 #include <stdexcept>
 
-Texture2D::Texture2D(const LogicalDevice& logicalDevice)
-    : Texture(logicalDevice) {
+Texture2D::Texture2D(VkSampleCountFlagBits sampleCount)
+    : _sampleCount(sampleCount) {
+
 }
 
 VkExtent2D Texture2D::getVkExtent2D() const {
-    return { _image.extent.width, _image.extent.height };
+    return { _width, _height };
 }

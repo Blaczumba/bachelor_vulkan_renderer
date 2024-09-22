@@ -1,26 +1,31 @@
 #include "texture_2D_color.h"
 #include "logical_device/logical_device.h"
-#include "memory_objects/image.h"
 #include "command_buffer/command_buffer.h"
 
 #include <stdexcept>
 
 Texture2DColor::Texture2DColor(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
-    : Texture2D(logicalDevice) {
+    : Texture2D(samples), _logicalDevice(logicalDevice) {
 
-    _image.aspect   = VK_IMAGE_ASPECT_COLOR_BIT;
-    _image.format   = format;
-    _image.extent   = { extent.width, extent.height, 1 };
-  
-    _layerCount     = 1;
-    _mipLevels      = 1;
-    _sampleCount    = samples;
+    VkImage image;
+    VkDeviceMemory memory;
+    VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    uint32_t mipLevels = 1u;
 
-    _logicalDevice.createImage(extent.width, extent.height, _mipLevels, _sampleCount, _image.format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image.image, _image.memory);
-    _image.view     = _logicalDevice.createImageView(_image.image, _image.format, _image.aspect, _mipLevels);
+    _logicalDevice.createImage(extent.width, extent.height, mipLevels, samples, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+    _view = _logicalDevice.createImageView(image, format, aspect, mipLevels);
+    
+    _image = image;
+    _memory = memory;
+    _format = format;
+    _aspect = aspect;
+    _width = extent.width;
+    _height = extent.height;
+    _depth = 1u;
+    _mipLevels = mipLevels;
 
     {
-        SingleTimeCommandBuffer handle(_logicalDevice);
+        SingleTimeCommandBuffer handle(logicalDevice);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
         transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -30,7 +35,7 @@ Texture2DColor::Texture2DColor(const LogicalDevice& logicalDevice, VkFormat form
 Texture2DColor::~Texture2DColor() {
     const VkDevice device = _logicalDevice.getVkDevice();
 
-    vkDestroyImageView(device, _image.view, nullptr);
-    vkDestroyImage(device, _image.image, nullptr);
-    vkFreeMemory(device, _image.memory, nullptr);
+    vkDestroyImageView(device, _view, nullptr);
+    vkDestroyImage(device, _image, nullptr);
+    vkFreeMemory(device, _memory, nullptr);
 }

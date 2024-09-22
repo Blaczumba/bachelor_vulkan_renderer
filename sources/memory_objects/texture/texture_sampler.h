@@ -1,20 +1,17 @@
 #pragma once
 
-#include "logical_device/logical_device.h"
+#include "texture.h"
 
 #include <vulkan/vulkan.h>
 
-class TextureSampler {
+class TextureSampler : virtual public Texture {
 protected:
-	VkSampler _sampler;
+    VkSampler _sampler          = VK_NULL_HANDLE;
+    float _samplerAnisotropy    = 1.0f;
 
 public:
-	virtual ~TextureSampler() {
-		if (_sampler != VK_NULL_HANDLE)
-			vkDestroySampler(logicalDevice, _sampler, nullptr);
-	}
+    TextureSampler(float samplerAnisotropy);
+    virtual ~TextureSampler() = default;
 
-	const VkSampler getVkSampler() const {
-		return _sampler;
-	}
+    const VkSampler getVkSampler() const;
 };

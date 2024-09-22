@@ -1,16 +1,11 @@
-#include "logical_device/logical_device.h"
-
 #include "texture.h"
 
-Texture::Texture(const LogicalDevice& logicalDevice)
-	: _logicalDevice(logicalDevice) {
-}
-
-const Image& Texture::getImage() const {
-	return _image;
-}
-
 void Texture::transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) {
-	transitionImageLayout(commandBuffer, _image.image, _image.layout, newLayout, _image.aspect, _mipLevels, _layerCount);
-	_image.layout = newLayout;
+	transitionImageLayout(commandBuffer, _image, _layout, newLayout, _aspect, _mipLevels, _layerCount);
+	_layout = newLayout;
+}
+
+void Texture::generateMipmaps(VkCommandBuffer commandBuffer) {
+    _layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    ::generateMipmaps(commandBuffer, _image, _format, _layout, _width, _height, _mipLevels, _layerCount);
 }

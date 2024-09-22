@@ -8,14 +8,14 @@ class Surface;
 class Window;
 class LogicalDevice;
 class PhysicalDevice;
-struct Image;
+struct Texture;
 
 class Swapchain {
 	const Surface& _surface;
 	const Window& _window;
 	const LogicalDevice& _logicalDevice;
 
-	std::vector<Image> _images;
+	std::vector<Texture> _images;
 
 	VkSwapchainKHR _swapchain;
 
@@ -27,7 +27,7 @@ public:
 	const VkFormat getVkFormat() const;
 	VkExtent2D getExtent() const;
 
-	const std::vector<Image>& getImages() const;
+	const std::vector<Texture>& getImages() const;
 
 	void cleanup();
 	void create();

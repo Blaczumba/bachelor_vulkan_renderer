@@ -4,7 +4,7 @@
 #include "logical_device/logical_device.h"
 #include "surface/surface.h"
 #include "window/window/window.h"
-#include "memory_objects/image.h"
+#include "memory_objects/texture/texture.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -23,15 +23,14 @@ const VkSwapchainKHR Swapchain::getVkSwapchain() const {
 }
 
 VkExtent2D Swapchain::getExtent() const {
-    const VkExtent3D& extent = _images.at(0).extent;
-    return { extent.width, extent.height };
+    return { _images.at(0)._width, _images.at(0)._height };
 }
 
 const VkFormat Swapchain::getVkFormat() const {
-    return _images.at(0).format;
+    return _images.at(0)._format;
 }
 
-const std::vector<Image>& Swapchain::getImages() const {
+const std::vector<Texture>& Swapchain::getImages() const {
     return _images;
 }
 
@@ -39,7 +38,7 @@ void Swapchain::cleanup() {
     VkDevice device = _logicalDevice.getVkDevice();
 
     for (auto image : _images) {
-        vkDestroyImageView(device, image.view, nullptr);
+        vkDestroyImageView(device, image._view, nullptr);
     }
 
     vkDestroySwapchainKHR(device, _swapchain, nullptr);
@@ -101,15 +100,15 @@ void Swapchain::create() {
     _images.resize(imageCount);
 
     for (size_t i = 0; i < imageCount; i++) {
-        _images[i] = {
-            .image  = images[i],
-            .memory = VK_NULL_HANDLE,
-            .view   = _logicalDevice.createImageView(images[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1),
-            .format = surfaceFormat.format,
-            .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .extent = { extent.width, extent.height, 1 },
-            .aspect = VK_IMAGE_ASPECT_COLOR_BIT
-        };
+        _images[i]._image = images[i],
+        _images[i]._memory = VK_NULL_HANDLE;
+        _images[i]._view = _logicalDevice.createImageView(images[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+        _images[i]._format = surfaceFormat.format;
+        _images[i]._layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        _images[i]._width = extent.width;
+        _images[i]._height = extent.height;
+        _images[i]._depth = 1u;
+        _images[i]._aspect = VK_IMAGE_ASPECT_COLOR_BIT;
     }
 }
 

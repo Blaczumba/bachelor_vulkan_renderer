@@ -1,6 +1,5 @@
 #include "texture_2D_image.h"
 #include "logical_device/logical_device.h"
-#include "memory_objects/image.h"
 #include "command_buffer/command_buffer.h"
 
 #include <vulkan/vulkan.h>
@@ -12,20 +11,20 @@
 #include <stdexcept>
 
 Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::string& texturePath, VkFormat format, float samplerAnisotropy)
-	: Texture2DSampler(logicalDevice, samplerAnisotropy), _texturePath(texturePath) {
+	: Texture2D(VK_SAMPLE_COUNT_1_BIT), TextureSampler(samplerAnisotropy), _logicalDevice(logicalDevice), _texturePath(texturePath) {
 
     const VkDevice device = _logicalDevice.getVkDevice();
 
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(texturePath.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
-    _image.aspect   = VK_IMAGE_ASPECT_COLOR_BIT;
-    _image.format   = format;
-    _image.extent   = { static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1 };
-
-    _layerCount     = 1;
-    _mipLevels      = std::floor(std::log2(std::max(_image.extent.width, _image.extent.height))) + 1;
-    _sampleCount    = VK_SAMPLE_COUNT_1_BIT;
+    VkImage image;
+    VkDeviceMemory memory;
+    VkImageAspectFlags aspect   = VK_IMAGE_ASPECT_COLOR_BIT;
+    uint32_t width              = static_cast<uint32_t>(texWidth);
+    uint32_t height             = static_cast<uint32_t>(texHeight);
+    uint32_t mipLevels          = std::floor(std::log2(std::max(width, height))) + 1u;
+    VkSampleCountFlags samples  = VK_SAMPLE_COUNT_1_BIT;
 
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
@@ -44,19 +43,29 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::st
 
     stbi_image_free(pixels);
 
-    _logicalDevice.createImage(_image.extent.width, _image.extent.height, _mipLevels, _sampleCount, _image.format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image.image, _image.memory, _layerCount);
+    _logicalDevice.createImage(width, height, mipLevels, _sampleCount, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+    
+    _image = image;
+    _memory = memory;
+    _format = format;
+    _aspect = aspect;
+    _width = width;
+    _height = height;
+    _depth = 1u;
+    _mipLevels = mipLevels;
+    
     {
         SingleTimeCommandBuffer handle(_logicalDevice);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        copyBufferToImage(commandBuffer, stagingBuffer, _image.image, _image.extent.width, _image.extent.height);
-        generateMipmaps(commandBuffer, _image.image, _image.format, _image.extent.width, _image.extent.height, _mipLevels);
+        copyBufferToImage(commandBuffer, stagingBuffer, image, width, height);
+        generateMipmaps(commandBuffer);
     }
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-    _image.view = _logicalDevice.createImageView(_image.image, _image.format, _image.aspect, _mipLevels, _layerCount);
+    _view = _logicalDevice.createImageView(image, format, aspect, mipLevels);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -74,10 +83,19 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::st
     samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = static_cast<float>(_mipLevels);
+    samplerInfo.maxLod = static_cast<float>(mipLevels);
     samplerInfo.mipLodBias = 0.0f;
 
     if (vkCreateSampler(device, &samplerInfo, nullptr, &_sampler) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture sampler!");
     }
+}
+
+Texture2DImage::~Texture2DImage() {
+    const VkDevice device = _logicalDevice.getVkDevice();
+
+    vkDestroySampler(device, _sampler, nullptr);
+    vkDestroyImageView(device, _view, nullptr);
+    vkDestroyImage(device, _image, nullptr);
+    vkFreeMemory(device, _memory, nullptr);
 }

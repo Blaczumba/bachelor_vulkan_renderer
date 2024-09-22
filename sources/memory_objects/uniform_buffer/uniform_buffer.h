@@ -1,7 +1,7 @@
 #pragma once
 
 #include <logical_device/logical_device.h>
-#include <memory_objects/texture/texture_2D_sampler.h>
+#include <memory_objects/texture/texture_sampler.h>
 
 #include <vulkan/vulkan.h>
 
@@ -28,22 +28,20 @@ class UniformBufferTexture : public UniformBuffer {
 	VkDescriptorImageInfo _imageInfo{};
 
 protected:
-	const Texture2DSampler& _texture;
+	const TextureSampler& _texture;
 
 public:
-	UniformBufferTexture(const Texture2DSampler& texture) 
+	UniformBufferTexture(const TextureSampler& texture) 
 		: UniformBuffer(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER), _texture(texture) {
-		const Image& image = _texture.getImage();
-
 		_imageInfo.sampler = _texture.getVkSampler();
-		_imageInfo.imageView = image.view;
-		_imageInfo.imageLayout = image.layout;
+		_imageInfo.imageView = _texture._view;
+		_imageInfo.imageLayout = _texture._layout;
 
 		_size = 0; // TODO set exact size
 	}
 
 	virtual ~UniformBufferTexture() = default;
-	const Texture2DSampler* getTexturePtr() const { return &_texture; }
+	const TextureSampler* getTexturePtr() const { return &_texture; }
 
 	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override {
 		VkWriteDescriptorSet descriptorWrite{};
