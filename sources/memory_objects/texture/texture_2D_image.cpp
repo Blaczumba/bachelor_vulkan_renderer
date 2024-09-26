@@ -11,18 +11,26 @@
 #include <stdexcept>
 
 Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::string& texturePath, VkFormat format, float samplerAnisotropy)
-	: Texture2D(VK_SAMPLE_COUNT_1_BIT), TextureSampler(samplerAnisotropy), _logicalDevice(logicalDevice), _texturePath(texturePath) {
+	: Texture(
+        Image{ 
+            .format = format, .aspect = VK_IMAGE_ASPECT_COLOR_BIT, 
+            .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
+        },
+        Sampler{ 
+            .maxAnisotropy = samplerAnisotropy
+        }
+    ),
+    _logicalDevice(logicalDevice), _texturePath(texturePath) {
 
     const VkDevice device = _logicalDevice.getVkDevice();
 
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(texturePath.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
-    uint32_t width              = static_cast<uint32_t>(texWidth);
-    uint32_t height             = static_cast<uint32_t>(texHeight);
-    uint32_t mipLevels          = std::floor(std::log2(std::max(width, height))) + 1u;
-
-    setParameters(format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_ASPECT_COLOR_BIT, std::floor(std::log2(std::max(width, height))) + 1u, 1u, width, height);
+    _image.width              = static_cast<uint32_t>(texWidth);
+    _image.height             = static_cast<uint32_t>(texHeight);
+    _image.mipLevels          = std::floor(std::log2(std::max(_image.width, _image.height))) + 1u;
+    _sampler.maxLod           = static_cast<float>(_image.mipLevels);
 
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
@@ -41,41 +49,42 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::st
 
     stbi_image_free(pixels);
 
-    _logicalDevice.createImage(_width, _height, _mipLevels, _sampleCount, _format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
+    _logicalDevice.createImage(_image.width, _image.height, _image.mipLevels, _image.numSamples, _image.format, _image.tiling, _image.usage, _image.properties, _image.image, _image.memory);
     
     {
         SingleTimeCommandBuffer handle(_logicalDevice);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        copyBufferToImage(commandBuffer, stagingBuffer, _image, _width, _height);
+        copyBufferToImage(commandBuffer, stagingBuffer, _image.image, _image.width, _image.height);
         generateMipmaps(commandBuffer);
     }
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-    _view = _logicalDevice.createImageView(_image, _format, _aspect, _mipLevels);
+    _image.view = _logicalDevice.createImageView(_image.image, _image.format, _image.aspect, _image.mipLevels);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.magFilter = VK_FILTER_LINEAR;
-    samplerInfo.minFilter = VK_FILTER_LINEAR;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    if(_samplerAnisotropy > 1.0f)
+    samplerInfo.magFilter = _sampler.magFilter;
+    samplerInfo.minFilter = _sampler.minFilter;
+    samplerInfo.addressModeU = _sampler.addressModeU;
+    samplerInfo.addressModeV = _sampler.addressModeV;
+    samplerInfo.addressModeW = _sampler.addressModeW;
+    if (_sampler.maxAnisotropy) {
         samplerInfo.anisotropyEnable = VK_TRUE;
-    samplerInfo.maxAnisotropy = _samplerAnisotropy;
-    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+        samplerInfo.maxAnisotropy = _sampler.maxAnisotropy.value();
+    }
+    samplerInfo.borderColor = _sampler.borderColor;
+    samplerInfo.unnormalizedCoordinates = _sampler.unnormalizedCoordinates;
     samplerInfo.compareEnable = VK_FALSE;
     samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = static_cast<float>(mipLevels);
-    samplerInfo.mipLodBias = 0.0f;
+    samplerInfo.mipmapMode = _sampler.mipmapMode;
+    samplerInfo.minLod = _sampler.minLod;
+    samplerInfo.maxLod = _sampler.maxLod;
+    samplerInfo.mipLodBias = _sampler.mipLodBias;
 
-    if (vkCreateSampler(device, &samplerInfo, nullptr, &_sampler) != VK_SUCCESS) {
+    if (vkCreateSampler(device, &samplerInfo, nullptr, &_sampler.sampler) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture sampler!");
     }
 }
@@ -83,8 +92,8 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::st
 Texture2DImage::~Texture2DImage() {
     const VkDevice device = _logicalDevice.getVkDevice();
 
-    vkDestroySampler(device, _sampler, nullptr);
-    vkDestroyImageView(device, _view, nullptr);
-    vkDestroyImage(device, _image, nullptr);
-    vkFreeMemory(device, _memory, nullptr);
+    vkDestroySampler(device, _sampler.sampler, nullptr);
+    vkDestroyImageView(device, _image.view, nullptr);
+    vkDestroyImage(device, _image.image, nullptr);
+    vkFreeMemory(device, _image.memory, nullptr);
 }

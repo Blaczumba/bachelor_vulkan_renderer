@@ -7,15 +7,24 @@
 #include <stdexcept>
 
 Texture2DDepth::Texture2DDepth(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
-	: Texture2D(samples), _logicalDevice(logicalDevice) {
+	: Texture(
+        Image{ 
+            .format = format, 
+            .width = extent.width, 
+            .height = extent.height, 
+            .aspect = VK_IMAGE_ASPECT_DEPTH_BIT, 
+            .numSamples = samples, 
+            .usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT 
+        }
+    ),
+    _logicalDevice(logicalDevice) {
 
-    setParameters(format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_ASPECT_DEPTH_BIT, 1, 1, extent.width, extent.height);
-    _logicalDevice.createImage(_width, _height, _mipLevels, _sampleCount, _format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image, _memory);
+    _logicalDevice.createImage(_image.width, _image.height, _image.mipLevels, _image.numSamples, _image.format, _image.tiling, _image.usage, _image.properties, _image.image, _image.memory);
     
     if (hasStencil(format))
-        _aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        _image.aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-    _view = _logicalDevice.createImageView(_image, _format, _aspect, _mipLevels);
+    _image.view = _logicalDevice.createImageView(_image.image, _image.format, _image.aspect, _image.mipLevels);
 
     {
         SingleTimeCommandBuffer handle(_logicalDevice);
@@ -28,9 +37,9 @@ Texture2DDepth::Texture2DDepth(const LogicalDevice& logicalDevice, VkFormat form
 Texture2DDepth::~Texture2DDepth() {
     const VkDevice device = _logicalDevice.getVkDevice();
 
-    vkDestroyImageView(device, _view, nullptr);
-    vkDestroyImage(device, _image, nullptr);
-    vkFreeMemory(device, _memory, nullptr);
+    vkDestroyImageView(device, _image.view, nullptr);
+    vkDestroyImage(device, _image.image, nullptr);
+    vkFreeMemory(device, _image.memory, nullptr);
 }
 
 bool Texture2DDepth::hasStencil(VkFormat format) const {

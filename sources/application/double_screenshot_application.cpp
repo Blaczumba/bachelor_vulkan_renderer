@@ -12,7 +12,6 @@
 
 SingleApp::SingleApp()
     : ApplicationBase() {
-
     Registry registry(1000005);
 
     // Create entities

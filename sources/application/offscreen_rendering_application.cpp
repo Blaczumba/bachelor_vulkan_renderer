@@ -12,7 +12,8 @@
 
 OffscreenRendering::OffscreenRendering()
     : ApplicationBase() {
-
+    TextureFactory factory;
+    auto tx = factory.createTexture<Texture2DImage>(*_logicalDevice, TEXTURES_PATH "brickwall.jpg", VK_FORMAT_R8G8B8A8_SRGB, 16.0f);
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
     
     createDescriptorSets();
@@ -166,7 +167,7 @@ void OffscreenRendering::createPresentResources() {
     size_t swapchainImagesCount = _swapchain->getImages().size();
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
-        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->_view : _swapchain->getImages()[i]._view; });
+        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
     }
 
@@ -206,7 +207,7 @@ void OffscreenRendering::createOffscreenResources() {
     size_t swapchainImagesCount = _swapchain->getImages().size();
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
-        std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture->_view; });
+        std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture->getImage().view; });
         _lowResFramebuffers.emplace_back(std::make_unique<Framebuffer>(*_lowResRenderPass, lowResExtent, imageViews));
     }
 
@@ -241,7 +242,7 @@ void OffscreenRendering::createShadowResources() {
     _shadowRenderPass->addSubpass(subpass);
     _shadowRenderPass->create();
 
-    std::vector<VkImageView> imageViews = { _shadowMap->_view };
+    std::vector<VkImageView> imageViews = { _shadowMap->getImage().view };
     _shadowFramebuffer = std::make_unique<Framebuffer>(*_shadowRenderPass, extent, imageViews);
 
     GraphicsPipelineParameters parameters;
@@ -572,7 +573,7 @@ void OffscreenRendering::recordShadowCommandBuffer(VkCommandBuffer commandBuffer
     //    throw std::runtime_error("failed to begin recording command buffer!");
     //}
 
-    VkExtent2D extent = { _shadowMap->_width, _shadowMap->_height };
+    VkExtent2D extent = { _shadowMap->getImage().width, _shadowMap->getImage().height };
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -640,7 +641,7 @@ void OffscreenRendering::recreateSwapChain() {
     size_t swapchainImagesCount = _swapchain->getImages().size();
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
-        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->_view : _swapchain->getImages()[i]._view; });
+        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
     }
 
@@ -649,7 +650,7 @@ void OffscreenRendering::recreateSwapChain() {
     _lowResFramebufferTextures = std::move(createTexturesFromRenderpass(*_lowResRenderPass, extent));
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
-        std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->_view : _swapchain->getImages()[i]._view; });
+        std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
         _lowResFramebuffers.emplace_back(std::make_unique<Framebuffer>(*_lowResRenderPass, extent, imageViews));
     }
 }

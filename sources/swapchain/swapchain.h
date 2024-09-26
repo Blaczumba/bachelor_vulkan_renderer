@@ -1,5 +1,7 @@
 #pragma once
 
+#include "memory_objects/texture/texture.h"
+
 #include <vulkan/vulkan.h>
 
 #include <vector>
@@ -8,7 +10,7 @@ class Surface;
 class Window;
 class LogicalDevice;
 class PhysicalDevice;
-struct Texture;
+class Texture;
 
 class Swapchain {
 	const Surface& _surface;

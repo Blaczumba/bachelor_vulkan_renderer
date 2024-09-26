@@ -9,15 +9,11 @@
 #include <memory_objects/index_buffer.h>
 #include <memory_objects/uniform_buffer/uniform_buffer.h>
 #include <pipeline/graphics_pipeline.h>
-#include <memory_objects/texture/texture_2D.h>
 #include <model_loader/obj_loader/obj_loader.h>
 #include <descriptor_set/descriptor_set.h>
 #include <camera/fps_camera.h>
 #include <window/callback_manager/fps_callback_manager.h>
-#include <memory_objects/texture/texture_2D_depth.h>
-#include <memory_objects/texture/texture_2D_color.h>
-#include <memory_objects/texture/texture_2D_image.h>
-#include <memory_objects/texture/texture_2D_shadow.h>
+#include <memory_objects/texture/texture_factory.h>
 #include <memory_objects/texture/texture_cubemap.h>
 #include <memory_objects/uniform_buffer/push_constants.h>
 #include <descriptor_set/descriptor_set_layout.h>
@@ -40,13 +36,13 @@ class OffscreenRendering : public ApplicationBase {
     std::unique_ptr<Octree> _octree;
 
     std::shared_ptr<Renderpass> _renderPass;
-    std::vector<std::unique_ptr<Texture2D>> _framebufferTextures;
+    std::vector<std::unique_ptr<Texture>> _framebufferTextures;
     std::vector<std::unique_ptr<Framebuffer>> _framebuffers;
     std::unique_ptr<GraphicsPipeline> _graphicsPipeline;
     std::unique_ptr<GraphicsPipeline> _graphicsPipelineSkybox;
 
     std::shared_ptr<Renderpass> _lowResRenderPass;
-    std::vector<std::unique_ptr<Texture2D>> _lowResFramebufferTextures;
+    std::vector<std::unique_ptr<Texture>> _lowResFramebufferTextures;
     std::vector<std::unique_ptr<Framebuffer>> _lowResFramebuffers;
     std::unique_ptr<GraphicsPipeline> _lowResGraphicsPipeline;
     std::unique_ptr<GraphicsPipeline> _lowResGraphicsPipelineSkybox;

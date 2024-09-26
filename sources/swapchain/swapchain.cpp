@@ -7,6 +7,7 @@
 #include "memory_objects/texture/texture.h"
 
 #include <algorithm>
+#include <iterator>
 #include <stdexcept>
 
 Swapchain::Swapchain(const Surface& surface, const Window& window, const LogicalDevice& logicalDevice)
@@ -23,11 +24,11 @@ const VkSwapchainKHR Swapchain::getVkSwapchain() const {
 }
 
 VkExtent2D Swapchain::getExtent() const {
-    return { _images.at(0)._width, _images.at(0)._height };
+    return { _images.at(0).getImage().width, _images.at(0).getImage().height };
 }
 
 const VkFormat Swapchain::getVkFormat() const {
-    return _images.at(0)._format;
+    return _images.at(0).getImage().format;
 }
 
 const std::vector<Texture>& Swapchain::getImages() const {
@@ -37,8 +38,8 @@ const std::vector<Texture>& Swapchain::getImages() const {
 void Swapchain::cleanup() {
     VkDevice device = _logicalDevice.getVkDevice();
 
-    for (auto image : _images) {
-        vkDestroyImageView(device, image._view, nullptr);
+    for (auto& image : _images) {
+        vkDestroyImageView(device, image.getImage().view, nullptr);
     }
 
     vkDestroySwapchainKHR(device, _swapchain, nullptr);
@@ -97,19 +98,23 @@ void Swapchain::create() {
     images.resize(imageCount);
     vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, images.data());
 
-    _images.resize(imageCount);
+    _images.reserve(imageCount);
 
-    for (size_t i = 0; i < imageCount; i++) {
-        _images[i]._image = images[i],
-        _images[i]._memory = VK_NULL_HANDLE;
-        _images[i]._view = _logicalDevice.createImageView(images[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-        _images[i]._format = surfaceFormat.format;
-        _images[i]._layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        _images[i]._width = extent.width;
-        _images[i]._height = extent.height;
-        _images[i]._depth = 1u;
-        _images[i]._aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-    }
+    std::transform(images.cbegin(), images.cend(), std::back_inserter(_images),
+        [&](VkImage image) {
+            return Texture(
+                Image{
+                    .format = surfaceFormat.format, 
+                    .width = extent.width,
+                    .height = extent.height,
+                    .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                    .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .image = image,
+                    .view = _logicalDevice.createImageView(image, surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1)
+                }
+            );
+        }
+    );
 }
 
 void Swapchain::recrete() {

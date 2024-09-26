@@ -66,7 +66,7 @@ void Screenshot::savingThread() {
 }
 
 void Screenshot::saveImage(const std::string& filePath, const Image& srcImage) {
-	VkDevice device = _logicalDevice.getVkDevice();
+	/*VkDevice device = _logicalDevice.getVkDevice();
 	VkExtent2D extent = { srcImage.extent.width, srcImage.extent.height };
 	Image dstImage;
 	dstImage.extent = { extent.width, extent.height, 1 };
@@ -88,68 +88,68 @@ void Screenshot::saveImage(const std::string& filePath, const Image& srcImage) {
 		SingleTimeCommandBuffer commandBufferGuard(_logicalDevice);
 		VkCommandBuffer copyCmd = commandBufferGuard.getCommandBuffer();
 
-		transitionImageLayout(copyCmd, dstImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-		transitionImageLayout(copyCmd, srcImage.image, srcImage.layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		transitionLayout(copyCmd, dstImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		transitionLayout(copyCmd, srcImage.image, srcImage.layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 		copyImageToImage(copyCmd, srcImage.image, dstImage.image, extent);
 
-		transitionImageLayout(copyCmd, dstImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-		transitionImageLayout(copyCmd, srcImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcImage.layout, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		transitionLayout(copyCmd, dstImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		transitionLayout(copyCmd, srcImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcImage.layout, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	}
 
 	{
 		std::lock_guard<std::mutex> lck(_commandDataMutex);
 		_commandData.push({ srcImage, dstImage, filePath });
 		_commandDataCV.notify_one();
-	}
+	}*/
 }
 
 void Screenshot::savePixels(const CommandData& imagesData) {
-	const auto& dstImage = imagesData.dstImage;
-	const auto& srcImage = imagesData.srcImage;
-	const VkExtent2D extent = { dstImage.extent.width, dstImage.extent.height };
+	//const auto& dstImage = imagesData.dstImage;
+	//const auto& srcImage = imagesData.srcImage;
+	//const VkExtent2D extent = { dstImage.extent.width, dstImage.extent.height };
 
-	VkDevice device = _logicalDevice.getVkDevice();
+	//VkDevice device = _logicalDevice.getVkDevice();
 
-	// Get layout of the image (including row pitch)
-	VkImageSubresource subResource{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
-	VkSubresourceLayout subResourceLayout;
+	//// Get layout of the image (including row pitch)
+	//VkImageSubresource subResource{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
+	//VkSubresourceLayout subResourceLayout;
 
-	vkGetImageSubresourceLayout(device, dstImage.image, &subResource, &subResourceLayout);
+	//vkGetImageSubresourceLayout(device, dstImage.image, &subResource, &subResourceLayout);
 
-	// Map image memory so we can start copying from it
-	const char* data;
-	vkMapMemory(device, dstImage.memory, 0, VK_WHOLE_SIZE, 0, (void**)&data);
-	data += subResourceLayout.offset;
+	//// Map image memory so we can start copying from it
+	//const char* data;
+	//vkMapMemory(device, dstImage.memory, 0, VK_WHOLE_SIZE, 0, (void**)&data);
+	//data += subResourceLayout.offset;
 
-	std::ofstream file(imagesData.filePath, std::ios::out | std::ios::binary);
+	//std::ofstream file(imagesData.filePath, std::ios::out | std::ios::binary);
 
-	// ppm header
-	file << "P6\n" << extent.width << "\n" << extent.height << "\n" << 255 << "\n";
+	//// ppm header
+	//file << "P6\n" << extent.width << "\n" << extent.height << "\n" << 255 << "\n";
 
-	bool colorSwizzle = false;
-	std::vector<VkFormat> formatsBGR = { VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SNORM };
-	colorSwizzle = (std::find_if(formatsBGR.begin(), formatsBGR.end(), [&srcImage](VkFormat givenFormat) { return srcImage.format == givenFormat; }) != formatsBGR.end());
+	//bool colorSwizzle = false;
+	//std::vector<VkFormat> formatsBGR = { VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SNORM };
+	//colorSwizzle = (std::find_if(formatsBGR.begin(), formatsBGR.end(), [&srcImage](VkFormat givenFormat) { return srcImage.format == givenFormat; }) != formatsBGR.end());
 
-	// ppm binary pixel data
-	for (uint32_t y = 0; y < extent.height; y++) {
-		unsigned int* row = (unsigned int*)data;
-		for (uint32_t x = 0; x < extent.width; x++) {
-			if (colorSwizzle) {
-				file.write((char*)row + 2, 1);
-				file.write((char*)row + 1, 1);
-				file.write((char*)row, 1);
-			}
-			else {
-				file.write((char*)row, 3);
-			}
-			row++;
-		}
-		data += subResourceLayout.rowPitch;
-	}
+	//// ppm binary pixel data
+	//for (uint32_t y = 0; y < extent.height; y++) {
+	//	unsigned int* row = (unsigned int*)data;
+	//	for (uint32_t x = 0; x < extent.width; x++) {
+	//		if (colorSwizzle) {
+	//			file.write((char*)row + 2, 1);
+	//			file.write((char*)row + 1, 1);
+	//			file.write((char*)row, 1);
+	//		}
+	//		else {
+	//			file.write((char*)row, 3);
+	//		}
+	//		row++;
+	//	}
+	//	data += subResourceLayout.rowPitch;
+	//}
 
-	vkUnmapMemory(device, dstImage.memory);
-	freeImageResources(dstImage);
+	//vkUnmapMemory(device, dstImage.memory);
+	//freeImageResources(dstImage);
 }
 
 void Screenshot::freeImageResources(const Image& image) const {

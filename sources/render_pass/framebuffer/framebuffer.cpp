@@ -1,7 +1,6 @@
 #include "framebuffer.h"
 #include "logical_device/logical_device.h"
 #include "render_pass/render_pass.h"
-#include "memory_objects/texture/texture_2D.h"
 #include "memory_objects/texture/texture_2D_color.h"
 #include "memory_objects/texture/texture_2D_depth.h"
 

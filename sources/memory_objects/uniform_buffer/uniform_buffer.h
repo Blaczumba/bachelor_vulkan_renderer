@@ -1,7 +1,7 @@
 #pragma once
 
 #include <logical_device/logical_device.h>
-#include <memory_objects/texture/texture_sampler.h>
+#include <memory_objects/texture/texture.h>
 
 #include <vulkan/vulkan.h>
 
@@ -25,23 +25,18 @@ public:
 };
 
 class UniformBufferTexture : public UniformBuffer {
-	VkDescriptorImageInfo _imageInfo{};
-
-protected:
-	const TextureSampler& _texture;
+	const Texture& _texture;
+	const VkDescriptorImageInfo _imageInfo;
 
 public:
-	UniformBufferTexture(const TextureSampler& texture) 
-		: UniformBuffer(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER), _texture(texture) {
-		_imageInfo.sampler = _texture.getVkSampler();
-		_imageInfo.imageView = _texture._view;
-		_imageInfo.imageLayout = _texture._layout;
+	UniformBufferTexture(const Texture& texture) 
+		: UniformBuffer(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER), _texture(texture), 
+		_imageInfo{ texture.getSampler().sampler, texture.getImage().view, texture.getImage().layout } {
 
-		_size = 0; // TODO set exact size
 	}
 
 	virtual ~UniformBufferTexture() = default;
-	const TextureSampler* getTexturePtr() const { return &_texture; }
+	const Texture* getTexturePtr() const { return &_texture; }
 
 	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override {
 		VkWriteDescriptorSet descriptorWrite{};
@@ -139,10 +134,10 @@ class UniformBufferDynamic : public UniformBuffer {
 	void* _uniformBufferMapped;
 
 	VkDescriptorBufferInfo _bufferInfo;
+	const uint32_t _count;
 
 	const LogicalDevice& _logicalDevice;
 
-	uint32_t _count;
 
 public:
 	UniformBufferDynamic(const LogicalDevice& logicalDevice, uint32_t count);

@@ -5,9 +5,9 @@
 
 #include <stdexcept>
 
-std::vector<std::unique_ptr<Texture2D>> createTexturesFromRenderpass(const Renderpass& renderpass, const VkExtent2D& extent) {
+std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const Renderpass& renderpass, const VkExtent2D& extent) {
     const auto& attachments = renderpass.getAttachmentsLayout().getAttachments();
-    std::vector<std::unique_ptr<Texture2D>> framebufferTextures;
+    std::vector<std::unique_ptr<Texture>> framebufferTextures;
     framebufferTextures.reserve(attachments.size());
 
     const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();

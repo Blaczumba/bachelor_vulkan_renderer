@@ -1,13 +1,12 @@
 #pragma once
 
-#include "texture_2D.h"
-#include "texture_sampler.h"
+#include "texture.h"
 
 #include <string>
 
 class LogicalDevice;
 
-class TextureCubemap final : public Texture2D, public TextureSampler {
+class TextureCubemap final : public Texture {
 	std::string _filePath;
 
 	const LogicalDevice& _logicalDevice;

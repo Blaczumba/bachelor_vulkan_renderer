@@ -1,10 +1,10 @@
 #pragma once
 
-#include "texture_2D.h"
+#include "texture.h"
 
 class LogicalDevice;
 
-class Texture2DColor : public Texture2D {
+class Texture2DColor : public Texture {
     const LogicalDevice& _logicalDevice;
 
 public:
