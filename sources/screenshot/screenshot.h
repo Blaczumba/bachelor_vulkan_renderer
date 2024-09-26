@@ -29,7 +29,7 @@ public:
 
 	void updateInput(const CallbackData& cbData) override;
 	void addImageToObserved(const Image& image, const std::string& name);
-	void saveImage(const std::string& filePath, const Image& image);
+	void saveImage(const std::string& filePath, Image* image);
 
 private:
 	struct CommandData {

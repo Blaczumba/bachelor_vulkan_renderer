@@ -29,8 +29,8 @@ OffscreenRendering::OffscreenRendering()
     createCommandBuffers();
 
     _screenshot = std::make_unique<Screenshot>(*_logicalDevice);
-    // _screenshot->addImageToObserved(_framebufferTextures[1]->getImage(), "hig_res_screenshot.ppm");
-    // _screenshot->addImageToObserved(_lowResFramebufferTextures[0]->getImage(), "low_res_screenshot.ppm");
+    _screenshot->addImageToObserved(_framebufferTextures[1]->getImage(), "hig_res_screenshot.ppm");
+    _screenshot->addImageToObserved(_lowResFramebufferTextures[0]->getImage(), "low_res_screenshot.ppm");
 
     _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 100.0f);
 
