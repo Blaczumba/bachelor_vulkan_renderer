@@ -1,9 +1,9 @@
-#include <application/offscreen_rendering_application.h>
-// #include <application/double_screenshot_application.h>
+// #include <application/offscreen_rendering_application.h>
+#include <application/double_screenshot_application.h>
 
 int main() {
     try {
-        OffscreenRendering& app = OffscreenRendering::getInstance();
+        SingleApp& app = SingleApp::getInstance();
         app.run();
     }
     catch (const std::exception& e) {

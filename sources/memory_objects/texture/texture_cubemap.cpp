@@ -14,13 +14,13 @@
 TextureCubemap::TextureCubemap(const LogicalDevice& logicalDevice, std::string filePath, VkFormat format, float samplerAnisotropy)
 	: Texture(
 		Image{ 
-			.format = format, 
-			.aspect = VK_IMAGE_ASPECT_COLOR_BIT, 
-			.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
-			.layerCount = 6u 
+			.format = format,
+			.aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+			.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			.layerCount = 6u
 		},
 		Sampler{ 
-			.maxAnisotropy = samplerAnisotropy 
+			.maxAnisotropy = samplerAnisotropy
 		}
 	),
 	_logicalDevice(logicalDevice), _filePath(filePath) {
@@ -67,20 +67,26 @@ TextureCubemap::TextureCubemap(const LogicalDevice& logicalDevice, std::string f
 				throw std::runtime_error("failed to get image offset");
 			}
 
-			VkBufferImageCopy bufferCopyRegion = {};
-			bufferCopyRegion.imageSubresource.aspectMask = _image.aspect;
-			bufferCopyRegion.imageSubresource.mipLevel = level;
-			bufferCopyRegion.imageSubresource.baseArrayLayer = face;
-			bufferCopyRegion.imageSubresource.layerCount = 1;
-			bufferCopyRegion.imageExtent.width = _image.width >> level;
-			bufferCopyRegion.imageExtent.height = _image.height >> level;
-			bufferCopyRegion.imageExtent.depth = 1;
-			bufferCopyRegion.bufferOffset = offset;
+			VkBufferImageCopy bufferCopyRegion = {
+				.bufferOffset = offset,
+				.imageSubresource = {
+					.aspectMask = _image.aspect,
+					.mipLevel = level,
+					.baseArrayLayer = face,
+					.layerCount = 1
+				},
+				.imageExtent = {
+					.width = _image.width >> level,
+					.height = _image.height >> level,
+					.depth = 1 
+				},
+			};
+
 			bufferCopyRegions.push_back(bufferCopyRegion);
 		}
 	}
 
-	_logicalDevice.createImage(_image.width, _image.height, _image.mipLevels, _image.numSamples, _image.format, _image.tiling, _image.usage, _image.properties, _image.image, _image.memory, _image.layerCount);
+	_logicalDevice.createImage(&_image);
 
 	{
 		SingleTimeCommandBuffer handle(_logicalDevice);
@@ -89,39 +95,13 @@ TextureCubemap::TextureCubemap(const LogicalDevice& logicalDevice, std::string f
 		copyBufferToImage(commandBuffer, stagingBuffer, _image.image, std::move(bufferCopyRegions));
 		transitionImageLayout(commandBuffer, &_image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
-	_image.view = _logicalDevice.createImageView(_image.image, _image.format, _image.aspect, _image.mipLevels, _image.layerCount);
+
+	_logicalDevice.createImageView(&_image);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = _sampler.magFilter;
-	samplerInfo.minFilter = _sampler.minFilter;
-	samplerInfo.addressModeU = _sampler.addressModeU;
-	samplerInfo.addressModeV = _sampler.addressModeV;
-	samplerInfo.addressModeW = _sampler.addressModeW;
-	if (_sampler.maxAnisotropy) {
-		samplerInfo.anisotropyEnable = VK_TRUE;
-		samplerInfo.maxAnisotropy = _sampler.maxAnisotropy.value();
-	}
-	samplerInfo.borderColor = _sampler.borderColor;
-	samplerInfo.unnormalizedCoordinates = _sampler.unnormalizedCoordinates;
-	if (_sampler.compareOp) {
-		samplerInfo.compareEnable = VK_TRUE;
-		samplerInfo.compareOp = _sampler.compareOp.value();
-	}
-	else {
-		samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
-	}
-	samplerInfo.mipmapMode = _sampler.mipmapMode;
-	samplerInfo.minLod = _sampler.minLod;
-	samplerInfo.maxLod = _sampler.maxLod;
-	samplerInfo.mipLodBias = _sampler.mipLodBias;
-
-	if (vkCreateSampler(device, &samplerInfo, nullptr, &_sampler.sampler) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create texture sampler!");
-	}
+	_logicalDevice.createSampler(&_sampler);
 }
 
 TextureCubemap::~TextureCubemap() {

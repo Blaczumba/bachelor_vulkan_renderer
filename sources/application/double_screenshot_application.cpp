@@ -48,9 +48,7 @@ SingleApp::SingleApp()
         b.dx += 20.0f;
     }
 
-    registry.updateComponents<Position, Velocity>([](Position& pos, Velocity& vel) { pos.x += 4.0f; pos.y -= 20.0f; vel.dx += 10.0f, vel.dy -= 10.0f; });
-
-    MovementSystem movementSystem(registry);
+    MovementSystem movementSystem(&registry);
     movementSystem.update(2.0f);
 
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
@@ -108,6 +106,7 @@ void SingleApp::loadObjects() {
 
         std::vector<VertexP> pVertexData;
         std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return VertexP{ vertex.pos }; });
+        
         _objects.push_back(Object{
             std::make_unique<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices),
             std::make_unique<VertexBuffer>(*_logicalDevice, pVertexData),
@@ -121,7 +120,6 @@ void SingleApp::loadObjects() {
         _ubObject.model = _newVertexDataTBN[i].model;
         _uniformBuffersObjects->updateUniformBuffer(&_ubObject, index++);
     }
-    _uniformBuffersObjects->makeUpdatesVisible();
 
     AABB sceneAABB = _objects[0].volume;
     for (int i = 1; i < _objects.size(); i++) {
@@ -202,7 +200,7 @@ void SingleApp::createPresentResources() {
     size_t swapchainImagesCount = _swapchain->getImages().size();
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
-        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].view; });
+        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
     }
     
@@ -397,7 +395,6 @@ void SingleApp::updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.pos = _camera->getPosition();
 
     _dynamicUniformBuffersCamera->updateUniformBuffer(&_ubCamera, currentFrame);
-    _dynamicUniformBuffersCamera->makeUpdatesVisible(currentFrame);
 
     // std::cout << _ubCamera.pos.x << " " << _ubCamera.pos.y << " " << _ubCamera.pos.z << std::endl;
 }
@@ -501,7 +498,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
     cmdBufferBeginInfo.pInheritanceInfo = &inheritanceInfo;
 
-    auto recordSecondaryCommandBuffer = [this, &cmdBufferBeginInfo, &scissor, &viewport](const VkCommandBuffer commandBuffer, const std::vector<const OctreeNode*>& nodes, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
+    const auto recordSecondaryCommandBuffer = [this, &cmdBufferBeginInfo, &scissor, &viewport](const VkCommandBuffer commandBuffer, const std::vector<const OctreeNode*>& nodes, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
         vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo);
 
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
@@ -527,14 +524,14 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
 
     const std::vector<const OctreeNode*> lst = { root };
     const auto& planes = extractFrustumPlanes(PV);
-    auto start = std::chrono::high_resolution_clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
     if (root && root->getVolume().intersectsFrustum(planes)) {
         _threadPool->getThread(0)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[0], lst, planes ); });
     }
     //_threadPool->getThread(1)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[1], down); });
     _threadPool->wait();
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
+    // auto stop = std::chrono::high_resolution_clock::now();
+    // std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     
     // std::cout << counter << ' ' << _objects.size() << std::endl;
     // counter = 0;
@@ -575,7 +572,7 @@ void SingleApp::recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_
     //    throw std::runtime_error("failed to begin recording command buffer!");
     //}
 
-    VkExtent2D extent = { _shadowMap->getImage().extent.width, _shadowMap->getImage().extent.height };
+    VkExtent2D extent = { _shadowMap->getImage().width, _shadowMap->getImage().height };
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -644,7 +641,7 @@ void SingleApp::recreateSwapChain() {
     size_t swapchainImagesCount = _swapchain->getImages().size();
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
-        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture2D>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].view; });
+        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
     }
 }

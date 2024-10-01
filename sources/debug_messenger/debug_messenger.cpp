@@ -6,8 +6,7 @@
 #include <stdexcept>
 
 DebugMessenger::DebugMessenger(const std::shared_ptr<Instance>& instance) : _instance(instance) {
-    VkDebugUtilsMessengerCreateInfoEXT createInfo;
-    populateDebugMessengerCreateInfoUtility(createInfo);
+    VkDebugUtilsMessengerCreateInfoEXT createInfo = populateDebugMessengerCreateInfoUtility();
 
     if (CreateDebugUtilsMessengerEXT(&createInfo, nullptr) != VK_SUCCESS) {
         throw std::runtime_error("failed to set up debug messenger!");

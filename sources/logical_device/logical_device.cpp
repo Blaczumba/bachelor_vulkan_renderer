@@ -18,33 +18,34 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
 
     float queuePriority = 1.0f;
     for (uint32_t queueFamily : uniqueQueueFamilies) {
-        VkDeviceQueueCreateInfo queueCreateInfo{};
-        queueCreateInfo.sType               = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex    = queueFamily;
-        queueCreateInfo.queueCount          = 1;
-        queueCreateInfo.pQueuePriorities    = &queuePriority;
+        VkDeviceQueueCreateInfo queueCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = queueFamily,
+            .queueCount = 1,
+            .pQueuePriorities = &queuePriority
+        };
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    VkPhysicalDeviceFeatures deviceFeatures{};
-    deviceFeatures.samplerAnisotropy = VK_TRUE;
-    deviceFeatures.sampleRateShading = VK_TRUE;
+    VkPhysicalDeviceFeatures deviceFeatures = {
+        .sampleRateShading = VK_TRUE,
+        .samplerAnisotropy = VK_TRUE
+    };
 
-    VkDeviceCreateInfo createInfo{};
-    createInfo.sType                    = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfo.queueCreateInfoCount     = static_cast<uint32_t>(queueCreateInfos.size());
-    createInfo.pQueueCreateInfos        = queueCreateInfos.data();
-    createInfo.pEnabledFeatures         = &deviceFeatures;
-    createInfo.enabledExtensionCount    = static_cast<uint32_t>(deviceExtensions.size());
-    createInfo.ppEnabledExtensionNames  = deviceExtensions.data();
-    
-
-#ifdef VALIDATION_LAYERS_ENABLED
-        createInfo.enabledLayerCount    = static_cast<uint32_t>(validationLayers.size());
-        createInfo.ppEnabledLayerNames  = validationLayers.data();
-#else
-        createInfo.enabledLayerCount    = 0;
-#endif  // VALIDATION_LAYERS_ENABLED
+    VkDeviceCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+        .pQueueCreateInfos = queueCreateInfos.data(),
+    #ifdef VALIDATION_LAYERS_ENABLED
+        .enabledLayerCount = static_cast<uint32_t>(validationLayers.size()),
+        .ppEnabledLayerNames = validationLayers.data(),
+    #else
+        .enabledLayerCount = 0,
+    #endif  // VALIDATION_LAYERS_ENABLED
+        .enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),
+        .ppEnabledExtensionNames = deviceExtensions.data(),
+        .pEnabledFeatures = &deviceFeatures,
+    };
 
     if (vkCreateDevice(_physicalDevice.getVkPhysicalDevice(), &createInfo, nullptr, &_device) != VK_SUCCESS) {
         throw std::runtime_error("failed to create logical device!");
@@ -55,10 +56,11 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
     vkGetDeviceQueue(_device, indices.computeFamily.value(), 0, &computeQueue);
     vkGetDeviceQueue(_device, indices.transferFamily.value(), 0, &transferQueue);
 
-    VkCommandPoolCreateInfo poolInfo{};
-    poolInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.flags              = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex   = indices.graphicsFamily.value();
+    VkCommandPoolCreateInfo poolInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = indices.graphicsFamily.value()
+    };
 
     if (vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create graphics command pool!");
@@ -66,11 +68,12 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
 }
 
 void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) const {
-    VkBufferCreateInfo bufferInfo{};
-    bufferInfo.sType        = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size         = size;
-    bufferInfo.usage        = usage;
-    bufferInfo.sharingMode  = VK_SHARING_MODE_EXCLUSIVE;
+    VkBufferCreateInfo bufferInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = size,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
 
     if (vkCreateBuffer(_device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to create buffer!");
@@ -81,10 +84,11 @@ void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Vk
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(_device, buffer, &memRequirements);
 
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType             = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize    = memRequirements.size;
-    allocInfo.memoryTypeIndex   = propertyManager.findMemoryType(memRequirements.memoryTypeBits, properties);
+    VkMemoryAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = memRequirements.size,
+        .memoryTypeIndex = propertyManager.findMemoryType(memRequirements.memoryTypeBits, properties)
+    };
 
     if (vkAllocateMemory(_device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate buffer memory!");
@@ -93,76 +97,116 @@ void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Vk
     vkBindBufferMemory(_device, buffer, bufferMemory, 0);
 }
 
-void LogicalDevice::createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& outImage, VkDeviceMemory& outImageMemory, uint32_t layerCount) const {
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-    imageInfo.extent.width  = width;
-    imageInfo.extent.height = height;
-    imageInfo.extent.depth  = 1;
-    imageInfo.mipLevels     = mipLevels;
-    imageInfo.arrayLayers   = layerCount;
-    imageInfo.format        = format;
-    imageInfo.tiling        = tiling;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage         = usage;
-    imageInfo.samples       = numSamples;
-    imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+void LogicalDevice::createImage(Image* image) const {
+    VkImageCreateInfo imageInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = image->format,
+        .extent = { 
+            .width = image->width,
+            .height = image->height,
+            .depth = 1
+        },
+        .mipLevels = image->mipLevels,
+        .arrayLayers = image->layerCount,
+        .samples = image->numSamples,
+        .tiling = image->tiling,
+        .usage = image->usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = image->layout
+    };
 
-    if (layerCount == 6)
+    if (image->layerCount == 6)
         imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-    if (vkCreateImage(_device, &imageInfo, nullptr, &outImage) != VK_SUCCESS) {
+    if (vkCreateImage(_device, &imageInfo, nullptr, &image->image) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
     }
 
     const auto& propertyManager = _physicalDevice.getPropertyManager();
 
     VkMemoryRequirements memRequirements;
-    vkGetImageMemoryRequirements(_device, outImage, &memRequirements);
+    vkGetImageMemoryRequirements(_device, image->image, &memRequirements);
 
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType             = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize    = memRequirements.size;
-    allocInfo.memoryTypeIndex   = propertyManager.findMemoryType(memRequirements.memoryTypeBits, properties);
+    VkMemoryAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = memRequirements.size,
+        .memoryTypeIndex = propertyManager.findMemoryType(memRequirements.memoryTypeBits, image->properties)
+    };
 
-    if (vkAllocateMemory(_device, &allocInfo, nullptr, &outImageMemory) != VK_SUCCESS) {
+    if (vkAllocateMemory(_device, &allocInfo, nullptr, &image->memory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate image memory!");
     }
 
-    vkBindImageMemory(_device, outImage, outImageMemory, 0);
+    vkBindImageMemory(_device, image->image, image->memory, 0);
 }
 
-VkImageView LogicalDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t layerCount) const {
-    VkImageSubresourceRange range{};
-    range.aspectMask        = aspectFlags;
-    range.baseMipLevel      = 0;
-    range.levelCount        = mipLevels;
-    range.baseArrayLayer    = 0;
-    range.layerCount        = layerCount;
+void LogicalDevice::createImageView(Image* image) const {
+    VkImageSubresourceRange range = {
+        .aspectMask = image->aspect,
+        .baseMipLevel = 0,
+        .levelCount = image->mipLevels,
+        .baseArrayLayer = 0,
+        .layerCount = image->layerCount
+    };
 
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType              = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image              = image;
-    viewInfo.viewType           = (layerCount == 6) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format             = format;
-    viewInfo.subresourceRange   = range;
+    VkImageViewType viewType = (image->layerCount == 6) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
 
-    VkImageView imageView;
-    if (vkCreateImageView(_device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+    VkImageViewCreateInfo viewInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = image->image,
+        .viewType = viewType,
+        .format = image->format,
+        .subresourceRange = range
+    };
+
+    if (vkCreateImageView(_device, &viewInfo, nullptr, &image->view) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image view!");
     }
+}
 
-    return imageView;
+void LogicalDevice::createSampler(Sampler* sampler) const {
+    VkSamplerCreateInfo samplerInfo = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter = sampler->magFilter,
+        .minFilter = sampler->minFilter,
+        .mipmapMode = sampler->mipmapMode,
+        .addressModeU = sampler->addressModeU,
+        .addressModeV = sampler->addressModeV,
+        .addressModeW = sampler->addressModeW,
+        .mipLodBias = sampler->mipLodBias,
+        .minLod = sampler->minLod,
+        .maxLod = sampler->maxLod,
+        .borderColor = sampler->borderColor,
+        .unnormalizedCoordinates = sampler->unnormalizedCoordinates,
+    };
+
+    if (sampler->maxAnisotropy) {
+        samplerInfo.anisotropyEnable = VK_TRUE;
+        samplerInfo.maxAnisotropy = sampler->maxAnisotropy.value();
+    }
+
+    if (sampler->compareOp) {
+        samplerInfo.compareEnable = VK_TRUE;
+        samplerInfo.compareOp = sampler->compareOp.value();
+    }
+    else {
+        samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
+    }
+
+    if (vkCreateSampler(_device, &samplerInfo, nullptr, &sampler->sampler) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create texture sampler!");
+    }
 }
 
 VkCommandBuffer LogicalDevice::createCommandBuffer() const {
     VkCommandBuffer commandBuffer;
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = _commandPool;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = 1;
+    VkCommandBufferAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = _commandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
 
     if (vkAllocateCommandBuffers(_device, &allocInfo, &commandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate command buffers!");

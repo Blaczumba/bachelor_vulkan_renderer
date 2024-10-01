@@ -84,7 +84,7 @@ void OffscreenRendering::loadObjects() {
         _ubObject.model = _newVertexDataTBN[i].model;
         _uniformBuffersObjects->updateUniformBuffer(&_ubObject, index++);
     }
-    _uniformBuffersObjects->makeUpdatesVisible();
+    // _uniformBuffersObjects->makeUpdatesVisible();
 
     AABB sceneAABB = _objects[0].volume;
     for (int i = 1; i < _objects.size(); i++) {
@@ -413,7 +413,6 @@ void OffscreenRendering::updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.pos = _camera->getPosition();
 
     _dynamicUniformBuffersCamera->updateUniformBuffer(&_ubCamera, currentFrame);
-    _dynamicUniformBuffersCamera->makeUpdatesVisible(currentFrame);
 
     // std::cout << _ubCamera.pos.x << " " << _ubCamera.pos.y << " " << _ubCamera.pos.z << std::endl;
 }

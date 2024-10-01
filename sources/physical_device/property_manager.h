@@ -49,7 +49,7 @@ public:
     const std::vector<VkQueueFamilyProperties>& getQueueFamilyProperties() const;
     const std::vector<VkExtensionProperties>& getAvailableExtensionProperties() const;
 
-    bool checkDiscreteGPU() const;
+    bool isDiscreteGPU() const;
     bool checkDeviceExtensionSupport() const;
 
     bool checkBlittingSupport(VkFormat format) const;

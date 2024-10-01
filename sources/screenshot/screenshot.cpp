@@ -79,18 +79,7 @@ void Screenshot::saveImage(const std::string& filePath, Image* srcImage) {
 		.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	};
 
-	_logicalDevice.createImage(
-		dstImage.width,
-		dstImage.height,
-		dstImage.mipLevels,
-		dstImage.numSamples,
-		dstImage.format,
-		dstImage.tiling,
-		dstImage.usage,
-		dstImage.properties,
-		dstImage.image,
-		dstImage.memory
-	);
+	_logicalDevice.createImage(&dstImage);
 
 	{
 		SingleTimeCommandBuffer commandBufferGuard(_logicalDevice);

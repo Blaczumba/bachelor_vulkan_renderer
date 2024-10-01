@@ -13,7 +13,7 @@
 Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::string& texturePath, VkFormat format, float samplerAnisotropy)
 	: Texture(
         Image{ 
-            .format = format, .aspect = VK_IMAGE_ASPECT_COLOR_BIT, 
+            .format = format, .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
             .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
         },
         Sampler{ 
@@ -49,8 +49,7 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::st
 
     stbi_image_free(pixels);
 
-    _logicalDevice.createImage(_image.width, _image.height, _image.mipLevels, _image.numSamples, _image.format, _image.tiling, _image.usage, _image.properties, _image.image, _image.memory);
-    
+    _logicalDevice.createImage(&_image);
     {
         SingleTimeCommandBuffer handle(_logicalDevice);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
@@ -62,31 +61,9 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::st
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-    _image.view = _logicalDevice.createImageView(_image.image, _image.format, _image.aspect, _image.mipLevels);
+    _logicalDevice.createImageView(&_image);
 
-    VkSamplerCreateInfo samplerInfo{};
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.magFilter = _sampler.magFilter;
-    samplerInfo.minFilter = _sampler.minFilter;
-    samplerInfo.addressModeU = _sampler.addressModeU;
-    samplerInfo.addressModeV = _sampler.addressModeV;
-    samplerInfo.addressModeW = _sampler.addressModeW;
-    if (_sampler.maxAnisotropy) {
-        samplerInfo.anisotropyEnable = VK_TRUE;
-        samplerInfo.maxAnisotropy = _sampler.maxAnisotropy.value();
-    }
-    samplerInfo.borderColor = _sampler.borderColor;
-    samplerInfo.unnormalizedCoordinates = _sampler.unnormalizedCoordinates;
-    samplerInfo.compareEnable = VK_FALSE;
-    samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
-    samplerInfo.mipmapMode = _sampler.mipmapMode;
-    samplerInfo.minLod = _sampler.minLod;
-    samplerInfo.maxLod = _sampler.maxLod;
-    samplerInfo.mipLodBias = _sampler.mipLodBias;
-
-    if (vkCreateSampler(device, &samplerInfo, nullptr, &_sampler.sampler) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create texture sampler!");
-    }
+    _logicalDevice.createSampler(&_sampler);
 }
 
 Texture2DImage::~Texture2DImage() {

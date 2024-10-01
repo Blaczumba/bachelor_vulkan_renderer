@@ -102,17 +102,17 @@ void Swapchain::create() {
 
     std::transform(images.cbegin(), images.cend(), std::back_inserter(_images),
         [&](VkImage image) {
-            return Texture(
-                Image{
-                    .format = surfaceFormat.format, 
-                    .width = extent.width,
-                    .height = extent.height,
-                    .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                    .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .image = image,
-                    .view = _logicalDevice.createImageView(image, surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1)
-                }
-            );
+            Image img {
+                .format = surfaceFormat.format,
+                .width = extent.width,
+                .height = extent.height,
+                .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+                .image = image,
+            };
+            _logicalDevice.createImageView(&img);
+
+            return Texture(img);
         }
     );
 }

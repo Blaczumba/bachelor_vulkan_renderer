@@ -9,22 +9,21 @@
 Texture2DDepth::Texture2DDepth(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
 	: Texture(
         Image{ 
-            .format = format, 
-            .width = extent.width, 
-            .height = extent.height, 
-            .aspect = VK_IMAGE_ASPECT_DEPTH_BIT, 
-            .numSamples = samples, 
-            .usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT 
+            .format = format,
+            .width = extent.width,
+            .height = extent.height,
+            .aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .numSamples = samples,
+            .usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
         }
     ),
     _logicalDevice(logicalDevice) {
 
-    _logicalDevice.createImage(_image.width, _image.height, _image.mipLevels, _image.numSamples, _image.format, _image.tiling, _image.usage, _image.properties, _image.image, _image.memory);
-    
+    _logicalDevice.createImage(&_image);
     if (hasStencil(format))
         _image.aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-    _image.view = _logicalDevice.createImageView(_image.image, _image.format, _image.aspect, _image.mipLevels);
+    _logicalDevice.createImageView(&_image);
 
     {
         SingleTimeCommandBuffer handle(_logicalDevice);
