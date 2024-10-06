@@ -25,13 +25,17 @@ AABB createAABBfromVertices(const std::vector<glm::vec3>& vertices, const glm::m
 
 	for (glm::vec3 vertex : vertices) {
 		vertex = transform * glm::vec4(vertex, 1.0f);
-		volume.lowerCorner.x = std::min(volume.lowerCorner.x, vertex.x);
-		volume.lowerCorner.y = std::min(volume.lowerCorner.y, vertex.y);
-		volume.lowerCorner.z = std::min(volume.lowerCorner.z, vertex.z);
+		volume.lowerCorner = {
+			std::min(volume.lowerCorner.x, vertex.x),
+			std::min(volume.lowerCorner.y, vertex.y),
+			std::min(volume.lowerCorner.z, vertex.z)
+		};
 
-		volume.upperCorner.x = std::max(volume.upperCorner.x, vertex.x);
-		volume.upperCorner.y = std::max(volume.upperCorner.y, vertex.y);
-		volume.upperCorner.z = std::max(volume.upperCorner.z, vertex.z);
+		volume.upperCorner = {
+			std::max(volume.upperCorner.x, vertex.x),
+			std::max(volume.upperCorner.y, vertex.y),
+			std::max(volume.upperCorner.z, vertex.z),
+		};
 	}
 
 	return volume;

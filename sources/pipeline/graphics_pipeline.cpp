@@ -13,10 +13,10 @@ void GraphicsPipeline::create() {
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    const auto& descriptorSetLayout     = _shaderProgram->getDescriptorSetLayout();
-    const auto& attributeDescriptions   = _shaderProgram->getVkVertexInputAttributeDescriptions();
-    const auto& bindingDescription      = _shaderProgram->getVkVertexInputBindingDescription();
-    const auto& shaderStages            = _shaderProgram->getVkPipelineShaderStageCreateInfos();
+    const auto& descriptorSetLayout = _shaderProgram->getDescriptorSetLayout();
+    const auto& attributeDescriptions = _shaderProgram->getVkVertexInputAttributeDescriptions();
+    const auto& bindingDescription = _shaderProgram->getVkVertexInputBindingDescription();
+    const auto& shaderStages = _shaderProgram->getVkPipelineShaderStageCreateInfos();
 
     if (attributeDescriptions.empty())
         throw std::runtime_error("Vertex input layout not specified!");

@@ -19,6 +19,7 @@ const PushConstants& ShaderProgram::getPushConstants() const {
 
 std::vector<VkPipelineShaderStageCreateInfo> ShaderProgram::getVkPipelineShaderStageCreateInfos() const {
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+    shaderStages.reserve(_shaders.size());
     std::transform(_shaders.cbegin(), _shaders.cend(), std::back_inserter(shaderStages), [](const Shader& shader) { return shader.getVkPipelineStageCreateInfo(); });
     return shaderStages;
 }
@@ -49,6 +50,8 @@ PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : Graphic
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
+
+    constexpr auto a = getBindingDescription<VertexPTNT>();
 
     _bindingDescription = getBindingDescription<VertexPTNT>();
     _attributeDescriptions = getAttributeDescriptions<VertexPTNT>();

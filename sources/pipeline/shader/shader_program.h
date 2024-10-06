@@ -28,7 +28,6 @@ public:
 };
 
 class GraphicsShaderProgram : public ShaderProgram {
-
 protected:
 	VkVertexInputBindingDescription _bindingDescription;
 	std::vector<VkVertexInputAttributeDescription> _attributeDescriptions;
@@ -43,7 +42,6 @@ public:
 class PBRShaderProgram : public GraphicsShaderProgram {
 public:
 	PBRShaderProgram(const LogicalDevice& logicalDevice);
-
 };
 
 class SkyboxShaderProgram : public GraphicsShaderProgram {
