@@ -10,8 +10,6 @@
 class LogicalDevice;
 class Renderpass;
 
-// std::vector<std::unique_ptr<Texture2D>> createTexturesFromRenderpass(const LogicalDevice& logicalDevice, const Renderpass& renderpass, const VkExtent2D& extent);
-
 class Framebuffer {
 	VkFramebuffer _framebuffer;
 

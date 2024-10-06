@@ -127,13 +127,14 @@ VkResult Swapchain::acquireNextImage(VkSemaphore presentCompleteSemaphore, uint3
 }
 
 VkResult Swapchain::present(uint32_t imageIndex, VkSemaphore waitSemaphore) const {
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &waitSemaphore;
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &_swapchain;
-    presentInfo.pImageIndices = &imageIndex;
+    const VkPresentInfoKHR presentInfo = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &waitSemaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &_swapchain,
+        .pImageIndices = &imageIndex
+    };
 
     return vkQueuePresentKHR(_logicalDevice.presentQueue, &presentInfo);
 }

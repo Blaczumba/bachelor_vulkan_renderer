@@ -10,7 +10,7 @@
 PhysicalDevice::PhysicalDevice(const std::shared_ptr<Instance>& instance, const std::shared_ptr<Surface>& surface)
 	: _instance(instance), _surface(surface), _device(VK_NULL_HANDLE) {
 
-    std::vector<VkPhysicalDevice> devices = _instance->getAvailablePhysicalDevices();
+    const std::vector<VkPhysicalDevice> devices = _instance->getAvailablePhysicalDevices();
     const VkSurfaceKHR surf = surface->getVkSurface();
 
     for (const auto device : devices) {

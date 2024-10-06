@@ -10,112 +10,95 @@ public:
         DEPTH_ATTACHMENT
     };
 
-    VkClearValue getClearValue() const { return clearValue; };
+    VkClearValue getClearValue() const { return clearValue; }
     const VkAttachmentDescription& getDescription() const { return description; }
     Type getAttachmentRefType() const { return type; }
 
-    VkSampleCountFlagBits getMsaaSampleCount() const { return description.samples; }
-
-    virtual ~Attachment() = default;
-
 protected:
-    VkClearValue clearValue;
+    VkClearValue clearValue{};
     VkAttachmentDescription description{};
-    Type type;
+    Type type{};
+
+    constexpr Attachment(Type type, VkClearValue clearValue, VkAttachmentDescription description)
+        : type(type), clearValue(clearValue), description(description) {}
 };
 
-struct ColorAttachment : public Attachment {
-    ColorAttachment(VkFormat format, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT) {
-        description.format = format;
-        description.samples = samples;
-        description.loadOp = loadOp;
-        description.storeOp = storeOp;
-        description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        description.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // VK_IMAGE_LAYOUT_UNDEFINED
-        description.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+// Helper function for initializing common fields in VkAttachmentDescription
+constexpr VkAttachmentDescription createDescription(
+    VkFormat format,
+    VkSampleCountFlagBits samples,
+    VkAttachmentLoadOp loadOp,
+    VkAttachmentStoreOp storeOp,
+    VkImageLayout initialLayout,
+    VkImageLayout finalLayout,
+    VkAttachmentLoadOp stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+    VkAttachmentStoreOp stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE
+) {
+    return VkAttachmentDescription{
+        .flags = 0,
+        .format = format,
+        .samples = samples,
+        .loadOp = loadOp,
+        .storeOp = storeOp,
+        .stencilLoadOp = stencilLoadOp,
+        .stencilStoreOp = stencilStoreOp,
+        .initialLayout = initialLayout,
+        .finalLayout = finalLayout
+    };
+}
 
-        type = Type::COLOR_ATTACHMENT;
-        clearValue = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-    }
+// Specific attachments below
+
+struct ColorAttachment : public Attachment {
+    constexpr ColorAttachment(VkFormat format, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT)
+        : Attachment(
+            Type::COLOR_ATTACHMENT,
+            VkClearValue{ .color = { 0.0f, 0.0f, 0.0f, 1.0f } },
+            createDescription(format, samples, loadOp, storeOp, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+        ) {}
 };
 
 struct ColorPresentAttachment : public Attachment {
-    ColorPresentAttachment(VkFormat format, VkAttachmentLoadOp loadOp) {
-        description.format = format;
-        description.samples = VK_SAMPLE_COUNT_1_BIT;
-        description.loadOp = loadOp;
-        description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        type = Type::COLOR_ATTACHMENT;
-        clearValue = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-    }
+    constexpr ColorPresentAttachment(VkFormat format, VkAttachmentLoadOp loadOp)
+        : Attachment(
+            Type::COLOR_ATTACHMENT,
+            VkClearValue{ .color = { 0.0f, 0.0f, 0.0f, 1.0f } },
+            createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+        ) {}
 };
 
 struct DepthAttachment : public Attachment {
-    DepthAttachment(VkFormat format, VkAttachmentStoreOp storeOp, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, VkAttachmentLoadOp stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, VkAttachmentStoreOp stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE) {
-        description.format = format;
-        description.samples = samples;
-        description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        description.storeOp = storeOp;
-        description.stencilLoadOp = stencilLoadOp;
-        description.stencilStoreOp = stencilStoreOp;
-        description.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; // VK_IMAGE_LAYOUT_UNDEFINED
-        description.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-        type = Type::DEPTH_ATTACHMENT;
-        clearValue = { 1.0f, 0 };
-    }
+    constexpr DepthAttachment(VkFormat format, VkAttachmentStoreOp storeOp, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, VkAttachmentLoadOp stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, VkAttachmentStoreOp stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE)
+        : Attachment(
+            Type::DEPTH_ATTACHMENT,
+            VkClearValue{ .depthStencil = { 1.0f, 0 } },
+            createDescription(format, samples, VK_ATTACHMENT_LOAD_OP_CLEAR, storeOp, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, stencilLoadOp, stencilStoreOp)
+        ) {}
 };
 
 struct ShadowAttachment : public Attachment {
-    ShadowAttachment(VkFormat format, VkImageLayout finalLayout) {
-        description.format = format;
-        description.samples = VK_SAMPLE_COUNT_1_BIT;
-        description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        description.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-        type = Type::DEPTH_ATTACHMENT;
-        clearValue = { 1.0f, 0 };
-    }
+    constexpr ShadowAttachment(VkFormat format, VkImageLayout finalLayout)
+        : Attachment(
+            Type::DEPTH_ATTACHMENT,
+            VkClearValue{ .depthStencil = { 1.0f, 0 } },
+            createDescription(format, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_UNDEFINED, finalLayout)
+        ) {}
 };
 
 struct ColorResolveAttachment : public Attachment {
-    ColorResolveAttachment(VkFormat format, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp) {
-        description.format = format;
-        description.samples = VK_SAMPLE_COUNT_1_BIT;
-        description.loadOp = loadOp;
-        description.storeOp = storeOp;
-        description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        description.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // VK_IMAGE_LAYOUT_UNDEFINED
-        description.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        type = Type::COLOR_ATTACHMENT_RESOLVE;
-        clearValue = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-    }
+    constexpr ColorResolveAttachment(VkFormat format, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp)
+        : Attachment(
+            Type::COLOR_ATTACHMENT_RESOLVE,
+            VkClearValue{ .color = { 0.0f, 0.0f, 0.0f, 1.0f } },
+            createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, storeOp, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+        ) {}
 };
 
 struct ColorResolvePresentAttachment : public Attachment {
-    ColorResolvePresentAttachment(VkFormat format, VkAttachmentLoadOp loadOp) {
-        description.format = format;
-        description.samples = VK_SAMPLE_COUNT_1_BIT;
-        description.loadOp = loadOp;
-        description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        type = Type::COLOR_ATTACHMENT_RESOLVE;
-        clearValue = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-    }
+    constexpr ColorResolvePresentAttachment(VkFormat format, VkAttachmentLoadOp loadOp)
+        : Attachment(
+            Type::COLOR_ATTACHMENT_RESOLVE,
+            VkClearValue{ .color = { 0.0f, 0.0f, 0.0f, 1.0f } },
+            createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+        ) {}
 };

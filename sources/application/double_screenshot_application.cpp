@@ -12,44 +12,6 @@
 
 SingleApp::SingleApp()
     : ApplicationBase() {
-    Registry registry(1000005);
-
-    // Create entities
-    Entity e1 = registry.createEntity();
-    Entity e2 = registry.createEntity();
-    Entity e3 = registry.createEntity();
-    Entity e4 = registry.createEntity();
-
-    registry.addComponent(e1, std::make_unique<Position>(1.0f, 1.0f));
-    registry.addComponent(e1, std::make_unique<Velocity>(-1.0f, -1.0f));
-
-    registry.addComponent(e2, std::make_unique<Position>(2.0f, 2.0f));
-    registry.addComponent(e2, std::make_unique<Velocity>(-2.0f, -2.0f));
-
-    registry.addComponent(e3, std::make_unique<Position>(3.0f, 3.0f));
-    registry.addComponent(e3, std::make_unique<Velocity>(-3.0f, -3.0f));
-
-    registry.addComponent(e4, std::make_unique<Position>(4.0f, 4.0f));
-    registry.addComponent(e4, std::make_unique<Velocity>(-4.0f, -4.0f));
-
-    for (int i = 0; i < 1000000; i++) {
-        Entity e = registry.createEntity();
-        registry.addComponent(e, std::make_unique<Position>(2.0f, 2.0f));
-        registry.addComponent(e, std::make_unique<Velocity>(-2.0f, -2.0f));
-    }
-
-    for (Entity e : registry.getEntities()) {
-        auto tpl = registry.getComponents<Position, Velocity>(e);
-        std::get<Position&>(tpl).x += 20.0f;
-        std::get<Velocity&>(tpl).dx += 20.0f;
-        auto& a = registry.getComponent<Position>(e);
-        auto& b = registry.getComponent<Velocity>(e);
-        a.x += 20.0f;
-        b.dx += 20.0f;
-    }
-
-    MovementSystem movementSystem(&registry);
-    movementSystem.update(2.0f);
 
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
@@ -121,7 +83,7 @@ void SingleApp::loadObjects() {
         _uniformBuffersObjects->updateUniformBuffer(&_ubObject, index++);
     }
 
-    AABB sceneAABB = _objects[0].volume;
+    AABB sceneAABB = _objects[0].volume;    // Take the volume of first object and then enlarge it
     for (int i = 1; i < _objects.size(); i++) {
         sceneAABB.extend(_objects[i].volume);
     }
@@ -198,8 +160,10 @@ void SingleApp::createPresentResources() {
 
     _framebufferTextures = createTexturesFromRenderpass(*_renderPass, extent);
     size_t swapchainImagesCount = _swapchain->getImages().size();
+    _framebuffers.reserve(swapchainImagesCount);
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
+        imageViews.reserve(_framebufferTextures.size());
         std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
     }
@@ -271,7 +235,7 @@ void SingleApp::run() {
     }
 
     for (auto& object : _objects) {
-        object.vertexBufferP = nullptr;
+        object.vertexBufferP.reset();
     }
 
     _threadPool = std::make_unique<ThreadPool>(MAX_THREADS_IN_POOL);
@@ -327,11 +291,9 @@ void SingleApp::draw() {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-
     if (vkQueueSubmit(_logicalDevice->graphicsQueue, 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
-
 
     result = _swapchain->present(imageIndex, signalSemaphores[0]);
 
@@ -369,14 +331,16 @@ void SingleApp::createSyncObjects() {
     _renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     _inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
-    VkDevice device = _logicalDevice->getVkDevice();
+    const VkDevice device = _logicalDevice->getVkDevice();
 
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    const VkSemaphoreCreateInfo semaphoreInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
+    };
 
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    const VkFenceCreateInfo fenceInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT
+    };
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &_imageAvailableSemaphores[i]) != VK_SUCCESS ||
@@ -419,8 +383,6 @@ void SingleApp::createCommandBuffers() {
     }
 }
 
-static int counter = 0;
-
 void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer commandBuffer, const OctreeNode* node, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
     const VkDeviceSize offsets[] = { 0 };
 
@@ -438,7 +400,7 @@ void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer command
         vkCmdDrawIndexed(commandBuffer, indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
 
-    constexpr static OctreeNode::Subvolume options[] = {
+    static constexpr OctreeNode::Subvolume options[] = {
         OctreeNode::Subvolume::LOWER_LEFT_BACK, OctreeNode::Subvolume::LOWER_LEFT_FRONT,
         OctreeNode::Subvolume::LOWER_RIGHT_BACK, OctreeNode::Subvolume::LOWER_RIGHT_FRONT,
         OctreeNode::Subvolume::UPPER_LEFT_BACK, OctreeNode::Subvolume::UPPER_LEFT_FRONT,
@@ -460,43 +422,49 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         throw std::runtime_error("failed to begin recording command buffer!");
     }
 
-    VkRenderPassBeginInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = _renderPass->getVkRenderPass();
-    renderPassInfo.framebuffer = _framebuffers[imageIndex]->getVkFramebuffer();
-    renderPassInfo.renderArea.offset = { 0, 0 };
-    renderPassInfo.renderArea.extent = _swapchain->getExtent();
-
     const auto& clearValues = _renderPass->getClearValues();
-    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-    renderPassInfo.pClearValues = clearValues.data();
+    const VkRenderPassBeginInfo renderPassInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = _renderPass->getVkRenderPass(),
+        .framebuffer = _framebuffers[imageIndex]->getVkFramebuffer(),
+        .renderArea = {
+            .offset = { 0, 0 },
+            .extent = _swapchain->getExtent()
+        },
+        .clearValueCount = static_cast<uint32_t>(clearValues.size()),
+        .pClearValues = clearValues.data()
+    };
 
     vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); 
 
     const VkExtent2D& swapchainExtent = _swapchain->getExtent();
 
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = (float)swapchainExtent.width;
-    viewport.height = (float)swapchainExtent.height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    const VkViewport viewport = {
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = (float)swapchainExtent.width,
+        .height = (float)swapchainExtent.height,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f
+    };
 
-    VkRect2D scissor{};
-    scissor.offset = { 0, 0 };
-    scissor.extent = swapchainExtent;
+    const VkRect2D scissor = {
+        .offset = { 0, 0 },
+        .extent = swapchainExtent
+    };
    
-    VkCommandBufferInheritanceInfo inheritanceInfo{};
-    inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-    inheritanceInfo.renderPass = _renderPass->getVkRenderPass();
-    inheritanceInfo.framebuffer = _framebuffers[imageIndex]->getVkFramebuffer();
-    inheritanceInfo.subpass = 0;
+    const VkCommandBufferInheritanceInfo inheritanceInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+        .renderPass = _renderPass->getVkRenderPass(),
+        .subpass = 0,
+        .framebuffer = _framebuffers[imageIndex]->getVkFramebuffer()
+    };
 
-    VkCommandBufferBeginInfo cmdBufferBeginInfo{};
-    cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
-    cmdBufferBeginInfo.pInheritanceInfo = &inheritanceInfo;
+    const VkCommandBufferBeginInfo cmdBufferBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
+        .pInheritanceInfo = &inheritanceInfo
+    };
 
     const auto recordSecondaryCommandBuffer = [this, &cmdBufferBeginInfo, &scissor, &viewport](const VkCommandBuffer commandBuffer, const std::vector<const OctreeNode*>& nodes, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
         vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo);
@@ -639,6 +607,7 @@ void SingleApp::recreateSwapChain() {
     _framebuffers.clear();
     _framebufferTextures = std::move(createTexturesFromRenderpass(*_renderPass, extent));
     size_t swapchainImagesCount = _swapchain->getImages().size();
+    _framebuffers.reserve(swapchainImagesCount);
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
         std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });

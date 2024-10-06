@@ -229,7 +229,6 @@ void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage d
         }
     };
 
-    // Issue the blit command
     vkCmdBlitImage(
         commandBuffer,
         srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

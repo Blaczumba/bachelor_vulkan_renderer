@@ -7,20 +7,15 @@ Subpass::Subpass(const AttachmentLayout& layout) : _layout(layout) {
 }
 
 VkSubpassDescription Subpass::getVkSubpassDescription() const {
-    VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = static_cast<uint32_t>(_colorAttachmentRefs.size());
-    subpass.inputAttachmentCount = static_cast<uint32_t>(_inputAttachmentRefs.size());
-    if (!_inputAttachmentRefs.empty())
-        subpass.pInputAttachments = _inputAttachmentRefs.data();
-    if (!_colorAttachmentRefs.empty())
-        subpass.pColorAttachments = _colorAttachmentRefs.data();
-    if (!_depthAttachmentRefs.empty())
-        subpass.pDepthStencilAttachment = _depthAttachmentRefs.data();
-    if (!_colorAttachmentResolveRefs.empty())
-        subpass.pResolveAttachments = _colorAttachmentResolveRefs.data();
-
-    return subpass;
+    return VkSubpassDescription {
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .inputAttachmentCount = static_cast<uint32_t>(_inputAttachmentRefs.size()),
+        .pInputAttachments = !_inputAttachmentRefs.empty() ? _inputAttachmentRefs.data() : nullptr,
+        .colorAttachmentCount = static_cast<uint32_t>(_colorAttachmentRefs.size()),
+        .pColorAttachments = !_colorAttachmentRefs.empty() ? _colorAttachmentRefs.data() : nullptr,
+        .pResolveAttachments = !_colorAttachmentResolveRefs.empty() ? _colorAttachmentResolveRefs.data() : nullptr,
+        .pDepthStencilAttachment = !_depthAttachmentRefs.empty() ? _depthAttachmentRefs.data() : nullptr
+    };
 }
 
 void Subpass::addSubpassOutputAttachment(uint32_t attachmentBinding, VkImageLayout layout) {
@@ -30,9 +25,10 @@ void Subpass::addSubpassOutputAttachment(uint32_t attachmentBinding, VkImageLayo
 
     const Attachment attachment = attachments[attachmentBinding];
 
-    VkAttachmentReference attachmentReference{};
-    attachmentReference.layout = layout;
-    attachmentReference.attachment = attachmentBinding;
+    const VkAttachmentReference attachmentReference = {
+        .attachment = attachmentBinding,
+        .layout = layout
+    };
 
     switch (attachment.getAttachmentRefType()) {
     case Attachment::Type::COLOR_ATTACHMENT:
@@ -54,9 +50,10 @@ void Subpass::addSubpassInputAttachment(uint32_t attachmentBinding, VkImageLayou
     if (attachments.size() <= attachmentBinding)
         throw std::runtime_error("attachmentBinding is not a valid index in attachments vector!");
 
-    VkAttachmentReference attachmentReference{};
-    attachmentReference.layout = layout;
-    attachmentReference.attachment = attachmentBinding;
+    const VkAttachmentReference attachmentReference = {
+        .attachment = attachmentBinding,
+        .layout = layout
+    };
 
     _inputAttachmentRefs.push_back(attachmentReference);
 }

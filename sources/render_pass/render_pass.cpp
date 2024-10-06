@@ -11,19 +11,20 @@ Renderpass::Renderpass(const LogicalDevice& logicalDevice, const AttachmentLayou
 void Renderpass::create() {
     cleanup();
 
-    std::vector<VkAttachmentDescription> attachmentDescriptions = _attachmentsLayout.getVkAttachmentDescriptions();
-
+    const std::vector<VkAttachmentDescription> attachmentDescriptions = _attachmentsLayout.getVkAttachmentDescriptions();
     std::vector<VkSubpassDescription> subpassDescriptions;
+    subpassDescriptions.reserve(_subpasses.size());
     std::transform(_subpasses.cbegin(), _subpasses.cend(), std::back_inserter(subpassDescriptions), [](const Subpass& subpass) { return subpass.getVkSubpassDescription(); });
 
-    VkRenderPassCreateInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size());
-    renderPassInfo.pAttachments = attachmentDescriptions.data();
-    renderPassInfo.subpassCount = static_cast<uint32_t>(subpassDescriptions.size());
-    renderPassInfo.pSubpasses = subpassDescriptions.data();
-    renderPassInfo.dependencyCount = static_cast<uint32_t>(_subpassDepencies.size());
-    renderPassInfo.pDependencies = _subpassDepencies.data();
+    const VkRenderPassCreateInfo renderPassInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size()),
+        .pAttachments = attachmentDescriptions.data(),
+        .subpassCount = static_cast<uint32_t>(subpassDescriptions.size()),
+        .pSubpasses = subpassDescriptions.data(),
+        .dependencyCount = static_cast<uint32_t>(_subpassDepencies.size()),
+        .pDependencies = _subpassDepencies.data()
+    };
 
     if (vkCreateRenderPass(_logicalDevice.getVkDevice(), &renderPassInfo, nullptr, &_renderpass) != VK_SUCCESS) {
         throw std::runtime_error("failed to create render pass!");
@@ -58,13 +59,14 @@ void Renderpass::addSubpass(const Subpass& subpass) {
 }
 
 void Renderpass::addDependency(uint32_t srcSubpassIndex, uint32_t dstSubpassIndex, VkPipelineStageFlags srcStageMask, VkAccessFlags srcAccessMask, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask) {
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = srcSubpassIndex;
-    dependency.dstSubpass = dstSubpassIndex;
-    dependency.srcStageMask = srcStageMask;
-    dependency.srcAccessMask = srcAccessMask;
-    dependency.dstStageMask = dstStageMask;
-    dependency.dstAccessMask = dstAccessMask;
+    const VkSubpassDependency dependency = {
+        .srcSubpass = srcSubpassIndex,
+        .dstSubpass = dstSubpassIndex,
+        .srcStageMask = srcStageMask,
+        .dstStageMask = dstStageMask,
+        .srcAccessMask = srcAccessMask,
+        .dstAccessMask = dstAccessMask
+    };
 
     _subpassDepencies.push_back(dependency);
 }

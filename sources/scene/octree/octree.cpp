@@ -11,7 +11,7 @@ void OctreeNode::addObject(const Object* object) {
     const glm::vec3& lc = _volume.lowerCorner;
     const glm::vec3& uc = _volume.upperCorner;
 
-    glm::vec3 md = 0.5f * (lc + uc);
+    const glm::vec3 md = 0.5f * (lc + uc);
 
     const std::array<AABB, NUM_OCTREE_NODE_CHILDREN> subVolumes = {
         AABB{{lc.x, lc.y, lc.z}, {md.x, md.y, md.z}}, // Child 0: lower-left-front

@@ -8,18 +8,18 @@
 #include <iterator>
 #include <stdexcept>
 
-
 Framebuffer::Framebuffer(const Renderpass& renderpass, const VkExtent2D& extent, const std::vector<VkImageView>& imageViews)
     : _renderPass(renderpass) {
 
-    VkFramebufferCreateInfo framebufferInfo{};
-    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    framebufferInfo.renderPass = _renderPass.getVkRenderPass();
-    framebufferInfo.attachmentCount = static_cast<uint32_t>(imageViews.size());
-    framebufferInfo.pAttachments = imageViews.data();
-    framebufferInfo.width = extent.width;
-    framebufferInfo.height = extent.height;
-    framebufferInfo.layers = 1;
+    VkFramebufferCreateInfo framebufferInfo = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = _renderPass.getVkRenderPass(),
+        .attachmentCount = static_cast<uint32_t>(imageViews.size()),
+        .pAttachments = imageViews.data(),
+        .width = extent.width,
+        .height = extent.height,
+        .layers = 1,
+    };
 
     if (vkCreateFramebuffer(_renderPass.getLogicalDevice().getVkDevice(), &framebufferInfo, nullptr, &_framebuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to create framebuffer!");

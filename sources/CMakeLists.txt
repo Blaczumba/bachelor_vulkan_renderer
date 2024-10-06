@@ -1,6 +1,9 @@
 include_directories(${CMAKE_SOURCE_DIR}/external/glm)
 include_directories(${CMAKE_SOURCE_DIR}/external/)
-include_directories(${Boost_INCLUDE_DIRS})
+
+if(NOT Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+endif()
 
 add_subdirectory(window)
 add_subdirectory(instance)

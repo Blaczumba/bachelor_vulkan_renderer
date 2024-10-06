@@ -109,6 +109,7 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
                     const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
                     const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+                    positions.reserve(accessor.count);
                     for (size_t i = 0; i < accessor.count; ++i) {
                         positions.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
                     }
@@ -122,6 +123,7 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
                     const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
                     const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+                    texCoords.reserve(accessor.count);
                     for (size_t i = 0; i < accessor.count; ++i) {
                         texCoords.emplace_back(data[i * 2], data[i * 2 + 1]);
                     }
@@ -135,6 +137,7 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
                     const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
                     const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+                    normals.reserve(accessor.count);
                     for (size_t i = 0; i < accessor.count; ++i) {
                         normals.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
                     }
@@ -148,6 +151,7 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
                     const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
                     const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+                    tangents.reserve(accessor.count);
                     for (size_t i = 0; i < accessor.count; ++i) {
                         tangents.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
                     }
@@ -155,6 +159,7 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
             }
 
             // Combine vertex attributes into VertexType
+            vertexData.vertices.reserve(positions.size());
             for (size_t i = 0; i < positions.size(); ++i) {
                 VertexType vertex{};
                 if constexpr (VertexTraits<VertexType>::hasPosition) vertex.pos = positions[i];
@@ -175,6 +180,7 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
                 const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
                 const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
+                vertexData.indices.reserve(accessor.count);
                 if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
                     const uint16_t* data = reinterpret_cast<const uint16_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
                     for (size_t i = 0; i < accessor.count; ++i) {

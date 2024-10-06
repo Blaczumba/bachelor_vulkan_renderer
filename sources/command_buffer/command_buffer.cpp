@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 CommandPool::CommandPool(const LogicalDevice& logicalDevice) : _logicalDevice(logicalDevice) {
-    VkCommandPoolCreateInfo poolInfo = {
+    const VkCommandPoolCreateInfo poolInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = _logicalDevice.getPhysicalDevice().getPropertyManager().getQueueFamilyIndices().graphicsFamily.value()
@@ -37,7 +37,7 @@ const LogicalDevice& CommandPool::getLogicalDevice() const {
 CommandBuffer::CommandBuffer(const CommandPool& commandPool, bool primary) :_commandPool(commandPool) {
     VkCommandBufferLevel level = (primary) ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 
-    VkCommandBufferAllocateInfo allocInfo = {
+    const VkCommandBufferAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = _commandPool.getVkCommandPool(),
         .level = level,
@@ -60,7 +60,7 @@ const VkCommandBuffer CommandBuffer::getVkCommandBuffer() const {
 SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDevice)
     : _logicalDevice(logicalDevice) {
 
-    VkFenceCreateInfo fenceInfo = {
+    const VkFenceCreateInfo fenceInfo = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
     };
 
@@ -70,7 +70,7 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDev
 
     _commandBuffer = _logicalDevice.createCommandBuffer();
 
-    VkCommandBufferBeginInfo beginInfo = {
+    const VkCommandBufferBeginInfo beginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
     };
@@ -83,7 +83,7 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
 
     vkEndCommandBuffer(_commandBuffer);
 
-    VkSubmitInfo submitInfo = {
+    const VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .commandBufferCount = 1,
         .pCommandBuffers = &_commandBuffer
@@ -104,7 +104,7 @@ void copyBuffer(const LogicalDevice& logicalDevice, VkBuffer srcBuffer, VkBuffer
     SingleTimeCommandBuffer handle(logicalDevice);
     VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
-    VkBufferCopy copyRegion = {
+    const VkBufferCopy copyRegion = {
         .size = size
     };
 
