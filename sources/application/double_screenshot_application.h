@@ -94,7 +94,7 @@ class SingleApp : public ApplicationBase {
 
     uint32_t _currentFrame = 0;
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
-    static constexpr uint32_t MAX_THREADS_IN_POOL = 1;
+    static constexpr uint32_t MAX_THREADS_IN_POOL = 2;
 
     SingleApp();
     ~SingleApp();

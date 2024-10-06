@@ -68,7 +68,7 @@ void SingleApp::loadObjects() {
 
         std::vector<VertexP> pVertexData;
         std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return VertexP{ vertex.pos }; });
-        
+
         _objects.push_back(Object{
             std::make_unique<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices),
             std::make_unique<VertexBuffer>(*_logicalDevice, pVertexData),
@@ -76,7 +76,7 @@ void SingleApp::loadObjects() {
             index,
             std::move(descriptorSet),
             _newVertexDataTBN[i].model,
-            createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model)}
+            createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model) }
         );
 
         _ubObject.model = _newVertexDataTBN[i].model;
@@ -167,7 +167,7 @@ void SingleApp::createPresentResources() {
         std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
     }
-    
+
     GraphicsPipelineParameters parameters;
     parameters.msaaSamples = msaaSamples;
     _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass);
@@ -251,7 +251,7 @@ void SingleApp::draw() {
     VkDevice device = _logicalDevice->getVkDevice();
 
     vkWaitForFences(device, 1, &_inFlightFences[_currentFrame], VK_TRUE, UINT64_MAX);
-    
+
     uint32_t imageIndex;
     VkResult result = _swapchain->acquireNextImage(_imageAvailableSemaphores[_currentFrame], &imageIndex);
 
@@ -409,7 +409,7 @@ void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer command
 
     for (auto option : options) {
         const OctreeNode* n = node->getChild(option);
-        if (n && n->getVolume().intersectsFrustum(planes)) 
+        if (n && n->getVolume().intersectsFrustum(planes))
             recordOctreeSecondaryCommandBuffer(commandBuffer, n, planes);
     }
 }
@@ -435,7 +435,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         .pClearValues = clearValues.data()
     };
 
-    vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); 
+    vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
     const VkExtent2D& swapchainExtent = _swapchain->getExtent();
 
@@ -452,7 +452,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         .offset = { 0, 0 },
         .extent = swapchainExtent
     };
-   
+
     const VkCommandBufferInheritanceInfo inheritanceInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
         .renderPass = _renderPass->getVkRenderPass(),
@@ -492,38 +492,40 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
 
     const std::vector<const OctreeNode*> lst = { root };
     const auto& planes = extractFrustumPlanes(PV);
-    // auto start = std::chrono::high_resolution_clock::now();
     if (root && root->getVolume().intersectsFrustum(planes)) {
-        _threadPool->getThread(0)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[0], lst, planes ); });
+        _threadPool->getThread(0)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[0], lst, planes); });
     }
-    //_threadPool->getThread(1)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[1], down); });
+
+    _threadPool->getThread(1)->addJob([&]() {
+        // Skybox
+        vkBeginCommandBuffer(commandBuffers[1], &cmdBufferBeginInfo);
+
+        vkCmdSetViewport(commandBuffers[1], 0, 1, &viewport);
+
+        vkCmdSetScissor(commandBuffers[1], 0, 1, &scissor);
+
+        vkCmdBindPipeline(commandBuffers[1], _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
+
+        vkCmdBindPipeline(commandBuffers[1], _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
+
+        VkBuffer vertexBuffersCube[] = { _vertexBufferCube->getVkBuffer() };
+
+        const VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(commandBuffers[1], 0, 1, vertexBuffersCube, offsets);
+
+        vkCmdBindIndexBuffer(commandBuffers[1], _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
+
+        _descriptorSetSkybox->bindDescriptorSet(commandBuffers[1], *_graphicsPipelineSkybox, { _currentFrame });
+
+        vkCmdDrawIndexed(commandBuffers[1], _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
+
+        vkEndCommandBuffer(commandBuffers[1]);
+        });
+
     _threadPool->wait();
-    // auto stop = std::chrono::high_resolution_clock::now();
-    // std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
-    
-    // std::cout << counter << ' ' << _objects.size() << std::endl;
-    // counter = 0;
-    
-    if(root && root->getVolume().intersectsFrustum(planes))
+
+    if (root && root->getVolume().intersectsFrustum(planes))
         vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-
-    //vkCmdSetViewport(primaryCommandBuffer, 0, 1, &viewport);
-
-    //vkCmdSetScissor(primaryCommandBuffer, 0, 1, &scissor);
-
-    //////// SKYBOX
-    //vkCmdBindPipeline(primaryCommandBuffer, _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
-
-    //VkBuffer vertexBuffersCube[] = { _vertexBufferCube->getVkBuffer() };
-
-    //const VkDeviceSize offsets[] = { 0 };
-    //vkCmdBindVertexBuffers(primaryCommandBuffer, 0, 1, vertexBuffersCube, offsets);
-
-    //vkCmdBindIndexBuffer(primaryCommandBuffer, _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
-
-    //_descriptorSetSkybox->bindDescriptorSet(primaryCommandBuffer, *_graphicsPipelineSkybox, { _currentFrame });
-
-    //vkCmdDrawIndexed(primaryCommandBuffer, _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(primaryCommandBuffer);
 
