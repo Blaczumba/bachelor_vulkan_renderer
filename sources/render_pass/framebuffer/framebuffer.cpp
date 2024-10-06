@@ -1,99 +1,37 @@
 #include "framebuffer.h"
+#include "logical_device/logical_device.h"
+#include "render_pass/render_pass.h"
+#include "memory_objects/texture/texture_2D_color.h"
+#include "memory_objects/texture/texture_2D_depth.h"
 
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
 
-//TODO
-Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::vector<std::vector<VkImageView>>&& images, std::shared_ptr<Renderpass> renderpass, VkExtent2D extent, uint32_t count) 
-    : _logicalDevice(logicaldevice), _renderPass(renderpass) {
+Framebuffer::Framebuffer(const Renderpass& renderpass, const VkExtent2D& extent, const std::vector<VkImageView>& imageViews)
+    : _renderPass(renderpass) {
 
-    _framebuffers.resize(count);
+    VkFramebufferCreateInfo framebufferInfo = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = _renderPass.getVkRenderPass(),
+        .attachmentCount = static_cast<uint32_t>(imageViews.size()),
+        .pAttachments = imageViews.data(),
+        .width = extent.width,
+        .height = extent.height,
+        .layers = 1,
+    };
 
-    for (size_t i = 0; i < count; i++) {
-        VkFramebufferCreateInfo framebufferInfo{};
-        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferInfo.renderPass = _renderPass->getVkRenderPass();
-        framebufferInfo.attachmentCount = static_cast<uint32_t>(images[i].size());
-        framebufferInfo.pAttachments = images[i].data();
-        framebufferInfo.width = extent.width;
-        framebufferInfo.height = extent.height;
-        framebufferInfo.layers = 1;
-
-        if (vkCreateFramebuffer(_logicalDevice->getVkDevice(), &framebufferInfo, nullptr, &_framebuffers[i]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create framebuffer!");
-        }
+    if (vkCreateFramebuffer(_renderPass.getLogicalDevice().getVkDevice(), &framebufferInfo, nullptr, &_framebuffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create framebuffer!");
     }
-}
-
-Framebuffer::Framebuffer(std::shared_ptr<LogicalDevice> logicaldevice, std::shared_ptr<Swapchain> swapchain, std::shared_ptr<Renderpass> renderpass)
-    : _logicalDevice(logicaldevice), _swapchain(swapchain), _renderPass(renderpass) {
-    const auto& images              = _swapchain->getImages();
-    const auto& swapchainExtent     = _swapchain->getExtent();
-    const auto& attachments         = _renderPass->getAttachmentsLayout().getAttachments();
-
-    std::vector<VkImageView> swapchainImageViews;
-    std::transform(images.cbegin(), images.cend(), std::back_inserter(swapchainImageViews), [](const Image& image) { return image.view; });
-
-    _framebuffers.resize(swapchainImageViews.size());
-
-    size_t swapchainPlace{};
-    std::vector<VkImageView> attachmentViews;
-    _colorImages.reserve(attachments.size());
-    _depthImages.reserve(attachments.size());
-    for (size_t i = 0; i < attachments.size(); i++) {
-        const VkAttachmentDescription& description = attachments[i].getDescription();
-        switch (description.finalLayout) {
-
-        case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-            // TODO adding swapchain images to _images
-            attachmentViews.push_back(VK_NULL_HANDLE);
-            swapchainPlace = i;
-            break;
-        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            _colorImages.emplace_back(*_logicalDevice, description.format, description.samples, swapchainExtent);
-            attachmentViews.push_back(_colorImages.back().getImage().view);
-            break;
-        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            _depthImages.emplace_back(*_logicalDevice, description.format, description.samples, swapchainExtent);
-            attachmentViews.push_back(_depthImages.back().getImage().view);
-            break;
-        default:
-            std::runtime_error("failed to recognize final layout in the framebuffer!");
-        }
-    }
-
-    for (size_t i = 0; i < swapchainImageViews.size(); i++) {
-        std::vector<VkImageView> views = attachmentViews;
-        views[swapchainPlace] = swapchainImageViews[i];
-
-        VkFramebufferCreateInfo framebufferInfo{};
-        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferInfo.renderPass = _renderPass->getVkRenderPass();
-        framebufferInfo.attachmentCount = static_cast<uint32_t>(views.size());
-        framebufferInfo.pAttachments = views.data();
-        framebufferInfo.width = swapchainExtent.width;
-        framebufferInfo.height = swapchainExtent.height;
-        framebufferInfo.layers = 1;
-
-        if (vkCreateFramebuffer(_logicalDevice->getVkDevice(), &framebufferInfo, nullptr, &_framebuffers[i]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create framebuffer!");
-        }
-    }
-}
-
-const std::vector<Texture2DColor>& Framebuffer::getColorTextures() const {
-    return _colorImages;
-}
-
-std::vector<VkFramebuffer> Framebuffer::getVkFramebuffers() const {
-    return _framebuffers;
 }
 
 Framebuffer::~Framebuffer() {
-    VkDevice device = _logicalDevice->getVkDevice();
+    VkDevice device = _renderPass.getLogicalDevice().getVkDevice();
 
-    for (auto framebuffer : _framebuffers) {
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
-    }
+    vkDestroyFramebuffer(device, _framebuffer, nullptr);
+}
+
+VkFramebuffer Framebuffer::getVkFramebuffer() const {
+    return _framebuffer;
 }

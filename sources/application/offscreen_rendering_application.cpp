@@ -1,14 +1,20 @@
 #include "offscreen_rendering_application.h"
 
 #include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
+#include "entity_component_system/system/movement_system.h"
+#include "utils/utils.h"
+#include "thread_pool/thread_pool.h"
 
 #include <algorithm>
 #include <array>
+#include <chrono>
+#include <any>
 
 OffscreenRendering::OffscreenRendering()
     : ApplicationBase() {
-
-    _newVertexDataTBN = LoadGLTF(MODELS_PATH "sponza/scene.gltf");
+    TextureFactory factory;
+    auto tx = factory.createTexture<Texture2DImage>(*_logicalDevice, TEXTURES_PATH "brickwall.jpg", VK_FORMAT_R8G8B8A8_SRGB, 16.0f);
+    _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
     
     createDescriptorSets();
     loadObjects();
@@ -17,16 +23,14 @@ OffscreenRendering::OffscreenRendering()
     createShadowResources();
 
     VertexData<VertexP, uint16_t> vertexDataCube = TinyOBJLoaderVertex::extract<VertexP, uint16_t>(MODELS_PATH "cube.obj");
-    _vertexBufferCube = std::make_unique<VertexBuffer<VertexP>>(*_logicalDevice, vertexDataCube.vertices);
-    _indexBufferCube = std::make_unique<IndexBuffer<uint16_t>>(*_logicalDevice, vertexDataCube.indices);
+    _vertexBufferCube = std::make_unique<VertexBuffer>(*_logicalDevice, vertexDataCube.vertices);
+    _indexBufferCube = std::make_unique<IndexBuffer>(*_logicalDevice, vertexDataCube.indices);
 
-    _commandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
-    _offscreenCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
-    _shadowCommandBuffers = _logicalDevice->createCommandBuffers(MAX_FRAMES_IN_FLIGHT);
+    createCommandBuffers();
 
-    _screenshot = std::make_unique<Screenshot>(_logicalDevice);
-    _screenshot->addImageToObserved(_framebuffer->getColorTextures()[0].getImage(), "hig_res_screenshot.ppm");
-    _screenshot->addImageToObserved(_lowResTextureColorAttachment->getImage(), "low_res_screenshot.ppm");
+    _screenshot = std::make_unique<Screenshot>(*_logicalDevice);
+    _screenshot->addImageToObserved(_framebufferTextures[1]->getImage(), "hig_res_screenshot.ppm");
+    _screenshot->addImageToObserved(_lowResFramebufferTextures[0]->getImage(), "low_res_screenshot.ppm");
 
     _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 100.0f);
 
@@ -41,7 +45,7 @@ void OffscreenRendering::loadObjects() {
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     uint32_t index = 0;
-    
+
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
         if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
             continue;
@@ -64,23 +68,32 @@ void OffscreenRendering::loadObjects() {
 
         auto descriptorSet = _descriptorPool->createDesriptorSet();
         descriptorSet->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _uniformMap[diffusePath].get(), _uniformBuffersLight.get(), _uniformBuffersObjects.get(), _shadowTextureUniform.get(), _uniformMap[normalPath].get(), _uniformMap[metallicRoughnessPath].get() });
-        
+
         std::vector<VertexP> pVertexData;
-        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNTB& vertex) { return VertexP{ vertex.pos }; });
+        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return VertexP{ vertex.pos }; });
         _objects.push_back(Object{
-            std::make_unique<VertexBuffer<VertexPTNTB>>(*_logicalDevice, std::move(_newVertexDataTBN[i].vertices)),
-            std::make_unique<VertexBuffer<VertexP>>(*_logicalDevice, std::move(pVertexData)),
-            std::make_unique<IndexBuffer<uint32_t>>(*_logicalDevice, std::move(_newVertexDataTBN[i].indices)),
+            std::make_unique<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices),
+            std::make_unique<VertexBuffer>(*_logicalDevice, pVertexData),
+            std::make_unique<IndexBuffer>(*_logicalDevice, _newVertexDataTBN[i].indices),
             index,
             std::move(descriptorSet),
-            _newVertexDataTBN[i].model }
-
+            _newVertexDataTBN[i].model,
+            createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model) }
         );
 
         _ubObject.model = _newVertexDataTBN[i].model;
         _uniformBuffersObjects->updateUniformBuffer(&_ubObject, index++);
     }
-    _uniformBuffersObjects->makeUpdatesVisible();
+    // _uniformBuffersObjects->makeUpdatesVisible();
+
+    AABB sceneAABB = _objects[0].volume;
+    for (int i = 1; i < _objects.size(); i++) {
+        sceneAABB.extend(_objects[i].volume);
+    }
+    _octree = std::make_unique<Octree>(sceneAABB);
+
+    for (const auto& object : _objects)
+        _octree->addObject(&object);
 }
 
 void OffscreenRendering::createDescriptorSets() {
@@ -88,7 +101,7 @@ void OffscreenRendering::createDescriptorSets() {
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     _textureCubemap = std::make_unique<TextureCubemap>(*_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
 
-    _shadowMap = std::make_unique<Texture2DShadow>(*_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
+    _shadowMap = std::make_shared<Texture2DShadow>(*_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
 
     _uniformBuffersObjects = std::make_unique<UniformBufferDynamic<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
     _uniformBuffersLight = std::make_unique<UniformBufferStruct<UniformBufferLight>>(*_logicalDevice);
@@ -97,38 +110,21 @@ void OffscreenRendering::createDescriptorSets() {
     _skyboxTextureUniform = std::make_unique<UniformBufferTexture>(*_textureCubemap);
     _shadowTextureUniform = std::make_unique<UniformBufferTexture>(*_shadowMap);
 
-    _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(*_logicalDevice);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayout->create();
+    _pbrShaderProgram = std::make_unique<PBRShaderProgram>(*_logicalDevice);
+    _pbrOffscreenShaderProgram = std::make_unique<PBRShaderOffscreenProgram>(*_logicalDevice);
+    _skyboxShaderProgram = std::make_unique<SkyboxShaderProgram>(*_logicalDevice);
+    _skyboxOffscreenShaderProgram = std::make_unique<SkyboxOffscreenShaderProgram>(*_logicalDevice);
+    _shadowShaderProgram = std::make_unique<ShadowShaderProgram>(*_logicalDevice);
 
-    _descriptorSetLayoutSkybox = std::make_unique<DescriptorSetLayout>(*_logicalDevice);
-    _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
-    _descriptorSetLayoutSkybox->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetLayoutSkybox->create();
-
-    _descriptorSetLayoutShadow = std::make_unique<DescriptorSetLayout>(*_logicalDevice);
-    _descriptorSetLayoutShadow->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
-    _descriptorSetLayoutShadow->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
-    _descriptorSetLayoutShadow->create();
-
-    _descriptorPool = std::make_shared<DescriptorPool>(*_logicalDevice, *_descriptorSetLayout, 150);
-    _descriptorPoolSkybox = std::make_shared<DescriptorPool>(*_logicalDevice, *_descriptorSetLayoutSkybox, 1);
-    _descriptorPoolShadow = std::make_shared<DescriptorPool>(*_logicalDevice, *_descriptorSetLayoutShadow, 1);
+    _descriptorPool = std::make_shared<DescriptorPool>(*_logicalDevice, _pbrShaderProgram->getDescriptorSetLayout(), 150);
+    _descriptorPoolSkybox = std::make_shared<DescriptorPool>(*_logicalDevice, _skyboxShaderProgram->getDescriptorSetLayout(), 1);
+    _descriptorPoolShadow = std::make_shared<DescriptorPool>(*_logicalDevice, _shadowShaderProgram->getDescriptorSetLayout(), 1);
 
     _descriptorSetSkybox = _descriptorPoolSkybox->createDesriptorSet();
     _descriptorSetShadow = _descriptorPoolShadow->createDesriptorSet();
 
     _descriptorSetSkybox->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _skyboxTextureUniform.get() });
     _descriptorSetShadow->updateDescriptorSet({ _uniformBuffersLight.get(),  _uniformBuffersObjects.get()});
-
-    _pushConstants = std::make_unique<PushConstants>(*_physicalDevice);
-    _pushConstants->addPushConstant<UniformBufferObject>(VK_SHADER_STAGE_VERTEX_BIT);
 
     _ubLight.pos = glm::vec3(15.1891f, 2.66408f, -0.841221f);
     _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.01f, 40.0f);
@@ -140,6 +136,7 @@ void OffscreenRendering::createDescriptorSets() {
 void OffscreenRendering::createPresentResources() {
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
     VkFormat swapchainImageFormat = _swapchain->getVkFormat();
+    VkExtent2D extent = _swapchain->getExtent();
 
     AttachmentLayout attachmentsLayout;
     attachmentsLayout.addAttachment(ColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE));
@@ -155,7 +152,7 @@ void OffscreenRendering::createPresentResources() {
     subpass.addSubpassOutputAttachment(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     subpass.addSubpassOutputAttachment(4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    _renderPass = std::make_shared<Renderpass>(_logicalDevice, attachmentsLayout);
+    _renderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentsLayout);
     _renderPass->addSubpass(subpass);
     _renderPass->addDependency(VK_SUBPASS_EXTERNAL,
         0,
@@ -166,9 +163,26 @@ void OffscreenRendering::createPresentResources() {
     );
     _renderPass->create();
 
-    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
-    _graphicsPipeline = std::make_unique<GraphicsPipeline<VertexPTNTB>>(_logicalDevice, _renderPass, _descriptorSetLayout->getVkDescriptorSetLayout(), *_pushConstants, msaaSamples, "shader_normal_mapping.vert.spv", "shader_normal_mapping.frag.spv", true, 0.0f, 0.0f);
-    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _renderPass, _descriptorSetLayoutSkybox->getVkDescriptorSetLayout(), *_pushConstants, msaaSamples, "skybox.vert.spv", "skybox.frag.spv", false, 0.0f, 0.0f);
+    _framebufferTextures = createTexturesFromRenderpass(*_renderPass, extent);
+    size_t swapchainImagesCount = _swapchain->getImages().size();
+    for (size_t i = 0; i < swapchainImagesCount; i++) {
+        std::vector<VkImageView> imageViews;
+        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
+        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
+    }
+
+    GraphicsPipelineParameters parameters;
+    parameters.msaaSamples = msaaSamples;
+    _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass);
+    _graphicsPipeline->setShaderProgram(_pbrShaderProgram.get());
+    _graphicsPipeline->setPipelineParameters(parameters);
+    _graphicsPipeline->create();
+
+    parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
+    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_renderPass);
+    _graphicsPipelineSkybox->setShaderProgram(_skyboxShaderProgram.get());
+    _graphicsPipelineSkybox->setPipelineParameters(parameters);
+    _graphicsPipelineSkybox->create();
 }
 
 void OffscreenRendering::createOffscreenResources() {
@@ -185,25 +199,30 @@ void OffscreenRendering::createOffscreenResources() {
     subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     subpass.addSubpassOutputAttachment(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    _lowResRenderPass = std::make_shared<Renderpass>(_logicalDevice, attachmentLayout);
+    _lowResRenderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentLayout);
     _lowResRenderPass->addSubpass(subpass);
     _lowResRenderPass->create();
 
-    _lowResTextureColorAttachment = std::make_unique<Texture2DColor>(*_logicalDevice, swapchainImageFormat, lowResMsaaSamples, lowResExtent);
-    _lowResTextureDepthAttachment = std::make_unique<Texture2DDepth>(*_logicalDevice, findDepthFormat(), lowResMsaaSamples, lowResExtent);
+    _lowResFramebufferTextures = createTexturesFromRenderpass(*_lowResRenderPass, lowResExtent);
+    size_t swapchainImagesCount = _swapchain->getImages().size();
+    for (size_t i = 0; i < swapchainImagesCount; i++) {
+        std::vector<VkImageView> imageViews;
+        std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture->getImage().view; });
+        _lowResFramebuffers.emplace_back(std::make_unique<Framebuffer>(*_lowResRenderPass, lowResExtent, imageViews));
+    }
 
-    // auto lowResTextureColorResolveView = _lowResTextureColorResolveAttachment->getImage().view;
-    auto lowResTextureColorView = _lowResTextureColorAttachment->getImage().view;
-    auto lowResTextureDepthView = _lowResTextureDepthAttachment->getImage().view;
-    std::vector<std::vector<VkImageView>> lowResViews = {
-        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
-        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
-        {/* lowResTextureColorResolveView,*/ lowResTextureColorView, lowResTextureDepthView},
-    };
+    GraphicsPipelineParameters parameters;
+    parameters.msaaSamples = lowResMsaaSamples;
+    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline>(*_lowResRenderPass);
+    _lowResGraphicsPipeline->setShaderProgram(_pbrOffscreenShaderProgram.get());
+    _lowResGraphicsPipeline->setPipelineParameters(parameters);
+    _lowResGraphicsPipeline->create();
 
-    _lowResFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(lowResViews), _lowResRenderPass, lowResExtent, MAX_FRAMES_IN_FLIGHT);
-    _lowResGraphicsPipeline = std::make_unique<GraphicsPipeline<VertexPTNTB>>(_logicalDevice, _lowResRenderPass, _descriptorSetLayout->getVkDescriptorSetLayout(), *_pushConstants, lowResMsaaSamples, "shader_normal_mapping.vert.spv", "offscreen_shader_normal_mapping.frag.spv", true, 0.0f, 0.0f);
-    _lowResGraphicsPipelineSkybox = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _lowResRenderPass, _descriptorSetLayoutSkybox->getVkDescriptorSetLayout(), *_pushConstants, lowResMsaaSamples, "skybox_offscreen.vert.spv", "skybox_offscreen.frag.spv", false, 0.0f, 0.0f);
+    parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
+    _lowResGraphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_lowResRenderPass);
+    _lowResGraphicsPipelineSkybox->setShaderProgram(_skyboxOffscreenShaderProgram.get());
+    _lowResGraphicsPipelineSkybox->setPipelineParameters(parameters);
+    _lowResGraphicsPipelineSkybox->create();
 }
 
 void OffscreenRendering::createShadowResources() {
@@ -219,18 +238,20 @@ void OffscreenRendering::createShadowResources() {
     Subpass subpass(attachmentLayout);
     subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    _shadowRenderPass = std::make_shared<Renderpass>(_logicalDevice, attachmentLayout);
+    _shadowRenderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentLayout);
     _shadowRenderPass->addSubpass(subpass);
     _shadowRenderPass->create();
 
-    std::vector<std::vector<VkImageView>> shadowViews = {
-        {_shadowMap->getImage().view},
-        {_shadowMap->getImage().view},
-        {_shadowMap->getImage().view},
-    };
+    std::vector<VkImageView> imageViews = { _shadowMap->getImage().view };
+    _shadowFramebuffer = std::make_unique<Framebuffer>(*_shadowRenderPass, extent, imageViews);
 
-    _shadowFramebuffer = std::make_unique<Framebuffer>(_logicalDevice, std::move(shadowViews), _shadowRenderPass, extent, MAX_FRAMES_IN_FLIGHT);
-    _shadowPipeline = std::make_unique<GraphicsPipeline<VertexP>>(_logicalDevice, _shadowRenderPass, _descriptorSetLayoutShadow->getVkDescriptorSetLayout(), *_pushConstants, shadowMsaaSamples, "shadow.vert.spv", "shadow.frag.spv", true, 0.7f, 2.0f);
+    GraphicsPipelineParameters parameters;
+    parameters.depthBiasConstantFactor = 0.7f;
+    parameters.depthBiasSlopeFactor = 2.0f;
+    _shadowPipeline = std::make_unique<GraphicsPipeline>(*_shadowRenderPass);
+    _shadowPipeline->setShaderProgram(_shadowShaderProgram.get());
+    _shadowPipeline->setPipelineParameters(parameters);
+    _shadowPipeline->create();
 }
 
 OffscreenRendering::~OffscreenRendering() {
@@ -287,13 +308,16 @@ void OffscreenRendering::draw() {
 
     vkResetFences(device, 1, &_inFlightFences[_currentFrame]);
 
-    vkResetCommandBuffer(_commandBuffers[_currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-    vkResetCommandBuffer(_offscreenCommandBuffers[_currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+    //for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    //    _commandBuffers[i]->resetCommandBuffer();
+    //    _offscreenCommandBuffers[i]->resetCommandBuffer();
+    //}
+
     //vkResetCommandBuffer(_shadowCommandBuffers[_currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
 
     //recordShadowCommandBuffer(_shadowCommandBuffers[_currentFrame], imageIndex);
-    recordOffscreenCommandBuffer(_offscreenCommandBuffers[_currentFrame], imageIndex);
-    recordCommandBuffer(_commandBuffers[_currentFrame], imageIndex);
+    recordOffscreenCommandBuffer(_offscreenCommandBuffers[_currentFrame]->getVkCommandBuffer(), imageIndex);
+    recordCommandBuffer(_commandBuffers[_currentFrame]->getVkCommandBuffer(), imageIndex);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -304,7 +328,7 @@ void OffscreenRendering::draw() {
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
 
-    std::array<VkCommandBuffer, 2> submitCommands = { _commandBuffers[_currentFrame], _offscreenCommandBuffers[_currentFrame]};
+    std::array<VkCommandBuffer, 2> submitCommands = { _commandBuffers[_currentFrame]->getVkCommandBuffer(), _offscreenCommandBuffers[_currentFrame]->getVkCommandBuffer()};
     submitInfo.commandBufferCount = static_cast<uint32_t>(submitCommands.size());
     submitInfo.pCommandBuffers = submitCommands.data();
 
@@ -371,6 +395,16 @@ void OffscreenRendering::createSyncObjects() {
     }
 }
 
+void OffscreenRendering::createCommandBuffers() {
+    _commandPool = std::make_unique<CommandPool>(*_logicalDevice);
+    _commandBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
+    _offscreenCommandBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        _commandBuffers.emplace_back(_commandPool->createPrimaryCommandBuffer());
+        _offscreenCommandBuffers.emplace_back(_commandPool->createPrimaryCommandBuffer());
+    }
+}
+
 void OffscreenRendering::updateUniformBuffer(uint32_t currentFrame) {
     const auto& swapchainExtent = _swapchain->getExtent();
 
@@ -379,7 +413,6 @@ void OffscreenRendering::updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.pos = _camera->getPosition();
 
     _dynamicUniformBuffersCamera->updateUniformBuffer(&_ubCamera, currentFrame);
-    _dynamicUniformBuffersCamera->makeUpdatesVisible(currentFrame);
 
     // std::cout << _ubCamera.pos.x << " " << _ubCamera.pos.y << " " << _ubCamera.pos.z << std::endl;
 }
@@ -395,9 +428,10 @@ void OffscreenRendering::recordOffscreenCommandBuffer(VkCommandBuffer commandBuf
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = _lowResRenderPass->getVkRenderPass();
-    renderPassInfo.framebuffer = _lowResFramebuffer->getVkFramebuffers()[imageIndex];
+    renderPassInfo.framebuffer = _lowResFramebuffers[imageIndex]->getVkFramebuffer();
     renderPassInfo.renderArea.offset = { 0, 0 };
-    VkExtent2D extent = { _lowResTextureColorAttachment->getImage().extent.width, _lowResTextureColorAttachment->getImage().extent.height };
+    VkExtent2D extent = _swapchain->getExtent();
+    extent = { extent.width / 4, extent.height / 4 };
     renderPassInfo.renderArea.extent = extent;
 
     const auto& clearValues = _lowResRenderPass->getClearValues();
@@ -467,7 +501,7 @@ void OffscreenRendering::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = _renderPass->getVkRenderPass();
-    renderPassInfo.framebuffer = _framebuffer->getVkFramebuffers()[imageIndex];
+    renderPassInfo.framebuffer = _framebuffers[imageIndex]->getVkFramebuffer();
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = _swapchain->getExtent();
 
@@ -538,12 +572,12 @@ void OffscreenRendering::recordShadowCommandBuffer(VkCommandBuffer commandBuffer
     //    throw std::runtime_error("failed to begin recording command buffer!");
     //}
 
-    VkExtent2D extent = { _shadowMap->getImage().extent.width, _shadowMap->getImage().extent.height };
+    VkExtent2D extent = { _shadowMap->getImage().width, _shadowMap->getImage().height };
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = _shadowRenderPass->getVkRenderPass();
-    renderPassInfo.framebuffer = _shadowFramebuffer->getVkFramebuffers()[imageIndex];
+    renderPassInfo.framebuffer = _shadowFramebuffer->getVkFramebuffer();
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = extent;
 
@@ -601,5 +635,21 @@ void OffscreenRendering::recreateSwapChain() {
 
     _swapchain->recrete();
 
-    _framebuffer = std::make_unique<Framebuffer>(_logicalDevice, _swapchain, _renderPass);
+    _framebuffers.clear();
+    _framebufferTextures = std::move(createTexturesFromRenderpass(*_renderPass, extent));
+    size_t swapchainImagesCount = _swapchain->getImages().size();
+    for (size_t i = 0; i < swapchainImagesCount; i++) {
+        std::vector<VkImageView> imageViews;
+        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
+        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
+    }
+
+    _lowResFramebuffers.clear();
+    extent = { extent.width / 4, extent.height / 4 };
+    _lowResFramebufferTextures = std::move(createTexturesFromRenderpass(*_lowResRenderPass, extent));
+    for (size_t i = 0; i < swapchainImagesCount; i++) {
+        std::vector<VkImageView> imageViews;
+        std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
+        _lowResFramebuffers.emplace_back(std::make_unique<Framebuffer>(*_lowResRenderPass, extent, imageViews));
+    }
 }

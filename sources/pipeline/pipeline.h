@@ -1,18 +1,17 @@
 #pragma once
 
-#include "logical_device/logical_device.h"
+#include <vulkan/vulkan.h>
 
 #include <memory>
 
 class Pipeline {
 protected:
-	VkPipeline _pipeline;
-	VkPipelineLayout _pipelineLayout;
+	VkPipeline _pipeline				= VK_NULL_HANDLE;
+	VkPipelineLayout _pipelineLayout	= VK_NULL_HANDLE;
 	VkPipelineBindPoint _pipelineBindPoint;
 
-	std::shared_ptr<LogicalDevice> _logicalDevice;
 public:
-	Pipeline(std::shared_ptr<LogicalDevice> logicalDevice, VkPipelineBindPoint pipelineBindPoint);
+	Pipeline(VkPipelineBindPoint pipelineBindPoint);
 	virtual ~Pipeline() = default;
 
 	VkPipeline getVkPipeline() const;

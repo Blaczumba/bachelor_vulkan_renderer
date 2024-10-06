@@ -23,6 +23,6 @@ public:
     const VkPhysicalDevice getVkPhysicalDevice() const;
     const PhysicalDevicePropertyManager& getPropertyManager() const;
 
-    std::shared_ptr<LogicalDevice> createLogicalDevice();
+    std::unique_ptr<LogicalDevice> createLogicalDevice();
 
 };

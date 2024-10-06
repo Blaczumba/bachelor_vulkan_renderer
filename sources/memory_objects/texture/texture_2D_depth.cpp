@@ -1,29 +1,29 @@
 #include "texture_2D_depth.h"
 
 #include "logical_device/logical_device.h"
-#include "memory_objects/image.h"
 #include "command_buffer/command_buffer.h"
 
 #include <algorithm>
 #include <stdexcept>
 
 Texture2DDepth::Texture2DDepth(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
-	: Texture2D(logicalDevice) {
+	: Texture(
+        Image{ 
+            .format = format,
+            .width = extent.width,
+            .height = extent.height,
+            .aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .numSamples = samples,
+            .usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+        }
+    ),
+    _logicalDevice(logicalDevice) {
 
-    _image.aspect   = VK_IMAGE_ASPECT_DEPTH_BIT;
-    _image.format   = format;
-    _image.extent   = { extent.width, extent.height, 1 };
-    
-    _layerCount     = 1;
-    _mipLevels      = 1;
-    _sampleCount    = samples;
-
-    _logicalDevice.createImage(extent.width, extent.height, _mipLevels, _sampleCount, _image.format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _image.image, _image.memory);
-    
-    if (hasStencil(_image.format))
+    _logicalDevice.createImage(&_image);
+    if (hasStencil(format))
         _image.aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-    _image.view = _logicalDevice.createImageView(_image.image, _image.format, _image.aspect, 1);
+    _logicalDevice.createImageView(&_image);
 
     {
         SingleTimeCommandBuffer handle(_logicalDevice);

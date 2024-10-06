@@ -8,7 +8,7 @@
 #include <fstream>
 #include <iostream>
 
-Screenshot::Screenshot(std::shared_ptr<LogicalDevice> logicalDevice)
+Screenshot::Screenshot(const LogicalDevice& logicalDevice)
 	: _logicalDevice(logicalDevice), _counter(0), _shouldStop(false) {
 	_savingThread = std::thread(&Screenshot::savingThread, this);
 }
@@ -21,7 +21,7 @@ void Screenshot::addImageToObserved(const Image& image, const std::string& name)
 void Screenshot::updateInput(const CallbackData& cbData) {
 	if (std::find(cbData.keys.cbegin(), cbData.keys.cend(), Keyboard::Key::P) != cbData.keys.cend()) {
 		for (size_t i = 0; i < _images.size(); i++) {
-			saveImage(std::to_string(_counter/2) + '_' + _imageNames[i], _images[i]);
+			saveImage(std::to_string(_counter/2) + '_' + _imageNames[i], &_images[i]);
 			++_counter;
 		}
 	}
@@ -65,41 +65,40 @@ void Screenshot::savingThread() {
 	}
 }
 
-void Screenshot::saveImage(const std::string& filePath, const Image& srcImage) {
-	VkDevice device = _logicalDevice->getVkDevice();
-	VkExtent2D extent = { srcImage.extent.width, srcImage.extent.height };
-	Image dstImage;
-	dstImage.extent = { extent.width, extent.height, 1 };
+void Screenshot::saveImage(const std::string& filePath, Image* srcImage) {
+	VkDevice device = _logicalDevice.getVkDevice();
+	VkExtent2D extent = { srcImage->width, srcImage->height };
+	Image dstImage = {
+		.format = VK_FORMAT_R8G8B8A8_SRGB,
+		.width = srcImage->width,
+		.height = srcImage->height,
+		.aspect = srcImage->aspect,
+		.mipLevels = srcImage->mipLevels,
+		.tiling = VK_IMAGE_TILING_LINEAR,
+		.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+		.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+	};
 
-	_logicalDevice->createImage(
-		dstImage.extent.width,
-		dstImage.extent.height,
-		1,
-		VK_SAMPLE_COUNT_1_BIT,
-		VK_FORMAT_R8G8B8A8_SRGB,
-		VK_IMAGE_TILING_LINEAR,
-		VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		dstImage.image,
-		dstImage.memory
-	);
+	_logicalDevice.createImage(&dstImage);
 
 	{
-		SingleTimeCommandBuffer commandBufferGuard(*_logicalDevice);
+		SingleTimeCommandBuffer commandBufferGuard(_logicalDevice);
 		VkCommandBuffer copyCmd = commandBufferGuard.getCommandBuffer();
 
-		transitionImageLayout(copyCmd, dstImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-		transitionImageLayout(copyCmd, srcImage.image, srcImage.layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		VkImageLayout srcImageLayout = srcImage->layout;
 
-		copyImageToImage(copyCmd, srcImage.image, dstImage.image, extent);
+		transitionImageLayout(copyCmd, &dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		transitionImageLayout(copyCmd, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-		transitionImageLayout(copyCmd, dstImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-		transitionImageLayout(copyCmd, srcImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcImage.layout, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		copyImageToImage(copyCmd, srcImage->image, dstImage.image, extent);
+
+		transitionImageLayout(copyCmd, &dstImage, VK_IMAGE_LAYOUT_GENERAL);
+		transitionImageLayout(copyCmd, srcImage, srcImageLayout);
 	}
 
 	{
 		std::lock_guard<std::mutex> lck(_commandDataMutex);
-		_commandData.push({ srcImage, dstImage, filePath });
+		_commandData.push({ *srcImage, dstImage, filePath });
 		_commandDataCV.notify_one();
 	}
 }
@@ -107,12 +106,12 @@ void Screenshot::saveImage(const std::string& filePath, const Image& srcImage) {
 void Screenshot::savePixels(const CommandData& imagesData) {
 	const auto& dstImage = imagesData.dstImage;
 	const auto& srcImage = imagesData.srcImage;
-	const VkExtent2D extent = { dstImage.extent.width, dstImage.extent.height };
+	const VkExtent2D extent = { dstImage.width, dstImage.height };
 
-	VkDevice device = _logicalDevice->getVkDevice();
+	VkDevice device = _logicalDevice.getVkDevice();
 
 	// Get layout of the image (including row pitch)
-	VkImageSubresource subResource{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
+	VkImageSubresource subResource{ dstImage.aspect, 0, 0 };
 	VkSubresourceLayout subResourceLayout;
 
 	vkGetImageSubresourceLayout(device, dstImage.image, &subResource, &subResourceLayout);
@@ -153,7 +152,7 @@ void Screenshot::savePixels(const CommandData& imagesData) {
 }
 
 void Screenshot::freeImageResources(const Image& image) const {
-	VkDevice device = _logicalDevice->getVkDevice();
+	VkDevice device = _logicalDevice.getVkDevice();
 
 	vkFreeMemory(device, image.memory, nullptr);
 	vkDestroyImage(device, image.image, nullptr);

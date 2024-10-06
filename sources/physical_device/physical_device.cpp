@@ -10,8 +10,8 @@
 PhysicalDevice::PhysicalDevice(const std::shared_ptr<Instance>& instance, const std::shared_ptr<Surface>& surface)
 	: _instance(instance), _surface(surface), _device(VK_NULL_HANDLE) {
 
-    std::vector<VkPhysicalDevice> devices = _instance->getAvailablePhysicalDevices();
-    VkSurfaceKHR surf = surface->getVkSurface();
+    const std::vector<VkPhysicalDevice> devices = _instance->getAvailablePhysicalDevices();
+    const VkSurfaceKHR surf = surface->getVkSurface();
 
     for (const auto device : devices) {
         _propertyManager.initiate(device, surf);
@@ -27,7 +27,7 @@ PhysicalDevice::PhysicalDevice(const std::shared_ptr<Instance>& instance, const 
         VkPhysicalDeviceFeatures supportedFeatures;
         vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
 
-        bool discreteGPU = _propertyManager.checkDiscreteGPU();
+        bool discreteGPU = _propertyManager.isDiscreteGPU();
 
         const std::array<bool, 5> conditions = {
             indices.isComplete(),
@@ -58,6 +58,6 @@ const PhysicalDevicePropertyManager& PhysicalDevice::getPropertyManager() const 
     return _propertyManager;
 }
 
-std::shared_ptr<LogicalDevice> PhysicalDevice::createLogicalDevice() {
-    return std::make_shared<LogicalDevice>(*this);
+std::unique_ptr<LogicalDevice> PhysicalDevice::createLogicalDevice() {
+    return std::make_unique<LogicalDevice>(*this);
 }

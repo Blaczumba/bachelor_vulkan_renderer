@@ -7,19 +7,22 @@ DescriptorPool::DescriptorPool(const LogicalDevice& logicalDevice, const Descrip
 	: _logicalDevice(logicalDevice), _descriptorSetLayout(descriptorSetLayout), _maxNumSets(maxNumSets), _allocatedSets(0) {
 
 	std::vector<VkDescriptorPoolSize> poolSizes;
+	size_t count = _descriptorSetLayout.getDescriptorTypeCounter().size();
+	poolSizes.reserve(count);
 	for (const auto [descriptorType, numOccurances] : _descriptorSetLayout.getDescriptorTypeCounter()) {
-		poolSizes.emplace_back(VkDescriptorPoolSize{
+		poolSizes.emplace_back(VkDescriptorPoolSize {
 				.type = descriptorType,
 				.descriptorCount = _maxNumSets * numOccurances,
 			}
 		);
 	}
 
-	VkDescriptorPoolCreateInfo poolInfo{};
-	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-	poolInfo.pPoolSizes = poolSizes.data();
-	poolInfo.maxSets = _maxNumSets;
+	const VkDescriptorPoolCreateInfo poolInfo = {
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+		.maxSets = _maxNumSets,
+		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+		.pPoolSizes = poolSizes.data()
+	};
 
 	if (vkCreateDescriptorPool(_logicalDevice.getVkDevice(), &poolInfo, nullptr, &_descriptorPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor pool!");
@@ -39,5 +42,14 @@ const DescriptorSetLayout& DescriptorPool::getDescriptorSetLayout() const {
 }
 
 std::unique_ptr<DescriptorSet> DescriptorPool::createDesriptorSet() const {
-	return std::make_unique<DescriptorSet>(_logicalDevice, shared_from_this());
+	++_allocatedSets;
+	return std::make_unique<DescriptorSet>(shared_from_this());
+}
+
+bool DescriptorPool::maxSetsReached() const {
+	return _allocatedSets >= _maxNumSets;
+}
+
+const LogicalDevice& DescriptorPool::getLogicalDevice() const {
+	return _logicalDevice;
 }

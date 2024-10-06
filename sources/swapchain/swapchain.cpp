@@ -4,9 +4,10 @@
 #include "logical_device/logical_device.h"
 #include "surface/surface.h"
 #include "window/window/window.h"
-#include "memory_objects/image.h"
+#include "memory_objects/texture/texture.h"
 
 #include <algorithm>
+#include <iterator>
 #include <stdexcept>
 
 Swapchain::Swapchain(const Surface& surface, const Window& window, const LogicalDevice& logicalDevice)
@@ -23,23 +24,22 @@ const VkSwapchainKHR Swapchain::getVkSwapchain() const {
 }
 
 VkExtent2D Swapchain::getExtent() const {
-    const VkExtent3D& extent = _images.at(0).extent;
-    return { extent.width, extent.height };
+    return { _images.at(0).getImage().width, _images.at(0).getImage().height };
 }
 
 const VkFormat Swapchain::getVkFormat() const {
-    return _images.at(0).format;
+    return _images.at(0).getImage().format;
 }
 
-const std::vector<Image>& Swapchain::getImages() const {
+const std::vector<Texture>& Swapchain::getImages() const {
     return _images;
 }
 
 void Swapchain::cleanup() {
     VkDevice device = _logicalDevice.getVkDevice();
 
-    for (auto image : _images) {
-        vkDestroyImageView(device, image.view, nullptr);
+    for (auto& image : _images) {
+        vkDestroyImageView(device, image.getImage().view, nullptr);
     }
 
     vkDestroySwapchainKHR(device, _swapchain, nullptr);
@@ -98,19 +98,23 @@ void Swapchain::create() {
     images.resize(imageCount);
     vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, images.data());
 
-    _images.resize(imageCount);
+    _images.reserve(imageCount);
 
-    for (size_t i = 0; i < imageCount; i++) {
-        _images[i] = {
-            .image  = images[i],
-            .memory = VK_NULL_HANDLE,
-            .view   = _logicalDevice.createImageView(images[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1),
-            .format = surfaceFormat.format,
-            .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .extent = { extent.width, extent.height, 1 },
-            .aspect = VK_IMAGE_ASPECT_COLOR_BIT
-        };
-    }
+    std::transform(images.cbegin(), images.cend(), std::back_inserter(_images),
+        [&](VkImage image) {
+            Image img {
+                .format = surfaceFormat.format,
+                .width = extent.width,
+                .height = extent.height,
+                .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+                .image = image,
+            };
+            _logicalDevice.createImageView(&img);
+
+            return Texture(img);
+        }
+    );
 }
 
 void Swapchain::recrete() {
@@ -123,13 +127,14 @@ VkResult Swapchain::acquireNextImage(VkSemaphore presentCompleteSemaphore, uint3
 }
 
 VkResult Swapchain::present(uint32_t imageIndex, VkSemaphore waitSemaphore) const {
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &waitSemaphore;
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &_swapchain;
-    presentInfo.pImageIndices = &imageIndex;
+    const VkPresentInfoKHR presentInfo = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &waitSemaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &_swapchain,
+        .pImageIndices = &imageIndex
+    };
 
     return vkQueuePresentKHR(_logicalDevice.presentQueue, &presentInfo);
 }

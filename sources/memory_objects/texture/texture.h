@@ -8,18 +8,20 @@
 
 class LogicalDevice;
 
-class Texture {
+struct Texture {
 protected:
 	Image _image;
-	uint32_t _mipLevels;
-	uint32_t _layerCount;
+	Sampler _sampler;
 
-	const LogicalDevice& _logicalDevice;
 public:
-	Texture(const LogicalDevice& logicalDevice);
+	Texture(const Image& image, const Sampler& sampler = {});
 	virtual ~Texture() = default;
 
-	const Image& getImage() const;
-
 	void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
+
+	const Image& getImage() const;
+	const Sampler& getSampler() const;
+
+protected:
+	void generateMipmaps(VkCommandBuffer commandBuffer);
 };

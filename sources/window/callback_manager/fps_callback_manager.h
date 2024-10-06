@@ -14,7 +14,6 @@ public:
 
     void pollEvents() override;
 
-    static bool firstMouse;
     static float lastX;
     static float lastY;
 private:

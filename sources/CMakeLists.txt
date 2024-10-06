@@ -1,6 +1,10 @@
 include_directories(${CMAKE_SOURCE_DIR}/external/glm)
 include_directories(${CMAKE_SOURCE_DIR}/external/)
 
+if(NOT Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
 add_subdirectory(window)
 add_subdirectory(instance)
 add_subdirectory(debug_messenger)
@@ -16,6 +20,12 @@ add_subdirectory(model_loader)
 add_subdirectory(descriptor_set)
 add_subdirectory(camera)
 add_subdirectory(screenshot)
+add_subdirectory(utils)
+add_subdirectory(entity_component_system)
+add_subdirectory(object)
+add_subdirectory(primitives)
+add_subdirectory(scene)
+add_subdirectory(thread_pool)
 
 add_compile_definitions(SHADERS_PATH="${CMAKE_SOURCE_DIR}/shaders/")
 add_compile_definitions(TEXTURES_PATH="${CMAKE_SOURCE_DIR}/assets/textures/")

@@ -16,34 +16,38 @@ Instance::Instance(std::string_view engineName) {
     }
 #endif // VALIDATION_LAYERS_ENABLED
 
-    VkApplicationInfo appInfo{};
-    appInfo.sType               = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName    = engineName.data();
-    appInfo.applicationVersion  = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName         = engineName.data();
-    appInfo.engineVersion       = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion          = VK_API_VERSION_1_0;
+    VkApplicationInfo appInfo = {
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pApplicationName = engineName.data(),
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName = engineName.data(),
+        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+        .apiVersion = VK_API_VERSION_1_0
+    };
 
-    VkInstanceCreateInfo createInfo{};
-    createInfo.sType            = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pApplicationInfo = &appInfo;
+#ifdef VALIDATION_LAYERS_ENABLED
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = populateDebugMessengerCreateInfoUtility();
+#else
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+#endif // VALIDATION_LAYERS_ENABLED
 
     auto extensions = getRequiredExtensions();
-    createInfo.enabledExtensionCount    = static_cast<uint32_t>(extensions.size());
-    createInfo.ppEnabledExtensionNames  = extensions.data();
 
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-#ifdef VALIDATION_LAYERS_ENABLED
-    createInfo.enabledLayerCount    = static_cast<uint32_t>(validationLayers.size());
-    createInfo.ppEnabledLayerNames  = validationLayers.data();
-
-    populateDebugMessengerCreateInfoUtility(debugCreateInfo);
-    createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
-#else
-    createInfo.enabledLayerCount = 0;
-
-    createInfo.pNext = nullptr;
-#endif // VALIDATION_LAYERS_ENABLED
+    VkInstanceCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+    #ifdef VALIDATION_LAYERS_ENABLED
+        .pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo,
+    #endif // VALIDATION_LAYERS_ENABLED
+        .pApplicationInfo = &appInfo,
+    #ifdef VALIDATION_LAYERS_ENABLED
+        .enabledLayerCount = static_cast<uint32_t>(validationLayers.size()),
+        .ppEnabledLayerNames = validationLayers.data(),
+    #else
+        .enabledLayerCount = 0,
+    #endif // VALIDATION_LAYERS_ENABLED
+        .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+        .ppEnabledExtensionNames = extensions.data()
+    };
 
     if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
         throw std::runtime_error("failed to create instance!");

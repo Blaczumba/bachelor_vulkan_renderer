@@ -24,8 +24,8 @@ void FPSCallbackManager::pollEvents() {
 	_data = {
 		.deltaTime		= 1.0f / 60.0f,
 		.keyboardAction = false,
-		.keys			= {},
 		.mouseAction	= false,
+		.keys			= {},
 		.xoffset		= 0.0f,
 		.yoffset		= 0.0f
 	};
@@ -82,6 +82,7 @@ void FPSCallbackManager::mouseCallback(GLFWwindow* window, double xposIn, double
 
 	float xpos = static_cast<float>(xposIn);
 	float ypos = static_cast<float>(yposIn);
+	static bool firstMouse = true;
 
 	if (firstMouse)
 	{
@@ -101,6 +102,5 @@ void FPSCallbackManager::framebufferResizeCallback(GLFWwindow* window, int width
 	// auto app = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 }
 
-bool FPSCallbackManager::firstMouse = true;
 float FPSCallbackManager::lastX = 0.0f;
 float FPSCallbackManager::lastY = 0.0f;

@@ -69,7 +69,7 @@ VertexData<VertexP, uint32_t> TinyOBJLoaderVertex::templatedExtractor<VertexP>(c
                 mp.insert({ idx, static_cast<uint32_t>(vertices.size()) });
 
                 VertexP vertex{};
-                vertex.pos = {
+                vertex = {
                     attrib.vertices[3 * index.vertex_index + 0],
                     attrib.vertices[3 * index.vertex_index + 1],
                     attrib.vertices[3 * index.vertex_index + 2]
