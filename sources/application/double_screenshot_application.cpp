@@ -28,7 +28,6 @@ SingleApp::SingleApp()
 
     _screenshot = std::make_unique<Screenshot>(*_logicalDevice);
     _screenshot->addImageToObserved(_framebufferTextures[1]->getImage(), "hig_res_screenshot.ppm");
-
     _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 100.0f);
 
     _callbackManager = std::make_unique<FPSCallbackManager>(std::dynamic_pointer_cast<WindowGLFW>(_window));
@@ -264,7 +263,6 @@ void SingleApp::draw() {
     }
 
     updateUniformBuffer(_currentFrame);
-
     vkResetFences(device, 1, &_inFlightFences[_currentFrame]);
 
     _primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
@@ -387,16 +385,11 @@ void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer command
     const VkDeviceSize offsets[] = { 0 };
 
     for (const Object* object : node->getObjects()) {
-        // counter++;
         VkBuffer vertexBuffers[] = { object->vertexBufferPTNTB->getVkBuffer() };
         const IndexBuffer* indexBuffer = object->indexBuffer.get();
-
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
         vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getVkBuffer(), 0, indexBuffer->getIndexType());
-
         object->_descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, { _currentFrame, object->dynamicUniformIndex });
-
         vkCmdDrawIndexed(commandBuffer, indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
 
@@ -471,20 +464,14 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
 
     _threadPool->getThread(0)->addJob([&]() {
         vkBeginCommandBuffer(commandBuffers[0], &cmdBufferBeginInfo);
-
         vkCmdSetViewport(commandBuffers[0], 0, 1, &viewport);
-
         vkCmdSetScissor(commandBuffers[0], 0, 1, &scissor);
-
         vkCmdSetViewport(commandBuffers[0], 0, 1, &viewport);
 
         const OctreeNode* root = _octree->getRoot();
-
         const auto& planes = extractFrustumPlanes(_camera->getProjectionMatrix() * _camera->getViewMatrix());
-
         if (root && root->getVolume().intersectsFrustum(planes)) {
             vkCmdBindPipeline(commandBuffers[0], _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
-
             recordOctreeSecondaryCommandBuffer(commandBuffers[0], root, planes);
         }
 
@@ -496,33 +483,23 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     _threadPool->getThread(1)->addJob([&]() {
         // Skybox
         vkBeginCommandBuffer(commandBuffers[1], &cmdBufferBeginInfo);
-
         vkCmdSetViewport(commandBuffers[1], 0, 1, &viewport);
-
         vkCmdSetScissor(commandBuffers[1], 0, 1, &scissor);
-
         vkCmdBindPipeline(commandBuffers[1], _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
-
         vkCmdBindPipeline(commandBuffers[1], _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
 
         VkBuffer vertexBuffersCube[] = { _vertexBufferCube->getVkBuffer() };
-
         const VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffers[1], 0, 1, vertexBuffersCube, offsets);
-
         vkCmdBindIndexBuffer(commandBuffers[1], _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
-
         _descriptorSetSkybox->bindDescriptorSet(commandBuffers[1], *_graphicsPipelineSkybox, { _currentFrame });
-
         vkCmdDrawIndexed(commandBuffers[1], _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
-
         vkEndCommandBuffer(commandBuffers[1]);
     });
 
     _threadPool->wait();
 
     vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-
     vkCmdEndRenderPass(primaryCommandBuffer);
 
     if (vkEndCommandBuffer(primaryCommandBuffer) != VK_SUCCESS) {
@@ -539,7 +516,6 @@ void SingleApp::recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_
     //}
 
     VkExtent2D extent = { _shadowMap->getImage().width, _shadowMap->getImage().height };
-
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = _shadowRenderPass->getVkRenderPass();
@@ -550,7 +526,6 @@ void SingleApp::recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_
     const auto& clearValues = _shadowRenderPass->getClearValues();
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassInfo.pClearValues = clearValues.data();
-
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     VkViewport viewport{};
@@ -568,18 +543,13 @@ void SingleApp::recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
     VkDeviceSize offsets[] = { 0 };
-    // OBJECT TBN
     vkCmdBindPipeline(commandBuffer, _shadowPipeline->getVkPipelineBindPoint(), _shadowPipeline->getVkPipeline());
 
     for (const auto& object : _objects) {
-
         VkBuffer vertexBuffers[] = { object.vertexBufferP->getVkBuffer() };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
         vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
-
         _descriptorSetShadow->bindDescriptorSet(commandBuffer, *_shadowPipeline, { object.dynamicUniformIndex });
-
         vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
 
@@ -597,11 +567,9 @@ void SingleApp::recreateSwapChain() {
     }
 
     _camera->setAspectRatio(static_cast<float>(extent.width) / extent.height);
-
     vkDeviceWaitIdle(_logicalDevice->getVkDevice());
 
     _swapchain->recrete();
-
     _framebuffers.clear();
     _framebufferTextures = std::move(createTexturesFromRenderpass(*_renderPass, extent));
     size_t swapchainImagesCount = _swapchain->getImages().size();
