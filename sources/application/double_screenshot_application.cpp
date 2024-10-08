@@ -267,9 +267,9 @@ void SingleApp::draw() {
 
     vkResetFences(device, 1, &_inFlightFences[_currentFrame]);
 
-    //_primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
-    //for(int i = 0; i < MAX_THREADS_IN_POOL; i++)
-    //    _commandBuffers[_currentFrame][i]->resetCommandBuffer();
+    _primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
+    for(int i = 0; i < MAX_THREADS_IN_POOL; i++)
+        _commandBuffers[_currentFrame][i]->resetCommandBuffer();
 
     //recordShadowCommandBuffer(_shadowCommandBuffers[_currentFrame], imageIndex);
     recordCommandBuffer(_primaryCommandBuffer[_currentFrame]->getVkCommandBuffer(), imageIndex);
@@ -466,35 +466,32 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         .pInheritanceInfo = &inheritanceInfo
     };
 
-    const auto recordSecondaryCommandBuffer = [this, &cmdBufferBeginInfo, &scissor, &viewport](const VkCommandBuffer commandBuffer, const std::vector<const OctreeNode*>& nodes, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
-        vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo);
+    std::array<VkCommandBuffer, MAX_THREADS_IN_POOL> commandBuffers;
+    std::transform(_commandBuffers[_currentFrame].cbegin(), _commandBuffers[_currentFrame].cend(), commandBuffers.begin(), [](const std::unique_ptr<CommandBuffer>& cmdBuff) { return cmdBuff->getVkCommandBuffer(); });
 
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    _threadPool->getThread(0)->addJob([&]() {
+        vkBeginCommandBuffer(commandBuffers[0], &cmdBufferBeginInfo);
 
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+        vkCmdSetViewport(commandBuffers[0], 0, 1, &viewport);
 
-        vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
+        vkCmdSetScissor(commandBuffers[0], 0, 1, &scissor);
 
-        for (const OctreeNode* node : nodes)
-            recordOctreeSecondaryCommandBuffer(commandBuffer, node, planes);
+        vkCmdSetViewport(commandBuffers[0], 0, 1, &viewport);
 
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+        const OctreeNode* root = _octree->getRoot();
+
+        const auto& planes = extractFrustumPlanes(_camera->getProjectionMatrix() * _camera->getViewMatrix());
+
+        if (root && root->getVolume().intersectsFrustum(planes)) {
+            vkCmdBindPipeline(commandBuffers[0], _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
+
+            recordOctreeSecondaryCommandBuffer(commandBuffers[0], root, planes);
+        }
+
+        if (vkEndCommandBuffer(commandBuffers[0]) != VK_SUCCESS) {
             throw std::runtime_error("failed to record command buffer!");
         }
-    };
-
-    std::vector<VkCommandBuffer> commandBuffers;
-    commandBuffers.reserve(MAX_THREADS_IN_POOL);
-    std::transform(_commandBuffers[_currentFrame].cbegin(), _commandBuffers[_currentFrame].cend(), std::back_inserter(commandBuffers), [](const std::unique_ptr<CommandBuffer>& cmdBuff) { return cmdBuff->getVkCommandBuffer(); });
-
-    const glm::mat4 PV = _camera->getProjectionMatrix() * _camera->getViewMatrix();
-    const OctreeNode* root = _octree->getRoot();
-
-    const std::vector<const OctreeNode*> lst = { root };
-    const auto& planes = extractFrustumPlanes(PV);
-    if (root && root->getVolume().intersectsFrustum(planes)) {
-        _threadPool->getThread(0)->addJob([&]() { recordSecondaryCommandBuffer(commandBuffers[0], lst, planes); });
-    }
+    });
 
     _threadPool->getThread(1)->addJob([&]() {
         // Skybox
@@ -520,12 +517,11 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         vkCmdDrawIndexed(commandBuffers[1], _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
 
         vkEndCommandBuffer(commandBuffers[1]);
-        });
+    });
 
     _threadPool->wait();
 
-    if (root && root->getVolume().intersectsFrustum(planes))
-        vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+    vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
     vkCmdEndRenderPass(primaryCommandBuffer);
 
