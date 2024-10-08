@@ -28,7 +28,10 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
     }
 
     VkPhysicalDeviceFeatures deviceFeatures = {
+        .geometryShader = VK_TRUE,
+        .tessellationShader = VK_TRUE,
         .sampleRateShading = VK_TRUE,
+        .depthClamp = VK_TRUE,
         .samplerAnisotropy = VK_TRUE
     };
 

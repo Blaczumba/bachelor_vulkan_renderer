@@ -10,26 +10,23 @@ void GraphicsPipeline::create() {
 
     const VkDevice device = _renderpass.getLogicalDevice().getVkDevice();
 
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
     const auto& descriptorSetLayout = _shaderProgram->getDescriptorSetLayout();
-    const auto& attributeDescriptions = _shaderProgram->getVkVertexInputAttributeDescriptions();
-    const auto& bindingDescription = _shaderProgram->getVkVertexInputBindingDescription();
     const auto& shaderStages = _shaderProgram->getVkPipelineShaderStageCreateInfos();
 
-    if (attributeDescriptions.empty())
-        throw std::runtime_error("Vertex input layout not specified!");
-
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+    const VkPipelineVertexInputStateCreateInfo& vertexInputInfo = _shaderProgram->getVkPipelineVertexInputStateCreateInfo();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+    VkPipelineTessellationStateCreateInfo tessellationState = {};
+    if (_parameters.patchControlPoints.has_value()) {
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+
+        tessellationState.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+        tessellationState.patchControlPoints = _parameters.patchControlPoints.value();
+    }
 
     VkPipelineViewportStateCreateInfo viewportState{};
     viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -116,6 +113,7 @@ void GraphicsPipeline::create() {
     pipelineInfo.pStages = shaderStages.data();
     pipelineInfo.pVertexInputState = &vertexInputInfo;
     pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pTessellationState = _parameters.patchControlPoints.has_value() ? &tessellationState : nullptr;
     pipelineInfo.pViewportState = &viewportState;
     pipelineInfo.pRasterizationState = &rasterizer;
     pipelineInfo.pMultisampleState = &multisampling;

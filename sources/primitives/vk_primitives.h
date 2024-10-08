@@ -8,7 +8,7 @@ template<typename T>
 static constexpr VkVertexInputBindingDescription getBindingDescription();
 
 template<typename T>
-static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
+static constexpr  std::array<VkVertexInputAttributeDescription, T::num_attributes> getAttributeDescriptions();
 
 template<>
 constexpr VkVertexInputBindingDescription getBindingDescription<VertexPTNTB>() {
@@ -20,7 +20,7 @@ constexpr VkVertexInputBindingDescription getBindingDescription<VertexPTNTB>() {
 }
 
 template<>
-std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions<VertexPTNTB>() {
+constexpr std::array<VkVertexInputAttributeDescription, VertexPTNTB::num_attributes> getAttributeDescriptions<VertexPTNTB>() {
     return {
         VkVertexInputAttributeDescription {
             .location = 0,
@@ -65,7 +65,7 @@ constexpr VkVertexInputBindingDescription getBindingDescription<VertexPTNT>() {
 }
 
 template<>
-std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions<VertexPTNT>() {
+constexpr std::array<VkVertexInputAttributeDescription, VertexPTNT::num_attributes> getAttributeDescriptions<VertexPTNT>() {
     return {
         VkVertexInputAttributeDescription {
             .location = 0,
@@ -104,7 +104,7 @@ constexpr VkVertexInputBindingDescription getBindingDescription<VertexPTN>() {
 }
 
 template<>
-std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions<VertexPTN>() {
+constexpr std::array<VkVertexInputAttributeDescription, VertexPTN::num_attributes> getAttributeDescriptions<VertexPTN>() {
     return {
         VkVertexInputAttributeDescription {
             .location = 0,
@@ -137,7 +137,7 @@ constexpr VkVertexInputBindingDescription getBindingDescription<VertexPT>() {
 }
 
 template<>
-std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions<VertexPT>() {
+constexpr std::array<VkVertexInputAttributeDescription, VertexPT::num_attributes> getAttributeDescriptions<VertexPT>() {
     return {
         VkVertexInputAttributeDescription {
             .location = 0,
@@ -164,7 +164,7 @@ constexpr VkVertexInputBindingDescription getBindingDescription<VertexP>() {
 }
 
 template<>
-std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions<VertexP>() {
+constexpr std::array<VkVertexInputAttributeDescription, VertexP::num_attributes> getAttributeDescriptions<VertexP>() {
     return {
         VkVertexInputAttributeDescription {
             .location = 0,

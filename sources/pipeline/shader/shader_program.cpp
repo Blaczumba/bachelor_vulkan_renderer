@@ -28,17 +28,15 @@ GraphicsShaderProgram::GraphicsShaderProgram(const LogicalDevice& logicalDevice)
 
 }
 
-const VkVertexInputBindingDescription& GraphicsShaderProgram::getVkVertexInputBindingDescription() const {
-    return _bindingDescription;
-}
-
-const std::vector<VkVertexInputAttributeDescription>& GraphicsShaderProgram::getVkVertexInputAttributeDescriptions() const {
-    return _attributeDescriptions;
+const VkPipelineVertexInputStateCreateInfo& GraphicsShaderProgram::getVkPipelineVertexInputStateCreateInfo() const {
+    return _vertexInputInfo;
 }
 
 PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
-	_shaders.reserve(2);
+	_shaders.reserve(4);
 	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    // _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping_tesselation.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+    // _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping_tesselation.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	_descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
@@ -51,10 +49,16 @@ PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : Graphic
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
 
-    constexpr auto a = getBindingDescription<VertexPTNT>();
+    static constexpr VkVertexInputBindingDescription bindingDescription = getBindingDescription<VertexPTNT>();
+    static constexpr auto attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
 
-    _bindingDescription = getBindingDescription<VertexPTNT>();
-    _attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
+    _vertexInputInfo = VkPipelineVertexInputStateCreateInfo {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()
+    };
 }
 
 SkyboxShaderProgram::SkyboxShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
@@ -67,8 +71,16 @@ SkyboxShaderProgram::SkyboxShaderProgram(const LogicalDevice& logicalDevice) : G
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
 
-    _bindingDescription = getBindingDescription<VertexP>();
-    _attributeDescriptions = getAttributeDescriptions<VertexP>();
+    static constexpr VkVertexInputBindingDescription bindingDescription = getBindingDescription<VertexP>();
+    static constexpr auto attributeDescriptions = getAttributeDescriptions<VertexP>();
+
+    _vertexInputInfo = VkPipelineVertexInputStateCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()
+    };
 }
 
 ShadowShaderProgram::ShadowShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
@@ -81,8 +93,16 @@ ShadowShaderProgram::ShadowShaderProgram(const LogicalDevice& logicalDevice) : G
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayout->create();
 
-    _bindingDescription = getBindingDescription<VertexP>();
-    _attributeDescriptions = getAttributeDescriptions<VertexP>();
+    static constexpr VkVertexInputBindingDescription bindingDescription = getBindingDescription<VertexP>();
+    static constexpr auto attributeDescriptions = getAttributeDescriptions<VertexP>();
+
+    _vertexInputInfo = VkPipelineVertexInputStateCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()
+    };
 }
 
 PBRShaderOffscreenProgram::PBRShaderOffscreenProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
@@ -100,8 +120,16 @@ PBRShaderOffscreenProgram::PBRShaderOffscreenProgram(const LogicalDevice& logica
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
 
-    _bindingDescription = getBindingDescription<VertexPTNT>();
-    _attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
+    static constexpr VkVertexInputBindingDescription bindingDescription = getBindingDescription<VertexPTNT>();
+    static constexpr auto attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
+
+    _vertexInputInfo = VkPipelineVertexInputStateCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()
+    };
 }
 
 SkyboxOffscreenShaderProgram::SkyboxOffscreenShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
@@ -114,6 +142,14 @@ SkyboxOffscreenShaderProgram::SkyboxOffscreenShaderProgram(const LogicalDevice& 
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
 
-    _bindingDescription = getBindingDescription<VertexP>();
-    _attributeDescriptions = getAttributeDescriptions<VertexP>();
+    static constexpr VkVertexInputBindingDescription bindingDescription = getBindingDescription<VertexP>();
+    static constexpr auto attributeDescriptions = getAttributeDescriptions<VertexP>();
+
+    _vertexInputInfo = VkPipelineVertexInputStateCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()
+    };
 }

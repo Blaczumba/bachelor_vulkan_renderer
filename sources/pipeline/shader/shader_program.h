@@ -29,14 +29,11 @@ public:
 
 class GraphicsShaderProgram : public ShaderProgram {
 protected:
-	VkVertexInputBindingDescription _bindingDescription;
-	std::vector<VkVertexInputAttributeDescription> _attributeDescriptions;
+	VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
 
 public:
 	GraphicsShaderProgram(const LogicalDevice& logicalDevice);
-
-	const VkVertexInputBindingDescription& getVkVertexInputBindingDescription() const;
-	const std::vector<VkVertexInputAttributeDescription>& getVkVertexInputAttributeDescriptions() const;
+	const VkPipelineVertexInputStateCreateInfo& getVkPipelineVertexInputStateCreateInfo() const;
 };
 
 class PBRShaderProgram : public GraphicsShaderProgram {

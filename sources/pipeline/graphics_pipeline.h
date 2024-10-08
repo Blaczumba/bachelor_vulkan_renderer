@@ -16,10 +16,11 @@
 #include <stdexcept>
 
 struct GraphicsPipelineParameters {
-    VkCullModeFlags cullMode            = VK_CULL_MODE_BACK_BIT;
-    VkSampleCountFlagBits msaaSamples   = VK_SAMPLE_COUNT_1_BIT;
-    float depthBiasConstantFactor       = 0.0f;
-    float depthBiasSlopeFactor          = 0.0f;
+    VkCullModeFlags cullMode                    = VK_CULL_MODE_BACK_BIT;
+    VkSampleCountFlagBits msaaSamples           = VK_SAMPLE_COUNT_1_BIT;
+    std::optional<uint32_t> patchControlPoints  = std::nullopt;
+    float depthBiasConstantFactor               = 0.0f;
+    float depthBiasSlopeFactor                  = 0.0f;
 };
 
 class GraphicsPipeline : public Pipeline {

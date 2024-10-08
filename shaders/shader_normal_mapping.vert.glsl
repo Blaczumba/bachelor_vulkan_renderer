@@ -32,14 +32,12 @@ layout(location = 2) out vec4 lightFragPosition;
 layout(location = 3) out vec3 TBNLightPos;
 layout(location = 4) out vec3 TBNViewPos;
 
-
 const mat4 BiasMat = mat4(
 	0.5, 0, 0, 0,
 	0, 0.5, 0, 0,
 	0, 0, 1.0, 0,
 	0.5, 0.5, 0.0, 1.0
 );
-
 
 void main() {
     mat3 normalMatrix = transpose(inverse(mat3(object.model)));

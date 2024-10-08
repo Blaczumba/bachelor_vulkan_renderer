@@ -49,15 +49,15 @@ void SingleApp::loadObjects() {
         const std::string metallicRoughnessPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0];
         const std::string normalPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0];
 
-        if (_uniformMap.find(diffusePath) == _uniformMap.cend()) {
+        if (!_uniformMap.contains(diffusePath)) {
             _textures.emplace_back(std::make_unique<Texture2DImage>(*_logicalDevice, diffusePath, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
             _uniformMap.emplace(std::make_pair(diffusePath, std::make_unique<UniformBufferTexture>(*_textures.back())));
         }
-        if (_uniformMap.find(normalPath) == _uniformMap.cend()) {
+        if (!_uniformMap.contains(normalPath)) {
             _textures.emplace_back(std::make_unique<Texture2DImage>(*_logicalDevice, normalPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
             _uniformMap.emplace(std::make_pair(normalPath, std::make_unique<UniformBufferTexture>(*_textures.back())));
         }
-        if (_uniformMap.find(metallicRoughnessPath) == _uniformMap.cend()) {
+        if (!_uniformMap.contains(metallicRoughnessPath)) {
             _textures.emplace_back(std::make_unique<Texture2DImage>(*_logicalDevice, metallicRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
             _uniformMap.emplace(std::make_pair(metallicRoughnessPath, std::make_unique<UniformBufferTexture>(*_textures.back())));
         }
@@ -65,8 +65,8 @@ void SingleApp::loadObjects() {
         auto descriptorSet = _descriptorPool->createDesriptorSet();
         descriptorSet->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _uniformMap[diffusePath].get(), _uniformBuffersLight.get(), _uniformBuffersObjects.get(), _shadowTextureUniform.get(), _uniformMap[normalPath].get(), _uniformMap[metallicRoughnessPath].get() });
 
-        std::vector<VertexP> pVertexData;
-        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return VertexP{ vertex.pos }; });
+        std::vector<glm::vec3> pVertexData;
+        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return vertex.pos; });
 
         _objects.push_back(Object{
             std::make_unique<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices),
@@ -167,18 +167,24 @@ void SingleApp::createPresentResources() {
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
     }
 
-    GraphicsPipelineParameters parameters;
-    parameters.msaaSamples = msaaSamples;
-    _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass);
-    _graphicsPipeline->setShaderProgram(_pbrShaderProgram.get());
-    _graphicsPipeline->setPipelineParameters(parameters);
-    _graphicsPipeline->create();
-
-    parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
-    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_renderPass);
-    _graphicsPipelineSkybox->setShaderProgram(_skyboxShaderProgram.get());
-    _graphicsPipelineSkybox->setPipelineParameters(parameters);
-    _graphicsPipelineSkybox->create();
+    {
+        GraphicsPipelineParameters parameters;
+        parameters.msaaSamples = msaaSamples;
+        // parameters.patchControlPoints = 3;
+        _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass);
+        _graphicsPipeline->setShaderProgram(_pbrShaderProgram.get());
+        _graphicsPipeline->setPipelineParameters(parameters);
+        _graphicsPipeline->create();
+    }
+    {
+        GraphicsPipelineParameters parameters;
+        parameters.msaaSamples = msaaSamples;
+        parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
+        _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_renderPass);
+        _graphicsPipelineSkybox->setShaderProgram(_skyboxShaderProgram.get());
+        _graphicsPipelineSkybox->setPipelineParameters(parameters);
+        _graphicsPipelineSkybox->create();
+    }
 }
 
 void SingleApp::createShadowResources() {
@@ -350,7 +356,7 @@ void SingleApp::createSyncObjects() {
 }
 
 void SingleApp::updateUniformBuffer(uint32_t currentFrame) {
-    const auto& swapchainExtent = _swapchain->getExtent();
+    VkExtent2D swapchainExtent = _swapchain->getExtent();
 
     _ubCamera.view = _camera->getViewMatrix();
     _ubCamera.proj = _camera->getProjectionMatrix();
@@ -430,7 +436,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
 
     vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
-    const VkExtent2D& swapchainExtent = _swapchain->getExtent();
+    VkExtent2D swapchainExtent = _swapchain->getExtent();
 
     const VkViewport viewport = {
         .x = 0.0f,
