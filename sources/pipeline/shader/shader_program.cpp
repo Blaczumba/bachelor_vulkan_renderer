@@ -33,8 +33,8 @@ const VkPipelineVertexInputStateCreateInfo& GraphicsShaderProgram::getVkPipeline
 
 PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
 	_shaders.reserve(2);
-	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	_descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -60,10 +60,10 @@ PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : Graphic
 
 PBRTesselationShaderProgram::PBRTesselationShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
     _shaders.reserve(4);
-    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping_tesselation.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping_tesselation.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping_tesselation.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr_tesselation.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr_tesselation.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr_tesselation.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -133,8 +133,8 @@ ShadowShaderProgram::ShadowShaderProgram(const LogicalDevice& logicalDevice) : G
 
 PBRShaderOffscreenProgram::PBRShaderOffscreenProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
     _shaders.reserve(2);
-    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "offscreen_shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "offscreen_shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);

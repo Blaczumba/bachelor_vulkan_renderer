@@ -16,6 +16,8 @@ class LogicalDevice {
 	VkQueue _computeQueue;
 	VkQueue _transferQueue;
 
+	VkCommandBuffer createCommandBuffer() const;
+
 public:
 	LogicalDevice(const PhysicalDevice& physicalDevice);
 	~LogicalDevice();
@@ -24,8 +26,6 @@ public:
 	void createImage(Image* image) const;
 	void createImageView(Image* image) const;
 	void createSampler(Sampler* sampler) const;
-
-	VkCommandBuffer createCommandBuffer() const;
 
 	const VkDevice getVkDevice() const;
 	const PhysicalDevice& getPhysicalDevice() const;
