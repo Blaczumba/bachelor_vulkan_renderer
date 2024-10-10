@@ -1,4 +1,5 @@
 #include "debug_messenger.h"
+
 #include "debug_messenger_utils.h"
 #include "instance/instance.h"
 
