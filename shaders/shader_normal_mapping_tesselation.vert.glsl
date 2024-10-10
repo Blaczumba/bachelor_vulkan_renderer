@@ -1,11 +1,11 @@
 #version 450
 
-layout(binding=0) uniform CameraUniform {
-    mat4 view;
-    mat4 proj;
-    vec3 viewPos;
-
-} camera;
+ layout(binding=0) uniform CameraUniform {
+     mat4 view;
+     mat4 proj;
+     vec3 viewPos;
+ 
+ } camera;
 
 layout(binding = 2) uniform Light {
     mat4 projView;
@@ -31,7 +31,7 @@ layout(location = 2) out vec4 lightFragPosition;
 
 layout(location = 3) out vec3 TBNLightPos;
 layout(location = 4) out vec3 TBNViewPos;
-
+layout(location = 5) out vec4 Position;
 
 const mat4 BiasMat = mat4(
 	0.5, 0, 0, 0,
@@ -39,7 +39,6 @@ const mat4 BiasMat = mat4(
 	0, 0, 1.0, 0,
 	0.5, 0.5, 0.0, 1.0
 );
-
 
 void main() {
     mat3 normalMatrix = transpose(inverse(mat3(object.model)));
@@ -50,13 +49,13 @@ void main() {
     vec3 bitangent = cross(normal, tangent);
     mat3 TBNMat = transpose(mat3(tangent, bitangent, normal));
 
-    gl_Position = object.model * vec4(inPosition, 1.0);
-    TBNfragPosition = TBNMat * gl_Position.xyz;
+    Position = object.model * vec4(inPosition, 1.0);
+    TBNfragPosition = TBNMat * Position.xyz;
     TBNViewPos = TBNMat * camera.viewPos;
     TBNLightPos = TBNMat * light.pos;
-    lightFragPosition = BiasMat * light.projView * gl_Position;
+    lightFragPosition = BiasMat * light.projView * Position;
 
-    gl_Position = camera.proj * camera.view * gl_Position;
+    // gl_Position = camera.proj * camera.view * position;
     
     fragTexCoord = inTexCoord;
 }

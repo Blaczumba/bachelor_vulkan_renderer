@@ -1,13 +1,12 @@
 #include "shader_program.h"
+
 #include "descriptor_set/descriptor_set_layout.h"
 #include "primitives/vk_primitives.h"
 
 #include <algorithm>
 #include <iterator>
 
-ShaderProgram::ShaderProgram(const LogicalDevice& logicalDevice) : _logicalDevice(logicalDevice) {
-
-}
+ShaderProgram::ShaderProgram(const LogicalDevice& logicalDevice) : _logicalDevice(logicalDevice) {}
 
 const DescriptorSetLayout& ShaderProgram::getDescriptorSetLayout() const {
     return *_descriptorSetLayout;
@@ -33,10 +32,8 @@ const VkPipelineVertexInputStateCreateInfo& GraphicsShaderProgram::getVkPipeline
 }
 
 PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
-	_shaders.reserve(4);
+	_shaders.reserve(2);
 	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    // _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping_tesselation.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-    // _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping_tesselation.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	_descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
@@ -53,6 +50,35 @@ PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : Graphic
     static constexpr auto attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
 
     _vertexInputInfo = VkPipelineVertexInputStateCreateInfo {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()
+    };
+}
+
+PBRTesselationShaderProgram::PBRTesselationShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
+    _shaders.reserve(4);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping_tesselation.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping_tesselation.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping_tesselation.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->create();
+
+    static constexpr VkVertexInputBindingDescription bindingDescription = getBindingDescription<VertexPTNT>();
+    static constexpr auto attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
+
+    _vertexInputInfo = VkPipelineVertexInputStateCreateInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = 1,
         .pVertexBindingDescriptions = &bindingDescription,

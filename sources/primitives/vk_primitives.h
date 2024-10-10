@@ -1,6 +1,8 @@
 #pragma once
 #include "primitives.h"
+
 #include <vulkan/vulkan.h>
+
 #include <array>
 #include <vector>
 
@@ -8,7 +10,7 @@ template<typename T>
 static constexpr VkVertexInputBindingDescription getBindingDescription();
 
 template<typename T>
-static constexpr  std::array<VkVertexInputAttributeDescription, T::num_attributes> getAttributeDescriptions();
+static constexpr std::array<VkVertexInputAttributeDescription, T::num_attributes> getAttributeDescriptions();
 
 template<>
 constexpr VkVertexInputBindingDescription getBindingDescription<VertexPTNTB>() {

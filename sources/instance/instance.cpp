@@ -1,12 +1,13 @@
 #include "instance.h"
+
+#include "config/config.h"
 #include "debug_messenger/debug_messenger_utils.h"
 #include "window/window/window.h"
-#include "config/config.h"
 
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
-#include <cstring>
 
 Instance::Instance(std::string_view engineName) {
 

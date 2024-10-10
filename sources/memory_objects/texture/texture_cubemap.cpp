@@ -1,15 +1,13 @@
 #include "texture_cubemap.h"
-#include "logical_device/logical_device.h"
-#include "memory_objects/image.h"
+
 #include "command_buffer/command_buffer.h"
+#include "logical_device/logical_device.h"
 
-#include <ktx.h>
 #include <ktxvulkan.h>
+#include <ktx.h>
 
-#include <stdexcept>
 #include <cstring>
-
-// format, VK_IMAGE_ASPECT_COLOR_BIT, 0u, 0u, 1u, VK_SAMPLE_COUNT_1_BIT, samplerAnisotropy, 6u
+#include <stdexcept>
 
 TextureCubemap::TextureCubemap(const LogicalDevice& logicalDevice, std::string filePath, VkFormat format, float samplerAnisotropy)
 	: Texture(

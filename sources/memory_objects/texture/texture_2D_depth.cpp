@@ -1,10 +1,9 @@
 #include "texture_2D_depth.h"
 
-#include "logical_device/logical_device.h"
 #include "command_buffer/command_buffer.h"
+#include "logical_device/logical_device.h"
 
 #include <algorithm>
-#include <stdexcept>
 
 Texture2DDepth::Texture2DDepth(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
 	: Texture(

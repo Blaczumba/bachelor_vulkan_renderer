@@ -9,6 +9,7 @@ layout(location = 1) in vec2 tcFragTexCoord[];
 layout(location = 2) in vec4 tcLightFragPosition[];
 layout(location = 3) in vec3 tcTBNLightPos[];
 layout(location = 4) in vec3 tcTBNViewPos[];
+layout(location = 5) in vec4 tcPosition[];
 
 // Output to fragment shader
 layout(location = 0) out vec3 teTBNfragPosition;
@@ -17,8 +18,19 @@ layout(location = 2) out vec4 teLightFragPosition;
 layout(location = 3) out vec3 teTBNLightPos;
 layout(location = 4) out vec3 teTBNViewPos;
 
+layout(binding=0) uniform CameraUniform {
+    mat4 view;
+    mat4 proj;
+    vec3 viewPos;
+
+} camera;
+
 void main() {
     // Interpolate per-vertex data using barycentric coordinates
+    vec4 pos =  gl_TessCoord.x * tcPosition[0] +
+                gl_TessCoord.y * tcPosition[1] +
+                gl_TessCoord.z * tcPosition[2];
+
     vec3 tessPos = gl_TessCoord.x * tcTBNfragPosition[0] +
                    gl_TessCoord.y * tcTBNfragPosition[1] +
                    gl_TessCoord.z * tcTBNfragPosition[2];
@@ -39,8 +51,7 @@ void main() {
                           gl_TessCoord.y * tcTBNViewPos[1] +
                           gl_TessCoord.z * tcTBNViewPos[2];
 
-    // The tessellated position is already in the correct space from the vertex shader
-    gl_Position = gl_in[0].gl_Position;  // Use the interpolated gl_Position directly
+    gl_Position = camera.proj * camera.view * vec4(pos.xyz, 1.0); 
 
     // Pass the interpolated and transformed data to the fragment shader
     teTBNfragPosition = tessPos;

@@ -1,5 +1,5 @@
 #include "compute_pipeline.h"
-#include "shader_utils.h"
+
 #include "shader/shader.h"
 
 #include <stdexcept>

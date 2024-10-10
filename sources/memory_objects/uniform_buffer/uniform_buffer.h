@@ -6,7 +6,6 @@
 #include <vulkan/vulkan.h>
 
 #include <memory>
-#include <cstring>
 
 static VkDeviceSize getMemoryAlignment(size_t size, size_t minUboAlignment) {
 	return minUboAlignment > 0 ? (size + minUboAlignment - 1) & ~(minUboAlignment - 1) : size;

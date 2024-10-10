@@ -1,11 +1,11 @@
 #pragma once
 
-#include "primitives/geometry.h"
 #include "object/object.h"
+#include "primitives/geometry.h"
 
 #include <array>
-#include <vector>
 #include <memory>
+#include <vector>
 
 constexpr size_t NUM_OCTREE_NODE_CHILDREN = 8;
 

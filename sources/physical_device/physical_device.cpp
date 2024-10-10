@@ -1,11 +1,12 @@
 #include "physical_device.h"
-#include "logical_device/logical_device.h"
+
 #include "config/config.h"
+#include "logical_device/logical_device.h"
 
 #include <algorithm>
 #include <array>
-#include <stdexcept>
 #include <iostream>
+#include <stdexcept>
 
 PhysicalDevice::PhysicalDevice(const std::shared_ptr<Instance>& instance, const std::shared_ptr<Surface>& surface)
 	: _instance(instance), _surface(surface), _device(VK_NULL_HANDLE) {

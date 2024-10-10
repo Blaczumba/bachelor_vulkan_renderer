@@ -1,14 +1,14 @@
 #include "offscreen_rendering_application.h"
 
-#include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
 #include "entity_component_system/system/movement_system.h"
-#include "utils/utils.h"
+#include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
 #include "thread_pool/thread_pool.h"
+#include "utils/utils.h"
 
 #include <algorithm>
+#include <any>
 #include <array>
 #include <chrono>
-#include <any>
 
 OffscreenRendering::OffscreenRendering()
     : ApplicationBase() {
@@ -69,8 +69,8 @@ void OffscreenRendering::loadObjects() {
         auto descriptorSet = _descriptorPool->createDesriptorSet();
         descriptorSet->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _uniformMap[diffusePath].get(), _uniformBuffersLight.get(), _uniformBuffersObjects.get(), _shadowTextureUniform.get(), _uniformMap[normalPath].get(), _uniformMap[metallicRoughnessPath].get() });
 
-        std::vector<VertexP> pVertexData;
-        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return VertexP{ vertex.pos }; });
+        std::vector<glm::vec3> pVertexData;
+        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return vertex.pos; });
         _objects.push_back(Object{
             std::make_unique<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices),
             std::make_unique<VertexBuffer>(*_logicalDevice, pVertexData),

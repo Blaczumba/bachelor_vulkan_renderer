@@ -1,8 +1,8 @@
 #pragma once
 
-#include <cstdint>
-
 #include <glm/glm.hpp>
+
+#include <cstdint>
 
 struct Extent {
 	uint32_t width;

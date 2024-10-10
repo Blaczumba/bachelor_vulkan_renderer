@@ -3,9 +3,9 @@
 #include <glm/glm.hpp>
 
 #include <algorithm>
-#include <vector>
 #include <array>
 #include <limits>
+#include <vector>
 
 constexpr size_t NUM_CUBE_FACES = 6;
 

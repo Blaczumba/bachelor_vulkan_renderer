@@ -4,9 +4,9 @@
 
 #include <vulkan/vulkan.h>
 
-#include <vector>
-#include <string>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 class PushConstants {
 	std::vector<VkPushConstantRange> _ranges;

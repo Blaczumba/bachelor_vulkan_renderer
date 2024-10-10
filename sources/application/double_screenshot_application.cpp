@@ -106,7 +106,7 @@ void SingleApp::createDescriptorSets() {
     _skyboxTextureUniform = std::make_unique<UniformBufferTexture>(*_textureCubemap);
     _shadowTextureUniform = std::make_unique<UniformBufferTexture>(*_shadowMap);
 
-    _pbrShaderProgram = std::make_unique<PBRShaderProgram>(*_logicalDevice);
+    _pbrShaderProgram = std::make_unique<PBRTesselationShaderProgram>(*_logicalDevice);
     _skyboxShaderProgram = std::make_unique<SkyboxShaderProgram>(*_logicalDevice);
     _shadowShaderProgram = std::make_unique<ShadowShaderProgram>(*_logicalDevice);
 
@@ -170,7 +170,7 @@ void SingleApp::createPresentResources() {
     {
         GraphicsPipelineParameters parameters;
         parameters.msaaSamples = msaaSamples;
-        // parameters.patchControlPoints = 3;
+        parameters.patchControlPoints = 3;
         _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass);
         _graphicsPipeline->setShaderProgram(_pbrShaderProgram.get());
         _graphicsPipeline->setPipelineParameters(parameters);
@@ -295,7 +295,7 @@ void SingleApp::draw() {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(_logicalDevice->graphicsQueue, 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
+    if (vkQueueSubmit(_logicalDevice->getGraphicsQueue(), 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 

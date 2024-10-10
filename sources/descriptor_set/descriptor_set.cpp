@@ -1,17 +1,17 @@
 #include "descriptor_set.h"
 
-#include "logical_device/logical_device.h"
-#include "pipeline/pipeline.h"
-#include "memory_objects/uniform_buffer/uniform_buffer.h"
 #include "descriptor_pool.h"
 #include "descriptor_set_layout.h"
+#include "logical_device/logical_device.h"
+#include "memory_objects/uniform_buffer/uniform_buffer.h"
+#include "pipeline/pipeline.h"
 
-#include <string>
-#include <unordered_map>
-#include <array>
 #include <algorithm>
+#include <array>
 #include <iterator>
 #include <stdexcept>
+#include <string>
+#include <unordered_map>
 
 DescriptorSet::DescriptorSet(const std::shared_ptr<const DescriptorPool>& descriptorPool)
 	: _descriptorPool(descriptorPool) {

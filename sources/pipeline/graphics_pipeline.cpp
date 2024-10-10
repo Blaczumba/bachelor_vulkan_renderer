@@ -1,9 +1,7 @@
 #include "graphics_pipeline.h"
 
 GraphicsPipeline::GraphicsPipeline(const Renderpass& renderpass)
-    : Pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS), _renderpass(renderpass) {
-
-}
+    : Pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS), _renderpass(renderpass) { }
 
 void GraphicsPipeline::create() {
     cleanup();

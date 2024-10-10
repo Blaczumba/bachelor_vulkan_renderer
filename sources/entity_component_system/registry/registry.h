@@ -1,14 +1,14 @@
 #pragma once
 
-#include "entity_component_system/entity/entity_manager.h"
 #include "entity_component_system/component/component.h"
+#include "entity_component_system/entity/entity_manager.h"
 
 #include <array>
-#include <unordered_map>
-#include <memory>
 #include <bitset>
-#include <tuple>
 #include <functional>
+#include <memory>
+#include <tuple>
+#include <unordered_map>
 
 class Registry {
 	EntityManager entityManager;

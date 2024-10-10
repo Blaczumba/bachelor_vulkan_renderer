@@ -2,8 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
-#include <vector>
 #include <optional>
+#include <vector>
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;

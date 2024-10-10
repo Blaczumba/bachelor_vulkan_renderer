@@ -2,9 +2,7 @@
 
 #include <stdexcept>
 
-Subpass::Subpass(const AttachmentLayout& layout) : _layout(layout) {
-
-}
+Subpass::Subpass(const AttachmentLayout& layout) : _layout(layout) {}
 
 VkSubpassDescription Subpass::getVkSubpassDescription() const {
     return VkSubpassDescription {

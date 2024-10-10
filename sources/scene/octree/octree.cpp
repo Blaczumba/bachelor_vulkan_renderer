@@ -2,10 +2,7 @@
 
 #include <algorithm>
 
-
-OctreeNode::OctreeNode(const AABB& volume) : _volume(volume), _children{} {
-
-}
+OctreeNode::OctreeNode(const AABB& volume) : _volume(volume), _children{} {}
 
 void OctreeNode::addObject(const Object* object) {
     const glm::vec3& lc = _volume.lowerCorner;

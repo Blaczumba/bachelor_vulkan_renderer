@@ -1,12 +1,12 @@
 #pragma once
 
 #include "instance/instance.h"
-#include "surface/surface.h"
 #include "property_manager.h"
+#include "surface/surface.h"
 
-#include <vector>
 #include <memory>
 #include <optional>
+#include <vector>
 
 class LogicalDevice;
 

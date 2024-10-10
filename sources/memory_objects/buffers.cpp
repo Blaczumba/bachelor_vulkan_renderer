@@ -1,4 +1,4 @@
-#include "image.h"
+#include "buffers.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -124,6 +124,14 @@ void transitionLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayou
         0, nullptr,
         1, &barrier
     );
+}
+
+void copyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+    const VkBufferCopy copyRegion = {
+        .size = size
+    };
+
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 }
 
 void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {

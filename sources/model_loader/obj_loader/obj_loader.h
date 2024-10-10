@@ -5,10 +5,10 @@
 
 #include <tinyobjloader/tiny_obj_loader.h>
 
-#include <unordered_map>
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
+#include <unordered_map>
 
 struct Indices {
     int a;

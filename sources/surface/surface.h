@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include <vulkan/vulkan.h>
+
 class Instance;
 class Window;
 

@@ -1,12 +1,12 @@
 #pragma once
 
-#include <window/window/window_glfw.h>
-#include <instance/instance.h>
 #include <debug_messenger/debug_messenger.h>
-#include <surface/surface.h>
-#include <physical_device/physical_device.h>
-#include <swapchain/swapchain.h>
+#include <instance/instance.h>
 #include <logical_device/logical_device.h>
+#include <physical_device/physical_device.h>
+#include <surface/surface.h>
+#include <swapchain/swapchain.h>
+#include <window/window/window_glfw.h>
 
 class ApplicationBase {
 protected:

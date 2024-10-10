@@ -4,9 +4,9 @@
 
 #include <vulkan/vulkan.h>
 
-#include <vector>
 #include <algorithm>
 #include <iterator>
+#include <vector>
 
 class AttachmentLayout {
 	std::vector<Attachment> _attachments;

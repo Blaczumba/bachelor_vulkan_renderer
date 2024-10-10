@@ -1,13 +1,14 @@
 #pragma once
 
-#include "logical_device/logical_device.h"
+#include "buffers.h"
 #include "command_buffer/command_buffer.h"
+#include "logical_device/logical_device.h"
 
 #include <vulkan/vulkan.h>
 
-#include <vector>
-#include <memory>
 #include <cstring>
+#include <memory>
+#include <vector>
 
 class VertexBuffer {
     VkBuffer _vertexBuffer;
@@ -39,8 +40,12 @@ VertexBuffer::VertexBuffer(const LogicalDevice& logicalDevice, const std::vector
     vkUnmapMemory(device, stagingBufferMemory);
 
     _logicalDevice.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _vertexBuffer, _vertexBufferMemory);
-
-    copyBuffer(_logicalDevice, stagingBuffer, _vertexBuffer, bufferSize);
+    
+    {
+        SingleTimeCommandBuffer handle(_logicalDevice);
+        VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+        copyBufferToBuffer(commandBuffer, stagingBuffer, _vertexBuffer, bufferSize);
+    }
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);

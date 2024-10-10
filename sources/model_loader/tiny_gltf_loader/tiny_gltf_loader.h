@@ -7,11 +7,11 @@
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #include <tinygltf/tiny_gltf.h>
 
-#include <vector>
+#include <iostream>
+#include <map>
 #include <stdexcept>
 #include <string>
-#include <map>
-#include <iostream>
+#include <vector>
 
 template <typename VertexType>
 struct VertexTraits;

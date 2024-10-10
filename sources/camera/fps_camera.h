@@ -1,11 +1,12 @@
 #pragma once
 
 #include "camera.h"
+
 #include "window/callback_observer/callback_observer.h"
 
 #include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 class FPSCamera : public Camera, public CallbackObserver {
     glm::vec3 _position     = glm::vec3(0.0f, 0.0f, 0.0f);

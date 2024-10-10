@@ -1,4 +1,5 @@
 #include "logical_device.h"
+
 #include "config/config.h"
 
 #include <set>
@@ -54,10 +55,10 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
         throw std::runtime_error("failed to create logical device!");
     }
 
-    vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-    vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &presentQueue);
-    vkGetDeviceQueue(_device, indices.computeFamily.value(), 0, &computeQueue);
-    vkGetDeviceQueue(_device, indices.transferFamily.value(), 0, &transferQueue);
+    vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0, &_graphicsQueue);
+    vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &_presentQueue);
+    vkGetDeviceQueue(_device, indices.computeFamily.value(), 0, &_computeQueue);
+    vkGetDeviceQueue(_device, indices.transferFamily.value(), 0, &_transferQueue);
 
     VkCommandPoolCreateInfo poolInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -184,12 +185,12 @@ void LogicalDevice::createSampler(Sampler* sampler) const {
         .unnormalizedCoordinates = sampler->unnormalizedCoordinates,
     };
 
-    if (sampler->maxAnisotropy) {
+    if (sampler->maxAnisotropy.has_value()) {
         samplerInfo.anisotropyEnable = VK_TRUE;
         samplerInfo.maxAnisotropy = sampler->maxAnisotropy.value();
     }
 
-    if (sampler->compareOp) {
+    if (sampler->compareOp.has_value()) {
         samplerInfo.compareEnable = VK_TRUE;
         samplerInfo.compareOp = sampler->compareOp.value();
     }
@@ -229,4 +230,20 @@ const VkDevice LogicalDevice::getVkDevice() const {
 
 const PhysicalDevice& LogicalDevice::getPhysicalDevice() const {
     return _physicalDevice;
+}
+
+const VkQueue LogicalDevice::getGraphicsQueue() const {
+    return _graphicsQueue;
+}
+
+const VkQueue LogicalDevice::getPresentQueue() const {
+    return _presentQueue;
+}
+
+const VkQueue LogicalDevice::getComputeQueue() const {
+    return _computeQueue;
+}
+
+const VkQueue LogicalDevice::getTransferQueue() const {
+    return _transferQueue;
 }

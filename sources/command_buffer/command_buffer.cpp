@@ -1,4 +1,3 @@
-#include "logical_device/logical_device.h"
 #include "command_buffer.h"
 
 #include <stdexcept>
@@ -57,8 +56,8 @@ const VkCommandBuffer CommandBuffer::getVkCommandBuffer() const {
     return _commandBuffer;
 }
 
-SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDevice)
-    : _logicalDevice(logicalDevice) {
+SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDevice, QueueType queueType)
+    : _logicalDevice(logicalDevice), _queueType(queueType) {
 
     const VkFenceCreateInfo fenceInfo = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
@@ -78,8 +77,24 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDev
     vkBeginCommandBuffer(_commandBuffer, &beginInfo);
 }
 
+static VkQueue getQueue(const LogicalDevice& logicalDevice, const QueueType queueType) {
+    switch (queueType) {
+    case QueueType::GRAPHICS:
+        return logicalDevice.getGraphicsQueue();
+    case QueueType::PRESENT:
+        return logicalDevice.getPresentQueue();
+    case QueueType::COMPUTE:
+        return logicalDevice.getComputeQueue();
+    case QueueType::TRANSFER:
+        return logicalDevice.getTransferQueue();
+    default:
+        return VK_NULL_HANDLE;
+    }
+}
+
 SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
-    const VkDevice device = _logicalDevice._device;
+    const VkDevice device = _logicalDevice.getVkDevice();
+    const VkQueue queue = getQueue(_logicalDevice, _queueType);
 
     vkEndCommandBuffer(_commandBuffer);
 
@@ -89,7 +104,7 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
         .pCommandBuffers = &_commandBuffer
     };
 
-    vkQueueSubmit(_logicalDevice.graphicsQueue, 1, &submitInfo, _fence);
+    vkQueueSubmit(queue, 1, &submitInfo, _fence);
     vkWaitForFences(device, 1, &_fence, VK_TRUE, UINT64_MAX);
 
     vkFreeCommandBuffers(device, _logicalDevice._commandPool, 1, &_commandBuffer);
@@ -98,15 +113,4 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
 
 VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const {
     return _commandBuffer;
-}
-
-void copyBuffer(const LogicalDevice& logicalDevice, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-    SingleTimeCommandBuffer handle(logicalDevice);
-    VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-
-    const VkBufferCopy copyRegion = {
-        .size = size
-    };
-
-    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 }

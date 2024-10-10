@@ -1,8 +1,8 @@
 #include "movement_system.h"
 
+#include <chrono>
 #include <iostream>
 #include <tuple>
-#include <chrono>
 
 MovementSystem::MovementSystem(Registry* reg) : registry(reg) {}
 

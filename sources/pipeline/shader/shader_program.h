@@ -1,13 +1,13 @@
 #pragma once
 
-#include "shader.h"
 #include "descriptor_set/descriptor_set_layout.h"
 #include "memory_objects/uniform_buffer/push_constants.h"
+#include "shader.h"
 
 #include <vulkan/vulkan.h>
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 class LogicalDevice;
 
@@ -39,6 +39,11 @@ public:
 class PBRShaderProgram : public GraphicsShaderProgram {
 public:
 	PBRShaderProgram(const LogicalDevice& logicalDevice);
+};
+
+class PBRTesselationShaderProgram : public GraphicsShaderProgram {
+public:
+	PBRTesselationShaderProgram(const LogicalDevice& logicalDevice);
 };
 
 class SkyboxShaderProgram : public GraphicsShaderProgram {
