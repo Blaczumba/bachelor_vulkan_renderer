@@ -37,28 +37,18 @@ const ivec2 offsets[] = ivec2[](
 	ivec2(-1, -1), ivec2(0, -1), ivec2(1, -1)
 );
 
-
-float calculateShadow(vec3 lightDir) {
+float calculateShadow() {
     vec3 lightFrag = lightFragPosition.xyz / lightFragPosition.w;
     if(lightFrag.z >= 1.0)
         return 1.0;
 
     float sum = 0.0;
-    {
-        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[0]);
-        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[1]);
-        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[2]);
-        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[3]);
-        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[4]);
-        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[5]);
-        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[6]);
-        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[7]);
-        sum += textureOffset(shadowMap, lightFrag.xyz, offsets[8]);
-    }
+    for(int i = 0; i < KELNER_SIZE; i++)
+        sum += textureOffset(shadowMap,
+        lightFrag.xyz, offsets[i]);
 
     return sum / KELNER_SIZE;
 }
-
 
 void main() {
     vec3 color = texture(texSampler, fragTexCoord).rgb;
@@ -86,7 +76,6 @@ void main() {
 
     vec3 specular = vec3(0.3) * spec; // assuming bright white light color
 
-
-    outColor = vec4(ambient + calculateShadow(lightDir)*(diffuse + specular), 1.0);
+    outColor = vec4(ambient + calculateShadow()*(diffuse + specular), 1.0);
     outColor1 = outColor;
 }

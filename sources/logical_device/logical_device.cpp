@@ -18,14 +18,16 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
     };
 
     float queuePriority = 1.0f;
+    queueCreateInfos.reserve(uniqueQueueFamilies.size());
     for (uint32_t queueFamily : uniqueQueueFamilies) {
-        VkDeviceQueueCreateInfo queueCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = queueFamily,
-            .queueCount = 1,
-            .pQueuePriorities = &queuePriority
-        };
-        queueCreateInfos.push_back(queueCreateInfo);
+        queueCreateInfos.emplace_back(
+            VkDeviceQueueCreateInfo {
+                .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .queueFamilyIndex = queueFamily,
+                .queueCount = 1,
+                .pQueuePriorities = &queuePriority
+            }
+        );
     }
 
     VkPhysicalDeviceFeatures deviceFeatures = {

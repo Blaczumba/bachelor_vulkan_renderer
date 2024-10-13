@@ -35,7 +35,6 @@ const mat4 BiasMat = mat4(
 	0.5, 0.5, 0.0, 1.0
 );
 
-
 void main() {
     gl_Position = object.model *  vec4(inPosition, 1.0);
     fragPosition = gl_Position.xyz;

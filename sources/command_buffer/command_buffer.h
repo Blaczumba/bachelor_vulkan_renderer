@@ -34,6 +34,7 @@ class CommandBuffer {
 	const CommandPool& _commandPool;
 public:
 	CommandBuffer(const CommandPool& commandPool, bool primary = true);
+	~CommandBuffer();
 	void resetCommandBuffer() const;
 	const VkCommandBuffer getVkCommandBuffer() const;
 };

@@ -48,6 +48,10 @@ CommandBuffer::CommandBuffer(const CommandPool& commandPool, bool primary) :_com
     }
 }
 
+CommandBuffer::~CommandBuffer() {
+    vkFreeCommandBuffers(_commandPool.getLogicalDevice().getVkDevice(), _commandPool.getVkCommandPool(), 1, &_commandBuffer);
+}
+
 void CommandBuffer::resetCommandBuffer() const {
     vkResetCommandBuffer(_commandBuffer, 0);
 }
