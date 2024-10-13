@@ -6,6 +6,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <atomic>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -44,7 +45,7 @@ private:
 	std::queue<CommandData> _commandData;
 	std::mutex _commandDataMutex;
 	std::condition_variable _commandDataCV;
-	bool _shouldStop;
+	std::atomic<bool> _shouldStop;
 
 	void savingThread();
 	void savePixels(const CommandData& imagesData);

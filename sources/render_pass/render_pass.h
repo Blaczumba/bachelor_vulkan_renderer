@@ -14,6 +14,7 @@ class Renderpass {
 
 	std::vector<Subpass> _subpasses;
 	std::vector<VkSubpassDependency> _subpassDepencies;
+	std::vector<VkClearValue> _clearValues;
 
 	const LogicalDevice& _logicalDevice;
 

@@ -41,6 +41,7 @@ void Swapchain::cleanup() {
     for (auto& image : _images) {
         vkDestroyImageView(device, image.getImage().view, nullptr);
     }
+    _images.clear();
 
     vkDestroySwapchainKHR(device, _swapchain, nullptr);
 }
@@ -100,7 +101,6 @@ void Swapchain::create() {
     vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, images.data());
 
     _images.reserve(imageCount);
-
     std::transform(images.cbegin(), images.cend(), std::back_inserter(_images),
         [&](VkImage image) {
             Image img {

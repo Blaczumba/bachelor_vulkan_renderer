@@ -4,7 +4,9 @@
 #include <stdexcept>
 
 Renderpass::Renderpass(const LogicalDevice& logicalDevice, const AttachmentLayout& layout) 
-    : _logicalDevice(logicalDevice), _attachmentsLayout(layout) {}
+    : _logicalDevice(logicalDevice), _attachmentsLayout(layout) {
+    _clearValues = _attachmentsLayout.getVkClearValues();
+}
 
 void Renderpass::create() {
     cleanup();
@@ -45,7 +47,7 @@ const VkRenderPass Renderpass::getVkRenderPass() const {
 }
 
 const std::vector<VkClearValue>& Renderpass::getClearValues() const {
-    return _attachmentsLayout.getVkClearValues();
+    return _clearValues;
 }
 
 const AttachmentLayout& Renderpass::getAttachmentsLayout() const {

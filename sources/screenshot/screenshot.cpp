@@ -20,7 +20,7 @@ void Screenshot::addImageToObserved(const Image& image, const std::string& name)
 void Screenshot::updateInput(const CallbackData& cbData) {
 	if (std::find(cbData.keys.cbegin(), cbData.keys.cend(), Keyboard::Key::P) != cbData.keys.cend()) {
 		for (size_t i = 0; i < _images.size(); i++) {
-			saveImage(std::to_string(_counter/2) + '_' + _imageNames[i], &_images[i]);
+			saveImage(std::to_string(_counter/_images.size()) + '_' + _imageNames[i], &_images[i]);
 			++_counter;
 		}
 	}

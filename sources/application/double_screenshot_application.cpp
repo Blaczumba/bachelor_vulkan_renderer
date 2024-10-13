@@ -577,11 +577,12 @@ void SingleApp::recreateSwapChain() {
 
     _swapchain->recrete();
     _framebuffers.clear();
-    _framebufferTextures = std::move(createTexturesFromRenderpass(*_renderPass, extent));
+    _framebufferTextures = createTexturesFromRenderpass(*_renderPass, extent);
     size_t swapchainImagesCount = _swapchain->getImages().size();
     _framebuffers.reserve(swapchainImagesCount);
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
+        imageViews.reserve(_framebufferTextures.size());
         std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
     }
