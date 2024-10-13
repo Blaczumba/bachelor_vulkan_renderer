@@ -5,8 +5,7 @@
 
 #include <GLFW/glfw3.h>
 
-FPSCallbackManager::FPSCallbackManager(std::shared_ptr<WindowGLFW> window)
-	: CallbackManager(window) {
+FPSCallbackManager::FPSCallbackManager(WindowGLFW* window) : _window(window) {
 	GLFWwindow* glfwWindow = _window->getGlfwWindow();
 	glfwSetWindowUserPointer(glfwWindow, this);
 

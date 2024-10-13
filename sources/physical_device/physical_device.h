@@ -1,8 +1,7 @@
 #pragma once
 
-#include "instance/instance.h"
 #include "property_manager.h"
-#include "surface/surface.h"
+#include "window/window/window.h"
 
 #include <memory>
 #include <optional>
@@ -11,18 +10,17 @@
 class LogicalDevice;
 
 class PhysicalDevice {
-    VkPhysicalDevice _device;
-	const std::shared_ptr<Instance> _instance;
-    const std::shared_ptr<Surface> _surface;
+    VkPhysicalDevice _device = VK_NULL_HANDLE;
+    const Window& _window;
 
     PhysicalDevicePropertyManager _propertyManager;
 
 public:
-	PhysicalDevice(const std::shared_ptr<Instance>& instance, const std::shared_ptr<Surface>& surface);
+	PhysicalDevice(const Window& window);
 
     const VkPhysicalDevice getVkPhysicalDevice() const;
+    const Window& getWindow() const;
     const PhysicalDevicePropertyManager& getPropertyManager() const;
 
     std::unique_ptr<LogicalDevice> createLogicalDevice();
-
 };

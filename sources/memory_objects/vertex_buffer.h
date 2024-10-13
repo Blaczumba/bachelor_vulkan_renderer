@@ -36,7 +36,7 @@ VertexBuffer::VertexBuffer(const LogicalDevice& logicalDevice, const std::vector
 
     void* data;
     vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    std::memcpy(data, vertices.data(), (size_t)bufferSize);
+    std::memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
     vkUnmapMemory(device, stagingBufferMemory);
 
     _logicalDevice.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _vertexBuffer, _vertexBufferMemory);

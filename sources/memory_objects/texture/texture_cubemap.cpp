@@ -90,7 +90,7 @@ TextureCubemap::TextureCubemap(const LogicalDevice& logicalDevice, std::string f
 		SingleTimeCommandBuffer handle(_logicalDevice);
 		VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 		transitionImageLayout(commandBuffer, &_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		copyBufferToImage(commandBuffer, stagingBuffer, _image.image, std::move(bufferCopyRegions));
+		copyBufferToImage(commandBuffer, stagingBuffer, _image.image, bufferCopyRegions);
 		transitionImageLayout(commandBuffer, &_image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 

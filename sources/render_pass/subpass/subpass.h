@@ -47,7 +47,7 @@ class Subpass {
 
 public:
 	Subpass(const AttachmentLayout& layout);
-	void addSubpassOutputAttachment(uint32_t attachmentBinding, VkImageLayout layout);
+	void addSubpassOutputAttachment(uint32_t attachmentBinding);
 	void addSubpassInputAttachment(uint32_t attachmentBinding, VkImageLayout layout);
 	VkSubpassDescription getVkSubpassDescription() const;
 

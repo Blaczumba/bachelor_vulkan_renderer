@@ -30,7 +30,7 @@ SingleApp::SingleApp()
     _screenshot->addImageToObserved(_framebufferTextures[1]->getImage(), "hig_res_screenshot.ppm");
     _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 100.0f);
 
-    _callbackManager = std::make_unique<FPSCallbackManager>(std::dynamic_pointer_cast<WindowGLFW>(_window));
+    _callbackManager = std::make_unique<FPSCallbackManager>(_window.get());
     _callbackManager->attach(_camera.get());
     _callbackManager->attach(_screenshot.get());
 
@@ -140,11 +140,11 @@ void SingleApp::createPresentResources() {
     attachmentsLayout.addAttachment(DepthAttachment(findDepthFormat(), VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples));
 
     Subpass subpass(attachmentsLayout);
-    subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    subpass.addSubpassOutputAttachment(0);
+    subpass.addSubpassOutputAttachment(1);
+    subpass.addSubpassOutputAttachment(2);
+    subpass.addSubpassOutputAttachment(3);
+    subpass.addSubpassOutputAttachment(4);
 
     _renderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentsLayout);
     _renderPass->addSubpass(subpass);
@@ -198,7 +198,7 @@ void SingleApp::createShadowResources() {
     attachmentLayout.addAttachment(ShadowAttachment(imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 
     Subpass subpass(attachmentLayout);
-    subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    subpass.addSubpassOutputAttachment(0);
 
     _shadowRenderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentLayout);
     _shadowRenderPass->addSubpass(subpass);

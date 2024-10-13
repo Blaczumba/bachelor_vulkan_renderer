@@ -144,19 +144,19 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
                 }
             }
 
-            if constexpr (VertexTraits<VertexType>::hasTangent) {
-                if (attributes.find("TANGENT") != attributes.end()) {
-                    const tinygltf::Accessor& accessor = model.accessors[attributes.at("TANGENT")];
-                    const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-                    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+            //if constexpr (VertexTraits<VertexType>::hasTangent) {
+            //    if (attributes.find("TANGENT") != attributes.end()) {
+            //        const tinygltf::Accessor& accessor = model.accessors[attributes.at("TANGENT")];
+            //        const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+            //        const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
-                    const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-                    tangents.reserve(accessor.count);
-                    for (size_t i = 0; i < accessor.count; ++i) {
-                        tangents.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
-                    }
-                }
-            }
+            //        const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+            //        tangents.reserve(accessor.count);
+            //        for (size_t i = 0; i < accessor.count; ++i) {
+            //            tangents.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+            //        }
+            //    }
+            //}
 
             // Combine vertex attributes into VertexType
             vertexData.vertices.reserve(positions.size());
@@ -231,7 +231,10 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
                 glm::vec2 deltaUV1 = v1.texCoord - v0.texCoord;
                 glm::vec2 deltaUV2 = v2.texCoord - v0.texCoord;
 
+                glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2);
+
                 // float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
 
                 if constexpr (VertexTraits<VertexType>::hasTangent) {
                     glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2); // f scale

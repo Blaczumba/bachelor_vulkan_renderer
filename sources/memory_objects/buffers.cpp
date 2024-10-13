@@ -167,7 +167,7 @@ void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage i
     );
 }
 
-void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, std::vector<VkBufferImageCopy>&& regions) {
+void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, const std::vector<VkBufferImageCopy>& regions) {
     vkCmdCopyBufferToImage(
         commandBuffer,
         buffer,

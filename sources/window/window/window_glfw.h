@@ -9,9 +9,8 @@ class GLFWwindow;
 class WindowGLFW : public Window {
 	GLFWwindow* _window;
 
-	VkSurfaceKHR createSurface(VkInstance instance) const override;
 public:
-	WindowGLFW(std::string_view windowName, uint32_t width, uint32_t height);
+	WindowGLFW(const Instance& instance, std::string_view windowName, uint32_t width, uint32_t height);
 	~WindowGLFW();
 
 	GLFWwindow* getGlfwWindow();

@@ -13,14 +13,16 @@ public:
     VkClearValue getClearValue() const { return clearValue; }
     const VkAttachmentDescription& getDescription() const { return description; }
     Type getAttachmentRefType() const { return type; }
+    VkImageLayout getSubpassImageLayout() const { return subpassImageLayout; }
 
 protected:
     VkClearValue clearValue{};
     VkAttachmentDescription description{};
     Type type{};
+    VkImageLayout subpassImageLayout{};
 
-    constexpr Attachment(Type type, VkClearValue clearValue, VkAttachmentDescription description)
-        : type(type), clearValue(clearValue), description(description) {}
+    constexpr Attachment(Type type, VkClearValue clearValue, VkAttachmentDescription description, VkImageLayout subpassImageLayout)
+        : type(type), clearValue(clearValue), description(description), subpassImageLayout(subpassImageLayout) {}
 };
 
 // Helper function for initializing common fields in VkAttachmentDescription
@@ -54,7 +56,8 @@ struct ColorAttachment : public Attachment {
         : Attachment(
             Type::COLOR_ATTACHMENT,
             VkClearValue{ .color = { 0.0f, 0.0f, 0.0f, 1.0f } },
-            createDescription(format, samples, loadOp, storeOp, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            createDescription(format, samples, loadOp, storeOp, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         ) {}
 };
 
@@ -63,7 +66,8 @@ struct ColorPresentAttachment : public Attachment {
         : Attachment(
             Type::COLOR_ATTACHMENT,
             VkClearValue{ .color = { 0.0f, 0.0f, 0.0f, 1.0f } },
-            createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+            createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         ) {}
 };
 
@@ -72,7 +76,8 @@ struct DepthAttachment : public Attachment {
         : Attachment(
             Type::DEPTH_ATTACHMENT,
             VkClearValue{ .depthStencil = { 1.0f, 0 } },
-            createDescription(format, samples, VK_ATTACHMENT_LOAD_OP_CLEAR, storeOp, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, stencilLoadOp, stencilStoreOp)
+            createDescription(format, samples, VK_ATTACHMENT_LOAD_OP_CLEAR, storeOp, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, stencilLoadOp, stencilStoreOp),
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
         ) {}
 };
 
@@ -81,7 +86,8 @@ struct ShadowAttachment : public Attachment {
         : Attachment(
             Type::DEPTH_ATTACHMENT,
             VkClearValue{ .depthStencil = { 1.0f, 0 } },
-            createDescription(format, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_UNDEFINED, finalLayout)
+            createDescription(format, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_UNDEFINED, finalLayout),
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
         ) {}
 };
 
@@ -90,7 +96,8 @@ struct ColorResolveAttachment : public Attachment {
         : Attachment(
             Type::COLOR_ATTACHMENT_RESOLVE,
             VkClearValue{ .color = { 0.0f, 0.0f, 0.0f, 1.0f } },
-            createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, storeOp, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, storeOp, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         ) {}
 };
 
@@ -99,6 +106,7 @@ struct ColorResolvePresentAttachment : public Attachment {
         : Attachment(
             Type::COLOR_ATTACHMENT_RESOLVE,
             VkClearValue{ .color = { 0.0f, 0.0f, 0.0f, 1.0f } },
-            createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+            createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         ) {}
 };

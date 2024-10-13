@@ -6,23 +6,19 @@
 
 #include <vector>
 
-class Surface;
 class Window;
 class LogicalDevice;
 class PhysicalDevice;
 class Texture;
 
 class Swapchain {
-	const Surface& _surface;
-	const Window& _window;
+	VkSwapchainKHR _swapchain;
 	const LogicalDevice& _logicalDevice;
 
 	std::vector<Texture> _images;
 
-	VkSwapchainKHR _swapchain;
-
 public:
-	Swapchain(const Surface& surface, const Window& window, const LogicalDevice& logicalDevice);
+	Swapchain(const LogicalDevice& logicalDevice);
 	~Swapchain();
 
 	const VkSwapchainKHR getVkSwapchain() const;
@@ -39,5 +35,4 @@ public:
 
 	VkResult acquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t* imageIndex) const;
 	VkResult present(uint32_t imageIndex, VkSemaphore waitSemaphore) const;
-private:
 };

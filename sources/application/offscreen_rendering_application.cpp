@@ -146,11 +146,11 @@ void OffscreenRendering::createPresentResources() {
     attachmentsLayout.addAttachment(DepthAttachment(findDepthFormat(), VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples));
 
     Subpass subpass(attachmentsLayout);
-    subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    subpass.addSubpassOutputAttachment(0);
+    subpass.addSubpassOutputAttachment(1);
+    subpass.addSubpassOutputAttachment(2);
+    subpass.addSubpassOutputAttachment(3);
+    subpass.addSubpassOutputAttachment(4);
 
     _renderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentsLayout);
     _renderPass->addSubpass(subpass);
@@ -196,8 +196,8 @@ void OffscreenRendering::createOffscreenResources() {
     attachmentLayout.addAttachment(DepthAttachment(findDepthFormat(), VK_ATTACHMENT_STORE_OP_DONT_CARE, lowResMsaaSamples));
 
     Subpass subpass(attachmentLayout);
-    subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    subpass.addSubpassOutputAttachment(0);
+    subpass.addSubpassOutputAttachment(1);
 
     _lowResRenderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentLayout);
     _lowResRenderPass->addSubpass(subpass);
@@ -236,7 +236,7 @@ void OffscreenRendering::createShadowResources() {
     attachmentLayout.addAttachment(ShadowAttachment(imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 
     Subpass subpass(attachmentLayout);
-    subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    subpass.addSubpassOutputAttachment(0);
 
     _shadowRenderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentLayout);
     _shadowRenderPass->addSubpass(subpass);
@@ -605,14 +605,10 @@ void OffscreenRendering::recordShadowCommandBuffer(VkCommandBuffer commandBuffer
     // OBJECT TBN
     vkCmdBindPipeline(commandBuffer, _shadowPipeline->getVkPipelineBindPoint(), _shadowPipeline->getVkPipeline());
     for (const auto& object : _objects) {
-
         VkBuffer vertexBuffers[] = { object.vertexBufferP->getVkBuffer() };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
         vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
-
         _descriptorSetShadow->bindDescriptorSet(commandBuffer, *_shadowPipeline, { object.dynamicUniformIndex });
-
         vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
 
