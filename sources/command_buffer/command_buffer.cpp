@@ -40,7 +40,7 @@ CommandBuffer::CommandBuffer(const CommandPool& commandPool, bool primary) :_com
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = _commandPool.getVkCommandPool(),
         .level = level,
-        .commandBufferCount = 1
+        .commandBufferCount = 1,
     };
 
     if (vkAllocateCommandBuffers(_commandPool.getLogicalDevice().getVkDevice(), &allocInfo, &_commandBuffer) != VK_SUCCESS) {
@@ -71,7 +71,16 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDev
         throw std::runtime_error("failed to create SingleTimeCommandBuffer fence!");
     }
 
-    _commandBuffer = _logicalDevice.createCommandBuffer();
+    VkCommandBufferAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = _logicalDevice.getSingleSubmitCommandPool(_queueType),
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+
+    if (vkAllocateCommandBuffers(_logicalDevice.getVkDevice(), &allocInfo, &_commandBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate command buffers!");
+    }
 
     const VkCommandBufferBeginInfo beginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -81,24 +90,9 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDev
     vkBeginCommandBuffer(_commandBuffer, &beginInfo);
 }
 
-static VkQueue getQueue(const LogicalDevice& logicalDevice, const QueueType queueType) {
-    switch (queueType) {
-    case QueueType::GRAPHICS:
-        return logicalDevice.getGraphicsQueue();
-    case QueueType::PRESENT:
-        return logicalDevice.getPresentQueue();
-    case QueueType::COMPUTE:
-        return logicalDevice.getComputeQueue();
-    case QueueType::TRANSFER:
-        return logicalDevice.getTransferQueue();
-    default:
-        return VK_NULL_HANDLE;
-    }
-}
-
 SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
     const VkDevice device = _logicalDevice.getVkDevice();
-    const VkQueue queue = getQueue(_logicalDevice, _queueType);
+    const VkQueue queue = _logicalDevice.getQueue(_queueType);
 
     vkEndCommandBuffer(_commandBuffer);
 
@@ -111,7 +105,7 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
     vkQueueSubmit(queue, 1, &submitInfo, _fence);
     vkWaitForFences(device, 1, &_fence, VK_TRUE, UINT64_MAX);
 
-    vkFreeCommandBuffers(device, _logicalDevice._commandPool, 1, &_commandBuffer);
+    vkFreeCommandBuffers(device, _logicalDevice.getSingleSubmitCommandPool(_queueType), 1, &_commandBuffer);
     vkDestroyFence(device, _fence, nullptr);
 }
 

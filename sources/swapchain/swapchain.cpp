@@ -134,7 +134,7 @@ VkResult Swapchain::present(uint32_t imageIndex, VkSemaphore waitSemaphore) cons
         .pWaitSemaphores = &waitSemaphore,
         .swapchainCount = 1,
         .pSwapchains = &_swapchain,
-        .pImageIndices = &imageIndex
+        .pImageIndices = &imageIndex,
     };
 
     return vkQueuePresentKHR(_logicalDevice.getPresentQueue(), &presentInfo);

@@ -31,7 +31,6 @@ Texture2DShadow::Texture2DShadow(const LogicalDevice& logicalDevice, uint32_t wi
     }    
 
     _logicalDevice.createImageView(&_image);
-
     _logicalDevice.createSampler(&_sampler);
 }
 

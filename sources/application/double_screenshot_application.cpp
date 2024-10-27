@@ -171,19 +171,13 @@ void SingleApp::createPresentResources() {
         GraphicsPipelineParameters parameters;
         parameters.msaaSamples = msaaSamples;
         // parameters.patchControlPoints = 3;
-        _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass);
-        _graphicsPipeline->setShaderProgram(_pbrShaderProgram.get());
-        _graphicsPipeline->setPipelineParameters(parameters);
-        _graphicsPipeline->create();
+        _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass, *_pbrShaderProgram, parameters);
     }
     {
         GraphicsPipelineParameters parameters;
         parameters.msaaSamples = msaaSamples;
         parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
-        _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_renderPass);
-        _graphicsPipelineSkybox->setShaderProgram(_skyboxShaderProgram.get());
-        _graphicsPipelineSkybox->setPipelineParameters(parameters);
-        _graphicsPipelineSkybox->create();
+        _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_renderPass, *_skyboxShaderProgram, parameters);
     }
 }
 
@@ -210,10 +204,7 @@ void SingleApp::createShadowResources() {
     GraphicsPipelineParameters parameters;
     parameters.depthBiasConstantFactor = 0.7f;
     parameters.depthBiasSlopeFactor = 2.0f;
-    _shadowPipeline = std::make_unique<GraphicsPipeline>(*_shadowRenderPass);
-    _shadowPipeline->setShaderProgram(_shadowShaderProgram.get());
-    _shadowPipeline->setPipelineParameters(parameters);
-    _shadowPipeline->create();
+    _shadowPipeline = std::make_unique<GraphicsPipeline>(*_shadowRenderPass, *_shadowShaderProgram, parameters);
 }
 
 SingleApp::~SingleApp() {
@@ -254,9 +245,7 @@ void SingleApp::run() {
 
 void SingleApp::draw() {
     VkDevice device = _logicalDevice->getVkDevice();
-
     vkWaitForFences(device, 1, &_inFlightFences[_currentFrame], VK_TRUE, UINT64_MAX);
-
     uint32_t imageIndex;
     VkResult result = _swapchain->acquireNextImage(_imageAvailableSemaphores[_currentFrame], &imageIndex);
 
@@ -363,8 +352,6 @@ void SingleApp::updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.pos = _camera->getPosition();
 
     _dynamicUniformBuffersCamera->updateUniformBuffer(&_ubCamera, currentFrame);
-
-    // std::cout << _ubCamera.pos.x << " " << _ubCamera.pos.y << " " << _ubCamera.pos.z << std::endl;
 }
 
 void SingleApp::createCommandBuffers() {
