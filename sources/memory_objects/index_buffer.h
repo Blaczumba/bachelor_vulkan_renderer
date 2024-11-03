@@ -25,6 +25,7 @@ public:
     VkIndexType getIndexType() const;
     const VkBuffer getVkBuffer() const;
     uint32_t getIndexCount() const;
+    void bind(const VkCommandBuffer commandBuffer) const;
 
 private:
     void createIndexBuffer(const void* indicesData, VkDeviceSize bufferSize);

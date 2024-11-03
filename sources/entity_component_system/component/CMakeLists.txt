@@ -1,4 +1,4 @@
-add_library(Components component.cpp)
+add_library(Components component.cpp "transform.h" "component_pool.h")
 
 target_link_libraries(Components PUBLIC VertexBuffer IndexBuffer Texture)
 

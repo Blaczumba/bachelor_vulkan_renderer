@@ -2,6 +2,9 @@
 
 #include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
 #include "entity_component_system/system/movement_system.h"
+#include "entity_component_system/component/material.h"
+#include "entity_component_system/component/mesh.h"
+#include "entity_component_system/component/transform.h"
 #include "utils/utils.h"
 #include "thread_pool/thread_pool.h"
 
@@ -11,7 +14,7 @@
 #include <any>
 
 SingleApp::SingleApp()
-    : ApplicationBase() {
+    : ApplicationBase(), _registry(200) {
 
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
@@ -42,7 +45,9 @@ void SingleApp::loadObjects() {
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     uint32_t index = 0;
 
+    _objects.reserve(_newVertexDataTBN.size());
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
+        Entity e = _registry.createEntity();
         if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
             continue;
         const std::string diffusePath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0];
@@ -50,16 +55,16 @@ void SingleApp::loadObjects() {
         const std::string normalPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0];
 
         if (!_uniformMap.contains(diffusePath)) {
-            _textures.emplace_back(std::make_unique<Texture2DImage>(*_logicalDevice, diffusePath, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
-            _uniformMap.emplace(std::make_pair(diffusePath, std::make_unique<UniformBufferTexture>(*_textures.back())));
+            _textures.emplace_back(std::make_shared<Texture2DImage>(*_logicalDevice, diffusePath, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
+            _uniformMap.emplace(std::make_pair(diffusePath, std::make_shared<UniformBufferTexture>(*_textures.back())));
         }
         if (!_uniformMap.contains(normalPath)) {
-            _textures.emplace_back(std::make_unique<Texture2DImage>(*_logicalDevice, normalPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
-            _uniformMap.emplace(std::make_pair(normalPath, std::make_unique<UniformBufferTexture>(*_textures.back())));
+            _textures.emplace_back(std::make_shared<Texture2DImage>(*_logicalDevice, normalPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
+            _uniformMap.emplace(std::make_pair(normalPath, std::make_shared<UniformBufferTexture>(*_textures.back())));
         }
         if (!_uniformMap.contains(metallicRoughnessPath)) {
-            _textures.emplace_back(std::make_unique<Texture2DImage>(*_logicalDevice, metallicRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
-            _uniformMap.emplace(std::make_pair(metallicRoughnessPath, std::make_unique<UniformBufferTexture>(*_textures.back())));
+            _textures.emplace_back(std::make_shared<Texture2DImage>(*_logicalDevice, metallicRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
+            _uniformMap.emplace(std::make_pair(metallicRoughnessPath, std::make_shared<UniformBufferTexture>(*_textures.back())));
         }
 
         auto descriptorSet = _descriptorPool->createDesriptorSet();
@@ -68,28 +73,34 @@ void SingleApp::loadObjects() {
         std::vector<glm::vec3> pVertexData;
         std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return vertex.pos; });
 
-        _objects.push_back(Object{
-            std::make_unique<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices),
-            std::make_unique<VertexBuffer>(*_logicalDevice, pVertexData),
-            std::make_unique<IndexBuffer>(*_logicalDevice, _newVertexDataTBN[i].indices),
-            index,
-            std::move(descriptorSet),
-            _newVertexDataTBN[i].model,
-            createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model) }
-        );
+        _objects.emplace_back("Object", e);
 
+        std::unique_ptr<MeshComponent> msh = std::make_unique<MeshComponent>();
+        msh->vertexBuffer = std::make_shared<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices);
+        msh->indexBuffer = std::make_shared<IndexBuffer>(*_logicalDevice, _newVertexDataTBN[i].indices);
+        msh->vertexBufferPrimitive = std::make_shared<VertexBuffer>(*_logicalDevice, pVertexData);
+        msh->aabb = createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model);
+        _registry.addComponent<MeshComponent>(e, std::move(msh));
+
+        std::unique_ptr<TransformComponent> trsf = std::make_unique<TransformComponent>();
+        trsf->model = _newVertexDataTBN[i].model;
+        _registry.addComponent<TransformComponent>(e, std::move(trsf));
+
+        _entityToIndex.emplace(e, index);
+        _entitytoDescriptorSet.emplace(e, std::move(descriptorSet));
+        
         _ubObject.model = _newVertexDataTBN[i].model;
         _uniformBuffersObjects->updateUniformBuffer(&_ubObject, index++);
     }
 
-    AABB sceneAABB = _objects[0].volume;    // Take the volume of first object and then enlarge it
+    AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;
     for (int i = 1; i < _objects.size(); i++) {
-        sceneAABB.extend(_objects[i].volume);
+        sceneAABB.extend(_registry.getComponent<MeshComponent>(_objects[i].getEntity()).aabb);
     }
     _octree = std::make_unique<Octree>(sceneAABB);
 
     for (const auto& object : _objects)
-        _octree->addObject(&object);
+        _octree->addObject(&object, _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb);
 }
 
 void SingleApp::createDescriptorSets() {
@@ -231,7 +242,7 @@ void SingleApp::run() {
     }
 
     for (auto& object : _objects) {
-        object.vertexBufferP.reset();
+        _registry.getComponent<MeshComponent>(object.getEntity()).vertexBufferPrimitive.reset();
     }
 
     _threadPool = std::make_unique<ThreadPool>(MAX_THREADS_IN_POOL);
@@ -375,14 +386,13 @@ void SingleApp::createCommandBuffers() {
 }
 
 void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer commandBuffer, const OctreeNode* node, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
-    const VkDeviceSize offsets[] = { 0 };
-
     for (const Object* object : node->getObjects()) {
-        VkBuffer vertexBuffers[] = { object->vertexBufferPTNTB->getVkBuffer() };
-        const IndexBuffer* indexBuffer = object->indexBuffer.get();
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getVkBuffer(), 0, indexBuffer->getIndexType());
-        object->_descriptorSet->bindDescriptorSet(commandBuffer, *_graphicsPipeline, { _currentFrame, object->dynamicUniformIndex });
+        const auto& meshComponent = _registry.getComponent<MeshComponent>(object->getEntity());
+        const IndexBuffer* indexBuffer = meshComponent.indexBuffer.get();
+        const VertexBuffer* vertexBuffer = meshComponent.vertexBuffer.get();
+        vertexBuffer->bind(commandBuffer);
+        indexBuffer->bind(commandBuffer);
+        _entitytoDescriptorSet[object->getEntity()]->bind(commandBuffer, *_graphicsPipeline, { _currentFrame, _entityToIndex[object->getEntity()] });
         vkCmdDrawIndexed(commandBuffer, indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
 
@@ -478,14 +488,11 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         vkBeginCommandBuffer(commandBuffers[1], &cmdBufferBeginInfo);
         vkCmdSetViewport(commandBuffers[1], 0, 1, &viewport);
         vkCmdSetScissor(commandBuffers[1], 0, 1, &scissor);
-        vkCmdBindPipeline(commandBuffers[1], _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
         vkCmdBindPipeline(commandBuffers[1], _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
 
-        VkBuffer vertexBuffersCube[] = { _vertexBufferCube->getVkBuffer() };
-        const VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(commandBuffers[1], 0, 1, vertexBuffersCube, offsets);
-        vkCmdBindIndexBuffer(commandBuffers[1], _indexBufferCube->getVkBuffer(), 0, _indexBufferCube->getIndexType());
-        _descriptorSetSkybox->bindDescriptorSet(commandBuffers[1], *_graphicsPipelineSkybox, { _currentFrame });
+        _vertexBufferCube->bind(commandBuffers[1]);
+        _indexBufferCube->bind(commandBuffers[1]);
+        _descriptorSetSkybox->bind(commandBuffers[1], *_graphicsPipelineSkybox, { _currentFrame });
         vkCmdDrawIndexed(commandBuffers[1], _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
         vkEndCommandBuffer(commandBuffers[1]);
     });
@@ -539,11 +546,13 @@ void SingleApp::recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_
     vkCmdBindPipeline(commandBuffer, _shadowPipeline->getVkPipelineBindPoint(), _shadowPipeline->getVkPipeline());
 
     for (const auto& object : _objects) {
-        VkBuffer vertexBuffers[] = { object.vertexBufferP->getVkBuffer() };
+        const auto& meshComponent = _registry.getComponent<MeshComponent>(object.getEntity());
+        VkBuffer vertexBuffers[] = { meshComponent.vertexBufferPrimitive->getVkBuffer() };
+        const IndexBuffer* indexBuffer = meshComponent.indexBuffer.get();
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
-        _descriptorSetShadow->bindDescriptorSet(commandBuffer, *_shadowPipeline, { object.dynamicUniformIndex });
-        vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getVkBuffer(), 0, indexBuffer->getIndexType());
+        _descriptorSetShadow->bind(commandBuffer, *_shadowPipeline, { _entityToIndex[object.getEntity()] });
+        vkCmdDrawIndexed(commandBuffer, indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
 
     vkCmdEndRenderPass(commandBuffer);

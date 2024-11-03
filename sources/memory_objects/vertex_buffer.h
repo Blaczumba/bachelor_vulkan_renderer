@@ -22,6 +22,7 @@ public:
     ~VertexBuffer();
 
     const VkBuffer getVkBuffer() const;
+    void bind(const VkCommandBuffer commandBuffer) const;
 };
 
 template<typename VertexType>

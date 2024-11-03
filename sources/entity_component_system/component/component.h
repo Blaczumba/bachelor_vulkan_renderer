@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 using ComponentType = uint64_t;
-constexpr size_t MAX_COMPONENTS = 64;
+constexpr size_t MAX_COMPONENTS = 32;
 
 class Component {
 public:

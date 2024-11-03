@@ -60,3 +60,7 @@ VkIndexType IndexBuffer::getIndexType() const {
 uint32_t IndexBuffer::getIndexCount() const {
     return _indexCount;
 }
+
+void IndexBuffer::bind(const VkCommandBuffer commandBuffer) const {
+    vkCmdBindIndexBuffer(commandBuffer, _indexBuffer, 0, _indexType);
+}

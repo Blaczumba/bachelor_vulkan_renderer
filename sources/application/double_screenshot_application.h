@@ -32,12 +32,15 @@
 
 class SingleApp : public ApplicationBase {
     std::vector<VertexData<VertexPTNT, uint16_t>> _newVertexDataTBN;
-    std::vector<std::unique_ptr<Texture2DImage>> _textures;
-    std::unordered_map<std::string, std::unique_ptr<UniformBufferTexture>> _uniformMap;
-    std::unordered_map<std::string, std::unique_ptr<VertexBuffer>> _vertexBufferMap;
-    std::unordered_map<std::string, std::unique_ptr<IndexBuffer>> _indexBufferMap;
+    std::vector<std::shared_ptr<Texture2DImage>> _textures;
+    std::unordered_map<std::string, std::shared_ptr<UniformBufferTexture>> _uniformMap;
+    std::unordered_map<std::string, std::shared_ptr<VertexBuffer>> _vertexBufferMap;
+    std::unordered_map<std::string, std::shared_ptr<IndexBuffer>> _indexBufferMap;
+    std::unordered_map<Entity, uint32_t> _entityToIndex;
+    std::unordered_map<Entity, std::unique_ptr<DescriptorSet>> _entitytoDescriptorSet;
     std::vector<Object> _objects;
     std::unique_ptr<Octree> _octree;
+    Registry _registry;
 
     std::shared_ptr<Renderpass> _renderPass;
     std::vector<std::unique_ptr<Texture>> _framebufferTextures;

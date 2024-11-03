@@ -27,7 +27,7 @@ public:
     };
 
 	OctreeNode(const AABB& volume);
-	void addObject(const Object* object);
+	void addObject(const Object* object, const AABB& volume);
     const OctreeNode* getChild(Subvolume subvolume) const;
     const AABB& getVolume() const;
 
@@ -42,6 +42,6 @@ class Octree {
 public:
     Octree(const AABB& volume);
 
-    bool addObject(const Object* object);
+    bool addObject(const Object* object, const AABB& volume);
     OctreeNode* getRoot();
 };

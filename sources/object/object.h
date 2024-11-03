@@ -12,23 +12,14 @@
 
 #include <glm/glm.hpp>
 
-struct Object {
-    std::unique_ptr<VertexBuffer> vertexBufferPTNTB;
-    std::unique_ptr<VertexBuffer> vertexBufferP;
-    std::unique_ptr<IndexBuffer> indexBuffer;
-    uint32_t dynamicUniformIndex;
-    std::unique_ptr<DescriptorSet> _descriptorSet;
-    glm::mat4 model;
-    AABB volume;
-};
-
-class GameObject {
+class Object {
     Entity _entity;
     std::string_view _name;
-    GameObject* _parent;
-    std::vector<GameObject*> _children;
+    Object* _parent;
+    std::vector<Object*> _children;
 
 public:
-    GameObject(const std::string_view name, Entity entity);
-    void SetParent(GameObject* newParent);
+    Object(const std::string_view name, Entity entity);
+    void SetParent(Object* newParent);
+    Entity getEntity() const;
 };

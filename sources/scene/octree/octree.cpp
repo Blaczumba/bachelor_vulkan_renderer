@@ -4,7 +4,7 @@
 
 OctreeNode::OctreeNode(const AABB& volume) : _volume(volume), _children{} {}
 
-void OctreeNode::addObject(const Object* object) {
+void OctreeNode::addObject(const Object* object, const AABB& volume) {
     const glm::vec3& lc = _volume.lowerCorner;
     const glm::vec3& uc = _volume.upperCorner;
 
@@ -22,8 +22,8 @@ void OctreeNode::addObject(const Object* object) {
     };
 
     auto index = std::find_if(subVolumes.cbegin(), subVolumes.cend(),
-        [object](const AABB& subVolume) {
-            return subVolume.contains(object->volume);
+        [volume](const AABB& subVolume) {
+            return subVolume.contains(volume);
         }) - subVolumes.cbegin();
 
     if (index == NUM_OCTREE_NODE_CHILDREN) {
@@ -32,7 +32,7 @@ void OctreeNode::addObject(const Object* object) {
     else {
         if(!_children[index])
             _children[index] = std::make_unique<OctreeNode>(subVolumes[index]);
-        _children[index]->addObject(object);
+        _children[index]->addObject(object, volume);
     }
 }
 
@@ -52,10 +52,10 @@ Octree::Octree(const AABB& volume) : _root(std::make_unique<OctreeNode>(volume))
 
 }
 
-bool Octree::addObject(const Object* object) {
-    if (!_root->_volume.contains(object->volume))
+bool Octree::addObject(const Object* object, const AABB& volume) {
+    if (!_root->_volume.contains(volume))
         return false;
-    _root->addObject(object);
+    _root->addObject(object, volume);
     return true;
 }
 

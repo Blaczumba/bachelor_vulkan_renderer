@@ -1,12 +1,12 @@
 #include "object.h"
 
-GameObject::GameObject(const std::string_view name, Entity entity)
+Object::Object(const std::string_view name, Entity entity)
     : _entity(entity), _name(name), _parent(nullptr) {
 }
 
-void GameObject::SetParent(GameObject* newParent) {
+void Object::SetParent(Object* newParent) {
     if (_parent) {
-        std::vector<GameObject*>& parentChildren = _parent->_children;
+        std::vector<Object*>& parentChildren = _parent->_children;
         auto it = std::find(parentChildren.cbegin(), parentChildren.cend(), this);
         if (it != parentChildren.cend()) {
             parentChildren.erase(it);
@@ -16,4 +16,8 @@ void GameObject::SetParent(GameObject* newParent) {
     if (newParent) {
         newParent->_children.push_back(this);
     }
+}
+
+Entity Object::getEntity() const {
+    return _entity;
 }
