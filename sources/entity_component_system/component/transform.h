@@ -6,11 +6,11 @@
 
 #include <glm/glm.hpp>
 
-class TransformComponent : public Component {
+class TransformComponent {
 	static constexpr ComponentType componentID = 4;
-public:
 
+public:
 	glm::mat4 model;
 
-	static constexpr std::enable_if_t < componentID < MAX_COMPONENTS, ComponentType> getComponentID() { return componentID; }
+	static constexpr std::enable_if_t<componentID < MAX_COMPONENTS, ComponentType> getComponentID() { return componentID; }
 };

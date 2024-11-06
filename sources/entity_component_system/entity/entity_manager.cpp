@@ -10,19 +10,10 @@ EntityManager::EntityManager(size_t maxEntities) {
 
 Entity EntityManager::createEntity() {
     Entity entity = availableEntities.back();
-    usedEntities.push_back(entity);
     availableEntities.pop_back();
     return entity;
 }
 
 void EntityManager::destroyEntity(Entity entity) {
-    auto ptr = std::find(usedEntities.cbegin(), usedEntities.cend(), entity);
-    if (ptr != usedEntities.cend()) {
-        availableEntities.push_back(*ptr);
-        usedEntities.erase(ptr);
-    }
-}
-
-const std::vector<Entity>& EntityManager::getUsedEntities() const {
-    return usedEntities;
+    availableEntities.push_back(entity);
 }

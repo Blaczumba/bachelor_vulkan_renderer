@@ -7,10 +7,10 @@
 
 #include <memory>
 
-class MeshComponent : public Component {
+class MeshComponent {
 	static constexpr ComponentType componentID = 2;
-public:
 
+public:
 	std::shared_ptr<VertexBuffer> vertexBuffer;
 	std::shared_ptr<IndexBuffer> indexBuffer;
 	std::shared_ptr<VertexBuffer> vertexBufferPrimitive;

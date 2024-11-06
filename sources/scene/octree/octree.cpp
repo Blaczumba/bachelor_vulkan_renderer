@@ -48,9 +48,7 @@ const std::vector<const Object*>& OctreeNode::getObjects() const {
     return _objects;
 }
 
-Octree::Octree(const AABB& volume) : _root(std::make_unique<OctreeNode>(volume)) {
-
-}
+Octree::Octree(const AABB& volume) : _root(std::make_unique<OctreeNode>(volume)) {}
 
 bool Octree::addObject(const Object* object, const AABB& volume) {
     if (!_root->_volume.contains(volume))

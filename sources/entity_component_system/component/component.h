@@ -3,15 +3,11 @@
 #include <bitset>
 #include <unordered_map>
 
-using ComponentType = uint64_t;
 constexpr size_t MAX_COMPONENTS = 32;
+using Signature = std::bitset<MAX_COMPONENTS>;
+using ComponentType = uint64_t;
 
-class Component {
-public:
-    virtual ~Component() = default;
-};
-
-class Position : public Component {
+class Position {
     static constexpr ComponentType componentID = 0;
 
 public:
@@ -21,7 +17,7 @@ public:
     static constexpr std::enable_if_t<componentID < MAX_COMPONENTS, ComponentType> getComponentID() { return componentID; }
 };
 
-class Velocity : public Component {
+class Velocity {
     static constexpr ComponentType componentID = 1;
 
 public:

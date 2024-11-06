@@ -5,17 +5,15 @@
 #include "entity_component_system/component/material.h"
 #include "entity_component_system/component/mesh.h"
 #include "entity_component_system/component/transform.h"
-#include "utils/utils.h"
 #include "thread_pool/thread_pool.h"
+#include "utils/utils.h"
 
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <any>
 
 SingleApp::SingleApp()
     : ApplicationBase(), _registry(200) {
-
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
     createDescriptorSets();
@@ -75,15 +73,15 @@ void SingleApp::loadObjects() {
 
         _objects.emplace_back("Object", e);
 
-        std::unique_ptr<MeshComponent> msh = std::make_unique<MeshComponent>();
-        msh->vertexBuffer = std::make_shared<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices);
-        msh->indexBuffer = std::make_shared<IndexBuffer>(*_logicalDevice, _newVertexDataTBN[i].indices);
-        msh->vertexBufferPrimitive = std::make_shared<VertexBuffer>(*_logicalDevice, pVertexData);
-        msh->aabb = createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model);
+        MeshComponent msh;
+        msh.vertexBuffer = std::make_shared<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices);
+        msh.indexBuffer = std::make_shared<IndexBuffer>(*_logicalDevice, _newVertexDataTBN[i].indices);
+        msh.vertexBufferPrimitive = std::make_shared<VertexBuffer>(*_logicalDevice, pVertexData);
+        msh.aabb = createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model);
         _registry.addComponent<MeshComponent>(e, std::move(msh));
 
-        std::unique_ptr<TransformComponent> trsf = std::make_unique<TransformComponent>();
-        trsf->model = _newVertexDataTBN[i].model;
+        TransformComponent trsf;
+        trsf.model = _newVertexDataTBN[i].model;
         _registry.addComponent<TransformComponent>(e, std::move(trsf));
 
         _entityToIndex.emplace(e, index);

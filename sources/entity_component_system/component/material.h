@@ -6,7 +6,7 @@
 
 #include <memory>
 
-class MaterialComponent : public Component {
+class MaterialComponent {
 	static constexpr ComponentType componentID = 3;
 public:
 
@@ -14,5 +14,5 @@ public:
 	std::shared_ptr<UniformBufferTexture> normalMap;
 	std::shared_ptr<UniformBufferTexture> metallicRoughnessMap;
 
-	static constexpr std::enable_if_t < componentID < MAX_COMPONENTS, ComponentType> getComponentID() { return componentID; }
+	static constexpr std::enable_if_t<componentID < MAX_COMPONENTS, ComponentType> getComponentID() { return componentID; }
 };
