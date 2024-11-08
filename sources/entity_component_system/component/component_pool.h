@@ -2,7 +2,9 @@
 
 #include "entity_component_system/entity/entity.h"
 
+#include <optional>
 #include <unordered_map>
+#include <set>
 #include <vector>
 
 class ComponentPool {
@@ -13,38 +15,35 @@ public:
 
 template<typename Component>
 class ComponentPoolImpl : public ComponentPool {
-	std::vector<Component> _components;
-	std::unordered_map<Entity, size_t> _entityToIndex;	// TODO change to flat unordered map
-	std::unordered_map<size_t, Entity> _indexToEntity;	// TODO change to flat unordered map
+	std::array<std::optional<Component>, MAX_ENTITIES> _components;
+	std::set<Entity> _entities;		// TODO: Change to flat map.
 
 public:
 	~ComponentPoolImpl() override = default;
 
 	void addComponent(Entity entity, Component&& component) {
-		_entityToIndex.emplace(entity, _components.size());
-		_indexToEntity.emplace(_components.size(), entity);
-		_components.emplace_back(std::move(component));
+		_components[entity] = std::move(component);
+		_entities.emplace(entity);
 	}
 
 	void destroyEntity(Entity entity) override {
-		// TODO use fewer reads from map
-		size_t lastIndex = _components.size() - 1;
-		size_t indexToRemove = _entityToIndex[entity];
-		_components[indexToRemove] = std::move(_components[lastIndex]);
-
-		Entity lastEntity = _indexToEntity[lastIndex];
-		_entityToIndex[lastEntity] = indexToRemove;
-		_indexToEntity[indexToRemove] = lastEntity;
-
-		_entityToIndex.erase(entity);
-		_indexToEntity.erase(lastIndex);
+		_components[entity] = std::nullopt;
+		_entities.erase(entity);
 	}
 
 	Component& getComponent(Entity entity) {
-		return _components[_entityToIndex[entity]];
+		if (_components[entity].has_value()) {
+			return _components[entity].value();
+		}
+		_components[entity] = std::make_optional<Component>();
+		return _components[entity].value();
 	}
 
-	std::unordered_map<Entity, Component>& getComponents() {
+	std::array<std::optional<Component>, MAX_ENTITIES>& getComponents() {
 		return _components;
+	}
+
+	std::pair<Entity, Entity> getMinMax() const {
+		return std::make_pair(*_entities.begin(), *_entities.rbegin());
 	}
 };

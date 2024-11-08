@@ -4,7 +4,9 @@
 #include "entity_component_system/system/movement_system.h"
 #include "entity_component_system/component/material.h"
 #include "entity_component_system/component/mesh.h"
+#include "entity_component_system/component/position.h"
 #include "entity_component_system/component/transform.h"
+#include "entity_component_system/component/velocity.h"
 #include "thread_pool/thread_pool.h"
 #include "utils/utils.h"
 
@@ -13,7 +15,7 @@
 #include <chrono>
 
 SingleApp::SingleApp()
-    : ApplicationBase(), _registry(200) {
+    : ApplicationBase() {
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
     createDescriptorSets();

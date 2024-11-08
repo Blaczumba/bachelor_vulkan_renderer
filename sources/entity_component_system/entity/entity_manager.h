@@ -6,10 +6,10 @@
 
 class EntityManager {
 private:
-    std::vector<Entity> availableEntities;
+    std::vector<Entity> _availableEntities;
 
 public:
-    EntityManager(size_t maxEntities);
+    EntityManager();
 
     Entity createEntity();
     void destroyEntity(Entity entity);

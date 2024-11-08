@@ -1,8 +1,7 @@
 #pragma once
 
-#include "component.h"
-
 #include "memory_objects/uniform_buffer/uniform_buffer.h"
+#include "entity_component_system/entity/entity.h"
 
 #include <memory>
 

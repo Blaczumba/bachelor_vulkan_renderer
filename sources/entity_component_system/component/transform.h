@@ -1,6 +1,6 @@
 #pragma once
 
-#include "component.h"
+#include "entity_component_system/entity/entity.h"
 
 #include <memory>
 

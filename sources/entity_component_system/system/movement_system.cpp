@@ -1,5 +1,8 @@
 #include "movement_system.h"
 
+#include "entity_component_system/component/position.h"
+#include "entity_component_system/component/velocity.h"
+
 #include <chrono>
 #include <iostream>
 #include <tuple>
@@ -7,8 +10,8 @@
 MovementSystem::MovementSystem(Registry* reg) : registry(reg) {}
 
 void MovementSystem::update(float deltaTime) {
-    registry->updateComponents<Position, Velocity>(
-        [deltaTime](Position& pos, Velocity& vel) {
+    registry->updateComponents<PositionComponent, VelocityComponent>(
+        [deltaTime](PositionComponent& pos, VelocityComponent& vel) {
             pos.x += vel.dx * deltaTime;
             pos.y += vel.dy * deltaTime;
 

@@ -99,9 +99,9 @@ class SingleApp : public ApplicationBase {
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
     static constexpr uint32_t MAX_THREADS_IN_POOL = 2;
 
+public:
     SingleApp();
     ~SingleApp();
-public:
     static SingleApp& getInstance();
 
     SingleApp(const SingleApp&) = delete;
