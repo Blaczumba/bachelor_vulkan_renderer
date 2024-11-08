@@ -7,8 +7,6 @@
 #include <set>
 #include <vector>
 
-#include <boost/container/flat_set.hpp>
-
 class ComponentPool {
 public:
 	virtual void destroyEntity(Entity entity) = 0;
@@ -17,8 +15,8 @@ public:
 
 template<typename Component>
 class ComponentPoolImpl : public ComponentPool {
-	std::array<Component, MAX_ENTITIES> _components;
-	boost::container::flat_set<Entity> _entities;		// TODO: Change to flat map.
+  std::array<Component, MAX_ENTITIES> _components;
+	std::set<Entity> _entities;		// TODO: Change to flat map.
 
 public:
 	~ComponentPoolImpl() override = default;
