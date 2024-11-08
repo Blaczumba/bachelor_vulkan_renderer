@@ -1,8 +1,7 @@
 #include "texture_2D_shadow.h"
-#include "logical_device/logical_device.h"
-#include "command_buffer/command_buffer.h"
 
-#include <stdexcept>
+#include "command_buffer/command_buffer.h"
+#include "logical_device/logical_device.h"
 
 Texture2DShadow::Texture2DShadow(const LogicalDevice& logicalDevice, uint32_t width, uint32_t height, VkFormat format)
     : Texture(
@@ -32,7 +31,6 @@ Texture2DShadow::Texture2DShadow(const LogicalDevice& logicalDevice, uint32_t wi
     }    
 
     _logicalDevice.createImageView(&_image);
-
     _logicalDevice.createSampler(&_sampler);
 }
 

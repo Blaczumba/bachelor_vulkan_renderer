@@ -1,17 +1,17 @@
 #include "swapchain.h"
+
 #include "features/swapchain_utils.h"
-#include "physical_device/physical_device.h"
 #include "logical_device/logical_device.h"
-#include "surface/surface.h"
-#include "window/window/window.h"
 #include "memory_objects/texture/texture.h"
+#include "physical_device/physical_device.h"
+#include "window/window/window.h"
 
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
 
-Swapchain::Swapchain(const Surface& surface, const Window& window, const LogicalDevice& logicalDevice)
-	: _surface(surface), _window(window), _logicalDevice(logicalDevice) {
+Swapchain::Swapchain(const LogicalDevice& logicalDevice)
+	: _logicalDevice(logicalDevice) {
     create();
 }
 
@@ -41,6 +41,7 @@ void Swapchain::cleanup() {
     for (auto& image : _images) {
         vkDestroyImageView(device, image.getImage().view, nullptr);
     }
+    _images.clear();
 
     vkDestroySwapchainKHR(device, _swapchain, nullptr);
 }
@@ -52,7 +53,8 @@ void Swapchain::create() {
     const VkDevice device = _logicalDevice.getVkDevice();
     const VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_R8G8B8A8_SRGB);
     const VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_MAILBOX_KHR);
-    const VkExtent2D windowExtent = _window.getFramebufferSize();
+    const Window& window = _logicalDevice.getPhysicalDevice().getWindow();
+    const VkExtent2D windowExtent = window.getFramebufferSize();
     std::vector<VkImage> images;
 
     VkExtent2D extent = chooseSwapExtent({ windowExtent.width, windowExtent.height }, swapChainSupport.capabilities);
@@ -64,7 +66,7 @@ void Swapchain::create() {
 
     VkSwapchainCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface = _surface.getVkSurface();
+    createInfo.surface = window.getVkSurfaceKHR();
 
     createInfo.minImageCount = imageCount;
     createInfo.imageFormat = surfaceFormat.format;
@@ -99,7 +101,6 @@ void Swapchain::create() {
     vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, images.data());
 
     _images.reserve(imageCount);
-
     std::transform(images.cbegin(), images.cend(), std::back_inserter(_images),
         [&](VkImage image) {
             Image img {
@@ -133,8 +134,8 @@ VkResult Swapchain::present(uint32_t imageIndex, VkSemaphore waitSemaphore) cons
         .pWaitSemaphores = &waitSemaphore,
         .swapchainCount = 1,
         .pSwapchains = &_swapchain,
-        .pImageIndices = &imageIndex
+        .pImageIndices = &imageIndex,
     };
 
-    return vkQueuePresentKHR(_logicalDevice.presentQueue, &presentInfo);
+    return vkQueuePresentKHR(_logicalDevice.getPresentQueue(), &presentInfo);
 }

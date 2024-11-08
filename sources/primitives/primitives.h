@@ -1,19 +1,19 @@
 #pragma once
 
-#include <cstdint>
-
 #include <glm/glm.hpp>
+
+#include <cstdint>
 
 struct Extent {
 	uint32_t width;
 	uint32_t height;
 };
 
-//struct VertexP {
-//    glm::vec3 pos;
-//};
+struct VertexP {
+    glm::vec3 pos;
 
-using VertexP = glm::vec3;
+    static constexpr size_t num_attributes = 1;
+};
 
 struct VertexPT {
     glm::vec3 pos;

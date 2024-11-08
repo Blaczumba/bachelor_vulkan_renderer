@@ -2,9 +2,10 @@
 
 #include <vulkan/vulkan.h>
 
+#include "logical_device/logical_device.h"
+
 #include <memory>
 
-class LogicalDevice;
 class CommandBuffer;
 
 class CommandPool {
@@ -33,6 +34,7 @@ class CommandBuffer {
 	const CommandPool& _commandPool;
 public:
 	CommandBuffer(const CommandPool& commandPool, bool primary = true);
+	~CommandBuffer();
 	void resetCommandBuffer() const;
 	const VkCommandBuffer getVkCommandBuffer() const;
 };
@@ -42,12 +44,11 @@ class SingleTimeCommandBuffer {
 	VkFence _fence;
 
 	const LogicalDevice& _logicalDevice;
+	const QueueType _queueType;
 
 public:
-	SingleTimeCommandBuffer(const LogicalDevice& logicalDevice);
+	SingleTimeCommandBuffer(const LogicalDevice& logicalDevice, QueueType queueType = QueueType::GRAPHICS);
 	~SingleTimeCommandBuffer();
 
 	VkCommandBuffer getCommandBuffer() const;
 };
-
-void copyBuffer(const LogicalDevice& logicalDevice, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);

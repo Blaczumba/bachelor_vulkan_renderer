@@ -1,22 +1,23 @@
 #pragma once
+#include "instance/instance.h"
 
 #include "vulkan/vulkan.h"
 
 #include <vector>
 
 class Window {
-	virtual VkSurfaceKHR createSurface(VkInstance instance) const =0;
-
 protected:
-	static std::vector<const char*> _windowExtensions;
+	VkSurfaceKHR _surface;
+	const Instance& _instance;
 
 public:
-	virtual ~Window() = default;
-	static const std::vector<const char*>& getWindowExtensions();
+	Window(const Instance& instance);
+	virtual ~Window();
+
+	const Instance& getInstance() const;
 
 	virtual bool open() const =0;
 	virtual void setWindowSize(int width, int height) =0;
 	virtual VkExtent2D getFramebufferSize() const =0;
-
-	friend class Surface;
+	const VkSurfaceKHR getVkSurfaceKHR() const;
 };

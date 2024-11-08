@@ -30,5 +30,5 @@ std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const Renderp
         }
     }
 
-    return std::move(framebufferTextures);
+    return framebufferTextures;
 }

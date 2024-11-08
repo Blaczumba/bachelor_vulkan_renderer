@@ -2,8 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 class DescriptorPool;
 class LogicalDevice;
@@ -22,7 +22,7 @@ public:
 	~DescriptorSet();
 
 	void updateDescriptorSet(const std::vector<UniformBuffer*>& uniformBuffers);
-	void bindDescriptorSet(VkCommandBuffer commandBuffer, const Pipeline& pipeline, std::initializer_list<uint32_t> dynamicOffsetStrides = {});
+	void bind(VkCommandBuffer commandBuffer, const Pipeline& pipeline, std::initializer_list<uint32_t> dynamicOffsetStrides = {});
 
 	const VkDescriptorSet getVkDescriptorSet(size_t i) const;
 

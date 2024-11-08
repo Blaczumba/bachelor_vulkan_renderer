@@ -70,9 +70,11 @@ VertexData<VertexP, uint32_t> TinyOBJLoaderVertex::templatedExtractor<VertexP>(c
 
                 VertexP vertex{};
                 vertex = {
-                    attrib.vertices[3 * index.vertex_index + 0],
-                    attrib.vertices[3 * index.vertex_index + 1],
-                    attrib.vertices[3 * index.vertex_index + 2]
+                    .pos = {
+                        attrib.vertices[3 * index.vertex_index + 0],
+                        attrib.vertices[3 * index.vertex_index + 1],
+                        attrib.vertices[3 * index.vertex_index + 2]
+                    }
                 };
 
                 indices.push_back(static_cast<uint32_t>(vertices.size()));

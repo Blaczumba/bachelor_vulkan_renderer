@@ -1,7 +1,8 @@
 #include "index_buffer.h"
 
-#include "logical_device/logical_device.h"
+#include "buffers.h"
 #include "command_buffer/command_buffer.h"
+#include "logical_device/logical_device.h"
 
 IndexBuffer::IndexBuffer(const LogicalDevice& logicalDevice, const std::vector<uint8_t>& indices)
     : _logicalDevice(logicalDevice), _indexCount(indices.size()), _indexType(VK_INDEX_TYPE_UINT8_EXT) {
@@ -31,8 +32,12 @@ void IndexBuffer::createIndexBuffer(const void* indicesData, VkDeviceSize buffer
     vkUnmapMemory(device, stagingBufferMemory);
 
     _logicalDevice.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _indexBuffer, _indexBufferMemory);
-
-    copyBuffer(_logicalDevice, stagingBuffer, _indexBuffer, bufferSize);
+    
+    {
+        SingleTimeCommandBuffer handle(_logicalDevice);
+        VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+        copyBufferToBuffer(commandBuffer, stagingBuffer, _indexBuffer, bufferSize);
+    }
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
@@ -54,4 +59,8 @@ VkIndexType IndexBuffer::getIndexType() const {
 
 uint32_t IndexBuffer::getIndexCount() const {
     return _indexCount;
+}
+
+void IndexBuffer::bind(const VkCommandBuffer commandBuffer) const {
+    vkCmdBindIndexBuffer(commandBuffer, _indexBuffer, 0, _indexType);
 }

@@ -8,10 +8,10 @@ set(KTX_SOURCES
     ${KTX_DIR}/lib/filestream.c)
 
 
-add_library(Texture texture.cpp  texture_2D_depth.cpp texture_2D_color.cpp  texture_2D_image.cpp texture_cubemap.cpp texture_2D_shadow.cpp texture_factory.cpp ${KTX_SOURCES})
+add_library(Texture texture.cpp texture_2D_depth.cpp texture_2D_color.cpp  texture_2D_image.cpp texture_cubemap.cpp texture_2D_shadow.cpp texture_factory.cpp ${KTX_SOURCES})
 
 target_link_libraries(Texture PUBLIC Vulkan::Vulkan)
-target_link_libraries(Texture PUBLIC LogicalDevice CommandBuffer Image)
+target_link_libraries(Texture PUBLIC LogicalDevice CommandBuffer Buffers)
 
 target_include_directories(Texture PUBLIC ${CMAKE_SOURCE_DIR}/sources)
 target_include_directories(Texture PUBLIC ${CMAKE_SOURCE_DIR}/external/ktx/include)

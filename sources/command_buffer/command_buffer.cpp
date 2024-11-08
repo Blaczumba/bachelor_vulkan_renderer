@@ -1,4 +1,3 @@
-#include "logical_device/logical_device.h"
 #include "command_buffer.h"
 
 #include <stdexcept>
@@ -41,12 +40,16 @@ CommandBuffer::CommandBuffer(const CommandPool& commandPool, bool primary) :_com
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = _commandPool.getVkCommandPool(),
         .level = level,
-        .commandBufferCount = 1
+        .commandBufferCount = 1,
     };
 
     if (vkAllocateCommandBuffers(_commandPool.getLogicalDevice().getVkDevice(), &allocInfo, &_commandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate command buffers!");
     }
+}
+
+CommandBuffer::~CommandBuffer() {
+    vkFreeCommandBuffers(_commandPool.getLogicalDevice().getVkDevice(), _commandPool.getVkCommandPool(), 1, &_commandBuffer);
 }
 
 void CommandBuffer::resetCommandBuffer() const {
@@ -57,8 +60,8 @@ const VkCommandBuffer CommandBuffer::getVkCommandBuffer() const {
     return _commandBuffer;
 }
 
-SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDevice)
-    : _logicalDevice(logicalDevice) {
+SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDevice, QueueType queueType)
+    : _logicalDevice(logicalDevice), _queueType(queueType) {
 
     const VkFenceCreateInfo fenceInfo = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
@@ -68,7 +71,16 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDev
         throw std::runtime_error("failed to create SingleTimeCommandBuffer fence!");
     }
 
-    _commandBuffer = _logicalDevice.createCommandBuffer();
+    VkCommandBufferAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = _logicalDevice.getSingleSubmitCommandPool(_queueType),
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+
+    if (vkAllocateCommandBuffers(_logicalDevice.getVkDevice(), &allocInfo, &_commandBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate command buffers!");
+    }
 
     const VkCommandBufferBeginInfo beginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -79,7 +91,8 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(const LogicalDevice& logicalDev
 }
 
 SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
-    const VkDevice device = _logicalDevice._device;
+    const VkDevice device = _logicalDevice.getVkDevice();
+    const VkQueue queue = _logicalDevice.getQueue(_queueType);
 
     vkEndCommandBuffer(_commandBuffer);
 
@@ -89,24 +102,13 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
         .pCommandBuffers = &_commandBuffer
     };
 
-    vkQueueSubmit(_logicalDevice.graphicsQueue, 1, &submitInfo, _fence);
+    vkQueueSubmit(queue, 1, &submitInfo, _fence);
     vkWaitForFences(device, 1, &_fence, VK_TRUE, UINT64_MAX);
 
-    vkFreeCommandBuffers(device, _logicalDevice._commandPool, 1, &_commandBuffer);
+    vkFreeCommandBuffers(device, _logicalDevice.getSingleSubmitCommandPool(_queueType), 1, &_commandBuffer);
     vkDestroyFence(device, _fence, nullptr);
 }
 
 VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const {
     return _commandBuffer;
-}
-
-void copyBuffer(const LogicalDevice& logicalDevice, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-    SingleTimeCommandBuffer handle(logicalDevice);
-    VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-
-    const VkBufferCopy copyRegion = {
-        .size = size
-    };
-
-    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 }

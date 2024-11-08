@@ -1,4 +1,4 @@
-add_library(Shader shader.cpp shader_utils.cpp shader_program.cpp)
+add_library(Shader shader.cpp shader_program.cpp)
 
 target_link_libraries(Shader PUBLIC Vulkan::Vulkan)
 target_link_libraries(Shader PUBLIC LogicalDevice DescriptorSet UniformBuffer)

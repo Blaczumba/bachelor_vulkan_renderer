@@ -1,14 +1,15 @@
 #include "instance.h"
+
+#include "config/config.h"
 #include "debug_messenger/debug_messenger_utils.h"
 #include "window/window/window.h"
-#include "config/config.h"
 
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
-#include <cstring>
 
-Instance::Instance(std::string_view engineName) {
+Instance::Instance(std::string_view engineName, const std::vector<const char*>& requiredExtensions) {
 
 #ifdef VALIDATION_LAYERS_ENABLED
     if (!checkValidationLayerSupport()) {
@@ -31,8 +32,6 @@ Instance::Instance(std::string_view engineName) {
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
 #endif // VALIDATION_LAYERS_ENABLED
 
-    auto extensions = getRequiredExtensions();
-
     VkInstanceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
     #ifdef VALIDATION_LAYERS_ENABLED
@@ -45,8 +44,8 @@ Instance::Instance(std::string_view engineName) {
     #else
         .enabledLayerCount = 0,
     #endif // VALIDATION_LAYERS_ENABLED
-        .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
-        .ppEnabledExtensionNames = extensions.data()
+        .enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size()),
+        .ppEnabledExtensionNames = requiredExtensions.data()
     };
 
     if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
@@ -75,17 +74,6 @@ bool Instance::checkValidationLayerSupport() const {
             return std::strcmp(layerName, layerProperty.layerName) == 0;
             }) != availableLayers.cend();
     });
-}
-
-std::vector<const char*> Instance::getRequiredExtensions() {
-    std::vector<const char*> extensions = Window::getWindowExtensions();
-
-#ifdef VALIDATION_LAYERS_ENABLED
-    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#endif // VALIDATION_LAYERS_ENABLED
-    extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-
-    return extensions;
 }
 
 std::vector<VkPhysicalDevice> Instance::getAvailablePhysicalDevices() const {

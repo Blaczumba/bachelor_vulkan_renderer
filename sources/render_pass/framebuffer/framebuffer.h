@@ -1,7 +1,5 @@
 #pragma once
 
-#include "memory_objects/image.h"
-
 #include <vulkan/vulkan.h>
 
 #include <memory>

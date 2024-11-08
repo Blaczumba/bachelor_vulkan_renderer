@@ -1,8 +1,7 @@
 #include "texture_2D_color.h"
-#include "logical_device/logical_device.h"
-#include "command_buffer/command_buffer.h"
 
-#include <stdexcept>
+#include "command_buffer/command_buffer.h"
+#include "logical_device/logical_device.h"
 
 Texture2DColor::Texture2DColor(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent)
     : Texture(

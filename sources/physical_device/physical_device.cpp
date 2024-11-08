@@ -1,17 +1,17 @@
 #include "physical_device.h"
-#include "logical_device/logical_device.h"
+
 #include "config/config.h"
+#include "logical_device/logical_device.h"
 
 #include <algorithm>
 #include <array>
-#include <stdexcept>
 #include <iostream>
+#include <stdexcept>
 
-PhysicalDevice::PhysicalDevice(const std::shared_ptr<Instance>& instance, const std::shared_ptr<Surface>& surface)
-	: _instance(instance), _surface(surface), _device(VK_NULL_HANDLE) {
-
-    const std::vector<VkPhysicalDevice> devices = _instance->getAvailablePhysicalDevices();
-    const VkSurfaceKHR surf = surface->getVkSurface();
+PhysicalDevice::PhysicalDevice(const Window& window)
+	: _window(window) {
+    const std::vector<VkPhysicalDevice> devices = _window.getInstance().getAvailablePhysicalDevices();
+    const VkSurfaceKHR surf = _window.getVkSurfaceKHR();
 
     for (const auto device : devices) {
         _propertyManager.initiate(device, surf);
@@ -52,6 +52,10 @@ PhysicalDevice::PhysicalDevice(const std::shared_ptr<Instance>& instance, const 
 
 const VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const {
     return _device;
+}
+
+const Window& PhysicalDevice::getWindow() const {
+    return _window;
 }
 
 const PhysicalDevicePropertyManager& PhysicalDevice::getPropertyManager() const {

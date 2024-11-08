@@ -2,42 +2,45 @@
 
 #include "application_base.h"
 
-#include <render_pass/render_pass.h>
-#include <command_buffer/command_buffer.h>
-#include <render_pass/framebuffer/framebuffer.h>
-#include <memory_objects/vertex_buffer.h>
-#include <memory_objects/index_buffer.h>
-#include <memory_objects/uniform_buffer/uniform_buffer.h>
-#include <pipeline/graphics_pipeline.h>
-#include <memory_objects/texture/texture.h>
-#include <model_loader/obj_loader/obj_loader.h>
-#include <descriptor_set/descriptor_set.h>
-#include <camera/fps_camera.h>
-#include <window/callback_manager/fps_callback_manager.h>
-#include <memory_objects/texture/texture_2D_depth.h>
-#include <memory_objects/texture/texture_2D_color.h>
-#include <memory_objects/texture/texture_2D_image.h>
-#include <memory_objects/texture/texture_2D_shadow.h>
-#include <memory_objects/texture/texture_cubemap.h>
-#include <memory_objects/uniform_buffer/push_constants.h>
-#include <descriptor_set/descriptor_set_layout.h>
-#include <descriptor_set/descriptor_pool.h>
-#include <screenshot/screenshot.h>
-#include <entity_component_system/system/movement_system.h>
-#include <object/object.h>
-#include <thread_pool/thread_pool.h>
-#include <scene/octree/octree.h>
+#include "camera/fps_camera.h"
+#include "command_buffer/command_buffer.h"
+#include "descriptor_set/descriptor_pool.h"
+#include "descriptor_set/descriptor_set.h"
+#include "descriptor_set/descriptor_set_layout.h"
+#include "entity_component_system/system/movement_system.h"
+#include "memory_objects/index_buffer.h"
+#include "memory_objects/texture/texture.h"
+#include "memory_objects/texture/texture_2D_color.h"
+#include "memory_objects/texture/texture_2D_depth.h"
+#include "memory_objects/texture/texture_2D_image.h"
+#include "memory_objects/texture/texture_2D_shadow.h"
+#include "memory_objects/texture/texture_cubemap.h"
+#include "memory_objects/uniform_buffer/push_constants.h"
+#include "memory_objects/uniform_buffer/uniform_buffer.h"
+#include "memory_objects/vertex_buffer.h"
+#include "model_loader/obj_loader/obj_loader.h"
+#include "object/object.h"
+#include "render_pass/framebuffer/framebuffer.h"
+#include "render_pass/render_pass.h"
+#include "scene/octree/octree.h"
+#include "screenshot/screenshot.h"
+#include "thread_pool/thread_pool.h"
+#include "pipeline/graphics_pipeline.h"
+#include "window/callback_manager/fps_callback_manager.h"
 
 #include <unordered_map>
 
 class SingleApp : public ApplicationBase {
     std::vector<VertexData<VertexPTNT, uint16_t>> _newVertexDataTBN;
-    std::vector<std::unique_ptr<Texture2DImage>> _textures;
-    std::unordered_map<std::string, std::unique_ptr<UniformBufferTexture>> _uniformMap;
-    std::unordered_map<std::string, std::unique_ptr<VertexBuffer>> _vertexBufferMap;
-    std::unordered_map<std::string, std::unique_ptr<IndexBuffer>> _indexBufferMap;
+    std::vector<std::shared_ptr<Texture2DImage>> _textures;
+    std::unordered_map<std::string, std::shared_ptr<UniformBufferTexture>> _uniformMap;
+    std::unordered_map<std::string, std::shared_ptr<VertexBuffer>> _vertexBufferMap;
+    std::unordered_map<std::string, std::shared_ptr<IndexBuffer>> _indexBufferMap;
+    std::unordered_map<Entity, uint32_t> _entityToIndex;
+    std::unordered_map<Entity, std::unique_ptr<DescriptorSet>> _entitytoDescriptorSet;
     std::vector<Object> _objects;
     std::unique_ptr<Octree> _octree;
+    Registry _registry;
 
     std::shared_ptr<Renderpass> _renderPass;
     std::vector<std::unique_ptr<Texture>> _framebufferTextures;
@@ -96,9 +99,9 @@ class SingleApp : public ApplicationBase {
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
     static constexpr uint32_t MAX_THREADS_IN_POOL = 2;
 
+public:
     SingleApp();
     ~SingleApp();
-public:
     static SingleApp& getInstance();
 
     SingleApp(const SingleApp&) = delete;

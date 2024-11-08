@@ -2,8 +2,16 @@
 
 #include <iostream>
 
-std::vector<const char*> Window::_windowExtensions = {};
+Window::Window(const Instance& instance) : _instance(instance) {}
 
-const std::vector<const char*>& Window::getWindowExtensions() {
-    return _windowExtensions;
+Window::~Window() {
+    vkDestroySurfaceKHR(_instance.getVkInstance(), _surface, nullptr);
+}
+
+const VkSurfaceKHR Window::getVkSurfaceKHR() const {
+    return _surface;
+}
+
+const Instance& Window::getInstance() const {
+    return _instance;
 }

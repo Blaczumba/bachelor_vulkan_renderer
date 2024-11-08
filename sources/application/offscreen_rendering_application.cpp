@@ -1,14 +1,14 @@
 #include "offscreen_rendering_application.h"
 
-#include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
 #include "entity_component_system/system/movement_system.h"
-#include "utils/utils.h"
+#include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
 #include "thread_pool/thread_pool.h"
+#include "utils/utils.h"
 
 #include <algorithm>
+#include <any>
 #include <array>
 #include <chrono>
-#include <any>
 
 OffscreenRendering::OffscreenRendering()
     : ApplicationBase() {
@@ -69,8 +69,8 @@ void OffscreenRendering::loadObjects() {
         auto descriptorSet = _descriptorPool->createDesriptorSet();
         descriptorSet->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _uniformMap[diffusePath].get(), _uniformBuffersLight.get(), _uniformBuffersObjects.get(), _shadowTextureUniform.get(), _uniformMap[normalPath].get(), _uniformMap[metallicRoughnessPath].get() });
 
-        std::vector<VertexP> pVertexData;
-        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return VertexP{ vertex.pos }; });
+        std::vector<glm::vec3> pVertexData;
+        std::transform(_newVertexDataTBN[i].vertices.cbegin(), _newVertexDataTBN[i].vertices.cend(), std::back_inserter(pVertexData), [](const VertexPTNT& vertex) { return vertex.pos; });
         _objects.push_back(Object{
             std::make_unique<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices),
             std::make_unique<VertexBuffer>(*_logicalDevice, pVertexData),
@@ -146,11 +146,11 @@ void OffscreenRendering::createPresentResources() {
     attachmentsLayout.addAttachment(DepthAttachment(findDepthFormat(), VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples));
 
     Subpass subpass(attachmentsLayout);
-    subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    subpass.addSubpassOutputAttachment(0);
+    subpass.addSubpassOutputAttachment(1);
+    subpass.addSubpassOutputAttachment(2);
+    subpass.addSubpassOutputAttachment(3);
+    subpass.addSubpassOutputAttachment(4);
 
     _renderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentsLayout);
     _renderPass->addSubpass(subpass);
@@ -196,8 +196,8 @@ void OffscreenRendering::createOffscreenResources() {
     attachmentLayout.addAttachment(DepthAttachment(findDepthFormat(), VK_ATTACHMENT_STORE_OP_DONT_CARE, lowResMsaaSamples));
 
     Subpass subpass(attachmentLayout);
-    subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    subpass.addSubpassOutputAttachment(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    subpass.addSubpassOutputAttachment(0);
+    subpass.addSubpassOutputAttachment(1);
 
     _lowResRenderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentLayout);
     _lowResRenderPass->addSubpass(subpass);
@@ -236,7 +236,7 @@ void OffscreenRendering::createShadowResources() {
     attachmentLayout.addAttachment(ShadowAttachment(imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 
     Subpass subpass(attachmentLayout);
-    subpass.addSubpassOutputAttachment(0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    subpass.addSubpassOutputAttachment(0);
 
     _shadowRenderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentLayout);
     _shadowRenderPass->addSubpass(subpass);
@@ -336,7 +336,7 @@ void OffscreenRendering::draw() {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(_logicalDevice->graphicsQueue, 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
+    if (vkQueueSubmit(_logicalDevice->getGraphicsQueue(), 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 
@@ -605,14 +605,10 @@ void OffscreenRendering::recordShadowCommandBuffer(VkCommandBuffer commandBuffer
     // OBJECT TBN
     vkCmdBindPipeline(commandBuffer, _shadowPipeline->getVkPipelineBindPoint(), _shadowPipeline->getVkPipeline());
     for (const auto& object : _objects) {
-
         VkBuffer vertexBuffers[] = { object.vertexBufferP->getVkBuffer() };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
         vkCmdBindIndexBuffer(commandBuffer, object.indexBuffer->getVkBuffer(), 0, object.indexBuffer->getIndexType());
-
         _descriptorSetShadow->bindDescriptorSet(commandBuffer, *_shadowPipeline, { object.dynamicUniformIndex });
-
         vkCmdDrawIndexed(commandBuffer, object.indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
 

@@ -1,6 +1,7 @@
 add_library(Window window.cpp)
 add_library(WindowGLFW window_glfw.cpp)
 
+target_link_libraries(Window PUBLIC Instance)
 target_link_libraries(Window PUBLIC Vulkan::Vulkan)
 target_link_libraries(WindowGLFW PUBLIC Window glfw)
 

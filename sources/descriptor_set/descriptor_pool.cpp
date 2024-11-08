@@ -1,7 +1,8 @@
 #include "descriptor_pool.h"
+
+#include "logical_device/logical_device.h"
 #include "descriptor_set.h"
 #include "descriptor_set_layout.h"
-#include "logical_device/logical_device.h"
 
 DescriptorPool::DescriptorPool(const LogicalDevice& logicalDevice, const DescriptorSetLayout& descriptorSetLayout, uint32_t maxNumSets)
 	: _logicalDevice(logicalDevice), _descriptorSetLayout(descriptorSetLayout), _maxNumSets(maxNumSets), _allocatedSets(0) {

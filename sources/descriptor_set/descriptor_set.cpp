@@ -1,17 +1,17 @@
 #include "descriptor_set.h"
 
-#include "logical_device/logical_device.h"
-#include "pipeline/pipeline.h"
-#include "memory_objects/uniform_buffer/uniform_buffer.h"
 #include "descriptor_pool.h"
 #include "descriptor_set_layout.h"
+#include "logical_device/logical_device.h"
+#include "memory_objects/uniform_buffer/uniform_buffer.h"
+#include "pipeline/pipeline.h"
 
-#include <string>
-#include <unordered_map>
-#include <array>
 #include <algorithm>
+#include <array>
 #include <iterator>
 #include <stdexcept>
+#include <string>
+#include <unordered_map>
 
 DescriptorSet::DescriptorSet(const std::shared_ptr<const DescriptorPool>& descriptorPool)
 	: _descriptorPool(descriptorPool) {
@@ -51,7 +51,7 @@ void DescriptorSet::updateDescriptorSet(const std::vector<UniformBuffer*>& unifo
     vkUpdateDescriptorSets(_descriptorPool->getLogicalDevice().getVkDevice(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
 
-void DescriptorSet::bindDescriptorSet(VkCommandBuffer commandBuffer, const Pipeline& pipeline, std::initializer_list<uint32_t> dynamicOffsetStrides) {
+void DescriptorSet::bind(VkCommandBuffer commandBuffer, const Pipeline& pipeline, std::initializer_list<uint32_t> dynamicOffsetStrides) {
     std::array<uint32_t, 16> sizes;
     std::transform(dynamicOffsetStrides.begin(), dynamicOffsetStrides.end(), _dynamicBuffersBaseSizes.cbegin(), sizes.begin(), std::multiplies<uint32_t>());
 

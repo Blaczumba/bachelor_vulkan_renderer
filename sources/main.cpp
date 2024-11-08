@@ -3,7 +3,8 @@
 
 int main() {
     try {
-        SingleApp& app = SingleApp::getInstance();
+        //SingleApp& app = SingleApp::getInstance();
+        SingleApp app;
         app.run();
     }
     catch (const std::exception& e) {

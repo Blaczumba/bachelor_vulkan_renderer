@@ -1,6 +1,7 @@
 #pragma once
 
 #include "texture.h"
+
 #include <string>
 
 class LogicalDevice;

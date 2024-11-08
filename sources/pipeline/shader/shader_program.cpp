@@ -1,13 +1,12 @@
 #include "shader_program.h"
+
 #include "descriptor_set/descriptor_set_layout.h"
 #include "primitives/vk_primitives.h"
 
 #include <algorithm>
 #include <iterator>
 
-ShaderProgram::ShaderProgram(const LogicalDevice& logicalDevice) : _logicalDevice(logicalDevice) {
-
-}
+ShaderProgram::ShaderProgram(const LogicalDevice& logicalDevice) : _logicalDevice(logicalDevice) {}
 
 const DescriptorSetLayout& ShaderProgram::getDescriptorSetLayout() const {
     return *_descriptorSetLayout;
@@ -24,22 +23,10 @@ std::vector<VkPipelineShaderStageCreateInfo> ShaderProgram::getVkPipelineShaderS
     return shaderStages;
 }
 
-GraphicsShaderProgram::GraphicsShaderProgram(const LogicalDevice& logicalDevice) : ShaderProgram(logicalDevice) {
-
-}
-
-const VkVertexInputBindingDescription& GraphicsShaderProgram::getVkVertexInputBindingDescription() const {
-    return _bindingDescription;
-}
-
-const std::vector<VkVertexInputAttributeDescription>& GraphicsShaderProgram::getVkVertexInputAttributeDescriptions() const {
-    return _attributeDescriptions;
-}
-
-PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
+PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram<VertexPTNT>(logicalDevice) {
 	_shaders.reserve(2);
-	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	_shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	_descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -50,14 +37,27 @@ PBRShaderProgram::PBRShaderProgram(const LogicalDevice& logicalDevice) : Graphic
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
-
-    constexpr auto a = getBindingDescription<VertexPTNT>();
-
-    _bindingDescription = getBindingDescription<VertexPTNT>();
-    _attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
 }
 
-SkyboxShaderProgram::SkyboxShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
+PBRTesselationShaderProgram::PBRTesselationShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram<VertexPTNT>(logicalDevice) {
+    _shaders.reserve(4);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr_tesselation.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr_tesselation.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr_tesselation.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetLayout->create();
+}
+
+SkyboxShaderProgram::SkyboxShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram<VertexP>(logicalDevice) {
     _shaders.reserve(2);
     _shaders.emplace_back(_logicalDevice, SHADERS_PATH "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
     _shaders.emplace_back(_logicalDevice, SHADERS_PATH "skybox.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -66,12 +66,9 @@ SkyboxShaderProgram::SkyboxShaderProgram(const LogicalDevice& logicalDevice) : G
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
-
-    _bindingDescription = getBindingDescription<VertexP>();
-    _attributeDescriptions = getAttributeDescriptions<VertexP>();
 }
 
-ShadowShaderProgram::ShadowShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
+ShadowShaderProgram::ShadowShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram<VertexP>(logicalDevice) {
     _shaders.reserve(2);
     _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
     _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shadow.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -80,15 +77,12 @@ ShadowShaderProgram::ShadowShaderProgram(const LogicalDevice& logicalDevice) : G
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayout->create();
-
-    _bindingDescription = getBindingDescription<VertexP>();
-    _attributeDescriptions = getAttributeDescriptions<VertexP>();
 }
 
-PBRShaderOffscreenProgram::PBRShaderOffscreenProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
+PBRShaderOffscreenProgram::PBRShaderOffscreenProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram<VertexPTNT>(logicalDevice) {
     _shaders.reserve(2);
-    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "offscreen_shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    _shaders.emplace_back(_logicalDevice, SHADERS_PATH "offscreen_shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     _descriptorSetLayout = std::make_unique<DescriptorSetLayout>(_logicalDevice);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -99,12 +93,9 @@ PBRShaderOffscreenProgram::PBRShaderOffscreenProgram(const LogicalDevice& logica
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
-
-    _bindingDescription = getBindingDescription<VertexPTNT>();
-    _attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
 }
 
-SkyboxOffscreenShaderProgram::SkyboxOffscreenShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram(logicalDevice) {
+SkyboxOffscreenShaderProgram::SkyboxOffscreenShaderProgram(const LogicalDevice& logicalDevice) : GraphicsShaderProgram<VertexP>(logicalDevice) {
     _shaders.reserve(2);
     _shaders.emplace_back(_logicalDevice, SHADERS_PATH "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
     _shaders.emplace_back(_logicalDevice, SHADERS_PATH "skybox_offscreen.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -113,7 +104,4 @@ SkyboxOffscreenShaderProgram::SkyboxOffscreenShaderProgram(const LogicalDevice& 
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
     _descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetLayout->create();
-
-    _bindingDescription = getBindingDescription<VertexP>();
-    _attributeDescriptions = getAttributeDescriptions<VertexP>();
 }

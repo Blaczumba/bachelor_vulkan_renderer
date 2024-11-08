@@ -1,9 +1,7 @@
 #include "pipeline.h"
 
 Pipeline::Pipeline(VkPipelineBindPoint pipelineBindPoint)
-	: _pipelineBindPoint(pipelineBindPoint) {
-
-}
+	: _pipelineBindPoint(pipelineBindPoint) {}
 
 VkPipeline Pipeline::getVkPipeline() const {
 	return _pipeline;

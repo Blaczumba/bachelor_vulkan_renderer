@@ -2,19 +2,20 @@
 
 #include "window/callback_observer/callback_observer.h"
 
+#include "memory_objects/buffers.h"
+
 #include <vulkan/vulkan.h>
 
-#include <string>
-#include <thread>
-#include <memory>
-#include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
 #include <queue>
 
 class CallbackObserver;
 class LogicalDevice;
-struct Image;
 struct CallbackData;
 
 class Screenshot : public CallbackObserver {
@@ -44,7 +45,7 @@ private:
 	std::queue<CommandData> _commandData;
 	std::mutex _commandDataMutex;
 	std::condition_variable _commandDataCV;
-	bool _shouldStop;
+	std::atomic<bool> _shouldStop;
 
 	void savingThread();
 	void savePixels(const CommandData& imagesData);

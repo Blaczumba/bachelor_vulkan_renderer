@@ -2,8 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
-#include <vector>
 #include <optional>
+#include <vector>
 
 struct Image {
     VkFormat format = VK_FORMAT_UNDEFINED;
@@ -40,9 +40,10 @@ struct Sampler {
 };
 
 void transitionImageLayout(VkCommandBuffer commandBuffer, Image* image, VkImageLayout newLayout);
+void copyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 void transitionLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t layerCount = 1);
 void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);	// Normal texture 2D
-void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, std::vector<VkBufferImageCopy>&& regions);	// Cubemap
+void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, const std::vector<VkBufferImageCopy>& regions);	// Cubemap
 void copyImageToBuffer(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout layout, VkBuffer buffer, uint32_t width, uint32_t height);
 void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImage, VkExtent2D srcSize, VkExtent2D dstSize, VkImageAspectFlagBits aspect = VK_IMAGE_ASPECT_COLOR_BIT);
 void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImage, VkExtent2D extent, VkImageAspectFlagBits aspect = VK_IMAGE_ASPECT_COLOR_BIT);
