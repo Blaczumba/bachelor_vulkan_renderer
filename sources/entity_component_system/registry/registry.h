@@ -13,7 +13,8 @@
 
 class Registry {
 	EntityManager entityManager;
-	std::array<std::unique_ptr<ComponentPool>, MAX_COMPONENTS> componentsData;
+	std::array<std::unique_ptr<ComponentPool>, MAX_COMPONENTS> _componentsData;
+	std::array<Signature, MAX_ENTITIES> _signatures;
 
 public:
 	Entity createEntity() {
@@ -21,36 +22,45 @@ public:
 	}
 
 	void destroyEntity(Entity entity) {
-		for (size_t i = 0; i < MAX_COMPONENTS; i++)
-			componentsData[i]->destroyEntity(entity);
+		Signature i = 1;
+		for (ComponentType j = 0; j < MAX_COMPONENTS; i <<= 2, ++j) {
+			if ((_signatures[entity] & i) != 0) {
+				_componentsData[j]->destroyEntity(entity);
+			}
+		}
 		entityManager.destroyEntity(entity);
 	}
 
 	template<typename Component>
 	void addComponent(Entity entity, Component&& component) {
-		if (!componentsData[Component::getComponentID()]) {
-			componentsData[Component::getComponentID()] = std::make_unique<ComponentPoolImpl<Component>>();
+		if (!_componentsData[Component::getComponentID()]) {
+			_componentsData[Component::getComponentID()] = std::make_unique<ComponentPoolImpl<Component>>();
 		}
-		static_cast<ComponentPoolImpl<Component>*>(componentsData[Component::getComponentID()].get())->addComponent(entity, std::move(component));
+		static_cast<ComponentPoolImpl<Component>*>(_componentsData[Component::getComponentID()].get())->addComponent(entity, std::move(component));
+		_signatures[entity].set(Component::getComponentID());
 	}
 
 	template<typename Component>
 	Component& getComponent(Entity entity) {
-		if (!componentsData[Component::getComponentID()]) {
-			componentsData[Component::getComponentID()] = std::make_unique<ComponentPoolImpl<Component>>();
+		if (!_componentsData[Component::getComponentID()]) {
+			_componentsData[Component::getComponentID()] = std::make_unique<ComponentPoolImpl<Component>>();
 		}
-		return static_cast<ComponentPoolImpl<Component>*>(componentsData[Component::getComponentID()].get())->getComponent(entity);
+		_signatures[entity].set(Component::getComponentID());
+		return static_cast<ComponentPoolImpl<Component>*>(_componentsData[Component::getComponentID()].get())->getComponent(entity);
 	}
 
 	template<typename... Components>
 	std::tuple<Components&...> getComponents(Entity entity) {
-		return std::tie(static_cast<ComponentPoolImpl<Components>*>(componentsData[Components::getComponentID()].get())->getComponent(entity)...);
+		return std::tie(static_cast<ComponentPoolImpl<Components>*>(_componentsData[Components::getComponentID()].get())->getComponent(entity)...);
 	}
 
 	template<typename... Components>
 	void updateComponents(std::function<void(Components&...)> callback) {
-		auto components = std::tuple<std::array<std::optional<Components>, MAX_ENTITIES>&...>(
-			static_cast<ComponentPoolImpl<Components>*>(componentsData[Components::getComponentID()].get())->getComponents()...
+		Signature signature;
+		(signature.set(Components::getComponentID()), ...);
+
+		auto components = std::tuple<std::array<Components, MAX_ENTITIES>&...>(
+			static_cast<ComponentPoolImpl<Components>*>(_componentsData[Components::getComponentID()].get())->getComponents()...
 		);
 
 		Entity min = 0;
@@ -62,11 +72,11 @@ public:
 			max = std::min(max, maxEntity);
 		};
 
-		(updateMinMax(static_cast<ComponentPoolImpl<Components>*>(componentsData[Components::getComponentID()].get())), ...);
+		(updateMinMax(static_cast<ComponentPoolImpl<Components>*>(_componentsData[Components::getComponentID()].get())), ...);
 
 		for (Entity e = min; e <= max; ++e) {
-			if ((std::get<std::array<std::optional<Components>, MAX_ENTITIES>&>(components)[e].has_value() && ...)) {
-				callback(*std::get<std::array<std::optional<Components>, MAX_ENTITIES>&>(components)[e]...);
+			if ((_signatures[e] & signature) == signature) {
+				callback(std::get<std::array<Components, MAX_ENTITIES>&>(components)[e]...);
 			}
 		}
 	}
