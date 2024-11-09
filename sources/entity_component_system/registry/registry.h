@@ -28,6 +28,7 @@ public:
 				_componentsData[j]->destroyEntity(entity);
 			}
 		}
+		_signatures[entity].reset();
 		entityManager.destroyEntity(entity);
 	}
 
@@ -59,7 +60,7 @@ public:
 		Signature signature;
 		(signature.set(Components::getComponentID()), ...);
 
-		auto components = std::tuple<std::array<Components, MAX_ENTITIES>&...>(
+		auto components = std::tuple<std::vector<Components>&...>(
 			static_cast<ComponentPoolImpl<Components>*>(_componentsData[Components::getComponentID()].get())->getComponents()...
 		);
 
@@ -74,9 +75,25 @@ public:
 
 		(updateMinMax(static_cast<ComponentPoolImpl<Components>*>(_componentsData[Components::getComponentID()].get())), ...);
 
-		for (Entity e = min; e <= max; ++e) {
-			if ((_signatures[e] & signature) == signature) {
-				callback(std::get<std::array<Components, MAX_ENTITIES>&>(components)[e]...);
+		for (Entity entity = min; entity <= max; ++entity) {
+			if ((_signatures[entity] & signature) == signature) {
+				callback(std::get<std::vector<Components>&>(components)[entity]...);
+			}
+		}
+	}
+
+	template<typename... Components>
+	void updateComponents(std::function<void(Components&...)> callback, const std::vector<Entity>& entities) {
+		Signature signature;
+		(signature.set(Components::getComponentID()), ...);
+
+		auto components = std::tuple<std::vector<Components>&...>(
+			static_cast<ComponentPoolImpl<Components>*>(_componentsData[Components::getComponentID()].get())->getComponents()...
+		);
+		
+		for (Entity entity : entities) {
+			if ((_signatures[entity] & signature) == signature) {
+				callback(std::get<std::vector<Components>&>(components)[entity]...);
 			}
 		}
 	}
