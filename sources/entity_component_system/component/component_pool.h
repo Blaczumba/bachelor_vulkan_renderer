@@ -18,7 +18,7 @@ public:
 template<typename Component>
 class ComponentPoolImpl : public ComponentPool {
 	std::vector<Component> _components;
-	boost::container::flat_set<Entity> _entities;		// TODO: Change to flat map.
+	std::set<Entity> _entities;		// TODO: Change to flat map.
 
 public:
 	~ComponentPoolImpl() override = default;
@@ -31,7 +31,7 @@ public:
 
 	void destroyEntity(Entity entity) override {
 		_entities.erase(entity);
-		_components.resize(std::max(*_entities.crbegin() - 1, 0));
+		_components.resize(*_entities.crbegin() + 1);
 		_components[entity] = Component{};
 	}
 
