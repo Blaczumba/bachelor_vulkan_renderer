@@ -16,6 +16,16 @@
 
 SingleApp::SingleApp()
     : ApplicationBase() {
+    Registry reg;
+    MovementSystem sys(&reg);
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < 60000; ++i) {
+        Entity e = reg.createEntity();
+        reg.addComponent(e, VelocityComponent{ (float)e, (float)e + 1 });
+        reg.addComponent(e, PositionComponent{ (float)e, (float)e + 1 });
+    }
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
 
     createDescriptorSets();
