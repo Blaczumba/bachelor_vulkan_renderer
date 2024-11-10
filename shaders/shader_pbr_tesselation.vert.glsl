@@ -31,7 +31,6 @@ layout(location = 2) out vec4 lightFragPosition;
 
 layout(location = 3) out vec3 TBNLightPos;
 layout(location = 4) out vec3 TBNViewPos;
-layout(location = 5) out vec4 Position;
 
 const mat4 BiasMat = mat4(
 	0.5, 0, 0, 0,
@@ -49,11 +48,11 @@ void main() {
     vec3 bitangent = cross(normal, tangent);
     mat3 TBNMat = transpose(mat3(tangent, bitangent, normal));
 
-    Position = object.model * vec4(inPosition, 1.0);
-    TBNfragPosition = TBNMat * Position.xyz;
+    gl_Position = object.model * vec4(inPosition, 1.0);
+    TBNfragPosition = TBNMat * gl_Position.xyz;
     TBNViewPos = TBNMat * camera.viewPos;
     TBNLightPos = TBNMat * light.pos;
-    lightFragPosition = BiasMat * light.projView * Position;
+    lightFragPosition = BiasMat * light.projView * gl_Position;
 
     // gl_Position = camera.proj * camera.view * position;
     

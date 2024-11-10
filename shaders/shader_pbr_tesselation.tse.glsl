@@ -9,7 +9,6 @@ layout(location = 1) in vec2 tcFragTexCoord[];
 layout(location = 2) in vec4 tcLightFragPosition[];
 layout(location = 3) in vec3 tcTBNLightPos[];
 layout(location = 4) in vec3 tcTBNViewPos[];
-layout(location = 5) in vec4 tcPosition[];
 
 // Output to fragment shader
 layout(location = 0) out vec3 teTBNfragPosition;
@@ -27,9 +26,9 @@ layout(binding=0) uniform CameraUniform {
 
 void main() {
     // Interpolate per-vertex data using barycentric coordinates
-    vec4 pos =  gl_TessCoord.x * tcPosition[0] +
-                gl_TessCoord.y * tcPosition[1] +
-                gl_TessCoord.z * tcPosition[2];
+    vec4 pos =  gl_TessCoord.x * gl_in[0].gl_Position +
+                gl_TessCoord.y * gl_in[1].gl_Position +
+                gl_TessCoord.z * gl_in[2].gl_Position;
 
     vec3 tessPos = gl_TessCoord.x * tcTBNfragPosition[0] +
                    gl_TessCoord.y * tcTBNfragPosition[1] +
