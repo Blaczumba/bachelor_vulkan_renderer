@@ -100,7 +100,7 @@ void SingleApp::loadObjects() {
     _octree = std::make_unique<Octree>(sceneAABB);
 
     for (const auto& object : _objects)
-        _octree->addObject(&object, _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb);
+        _octree->addObject(&object, _registry.getComponent<MeshComponent>(object.getEntity()).aabb);
 }
 
 void SingleApp::createDescriptorSets() {
