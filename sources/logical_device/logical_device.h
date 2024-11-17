@@ -18,13 +18,9 @@ class LogicalDevice {
 	const PhysicalDevice& _physicalDevice;
 
 	VkQueue _graphicsQueue;
-	VkCommandPool _graphicsCommandPool;
 	VkQueue _presentQueue;
-	VkCommandPool _presentCommandPool;
 	VkQueue _computeQueue;
-	VkCommandPool _computeCommandPool;
 	VkQueue _transferQueue;
-	VkCommandPool _transferCommandPool;
 
 public:
 	LogicalDevice(const PhysicalDevice& physicalDevice);
@@ -44,10 +40,4 @@ public:
 	const VkQueue getPresentQueue() const;
 	const VkQueue getComputeQueue() const;
 	const VkQueue getTransferQueue() const;
-
-private:
-	VkCommandPool createSingleSubmitCommandPool(uint32_t queueFamilyIndex);
-
-	friend class SingleTimeCommandBuffer;
-	const VkCommandPool getSingleSubmitCommandPool(QueueType queueType) const;
 };
