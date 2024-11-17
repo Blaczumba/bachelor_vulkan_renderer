@@ -4,11 +4,9 @@
 layout(triangles, equal_spacing, cw) in;
 
 // Input from tessellation control shader
-layout(location = 0) in vec3 tcTBNfragPosition[];
-layout(location = 1) in vec2 tcFragTexCoord[];
-layout(location = 2) in vec4 tcLightFragPosition[];
-layout(location = 3) in vec3 tcTBNLightPos[];
-layout(location = 4) in vec3 tcTBNViewPos[];
+layout(location = 0) in vec2 inTexCoord[];
+layout(location = 1) in vec3 inNormal[];
+layout(location = 2) in vec3 inTangent[];
 
 // Output to fragment shader
 layout(location = 0) out vec3 teTBNfragPosition;
@@ -24,38 +22,47 @@ layout(binding=0) uniform CameraUniform {
 
 } camera;
 
+layout(binding = 2) uniform Light {
+    mat4 projView;
+
+    vec3 pos;
+
+} light;
+
+const mat4 BiasMat = mat4(
+	0.5, 0, 0, 0,
+	0, 0.5, 0, 0,
+	0, 0, 1.0, 0,
+	0.5, 0.5, 0.0, 1.0
+);
+
 void main() {
-    // Interpolate per-vertex data using barycentric coordinates
-    vec4 pos =  gl_TessCoord.x * gl_in[0].gl_Position +
-                gl_TessCoord.y * gl_in[1].gl_Position +
-                gl_TessCoord.z * gl_in[2].gl_Position;
+    vec3 normal = gl_TessCoord.x * inNormal[0] +
+                gl_TessCoord.y * inNormal[1] +
+                gl_TessCoord.z * inNormal[2];
 
-    vec3 tessPos = gl_TessCoord.x * tcTBNfragPosition[0] +
-                   gl_TessCoord.y * tcTBNfragPosition[1] +
-                   gl_TessCoord.z * tcTBNfragPosition[2];
+    vec3 tangent = gl_TessCoord.x * inTangent[0] +
+                gl_TessCoord.y * inTangent[1] +
+                gl_TessCoord.z * inTangent[2];
 
-    vec2 tessTexCoord = gl_TessCoord.x * tcFragTexCoord[0] +
-                        gl_TessCoord.y * tcFragTexCoord[1] +
-                        gl_TessCoord.z * tcFragTexCoord[2];
+    vec3 bitangent = cross(normalize(normal), normalize(tangent));
+    mat3 TBNMat = transpose(mat3(tangent, bitangent, normal));
 
-    vec4 tessLightFragPosition = gl_TessCoord.x * tcLightFragPosition[0] +
-                                 gl_TessCoord.y * tcLightFragPosition[1] +
-                                 gl_TessCoord.z * tcLightFragPosition[2];
+    vec4 pos = gl_TessCoord.x * gl_in[0].gl_Position +
+             gl_TessCoord.y * gl_in[1].gl_Position +
+             gl_TessCoord.z * gl_in[2].gl_Position;
 
-    vec3 tessTBNLightPos = gl_TessCoord.x * tcTBNLightPos[0] +
-                           gl_TessCoord.y * tcTBNLightPos[1] +
-                           gl_TessCoord.z * tcTBNLightPos[2];
+    teLightFragPosition = BiasMat * light.projView * pos;
 
-    vec3 tessTBNViewPos = gl_TessCoord.x * tcTBNViewPos[0] +
-                          gl_TessCoord.y * tcTBNViewPos[1] +
-                          gl_TessCoord.z * tcTBNViewPos[2];
+    gl_Position = camera.proj * camera.view * pos;
 
-    gl_Position = camera.proj * camera.view * vec4(pos.xyz, 1.0); 
+    teTBNfragPosition = TBNMat * pos.xyz;
 
-    // Pass the interpolated and transformed data to the fragment shader
-    teTBNfragPosition = tessPos;
-    teFragTexCoord = tessTexCoord;
-    teLightFragPosition = tessLightFragPosition;
-    teTBNLightPos = tessTBNLightPos;
-    teTBNViewPos = tessTBNViewPos;
+    teTBNLightPos = TBNMat * light.pos;
+
+    teTBNViewPos = TBNMat * camera.viewPos;
+
+    teFragTexCoord = gl_TessCoord.x * inTexCoord[0] +
+            gl_TessCoord.y * inTexCoord[1] +
+            gl_TessCoord.z * inTexCoord[2];
 }
