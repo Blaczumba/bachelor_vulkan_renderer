@@ -1,5 +1,6 @@
 #pragma once
 
+#include <command_buffer/command_buffer.h>
 #include <debug_messenger/debug_messenger.h>
 #include <instance/instance.h>
 #include <logical_device/logical_device.h>
@@ -19,6 +20,8 @@ protected:
     std::unique_ptr<PhysicalDevice> _physicalDevice;
     std::unique_ptr<LogicalDevice> _logicalDevice;
     std::unique_ptr<Swapchain> _swapchain;
+
+    std::unique_ptr<CommandPool> _singleTimeCommandPool;
 
 public:
     ApplicationBase();

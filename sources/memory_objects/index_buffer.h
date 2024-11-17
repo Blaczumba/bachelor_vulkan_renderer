@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+class CommandPool;
 class LogicalDevice;
 
 class IndexBuffer {
@@ -17,9 +18,9 @@ class IndexBuffer {
     const LogicalDevice& _logicalDevice;
 
 public:
-    IndexBuffer(const LogicalDevice& logicalDevice, const std::vector<uint8_t>& indices);
-    IndexBuffer(const LogicalDevice& logicalDevice, const std::vector<uint16_t>& indices);
-    IndexBuffer(const LogicalDevice& logicalDevice, const std::vector<uint32_t>& indices);
+    IndexBuffer(const CommandPool& commandPool, const std::vector<uint8_t>& indices);
+    IndexBuffer(const CommandPool& commandPool, const std::vector<uint16_t>& indices);
+    IndexBuffer(const CommandPool& commandPool, const std::vector<uint32_t>& indices);
     ~IndexBuffer();
 
     VkIndexType getIndexType() const;
@@ -28,5 +29,5 @@ public:
     void bind(const VkCommandBuffer commandBuffer) const;
 
 private:
-    void createIndexBuffer(const void* indicesData, VkDeviceSize bufferSize);
+    void createIndexBuffer(const CommandPool& commandPool, const void* indicesData, VkDeviceSize bufferSize);
 };

@@ -3,15 +3,14 @@
 #include "command_buffer/command_buffer.h"
 #include "logical_device/logical_device.h"
 
-TextureAttachment::TextureAttachment(const LogicalDevice& logicalDevice, VkImageLayout dstLayout, const Image& image)
-    : Texture(image),
-    _logicalDevice(logicalDevice) {
+TextureAttachment::TextureAttachment(const CommandPool& commandPool, VkImageLayout dstLayout, const Image& image)
+    : Texture(image), _logicalDevice(commandPool.getLogicalDevice()) {
 
     _logicalDevice.createImage(&_image);
     _logicalDevice.createImageView(&_image);
 
     {
-        SingleTimeCommandBuffer handle(logicalDevice);
+        SingleTimeCommandBuffer handle(commandPool);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
         transitionLayout(commandBuffer, dstLayout);

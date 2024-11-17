@@ -18,7 +18,7 @@ class VertexBuffer {
 
 public:
     template<typename VertexType>
-	VertexBuffer(const LogicalDevice& logicalDevice, const std::vector<VertexType>& vertices);
+	VertexBuffer(const CommandPool& commandPool, const std::vector<VertexType>& vertices);
     ~VertexBuffer();
 
     const VkBuffer getVkBuffer() const;
@@ -26,8 +26,8 @@ public:
 };
 
 template<typename VertexType>
-VertexBuffer::VertexBuffer(const LogicalDevice& logicalDevice, const std::vector<VertexType>& vertices)
-    : _logicalDevice(logicalDevice) {
+VertexBuffer::VertexBuffer(const CommandPool& commandPool, const std::vector<VertexType>& vertices)
+    : _logicalDevice(commandPool.getLogicalDevice()) {
     const VkDeviceSize bufferSize = sizeof(VertexType) * vertices.size();
     const VkDevice device = _logicalDevice.getVkDevice();
 
@@ -43,7 +43,7 @@ VertexBuffer::VertexBuffer(const LogicalDevice& logicalDevice, const std::vector
     _logicalDevice.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _vertexBuffer, _vertexBufferMemory);
     
     {
-        SingleTimeCommandBuffer handle(_logicalDevice);
+        SingleTimeCommandBuffer handle(commandPool);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         copyBufferToBuffer(commandBuffer, stagingBuffer, _vertexBuffer, bufferSize);
     }

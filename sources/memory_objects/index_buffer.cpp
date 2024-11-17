@@ -4,22 +4,22 @@
 #include "command_buffer/command_buffer.h"
 #include "logical_device/logical_device.h"
 
-IndexBuffer::IndexBuffer(const LogicalDevice& logicalDevice, const std::vector<uint8_t>& indices)
-    : _logicalDevice(logicalDevice), _indexCount(indices.size()), _indexType(VK_INDEX_TYPE_UINT8_EXT) {
-    createIndexBuffer(indices.data(), sizeof(uint8_t) * _indexCount);
+IndexBuffer::IndexBuffer(const CommandPool& commandPool, const std::vector<uint8_t>& indices)
+    : _logicalDevice(commandPool.getLogicalDevice()), _indexCount(indices.size()), _indexType(VK_INDEX_TYPE_UINT8_EXT) {
+    createIndexBuffer(commandPool, indices.data(), sizeof(uint8_t) * _indexCount);
 }
 
-IndexBuffer::IndexBuffer(const LogicalDevice& logicalDevice, const std::vector<uint16_t>& indices)
-    : _logicalDevice(logicalDevice), _indexCount(indices.size()), _indexType(VK_INDEX_TYPE_UINT16) {
-    createIndexBuffer(indices.data(), sizeof(uint16_t) * _indexCount);
+IndexBuffer::IndexBuffer(const CommandPool& commandPool, const std::vector<uint16_t>& indices)
+    : _logicalDevice(commandPool.getLogicalDevice()), _indexCount(indices.size()), _indexType(VK_INDEX_TYPE_UINT16) {
+    createIndexBuffer(commandPool, indices.data(), sizeof(uint16_t) * _indexCount);
 }
 
-IndexBuffer::IndexBuffer(const LogicalDevice& logicalDevice, const std::vector<uint32_t>& indices)
-    : _logicalDevice(logicalDevice), _indexCount(indices.size()), _indexType(VK_INDEX_TYPE_UINT32) {
-    createIndexBuffer(indices.data(), sizeof(uint32_t) * _indexCount);
+IndexBuffer::IndexBuffer(const CommandPool& commandPool, const std::vector<uint32_t>& indices)
+    : _logicalDevice(commandPool.getLogicalDevice()), _indexCount(indices.size()), _indexType(VK_INDEX_TYPE_UINT32) {
+    createIndexBuffer(commandPool, indices.data(), sizeof(uint32_t) * _indexCount);
 }
 
-void IndexBuffer::createIndexBuffer(const void* indicesData, VkDeviceSize bufferSize) {
+void IndexBuffer::createIndexBuffer(const CommandPool& commandPool, const void* indicesData, VkDeviceSize bufferSize) {
     const VkDevice device = _logicalDevice.getVkDevice();
 
     VkBuffer stagingBuffer;
@@ -34,7 +34,7 @@ void IndexBuffer::createIndexBuffer(const void* indicesData, VkDeviceSize buffer
     _logicalDevice.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _indexBuffer, _indexBufferMemory);
     
     {
-        SingleTimeCommandBuffer handle(_logicalDevice);
+        SingleTimeCommandBuffer handle(commandPool);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         copyBufferToBuffer(commandBuffer, stagingBuffer, _indexBuffer, bufferSize);
     }

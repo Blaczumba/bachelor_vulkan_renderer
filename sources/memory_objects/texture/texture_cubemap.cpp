@@ -9,8 +9,8 @@
 #include <cstring>
 #include <stdexcept>
 
-TextureCubemap::TextureCubemap(const LogicalDevice& logicalDevice, std::string_view filePath, const Image& image, const Sampler& sampler)
-	: Texture(image, sampler), _logicalDevice(logicalDevice), _filePath(filePath) {
+TextureCubemap::TextureCubemap(const CommandPool& commandPool, std::string_view filePath, const Image& image, const Sampler& sampler)
+	: Texture(image, sampler), _logicalDevice(commandPool.getLogicalDevice()), _filePath(filePath) {
 	const VkDevice device = _logicalDevice.getVkDevice();
 
 	ktxResult result;
@@ -76,7 +76,7 @@ TextureCubemap::TextureCubemap(const LogicalDevice& logicalDevice, std::string_v
 	_logicalDevice.createImage(&_image);
 
 	{
-		SingleTimeCommandBuffer handle(_logicalDevice);
+		SingleTimeCommandBuffer handle(commandPool);
 		VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 		transitionImageLayout(commandBuffer, &_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		copyBufferToImage(commandBuffer, stagingBuffer, _image.image, bufferCopyRegions);

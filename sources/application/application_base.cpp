@@ -27,6 +27,8 @@ ApplicationBase::ApplicationBase() {
 	_physicalDevice = std::make_unique<PhysicalDevice>(*_window);
 	_logicalDevice = _physicalDevice->createLogicalDevice();
 	_swapchain = std::make_unique<Swapchain>(*_logicalDevice);
+
+	_singleTimeCommandPool = std::make_unique<CommandPool>(*_logicalDevice);
 }
 
 ApplicationBase::~ApplicationBase() {

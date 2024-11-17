@@ -11,8 +11,8 @@
 #include <iostream>
 #include <stdexcept>
 
-Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, std::string_view texturePath, const Image& image, const Sampler& sampler)
-	: Texture(image, sampler), _logicalDevice(logicalDevice), _texturePath(texturePath) {
+Texture2DImage::Texture2DImage(const CommandPool& commandPool, std::string_view texturePath, const Image& image, const Sampler& sampler)
+	: Texture(image, sampler), _logicalDevice(commandPool.getLogicalDevice()), _texturePath(texturePath) {
     const VkDevice device = _logicalDevice.getVkDevice();
 
     int texWidth, texHeight, texChannels;
@@ -42,7 +42,7 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, std::string_v
 
     _logicalDevice.createImage(&_image);
     {
-        SingleTimeCommandBuffer handle(_logicalDevice);
+        SingleTimeCommandBuffer handle(commandPool);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         copyBufferToImage(commandBuffer, stagingBuffer, _image.image, _image.width, _image.height);
@@ -53,7 +53,6 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, std::string_v
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 
     _logicalDevice.createImageView(&_image);
-
     _logicalDevice.createSampler(&_sampler);
 }
 
