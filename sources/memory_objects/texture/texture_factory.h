@@ -1,18 +1,19 @@
 #pragma once
 
 #include "texture.h"
-#include "texture_2D_color.h"
-#include "texture_2D_depth.h"
-#include "texture_2D_image.h"
-#include "texture_2D_shadow.h"
-#include "texture_cubemap.h"
+
+#include <vulkan/vulkan.h>
 
 #include <memory>
+#include <string_view>
+
+class LogicalDevice;
 
 class TextureFactory {
 public:
-	template<typename T, typename... Args>
-	std::shared_ptr<T> createTexture(Args&&... args) {
-		return std::make_shared<T>(std::forward<Args>(args)...);
-	}
+	static std::unique_ptr<Texture> createCubemap(const LogicalDevice& logicalDevice, std::string_view filePath, VkFormat format, float samplerAnisotropy);
+	static std::unique_ptr<Texture> create2DShadowmap(const LogicalDevice& logicalDevice, uint32_t width, uint32_t height, VkFormat format);
+	static std::unique_ptr<Texture> create2DTextureImage(const LogicalDevice& logicalDevice, std::string_view texturePath, VkFormat format, float samplerAnisotropy);
+	static std::unique_ptr<Texture> createColorAttachment(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent);
+	static std::unique_ptr<Texture> createDepthAttachment(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent);
 };
