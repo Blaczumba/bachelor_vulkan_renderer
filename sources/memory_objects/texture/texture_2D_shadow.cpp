@@ -3,24 +3,8 @@
 #include "command_buffer/command_buffer.h"
 #include "logical_device/logical_device.h"
 
-Texture2DShadow::Texture2DShadow(const LogicalDevice& logicalDevice, uint32_t width, uint32_t height, VkFormat format)
-    : Texture(
-        Image{ 
-            .format = format,
-            .width = width,
-            .height = height,
-            .aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
-            .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-        },
-        Sampler{ 
-            .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-            .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-            .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-            .compareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
-            .borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE
-        }
-    ), 
-    _logicalDevice(logicalDevice) {
+Texture2DShadow::Texture2DShadow(const LogicalDevice& logicalDevice, const Image& image, const Sampler& sampler)
+    : Texture(image, sampler), _logicalDevice(logicalDevice) {
     const VkDevice device = _logicalDevice.getVkDevice();
 
     _logicalDevice.createImage(&_image);

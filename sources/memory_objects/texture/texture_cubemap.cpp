@@ -9,25 +9,14 @@
 #include <cstring>
 #include <stdexcept>
 
-TextureCubemap::TextureCubemap(const LogicalDevice& logicalDevice, std::string filePath, VkFormat format, float samplerAnisotropy)
-	: Texture(
-		Image{ 
-			.format = format,
-			.aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-			.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			.layerCount = 6u
-		},
-		Sampler{ 
-			.maxAnisotropy = samplerAnisotropy
-		}
-	),
-	_logicalDevice(logicalDevice), _filePath(filePath) {
+TextureCubemap::TextureCubemap(const LogicalDevice& logicalDevice, std::string_view filePath, const Image& image, const Sampler& sampler)
+	: Texture(image, sampler), _logicalDevice(logicalDevice), _filePath(filePath) {
 	const VkDevice device = _logicalDevice.getVkDevice();
 
 	ktxResult result;
 	ktxTexture* ktxTexture;
 
-	result = ktxTexture_CreateFromNamedFile(filePath.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
+	result = ktxTexture_CreateFromNamedFile(filePath.data(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
 	if (result != KTX_SUCCESS) {
 		throw std::runtime_error("failed to load ktx file");
 	}

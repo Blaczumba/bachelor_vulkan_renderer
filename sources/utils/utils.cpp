@@ -1,7 +1,6 @@
 #include "utils.h"
 
-#include "memory_objects/texture/texture_2D_color.h"
-#include "memory_objects/texture/texture_2D_depth.h"
+#include "memory_objects/texture/texture_factory.h"
 
 #include <stdexcept>
 
@@ -20,10 +19,10 @@ std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const Renderp
             framebufferTextures.emplace_back(nullptr);
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            framebufferTextures.emplace_back(std::make_unique<Texture2DColor>(logicalDevice, description.format, description.samples, extent));
+            framebufferTextures.emplace_back(TextureFactory::createColorAttachment(logicalDevice, description.format, description.samples, extent));
             break;
         case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            framebufferTextures.emplace_back(std::make_unique<Texture2DDepth>(logicalDevice, description.format, description.samples, extent));
+            framebufferTextures.emplace_back(TextureFactory::createDepthAttachment(logicalDevice, description.format, description.samples, extent));
             break;
         default:
             std::runtime_error("failed to recognize final layout in the framebuffer!");

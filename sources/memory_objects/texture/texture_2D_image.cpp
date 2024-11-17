@@ -11,18 +11,8 @@
 #include <iostream>
 #include <stdexcept>
 
-Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::string& texturePath, VkFormat format, float samplerAnisotropy)
-	: Texture(
-        Image{ 
-            .format = format, .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-            .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
-        },
-        Sampler{ 
-            .maxAnisotropy = samplerAnisotropy
-        }
-    ),
-    _logicalDevice(logicalDevice), _texturePath(texturePath) {
-
+Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, std::string_view texturePath, const Image& image, const Sampler& sampler)
+	: Texture(image, sampler), _logicalDevice(logicalDevice), _texturePath(texturePath) {
     const VkDevice device = _logicalDevice.getVkDevice();
 
     int texWidth, texHeight, texChannels;
@@ -33,7 +23,7 @@ Texture2DImage::Texture2DImage(const LogicalDevice& logicalDevice, const std::st
     _image.mipLevels          = std::floor(std::log2(std::max(_image.width, _image.height))) + 1u;
     _sampler.maxLod           = static_cast<float>(_image.mipLevels);
 
-    VkDeviceSize imageSize = texWidth * texHeight * 4;
+    VkDeviceSize imageSize = _image.width * _image.height * 4;
 
     if (!pixels) {
         throw std::runtime_error("failed to load texture image!");

@@ -1,5 +1,6 @@
 #include "double_screenshot_application.h"
 
+#include "memory_objects/texture/texture_factory.h"
 #include "model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
 #include "entity_component_system/system/movement_system.h"
 #include "entity_component_system/component/material.h"
@@ -55,15 +56,15 @@ void SingleApp::loadObjects() {
         const std::string normalPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0];
 
         if (!_uniformMap.contains(diffusePath)) {
-            _textures.emplace_back(std::make_shared<Texture2DImage>(*_logicalDevice, diffusePath, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
+            _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, diffusePath, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
             _uniformMap.emplace(std::make_pair(diffusePath, std::make_shared<UniformBufferTexture>(*_textures.back())));
         }
         if (!_uniformMap.contains(normalPath)) {
-            _textures.emplace_back(std::make_shared<Texture2DImage>(*_logicalDevice, normalPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
+            _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, normalPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
             _uniformMap.emplace(std::make_pair(normalPath, std::make_shared<UniformBufferTexture>(*_textures.back())));
         }
         if (!_uniformMap.contains(metallicRoughnessPath)) {
-            _textures.emplace_back(std::make_shared<Texture2DImage>(*_logicalDevice, metallicRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
+            _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, metallicRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
             _uniformMap.emplace(std::make_pair(metallicRoughnessPath, std::make_shared<UniformBufferTexture>(*_textures.back())));
         }
 
@@ -106,9 +107,9 @@ void SingleApp::loadObjects() {
 void SingleApp::createDescriptorSets() {
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
-    _textureCubemap = std::make_unique<TextureCubemap>(*_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
+    _textureCubemap = TextureFactory::createCubemap(*_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
 
-    _shadowMap = std::make_shared<Texture2DShadow>(*_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
+    _shadowMap = TextureFactory::create2DShadowmap(*_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
 
     _uniformBuffersObjects = std::make_unique<UniformBufferDynamic<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
     _uniformBuffersLight = std::make_unique<UniformBufferStruct<UniformBufferLight>>(*_logicalDevice);

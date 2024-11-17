@@ -10,8 +10,6 @@
 #include "entity_component_system/system/movement_system.h"
 #include "memory_objects/index_buffer.h"
 #include "memory_objects/texture/texture.h"
-#include "memory_objects/texture/texture_2D_color.h"
-#include "memory_objects/texture/texture_2D_depth.h"
 #include "memory_objects/texture/texture_2D_image.h"
 #include "memory_objects/texture/texture_2D_shadow.h"
 #include "memory_objects/texture/texture_cubemap.h"
@@ -32,7 +30,7 @@
 
 class SingleApp : public ApplicationBase {
     std::vector<VertexData<VertexPTNT, uint16_t>> _newVertexDataTBN;
-    std::vector<std::shared_ptr<Texture2DImage>> _textures;
+    std::vector<std::unique_ptr<Texture>> _textures;
     std::unordered_map<std::string, std::shared_ptr<UniformBufferTexture>> _uniformMap;
     std::unordered_map<std::string, std::shared_ptr<VertexBuffer>> _vertexBufferMap;
     std::unordered_map<std::string, std::shared_ptr<IndexBuffer>> _indexBufferMap;
@@ -50,7 +48,7 @@ class SingleApp : public ApplicationBase {
 
     std::shared_ptr<Renderpass> _shadowRenderPass;
     std::unique_ptr<Framebuffer> _shadowFramebuffer;
-    std::shared_ptr<Texture2DShadow> _shadowMap;
+    std::unique_ptr<Texture> _shadowMap;
     std::unique_ptr<GraphicsPipeline> _shadowPipeline;
 
     std::unique_ptr<VertexBuffer> _vertexBufferCube;
@@ -75,7 +73,7 @@ class SingleApp : public ApplicationBase {
     std::unique_ptr<PBRTesselationShaderProgram> _pbrShaderProgram;
     std::unique_ptr<SkyboxShaderProgram> _skyboxShaderProgram;
 
-    std::unique_ptr<TextureCubemap> _textureCubemap;
+    std::unique_ptr<Texture> _textureCubemap;
 
     std::unique_ptr<DescriptorSet> _descriptorSetSkybox;
     std::unique_ptr<DescriptorSet> _descriptorSetShadow;

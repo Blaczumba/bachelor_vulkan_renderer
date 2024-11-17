@@ -12,6 +12,6 @@ class Texture2DImage final : public Texture {
 	const LogicalDevice& _logicalDevice;
 
 public:
-	Texture2DImage(const LogicalDevice& logicalDevice, const std::string& texturePath, VkFormat format, float samplerAnisotropy);
+	Texture2DImage(const LogicalDevice& logicalDevice, std::string_view texturePath, const Image& image, const Sampler& sampler);
 	~Texture2DImage();
 };
