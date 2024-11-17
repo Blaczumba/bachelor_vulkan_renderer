@@ -2,7 +2,7 @@
 
 // Constants for tessellation levels
 const float tessLevelOuter = 1.0;  // Outer tessellation level
-const float tessLevelInner = 1.0;  // Inner tessellation level
+const float tessLevelInner = 2.0;  // Inner tessellation level
 
 layout(vertices = 3) out;  // Using triangles, so 3 control points
 

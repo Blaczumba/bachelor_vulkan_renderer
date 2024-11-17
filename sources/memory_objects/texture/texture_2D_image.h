@@ -4,6 +4,7 @@
 
 #include <string>
 
+class CommandPool;
 class LogicalDevice;
 
 class Texture2DImage final : public Texture {
@@ -12,6 +13,6 @@ class Texture2DImage final : public Texture {
 	const LogicalDevice& _logicalDevice;
 
 public:
-	Texture2DImage(const LogicalDevice& logicalDevice, std::string_view texturePath, const Image& image, const Sampler& sampler);
+	Texture2DImage(const CommandPool& commandPool, std::string_view texturePath, const Image& image, const Sampler& sampler);
 	~Texture2DImage();
 };

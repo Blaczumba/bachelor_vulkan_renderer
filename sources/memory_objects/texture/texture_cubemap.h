@@ -6,6 +6,7 @@
 #include <string_view>
 
 class LogicalDevice;
+class CommandPool;
 
 class TextureCubemap final : public Texture {
 	const std::string _filePath;
@@ -13,6 +14,6 @@ class TextureCubemap final : public Texture {
 	const LogicalDevice& _logicalDevice;
 
 public:
-	TextureCubemap(const LogicalDevice& logicalDevice, std::string_view filePath, const Image& image, const Sampler& sampler);
+	TextureCubemap(const CommandPool& commandPool, std::string_view filePath, const Image& image, const Sampler& sampler);
 	~TextureCubemap();
 };

@@ -8,8 +8,8 @@
 
 #include <array>
 
-std::unique_ptr<Texture> TextureFactory::createCubemap(const LogicalDevice& logicalDevice, std::string_view filePath, VkFormat format, float samplerAnisotropy) {
-	return std::make_unique<TextureCubemap>(logicalDevice, filePath,
+std::unique_ptr<Texture> TextureFactory::createCubemap(const CommandPool& commandPool, std::string_view filePath, VkFormat format, float samplerAnisotropy) {
+	return std::make_unique<TextureCubemap>(commandPool, filePath,
         Image{
 		    .format = format,
 		    .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -22,8 +22,8 @@ std::unique_ptr<Texture> TextureFactory::createCubemap(const LogicalDevice& logi
     );
 }
 
-std::unique_ptr<Texture> TextureFactory::create2DShadowmap(const LogicalDevice& logicalDevice, uint32_t width, uint32_t height, VkFormat format) {
-    return std::make_unique<Texture2DShadow>(logicalDevice,
+std::unique_ptr<Texture> TextureFactory::create2DShadowmap(const CommandPool& commandPool, uint32_t width, uint32_t height, VkFormat format) {
+    return std::make_unique<Texture2DShadow>(commandPool,
         Image{
             .format = format,
             .width = width,
@@ -41,8 +41,8 @@ std::unique_ptr<Texture> TextureFactory::create2DShadowmap(const LogicalDevice& 
     );
 }
 
-std::unique_ptr<Texture> TextureFactory::create2DTextureImage(const LogicalDevice& logicalDevice, std::string_view texturePath, VkFormat format, float samplerAnisotropy) {
-    return std::make_unique<Texture2DImage>(logicalDevice, texturePath,
+std::unique_ptr<Texture> TextureFactory::create2DTextureImage(const CommandPool& commandPool, std::string_view texturePath, VkFormat format, float samplerAnisotropy) {
+    return std::make_unique<Texture2DImage>(commandPool, texturePath,
         Image{
             .format = format, .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
             .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
@@ -53,8 +53,8 @@ std::unique_ptr<Texture> TextureFactory::create2DTextureImage(const LogicalDevic
     );
 }
 
-std::unique_ptr<Texture> TextureFactory::createColorAttachment(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
-    return std::make_unique<TextureAttachment>(logicalDevice, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+std::unique_ptr<Texture> TextureFactory::createColorAttachment(const CommandPool& commandPool, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
+    return std::make_unique<TextureAttachment>(commandPool, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         Image{
             .format = format,
             .width = extent.width,
@@ -77,9 +77,9 @@ bool hasStencil(VkFormat format) {
     return std::find(formats.begin(), formats.end(), format) != std::end(formats);
 }
 
-std::unique_ptr<Texture> TextureFactory::createDepthAttachment(const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
+std::unique_ptr<Texture> TextureFactory::createDepthAttachment(const CommandPool& commandPool, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
     const VkImageAspectFlags aspect = hasStencil(format) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
-    return std::make_unique<TextureAttachment>(logicalDevice, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    return std::make_unique<TextureAttachment>(commandPool, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         Image{
             .format = format,
             .width = extent.width,

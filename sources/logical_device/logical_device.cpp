@@ -10,7 +10,7 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
     const QueueFamilyIndices& indices = physicalDevice.getPropertyManager().getQueueFamilyIndices();
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::set<uint32_t> uniqueQueueFamilies = { 
+    const std::set<uint32_t> uniqueQueueFamilies = { 
         indices.graphicsFamily.value(), 
         indices.presentFamily.value(), 
         indices.computeFamily.value(), 
@@ -30,7 +30,7 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
         );
     }
 
-    VkPhysicalDeviceFeatures deviceFeatures = {
+    const VkPhysicalDeviceFeatures deviceFeatures = {
         .geometryShader = VK_TRUE,
         .tessellationShader = VK_TRUE,
         .sampleRateShading = VK_TRUE,
@@ -38,7 +38,7 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
         .samplerAnisotropy = VK_TRUE
     };
 
-    VkDeviceCreateInfo createInfo = {
+    const VkDeviceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
         .pQueueCreateInfos = queueCreateInfos.data(),
@@ -58,13 +58,9 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
     }
 
     vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0, &_graphicsQueue);
-    _graphicsCommandPool = createSingleSubmitCommandPool(indices.graphicsFamily.value());
     vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &_presentQueue);
-    _presentCommandPool = createSingleSubmitCommandPool(indices.presentFamily.value());
     vkGetDeviceQueue(_device, indices.computeFamily.value(), 0, &_computeQueue);
-    _computeCommandPool = createSingleSubmitCommandPool(indices.computeFamily.value());
     vkGetDeviceQueue(_device, indices.transferFamily.value(), 0, &_transferQueue);
-    _transferCommandPool = createSingleSubmitCommandPool(indices.transferFamily.value());
 }
 
 void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) const {
@@ -84,7 +80,7 @@ void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Vk
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(_device, buffer, &memRequirements);
 
-    VkMemoryAllocateInfo allocInfo = {
+    const VkMemoryAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize = memRequirements.size,
         .memoryTypeIndex = propertyManager.findMemoryType(memRequirements.memoryTypeBits, properties)
@@ -200,10 +196,6 @@ void LogicalDevice::createSampler(Sampler* sampler) const {
 }
 
 LogicalDevice::~LogicalDevice() {
-    vkDestroyCommandPool(_device, _graphicsCommandPool, nullptr);
-    vkDestroyCommandPool(_device, _presentCommandPool, nullptr);
-    vkDestroyCommandPool(_device, _computeCommandPool, nullptr);
-    vkDestroyCommandPool(_device, _transferCommandPool, nullptr);
     vkDestroyDevice(_device, nullptr);
 }
 
@@ -244,49 +236,4 @@ const VkQueue LogicalDevice::getComputeQueue() const {
 
 const VkQueue LogicalDevice::getTransferQueue() const {
     return _transferQueue;
-}
-
-const VkCommandPool LogicalDevice::getCommandPool(QueueType queueType) const {
-    switch (queueType) {
-    case QueueType::GRAPHICS:
-        return _graphicsCommandPool;
-    case QueueType::PRESENT:
-        return _presentCommandPool;
-    case QueueType::COMPUTE:
-        return _computeCommandPool;
-    case QueueType::TRANSFER:
-        return _transferCommandPool;
-    default:
-        return VK_NULL_HANDLE;
-    }
-}
-
-VkCommandPool LogicalDevice::createSingleSubmitCommandPool(uint32_t queueFamilyIndex) {
-    VkCommandPool commandPool;
-    VkCommandPoolCreateInfo poolInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-        .queueFamilyIndex = queueFamilyIndex
-    };
-
-    if (vkCreateCommandPool(_device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create graphics command pool!");
-    }
-
-    return commandPool;
-}
-
-const VkCommandPool LogicalDevice::getSingleSubmitCommandPool(QueueType queueType) const {
-    switch (queueType) {
-    case QueueType::GRAPHICS:
-        return _graphicsCommandPool;
-    case QueueType::PRESENT:
-        return _presentCommandPool;
-    case QueueType::COMPUTE:
-        return _computeCommandPool;
-    case QueueType::TRANSFER:
-        return _transferCommandPool;
-    default:
-        return _graphicsCommandPool;
-    }
 }

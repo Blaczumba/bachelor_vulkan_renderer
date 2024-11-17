@@ -19,21 +19,18 @@ public:
 
 	std::unique_ptr<CommandBuffer> createPrimaryCommandBuffer() const;
 	std::unique_ptr<CommandBuffer> createSecondaryCommandBuffer() const;
-	// std::vector<std::unique_ptr<CommandBuffer>> createCommandBuffers(uint32_t count) const;
 
 	const VkCommandPool getVkCommandPool() const;
-
-private:
 	const LogicalDevice& getLogicalDevice() const;
-	friend class CommandBuffer;
 };
 
 class CommandBuffer {
 	VkCommandBuffer _commandBuffer;
 
 	const CommandPool& _commandPool;
+
 public:
-	CommandBuffer(const CommandPool& commandPool, bool primary = true);
+	CommandBuffer(const CommandPool& commandPool, VkCommandBufferLevel level);
 	~CommandBuffer();
 	void resetCommandBuffer() const;
 	const VkCommandBuffer getVkCommandBuffer() const;
@@ -42,12 +39,12 @@ public:
 class SingleTimeCommandBuffer {
 	VkCommandBuffer _commandBuffer;
 	VkFence _fence;
-
-	const LogicalDevice& _logicalDevice;
 	const QueueType _queueType;
 
+	const CommandPool& _commandPool;
+
 public:
-	SingleTimeCommandBuffer(const LogicalDevice& logicalDevice, QueueType queueType = QueueType::GRAPHICS);
+	SingleTimeCommandBuffer(const CommandPool& commandPool, QueueType queueType = QueueType::GRAPHICS);
 	~SingleTimeCommandBuffer();
 
 	VkCommandBuffer getCommandBuffer() const;

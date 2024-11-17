@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const Renderpass& renderpass, const VkExtent2D& extent) {
+std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const CommandPool& commandPool, const Renderpass& renderpass, const VkExtent2D& extent) {
     const auto& attachments = renderpass.getAttachmentsLayout().getAttachments();
     std::vector<std::unique_ptr<Texture>> framebufferTextures;
     framebufferTextures.reserve(attachments.size());
@@ -19,10 +19,10 @@ std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const Renderp
             framebufferTextures.emplace_back(nullptr);
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            framebufferTextures.emplace_back(TextureFactory::createColorAttachment(logicalDevice, description.format, description.samples, extent));
+            framebufferTextures.emplace_back(TextureFactory::createColorAttachment(commandPool, description.format, description.samples, extent));
             break;
         case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            framebufferTextures.emplace_back(TextureFactory::createDepthAttachment(logicalDevice, description.format, description.samples, extent));
+            framebufferTextures.emplace_back(TextureFactory::createDepthAttachment(commandPool, description.format, description.samples, extent));
             break;
         default:
             std::runtime_error("failed to recognize final layout in the framebuffer!");

@@ -25,8 +25,8 @@ SingleApp::SingleApp()
     createShadowResources();
 
     VertexData<VertexP, uint16_t> vertexDataCube = TinyOBJLoaderVertex::extract<VertexP, uint16_t>(MODELS_PATH "cube.obj");
-    _vertexBufferCube = std::make_unique<VertexBuffer>(*_logicalDevice, vertexDataCube.vertices);
-    _indexBufferCube = std::make_unique<IndexBuffer>(*_logicalDevice, vertexDataCube.indices);
+    _vertexBufferCube = std::make_unique<VertexBuffer>(*_singleTimeCommandPool, vertexDataCube.vertices);
+    _indexBufferCube = std::make_unique<IndexBuffer>(*_singleTimeCommandPool, vertexDataCube.indices);
 
     createCommandBuffers();
 
@@ -56,15 +56,15 @@ void SingleApp::loadObjects() {
         const std::string normalPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0];
 
         if (!_uniformMap.contains(diffusePath)) {
-            _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, diffusePath, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
+            _textures.emplace_back(TextureFactory::create2DTextureImage(*_singleTimeCommandPool, diffusePath, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
             _uniformMap.emplace(std::make_pair(diffusePath, std::make_shared<UniformBufferTexture>(*_textures.back())));
         }
         if (!_uniformMap.contains(normalPath)) {
-            _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, normalPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
+            _textures.emplace_back(TextureFactory::create2DTextureImage(*_singleTimeCommandPool, normalPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
             _uniformMap.emplace(std::make_pair(normalPath, std::make_shared<UniformBufferTexture>(*_textures.back())));
         }
         if (!_uniformMap.contains(metallicRoughnessPath)) {
-            _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, metallicRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
+            _textures.emplace_back(TextureFactory::create2DTextureImage(*_singleTimeCommandPool, metallicRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
             _uniformMap.emplace(std::make_pair(metallicRoughnessPath, std::make_shared<UniformBufferTexture>(*_textures.back())));
         }
 
@@ -77,9 +77,9 @@ void SingleApp::loadObjects() {
         _objects.emplace_back("Object", e);
 
         MeshComponent msh;
-        msh.vertexBuffer = std::make_shared<VertexBuffer>(*_logicalDevice, _newVertexDataTBN[i].vertices);
-        msh.indexBuffer = std::make_shared<IndexBuffer>(*_logicalDevice, _newVertexDataTBN[i].indices);
-        msh.vertexBufferPrimitive = std::make_shared<VertexBuffer>(*_logicalDevice, pVertexData);
+        msh.vertexBuffer = std::make_shared<VertexBuffer>(*_singleTimeCommandPool, _newVertexDataTBN[i].vertices);
+        msh.indexBuffer = std::make_shared<IndexBuffer>(*_singleTimeCommandPool, _newVertexDataTBN[i].indices);
+        msh.vertexBufferPrimitive = std::make_shared<VertexBuffer>(*_singleTimeCommandPool, pVertexData);
         msh.aabb = createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model);
         _registry.addComponent<MeshComponent>(e, std::move(msh));
 
@@ -107,9 +107,9 @@ void SingleApp::loadObjects() {
 void SingleApp::createDescriptorSets() {
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
-    _textureCubemap = TextureFactory::createCubemap(*_logicalDevice, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
+    _textureCubemap = TextureFactory::createCubemap(*_singleTimeCommandPool, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
 
-    _shadowMap = TextureFactory::create2DShadowmap(*_logicalDevice, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
+    _shadowMap = TextureFactory::create2DShadowmap(*_singleTimeCommandPool, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
 
     _uniformBuffersObjects = std::make_unique<UniformBufferDynamic<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
     _uniformBuffersLight = std::make_unique<UniformBufferStruct<UniformBufferLight>>(*_logicalDevice);
@@ -169,7 +169,7 @@ void SingleApp::createPresentResources() {
     );
     _renderPass->create();
 
-    _framebufferTextures = createTexturesFromRenderpass(*_renderPass, extent);
+    _framebufferTextures = createTexturesFromRenderpass(*_singleTimeCommandPool, *_renderPass, extent);
     size_t swapchainImagesCount = _swapchain->getImages().size();
     _framebuffers.reserve(swapchainImagesCount);
     for (size_t i = 0; i < swapchainImagesCount; i++) {
@@ -237,7 +237,7 @@ SingleApp& SingleApp::getInstance() {
 void SingleApp::run() {
     updateUniformBuffer(_currentFrame);
     {
-        SingleTimeCommandBuffer handle(*_logicalDevice);
+        SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         recordShadowCommandBuffer(commandBuffer, 0);
     }
@@ -574,7 +574,7 @@ void SingleApp::recreateSwapChain() {
 
     _swapchain->recrete();
     _framebuffers.clear();
-    _framebufferTextures = createTexturesFromRenderpass(*_renderPass, extent);
+    _framebufferTextures = createTexturesFromRenderpass(*_singleTimeCommandPool, *_renderPass, extent);
     size_t swapchainImagesCount = _swapchain->getImages().size();
     _framebuffers.reserve(swapchainImagesCount);
     for (size_t i = 0; i < swapchainImagesCount; i++) {
