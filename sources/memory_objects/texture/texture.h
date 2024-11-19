@@ -8,16 +8,20 @@
 
 class LogicalDevice;
 
-enum class TextureType : uint8_t {
-	IMAGE_2D,
-	SHADOWMAP,
-	COLOR_ATTACHMENT,
-	DEPTH_ATTACHMENT,
-	CUBEMAP
-};
+
 
 struct Texture {
-	const TextureType _type;
+public:
+	enum class Type : uint8_t {
+		IMAGE_2D,
+		SHADOWMAP,
+		COLOR_ATTACHMENT,
+		DEPTH_ATTACHMENT,
+		CUBEMAP
+	};
+
+private:
+	const Type _type;
 
 	VkImage _image = VK_NULL_HANDLE;
 	VkDeviceMemory _memory = VK_NULL_HANDLE;
@@ -29,7 +33,7 @@ struct Texture {
 
 	const LogicalDevice& _logicalDevice;
 public:
-	Texture(const LogicalDevice& logicalDevice, TextureType type, const VkImage image, const VkDeviceMemory memory, const ImageParameters& imageParameters, const VkImageView view = VK_NULL_HANDLE, const VkSampler sampler = VK_NULL_HANDLE, const SamplerParameters& samplerParameters = {});
+	Texture(const LogicalDevice& logicalDevice, Texture::Type type, const VkImage image, const VkDeviceMemory memory, const ImageParameters& imageParameters, const VkImageView view = VK_NULL_HANDLE, const VkSampler sampler = VK_NULL_HANDLE, const SamplerParameters& samplerParameters = {});
 	~Texture();
 
 	void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);

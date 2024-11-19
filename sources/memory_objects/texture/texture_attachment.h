@@ -3,7 +3,7 @@
 #include "command_buffer/command_buffer.h"
 #include "logical_device/logical_device.h"
 
-std::unique_ptr<Texture> createAttachment(const CommandPool& commandPool, VkImageLayout dstLayout, TextureType type, ImageParameters&& imageParams) {
+std::unique_ptr<Texture> createAttachment(const CommandPool& commandPool, VkImageLayout dstLayout, Texture::Type type, ImageParameters&& imageParams) {
     const LogicalDevice& logicalDevice = commandPool.getLogicalDevice();
 
     const VkImage image = logicalDevice.createImage(imageParams);

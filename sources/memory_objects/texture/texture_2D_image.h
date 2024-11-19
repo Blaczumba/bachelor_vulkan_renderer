@@ -59,5 +59,5 @@ std::unique_ptr<Texture> create2DImage(const CommandPool& commandPool, std::stri
 
     const VkImageView view = logicalDevice.createImageView(image, imageParams);
     const VkSampler sampler = logicalDevice.createSampler(samplerParams);
-    return std::make_unique<Texture>(logicalDevice, TextureType::IMAGE_2D, image, memory, imageParams, view, sampler, samplerParams);
+    return std::make_unique<Texture>(logicalDevice, Texture::Type::IMAGE_2D, image, memory, imageParams, view, sampler, samplerParams);
 }

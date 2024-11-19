@@ -33,7 +33,7 @@ public:
 	}
 
 	uint32_t getColorAttachmentsCount() const {
-		return std::count_if(_attachments.cbegin(), _attachments.cend(), [](const Attachment& attachment) { return attachment.getAttachmentRefType() == Attachment::Type::COLOR_ATTACHMENT; });
+		return std::count_if(_attachments.cbegin(), _attachments.cend(), [](const Attachment& attachment) { return attachment.getAttachmentType() == Attachment::Type::COLOR_ATTACHMENT; });
 	}
 };
 

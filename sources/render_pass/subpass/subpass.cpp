@@ -28,7 +28,7 @@ void Subpass::addSubpassOutputAttachment(uint32_t attachmentBinding) {
         .layout = attachment.getSubpassImageLayout()
     };
 
-    switch (attachment.getAttachmentRefType()) {
+    switch (attachment.getAttachmentType()) {
     case Attachment::Type::COLOR_ATTACHMENT:
         _colorAttachmentRefs.push_back(attachmentReference);
         break;

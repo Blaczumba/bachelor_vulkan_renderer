@@ -18,5 +18,5 @@ std::unique_ptr<Texture> createShadowMap(const CommandPool& commandPool, ImagePa
 
     const VkImageView view = logicalDevice.createImageView(image, imageParams);
     const VkSampler sampler = logicalDevice.createSampler(samplerParams);
-    return std::make_unique<Texture>(logicalDevice, TextureType::SHADOWMAP, image, memory, imageParams, view, sampler, samplerParams);
+    return std::make_unique<Texture>(logicalDevice, Texture::Type::SHADOWMAP, image, memory, imageParams, view, sampler, samplerParams);
 }

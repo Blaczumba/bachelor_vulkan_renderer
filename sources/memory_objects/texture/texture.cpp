@@ -3,7 +3,7 @@
 #include "logical_device/logical_device.h"
 #include "memory_objects/buffers.h"
 
-Texture::Texture(const LogicalDevice& logicalDevice, TextureType type, const VkImage image, const VkDeviceMemory memory, const ImageParameters& imageParameters, const VkImageView view, const VkSampler sampler, const SamplerParameters& samplerParameters)
+Texture::Texture(const LogicalDevice& logicalDevice, Texture::Type type, const VkImage image, const VkDeviceMemory memory, const ImageParameters& imageParameters, const VkImageView view, const VkSampler sampler, const SamplerParameters& samplerParameters)
     : _logicalDevice(logicalDevice), _type(type), _image(image), _memory(memory), _imageParameters(imageParameters), _view(view), _sampler(sampler), _samplerParameters(samplerParameters) {
 
 }

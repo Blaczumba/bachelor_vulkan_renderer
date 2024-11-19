@@ -90,5 +90,5 @@ std::unique_ptr<Texture> createIamgeCubemap(const CommandPool& commandPool, std:
 
 	const VkImageView view = logicalDevice.createImageView(image, imageParams);
 	const VkSampler sampler = logicalDevice.createSampler(samplerParams);
-	return std::make_unique<Texture>(logicalDevice, TextureType::CUBEMAP, image, memory, imageParams, view, sampler, samplerParams);
+	return std::make_unique<Texture>(logicalDevice, Texture::Type::CUBEMAP, image, memory, imageParams, view, sampler, samplerParams);
 }
