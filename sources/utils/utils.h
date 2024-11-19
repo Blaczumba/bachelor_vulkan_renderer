@@ -9,3 +9,4 @@
 #include <memory>
 
 std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const CommandPool& commandPool, const Renderpass& renderpass, const VkExtent2D& extent);
+std::vector<VkImageView> combineViewsForFramebuffer(const std::vector<std::unique_ptr<Texture>>& attachments, const VkImageView view);

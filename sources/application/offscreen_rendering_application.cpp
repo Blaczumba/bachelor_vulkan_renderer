@@ -163,12 +163,12 @@ void OffscreenRendering::createPresentResources() {
     );
     _renderPass->create();
 
-    _framebufferTextures = createTexturesFromRenderpass(*_renderPass, extent);
-    size_t swapchainImagesCount = _swapchain->getImages().size();
+    _framebufferTextures = createTexturesFromRenderpass(*_singleTimeCommandPool, *_renderPass, extent);
+    const std::vector<VkImageView>& swapchainViews = _swapchain->getVkImageViews();
+    size_t swapchainImagesCount = _swapchain->getImagesCount();
+    _framebuffers.reserve(swapchainImagesCount);
     for (size_t i = 0; i < swapchainImagesCount; i++) {
-        std::vector<VkImageView> imageViews;
-        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
-        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
+        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, combineViewsForFramebuffer(_framebufferTextures, swapchainViews[i])));
     }
 
     GraphicsPipelineParameters parameters;
@@ -204,7 +204,7 @@ void OffscreenRendering::createOffscreenResources() {
     _lowResRenderPass->create();
 
     _lowResFramebufferTextures = createTexturesFromRenderpass(*_lowResRenderPass, lowResExtent);
-    size_t swapchainImagesCount = _swapchain->getImages().size();
+    size_t swapchainImagesCount = _swapchain->getImagesCount();
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
         std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture->getImage().view; });
@@ -633,19 +633,10 @@ void OffscreenRendering::recreateSwapChain() {
 
     _framebuffers.clear();
     _framebufferTextures = std::move(createTexturesFromRenderpass(*_renderPass, extent));
-    size_t swapchainImagesCount = _swapchain->getImages().size();
+    size_t swapchainImagesCount = _swapchain->getImagesCount();
     for (size_t i = 0; i < swapchainImagesCount; i++) {
         std::vector<VkImageView> imageViews;
         std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
-    }
-
-    _lowResFramebuffers.clear();
-    extent = { extent.width / 4, extent.height / 4 };
-    _lowResFramebufferTextures = std::move(createTexturesFromRenderpass(*_lowResRenderPass, extent));
-    for (size_t i = 0; i < swapchainImagesCount; i++) {
-        std::vector<VkImageView> imageViews;
-        std::transform(_lowResFramebufferTextures.cbegin(), _lowResFramebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
-        _lowResFramebuffers.emplace_back(std::make_unique<Framebuffer>(*_lowResRenderPass, extent, imageViews));
     }
 }

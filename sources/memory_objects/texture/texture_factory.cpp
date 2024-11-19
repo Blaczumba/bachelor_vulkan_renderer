@@ -9,29 +9,29 @@
 #include <array>
 
 std::unique_ptr<Texture> TextureFactory::createCubemap(const CommandPool& commandPool, std::string_view filePath, VkFormat format, float samplerAnisotropy) {
-	return std::make_unique<TextureCubemap>(commandPool, filePath,
-        Image{
+	return createIamgeCubemap(commandPool, filePath,
+        ImageParameters{
 		    .format = format,
 		    .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
 		    .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		    .layerCount = 6u
 	    },
-        Sampler{
+        SamplerParameters{
 		    .maxAnisotropy = samplerAnisotropy
 	    }
     );
 }
 
 std::unique_ptr<Texture> TextureFactory::create2DShadowmap(const CommandPool& commandPool, uint32_t width, uint32_t height, VkFormat format) {
-    return std::make_unique<Texture2DShadow>(commandPool,
-        Image{
+    return createShadowMap(commandPool,
+        ImageParameters{
             .format = format,
             .width = width,
             .height = height,
             .aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
             .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
         },
-        Sampler{
+        SamplerParameters{
             .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
             .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
             .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
@@ -42,20 +42,20 @@ std::unique_ptr<Texture> TextureFactory::create2DShadowmap(const CommandPool& co
 }
 
 std::unique_ptr<Texture> TextureFactory::create2DTextureImage(const CommandPool& commandPool, std::string_view texturePath, VkFormat format, float samplerAnisotropy) {
-    return std::make_unique<Texture2DImage>(commandPool, texturePath,
-        Image{
+    return create2DImage(commandPool, texturePath,
+        ImageParameters{
             .format = format, .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
             .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
         },
-        Sampler{
+        SamplerParameters{
             .maxAnisotropy = samplerAnisotropy
         }
     );
 }
 
 std::unique_ptr<Texture> TextureFactory::createColorAttachment(const CommandPool& commandPool, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
-    return std::make_unique<TextureAttachment>(commandPool, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        Image{
+    return createAttachment(commandPool, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, TextureType::COLOR_ATTACHMENT,
+        ImageParameters{
             .format = format,
             .width = extent.width,
             .height = extent.height,
@@ -79,8 +79,8 @@ bool hasStencil(VkFormat format) {
 
 std::unique_ptr<Texture> TextureFactory::createDepthAttachment(const CommandPool& commandPool, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
     const VkImageAspectFlags aspect = hasStencil(format) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
-    return std::make_unique<TextureAttachment>(commandPool, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        Image{
+    return createAttachment(commandPool, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, TextureType::DEPTH_ATTACHMENT,
+        ImageParameters{
             .format = format,
             .width = extent.width,
             .height = extent.height,

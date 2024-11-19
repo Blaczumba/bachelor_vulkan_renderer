@@ -93,106 +93,118 @@ void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Vk
     vkBindBufferMemory(_device, buffer, bufferMemory, 0);
 }
 
-void LogicalDevice::createImage(Image* image) const {
+const VkImage LogicalDevice::createImage(const ImageParameters& params) const {
     VkImageCreateInfo imageInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = image->format,
+        .format = params.format,
         .extent = { 
-            .width = image->width,
-            .height = image->height,
+            .width = params.width,
+            .height = params.height,
             .depth = 1
         },
-        .mipLevels = image->mipLevels,
-        .arrayLayers = image->layerCount,
-        .samples = image->numSamples,
-        .tiling = image->tiling,
-        .usage = image->usage,
+        .mipLevels = params.mipLevels,
+        .arrayLayers = params.layerCount,
+        .samples = params.numSamples,
+        .tiling = params.tiling,
+        .usage = params.usage,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        .initialLayout = image->layout
+        .initialLayout = params.layout
     };
 
-    if (image->layerCount == 6)
+    if (params.layerCount == 6)
         imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-    if (vkCreateImage(_device, &imageInfo, nullptr, &image->image) != VK_SUCCESS) {
+    VkImage image;
+    if (vkCreateImage(_device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
     }
+    return image;
+}
 
+const VkDeviceMemory LogicalDevice::createImageMemory(const VkImage image, const ImageParameters& params) const {
     const auto& propertyManager = _physicalDevice.getPropertyManager();
 
     VkMemoryRequirements memRequirements;
-    vkGetImageMemoryRequirements(_device, image->image, &memRequirements);
+    vkGetImageMemoryRequirements(_device, image, &memRequirements);
 
-    VkMemoryAllocateInfo allocInfo = {
+    const VkMemoryAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize = memRequirements.size,
-        .memoryTypeIndex = propertyManager.findMemoryType(memRequirements.memoryTypeBits, image->properties)
+        .memoryTypeIndex = propertyManager.findMemoryType(memRequirements.memoryTypeBits, params.properties)
     };
 
-    if (vkAllocateMemory(_device, &allocInfo, nullptr, &image->memory) != VK_SUCCESS) {
+    VkDeviceMemory memory;
+    if (vkAllocateMemory(_device, &allocInfo, nullptr, &memory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate image memory!");
     }
 
-    vkBindImageMemory(_device, image->image, image->memory, 0);
+    vkBindImageMemory(_device, image, memory, 0);
+    return memory;
 }
 
-void LogicalDevice::createImageView(Image* image) const {
-    VkImageSubresourceRange range = {
-        .aspectMask = image->aspect,
+const VkImageView LogicalDevice::createImageView(const VkImage image, const ImageParameters& params) const {
+    const VkImageSubresourceRange range = {
+        .aspectMask = params.aspect,
         .baseMipLevel = 0,
-        .levelCount = image->mipLevels,
+        .levelCount = params.mipLevels,
         .baseArrayLayer = 0,
-        .layerCount = image->layerCount
+        .layerCount = params.layerCount
     };
 
-    VkImageViewType viewType = (image->layerCount == 6) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+    const VkImageViewType viewType = (params.layerCount == 6) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
 
-    VkImageViewCreateInfo viewInfo = {
+    const VkImageViewCreateInfo viewInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = image->image,
+        .image = image,
         .viewType = viewType,
-        .format = image->format,
+        .format = params.format,
         .subresourceRange = range
     };
 
-    if (vkCreateImageView(_device, &viewInfo, nullptr, &image->view) != VK_SUCCESS) {
+    VkImageView view;
+    if (vkCreateImageView(_device, &viewInfo, nullptr, &view) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image view!");
     }
+
+    return view;
 }
 
-void LogicalDevice::createSampler(Sampler* sampler) const {
+const VkSampler LogicalDevice::createSampler(const SamplerParameters& params) const {
     VkSamplerCreateInfo samplerInfo = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter = sampler->magFilter,
-        .minFilter = sampler->minFilter,
-        .mipmapMode = sampler->mipmapMode,
-        .addressModeU = sampler->addressModeU,
-        .addressModeV = sampler->addressModeV,
-        .addressModeW = sampler->addressModeW,
-        .mipLodBias = sampler->mipLodBias,
-        .minLod = sampler->minLod,
-        .maxLod = sampler->maxLod,
-        .borderColor = sampler->borderColor,
-        .unnormalizedCoordinates = sampler->unnormalizedCoordinates,
+        .magFilter = params.magFilter,
+        .minFilter = params.minFilter,
+        .mipmapMode = params.mipmapMode,
+        .addressModeU = params.addressModeU,
+        .addressModeV = params.addressModeV,
+        .addressModeW = params.addressModeW,
+        .mipLodBias = params.mipLodBias,
+        .minLod = params.minLod,
+        .maxLod = params.maxLod,
+        .borderColor = params.borderColor,
+        .unnormalizedCoordinates = params.unnormalizedCoordinates,
     };
 
-    if (sampler->maxAnisotropy.has_value()) {
+    if (params.maxAnisotropy.has_value()) {
         samplerInfo.anisotropyEnable = VK_TRUE;
-        samplerInfo.maxAnisotropy = sampler->maxAnisotropy.value();
+        samplerInfo.maxAnisotropy = params.maxAnisotropy.value();
     }
 
-    if (sampler->compareOp.has_value()) {
+    if (params.compareOp.has_value()) {
         samplerInfo.compareEnable = VK_TRUE;
-        samplerInfo.compareOp = sampler->compareOp.value();
+        samplerInfo.compareOp = params.compareOp.value();
     }
     else {
         samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
     }
 
-    if (vkCreateSampler(_device, &samplerInfo, nullptr, &sampler->sampler) != VK_SUCCESS) {
+    VkSampler sampler;
+    if (vkCreateSampler(_device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture sampler!");
     }
+
+    return sampler;
 }
 
 LogicalDevice::~LogicalDevice() {

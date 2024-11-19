@@ -30,13 +30,13 @@ SingleApp::SingleApp()
 
     createCommandBuffers();
 
-    _screenshot = std::make_unique<Screenshot>(*_logicalDevice);
-    _screenshot->addImageToObserved(_framebufferTextures[1]->getImage(), "hig_res_screenshot.ppm");
+    //_screenshot = std::make_unique<Screenshot>(*_logicalDevice);
+    //_screenshot->addImageToObserved(_framebufferTextures[1]->getImage(), "hig_res_screenshot.ppm");
     _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 100.0f);
 
     _callbackManager = std::make_unique<FPSCallbackManager>(_window.get());
     _callbackManager->attach(_camera.get());
-    _callbackManager->attach(_screenshot.get());
+    //_callbackManager->attach(_screenshot.get());
 
     createSyncObjects();
 }
@@ -168,15 +168,13 @@ void SingleApp::createPresentResources() {
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
     );
     _renderPass->create();
-
     _framebufferTextures = createTexturesFromRenderpass(*_singleTimeCommandPool, *_renderPass, extent);
-    size_t swapchainImagesCount = _swapchain->getImages().size();
+
+    const std::vector<VkImageView>& swapchainViews = _swapchain->getVkImageViews();
+    size_t swapchainImagesCount = _swapchain->getImagesCount();
     _framebuffers.reserve(swapchainImagesCount);
     for (size_t i = 0; i < swapchainImagesCount; i++) {
-        std::vector<VkImageView> imageViews;
-        imageViews.reserve(_framebufferTextures.size());
-        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
-        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
+        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, combineViewsForFramebuffer(_framebufferTextures, swapchainViews[i])));
     }
 
     {
@@ -210,7 +208,7 @@ void SingleApp::createShadowResources() {
     _shadowRenderPass->addSubpass(subpass);
     _shadowRenderPass->create();
 
-    std::vector<VkImageView> imageViews = { _shadowMap->getImage().view };
+    std::vector<VkImageView> imageViews = { _shadowMap->getVkImageView() };
     _shadowFramebuffer = std::make_unique<Framebuffer>(*_shadowRenderPass, extent, imageViews);
 
     GraphicsPipelineParameters parameters;
@@ -516,7 +514,7 @@ void SingleApp::recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_
     //    throw std::runtime_error("failed to begin recording command buffer!");
     //}
 
-    VkExtent2D extent = { _shadowMap->getImage().width, _shadowMap->getImage().height };
+    VkExtent2D extent = _shadowMap->getVkExtent2D();
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = _shadowRenderPass->getVkRenderPass();
@@ -575,12 +573,10 @@ void SingleApp::recreateSwapChain() {
     _swapchain->recrete();
     _framebuffers.clear();
     _framebufferTextures = createTexturesFromRenderpass(*_singleTimeCommandPool, *_renderPass, extent);
-    size_t swapchainImagesCount = _swapchain->getImages().size();
+    const std::vector<VkImageView>& swapchainViews = _swapchain->getVkImageViews();
+    size_t swapchainImagesCount = _swapchain->getImagesCount();
     _framebuffers.reserve(swapchainImagesCount);
     for (size_t i = 0; i < swapchainImagesCount; i++) {
-        std::vector<VkImageView> imageViews;
-        imageViews.reserve(_framebufferTextures.size());
-        std::transform(_framebufferTextures.cbegin(), _framebufferTextures.cend(), std::back_inserter(imageViews), [this, i](const std::unique_ptr<Texture>& texture) { return texture ? texture->getImage().view : _swapchain->getImages()[i].getImage().view; });
-        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, imageViews));
+        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, combineViewsForFramebuffer(_framebufferTextures, swapchainViews[i])));
     }
 }

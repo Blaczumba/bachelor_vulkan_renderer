@@ -10,9 +10,6 @@
 #include "entity_component_system/system/movement_system.h"
 #include "memory_objects/index_buffer.h"
 #include "memory_objects/texture/texture.h"
-#include "memory_objects/texture/texture_2D_image.h"
-#include "memory_objects/texture/texture_2D_shadow.h"
-#include "memory_objects/texture/texture_cubemap.h"
 #include "memory_objects/uniform_buffer/push_constants.h"
 #include "memory_objects/uniform_buffer/uniform_buffer.h"
 #include "memory_objects/vertex_buffer.h"
@@ -77,7 +74,7 @@ class SingleApp : public ApplicationBase {
 
     std::unique_ptr<DescriptorSet> _descriptorSetSkybox;
     std::unique_ptr<DescriptorSet> _descriptorSetShadow;
-    std::unique_ptr<Screenshot> _screenshot;
+    // std::unique_ptr<Screenshot> _screenshot;
 
     std::unique_ptr<CallbackManager> _callbackManager;
     std::unique_ptr<FPSCamera> _camera;

@@ -3,12 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 
-void transitionImageLayout(VkCommandBuffer commandBuffer, Image* image, VkImageLayout newLayout) {
-    transitionLayout(commandBuffer, image->image, image->layout, newLayout, image->aspect, image->mipLevels, image->layerCount);
-    image->layout = newLayout;
-}
-
-void transitionLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t layerCount) {
+void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t layerCount) {
     VkImageSubresourceRange range{};
     range.aspectMask        = aspectFlags;
     range.baseMipLevel      = 0;
@@ -271,13 +266,7 @@ void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage d
         &imageCopyRegion);
 }
 
-void generateImageMipmaps(VkCommandBuffer commandBuffer, Image* image, VkImageLayout finalLayout) {
-    generateMipmaps(commandBuffer, image->image, image->format, finalLayout, image->width, image->height, image->mipLevels, image->layerCount);
-    image->layout = finalLayout;
-}
-
-void generateMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat imageFormat, VkImageLayout finalLayout, int32_t texWidth, int32_t texHeight, uint32_t mipLevels, uint32_t layerCount) {
-
+void generateImageMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat imageFormat, VkImageLayout finalLayout, int32_t texWidth, int32_t texHeight, uint32_t mipLevels, uint32_t layerCount) {
     VkImageMemoryBarrier barrier{};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.image = image;

@@ -2,10 +2,12 @@
 
 #include "logical_device/logical_device.h"
 #include "subpass/subpass.h"
+#include "memory_objects/texture/texture_factory.h"
 
 #include <memory>
 #include <vector>
 
+class CommandPool;
 class LogicalDevice;
 
 class Renderpass {
@@ -30,6 +32,6 @@ public:
 
 	void addSubpass(const Subpass& subpass);
 	void addDependency(uint32_t srcSubpassIndex, uint32_t dstSubpassIndex, VkPipelineStageFlags srcStageMask, VkAccessFlags srcAccessMask, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask);
-
+	std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const CommandPool& commandPool, const VkExtent2D& extent);
 	const LogicalDevice& getLogicalDevice() const;
 };

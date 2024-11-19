@@ -34,7 +34,7 @@ class UniformBufferTexture : public UniformBuffer {
 public:
 	UniformBufferTexture(const Texture& texture) 
 		: UniformBuffer(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER), _texture(texture), 
-		_imageInfo{ texture.getSampler().sampler, texture.getImage().view, texture.getImage().layout } {
+		_imageInfo{ texture.getVkSampler(), texture.getVkImageView(), texture.getImageParameters().layout } {
 
 	}
 

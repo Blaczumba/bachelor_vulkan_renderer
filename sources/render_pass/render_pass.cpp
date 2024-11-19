@@ -71,6 +71,32 @@ void Renderpass::addDependency(uint32_t srcSubpassIndex, uint32_t dstSubpassInde
     _subpassDepencies.push_back(dependency);
 }
 
+std::vector<std::unique_ptr<Texture>> Renderpass::createTexturesFromRenderpass(const CommandPool& commandPool, const VkExtent2D& extent) {
+    const auto& attachments = _attachmentsLayout.getAttachments();
+    std::vector<std::unique_ptr<Texture>> framebufferTextures;
+    framebufferTextures.reserve(attachments.size());
+
+    for (size_t i = 0; i < attachments.size(); i++) {
+        const VkAttachmentDescription& description = attachments[i].getDescription();
+        switch (description.finalLayout) {
+
+        case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+            framebufferTextures.emplace_back(nullptr);
+            break;
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+            framebufferTextures.emplace_back(TextureFactory::createColorAttachment(commandPool, description.format, description.samples, extent));
+            break;
+        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+            framebufferTextures.emplace_back(TextureFactory::createDepthAttachment(commandPool, description.format, description.samples, extent));
+            break;
+        default:
+            std::runtime_error("failed to recognize final layout in the framebuffer!");
+        }
+    }
+
+    return framebufferTextures;
+}
+
 const LogicalDevice& Renderpass::getLogicalDevice() const {
     return _logicalDevice;
 }

@@ -28,9 +28,10 @@ public:
 
 	const VkCommandPool getCommandPool(QueueType queueType) const;
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) const;
-	void createImage(Image* image) const;
-	void createImageView(Image* image) const;
-	void createSampler(Sampler* sampler) const;
+	const VkImage createImage(const ImageParameters& params) const;
+	const VkDeviceMemory createImageMemory(const VkImage image, const ImageParameters& params) const;
+	const VkImageView createImageView(const VkImage image, const ImageParameters& params) const;
+	const VkSampler createSampler(const SamplerParameters& params) const;
 
 	const VkDevice getVkDevice() const;
 	const PhysicalDevice& getPhysicalDevice() const;

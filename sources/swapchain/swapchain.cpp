@@ -24,24 +24,31 @@ const VkSwapchainKHR Swapchain::getVkSwapchain() const {
 }
 
 VkExtent2D Swapchain::getExtent() const {
-    return { _images.at(0).getImage().width, _images.at(0).getImage().height };
+    return _extent;
 }
 
 const VkFormat Swapchain::getVkFormat() const {
-    return _images.at(0).getImage().format;
+    return _surfaceFormat.format;
 }
 
-const std::vector<Texture>& Swapchain::getImages() const {
-    return _images;
+uint32_t Swapchain::getImagesCount() const {
+    return _swapchainContainer.images.size();
+}
+
+const std::vector<VkImage>& Swapchain::getVkImages() const {
+    return _swapchainContainer.images;
+}
+
+const std::vector<VkImageView>& Swapchain::getVkImageViews() const {
+    return _swapchainContainer.views;
 }
 
 void Swapchain::cleanup() {
     VkDevice device = _logicalDevice.getVkDevice();
 
-    for (auto& image : _images) {
-        vkDestroyImageView(device, image.getImage().view, nullptr);
+    for (const VkImageView view : _swapchainContainer.views) {
+        vkDestroyImageView(device, view, nullptr);
     }
-    _images.clear();
 
     vkDestroySwapchainKHR(device, _swapchain, nullptr);
 }
@@ -51,13 +58,11 @@ void Swapchain::create() {
 
     const SwapChainSupportDetails swapChainSupport = propertyManager.getSwapChainSupportDetails();
     const VkDevice device = _logicalDevice.getVkDevice();
-    const VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_R8G8B8A8_SRGB);
     const VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_MAILBOX_KHR);
     const Window& window = _logicalDevice.getPhysicalDevice().getWindow();
-    const VkExtent2D windowExtent = window.getFramebufferSize();
-    std::vector<VkImage> images;
 
-    VkExtent2D extent = chooseSwapExtent({ windowExtent.width, windowExtent.height }, swapChainSupport.capabilities);
+    _surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_R8G8B8A8_SRGB);
+    _extent = chooseSwapExtent(window.getFramebufferSize(), swapChainSupport.capabilities);
 
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
     if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
@@ -69,9 +74,9 @@ void Swapchain::create() {
     createInfo.surface = window.getVkSurfaceKHR();
 
     createInfo.minImageCount = imageCount;
-    createInfo.imageFormat = surfaceFormat.format;
-    createInfo.imageColorSpace = surfaceFormat.colorSpace;
-    createInfo.imageExtent = extent;
+    createInfo.imageFormat = _surfaceFormat.format;
+    createInfo.imageColorSpace = _surfaceFormat.colorSpace;
+    createInfo.imageExtent = _extent;
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -97,23 +102,20 @@ void Swapchain::create() {
     }
 
     vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, nullptr);
-    images.resize(imageCount);
-    vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, images.data());
+    _swapchainContainer.images.resize(imageCount);
+    _swapchainContainer.views.resize(imageCount);
+    vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, _swapchainContainer.images.data());
 
-    _images.reserve(imageCount);
-    std::transform(images.cbegin(), images.cend(), std::back_inserter(_images),
-        [&](VkImage image) {
-            Image img {
-                .format = surfaceFormat.format,
-                .width = extent.width,
-                .height = extent.height,
-                .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-                .image = image,
-            };
-            _logicalDevice.createImageView(&img);
-
-            return Texture(img);
+    std::transform(_swapchainContainer.images.cbegin(), _swapchainContainer.images.cend(), _swapchainContainer.views.begin(),
+        [this](const VkImage image) {
+            return _logicalDevice.createImageView(image, ImageParameters{
+                    .format = _surfaceFormat.format,
+                    .width = _extent.width,
+                    .height = _extent.height,
+                    .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                    .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+                }
+            );
         }
     );
 }

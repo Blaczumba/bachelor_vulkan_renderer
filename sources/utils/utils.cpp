@@ -31,3 +31,11 @@ std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const Command
 
     return framebufferTextures;
 }
+
+
+std::vector<VkImageView> combineViewsForFramebuffer(const std::vector<std::unique_ptr<Texture>>& attachments, const VkImageView view) {
+    std::vector<VkImageView> views;
+    std::transform(attachments.cbegin(), attachments.cend(), std::back_inserter(views),
+        [view](const std::unique_ptr<Texture>& texture) { return texture != nullptr ? texture->getVkImageView() : view; });
+    return views;
+}
