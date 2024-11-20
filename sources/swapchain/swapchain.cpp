@@ -32,21 +32,21 @@ const VkFormat Swapchain::getVkFormat() const {
 }
 
 uint32_t Swapchain::getImagesCount() const {
-    return _swapchainContainer.images.size();
+    return _images.size();
 }
 
 const std::vector<VkImage>& Swapchain::getVkImages() const {
-    return _swapchainContainer.images;
+    return _images;
 }
 
 const std::vector<VkImageView>& Swapchain::getVkImageViews() const {
-    return _swapchainContainer.views;
+    return _views;
 }
 
 void Swapchain::cleanup() {
     VkDevice device = _logicalDevice.getVkDevice();
 
-    for (const VkImageView view : _swapchainContainer.views) {
+    for (const VkImageView view : _views) {
         vkDestroyImageView(device, view, nullptr);
     }
 
@@ -102,11 +102,11 @@ void Swapchain::create() {
     }
 
     vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, nullptr);
-    _swapchainContainer.images.resize(imageCount);
-    _swapchainContainer.views.resize(imageCount);
-    vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, _swapchainContainer.images.data());
+    _images.resize(imageCount);
+    _views.resize(imageCount);
+    vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, _images.data());
 
-    std::transform(_swapchainContainer.images.cbegin(), _swapchainContainer.images.cend(), _swapchainContainer.views.begin(),
+    std::transform(_images.cbegin(), _images.cend(), _views.begin(),
         [this](const VkImage image) {
             return _logicalDevice.createImageView(image, ImageParameters{
                     .format = _surfaceFormat.format,

@@ -11,20 +11,14 @@ class LogicalDevice;
 class PhysicalDevice;
 class Texture;
 
-namespace {
-	struct SwapchainImages {
-		std::vector<VkImage> images;
-		std::vector<VkImageView> views;
-	};
-}
-
 class Swapchain {
 	VkSwapchainKHR _swapchain;
 	const LogicalDevice& _logicalDevice;
 
 	VkSurfaceFormatKHR _surfaceFormat;
 	VkExtent2D _extent;
-	SwapchainImages _swapchainContainer;
+	std::vector<VkImage> _images;
+	std::vector<VkImageView> _views;
 
 public:
 	Swapchain(const LogicalDevice& logicalDevice);

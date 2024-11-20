@@ -26,7 +26,6 @@ public:
 	LogicalDevice(const PhysicalDevice& physicalDevice);
 	~LogicalDevice();
 
-	const VkCommandPool getCommandPool(QueueType queueType) const;
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) const;
 	const VkImage createImage(const ImageParameters& params) const;
 	const VkDeviceMemory createImageMemory(const VkImage image, const ImageParameters& params) const;
