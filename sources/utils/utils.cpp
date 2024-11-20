@@ -1,6 +1,7 @@
 #include "utils.h"
 
 #include "memory_objects/texture/texture_factory.h"
+#include "render_pass/attachment/attachment_layout.h"
 
 #include <stdexcept>
 

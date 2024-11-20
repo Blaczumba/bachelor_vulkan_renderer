@@ -3,6 +3,7 @@
 #include "logical_device/logical_device.h"
 #include "subpass/subpass.h"
 #include "memory_objects/texture/texture_factory.h"
+#include "render_pass/attachment/attachment_layout.h"
 
 #include <memory>
 #include <vector>

@@ -1,5 +1,7 @@
 #include "subpass.h"
 
+#include "render_pass/attachment/attachment_layout.h"
+
 #include <stdexcept>
 
 Subpass::Subpass(const AttachmentLayout& layout) : _layout(layout) {}

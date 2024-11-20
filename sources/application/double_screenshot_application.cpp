@@ -9,6 +9,7 @@
 #include "entity_component_system/component/transform.h"
 #include "entity_component_system/component/velocity.h"
 #include "render_pass/attachment/attachment_factory.h"
+#include "render_pass/attachment/attachment_layout.h"
 #include "thread_pool/thread_pool.h"
 #include "utils/utils.h"
 

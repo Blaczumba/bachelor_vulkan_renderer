@@ -1,5 +1,7 @@
 #include "render_pass.h"
 
+#include "render_pass/attachment/attachment_layout.h"
+
 #include <iostream>
 #include <stdexcept>
 
