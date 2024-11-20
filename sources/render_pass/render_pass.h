@@ -17,7 +17,6 @@ class Renderpass {
 
 	std::vector<Subpass> _subpasses;
 	std::vector<VkSubpassDependency> _subpassDepencies;
-	std::vector<VkClearValue> _clearValues;
 
 	const LogicalDevice& _logicalDevice;
 
@@ -28,7 +27,6 @@ public:
 	void cleanup();
 
 	const VkRenderPass getVkRenderPass() const;
-	const std::vector<VkClearValue>& getClearValues() const;
 	const AttachmentLayout& getAttachmentsLayout() const;
 
 	void addSubpass(const Subpass& subpass);

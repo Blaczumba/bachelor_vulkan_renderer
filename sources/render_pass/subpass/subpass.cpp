@@ -19,12 +19,10 @@ VkSubpassDescription Subpass::getVkSubpassDescription() const {
 }
 
 void Subpass::addSubpassOutputAttachment(uint32_t attachmentBinding) {
-    const auto& attachments = _layout.getAttachments();
-    if (attachments.size() <= attachmentBinding)
+    if (_layout.getAttachmentsCount() <= attachmentBinding)
         throw std::runtime_error("attachmentBinding is not a valid index in attachments vector!");
 
-    const Attachment attachment = attachments[attachmentBinding];
-
+    const Attachment& attachment = _layout.getAttachments()[attachmentBinding];
     const VkAttachmentReference attachmentReference = {
         .attachment = attachmentBinding,
         .layout = attachment.getSubpassImageLayout()
@@ -46,14 +44,12 @@ void Subpass::addSubpassOutputAttachment(uint32_t attachmentBinding) {
 }
 
 void Subpass::addSubpassInputAttachment(uint32_t attachmentBinding, VkImageLayout layout) {
-    const auto& attachments = _layout.getAttachments();
-    if (attachments.size() <= attachmentBinding)
+    if (_layout.getAttachmentsCount() <= attachmentBinding)
         throw std::runtime_error("attachmentBinding is not a valid index in attachments vector!");
 
     const VkAttachmentReference attachmentReference = {
         .attachment = attachmentBinding,
         .layout = layout
     };
-
     _inputAttachmentRefs.push_back(attachmentReference);
 }

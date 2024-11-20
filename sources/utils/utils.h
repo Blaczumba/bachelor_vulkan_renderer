@@ -3,7 +3,7 @@
 #include "command_buffer/command_buffer.h"
 #include "memory_objects/texture/texture.h"
 #include "render_pass/render_pass.h"
-#include "render_pass/framebuffer/framebuffer.h"
+#include "framebuffer/framebuffer.h"
 
 #include <vector>
 #include <memory>

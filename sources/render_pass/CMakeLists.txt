@@ -1,4 +1,3 @@
-add_subdirectory(framebuffer)
 add_subdirectory(attachment)
 add_subdirectory(subpass)
 

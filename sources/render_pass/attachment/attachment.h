@@ -11,7 +11,7 @@ public:
         DEPTH_ATTACHMENT
     };
 
-    VkClearValue getClearValue() const { return _clearValue; }
+    VkClearValue getVkClearValue() const { return _clearValue; }
     const VkAttachmentDescription& getDescription() const { return _description; }
     Type getAttachmentType() const { return _type; }
     VkImageLayout getSubpassImageLayout() const { return _subpassImageLayout; }

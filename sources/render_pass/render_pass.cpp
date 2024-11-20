@@ -2,18 +2,21 @@
 
 #include "render_pass/attachment/attachment_layout.h"
 
-#include <iostream>
+#include <algorithm>
+#include <iterator>
 #include <stdexcept>
 
 Renderpass::Renderpass(const LogicalDevice& logicalDevice, const AttachmentLayout& layout) 
     : _logicalDevice(logicalDevice), _attachmentsLayout(layout) {
-    _clearValues = _attachmentsLayout.getVkClearValues();
 }
 
 void Renderpass::create() {
     cleanup();
 
-    const std::vector<VkAttachmentDescription> attachmentDescriptions = _attachmentsLayout.getVkAttachmentDescriptions();
+    const std::vector<Attachment>& attachments = _attachmentsLayout.getAttachments();
+    std::vector<VkAttachmentDescription> attachmentDescriptions;
+    attachmentDescriptions.reserve(attachments.size());
+    std::transform(attachments.cbegin(), attachments.cend(), std::back_inserter(attachmentDescriptions), [](const Attachment& attachment) { return attachment.getDescription(); });
     std::vector<VkSubpassDescription> subpassDescriptions;
     subpassDescriptions.reserve(_subpasses.size());
     std::transform(_subpasses.cbegin(), _subpasses.cend(), std::back_inserter(subpassDescriptions), [](const Subpass& subpass) { return subpass.getVkSubpassDescription(); });
@@ -48,10 +51,6 @@ const VkRenderPass Renderpass::getVkRenderPass() const {
     return _renderpass;
 }
 
-const std::vector<VkClearValue>& Renderpass::getClearValues() const {
-    return _clearValues;
-}
-
 const AttachmentLayout& Renderpass::getAttachmentsLayout() const {
     return _attachmentsLayout;
 }
@@ -69,19 +68,19 @@ void Renderpass::addDependency(uint32_t srcSubpassIndex, uint32_t dstSubpassInde
         .srcAccessMask = srcAccessMask,
         .dstAccessMask = dstAccessMask
     };
-
     _subpassDepencies.push_back(dependency);
 }
 
 std::vector<std::unique_ptr<Texture>> Renderpass::createTexturesFromRenderpass(const CommandPool& commandPool, const VkExtent2D& extent) {
-    const auto& attachments = _attachmentsLayout.getAttachments();
+    const std::vector<Attachment>& attachments = _attachmentsLayout.getAttachments();
+    std::vector<VkAttachmentDescription> descriptions;
+    descriptions.reserve(attachments.size());
+    std::transform(attachments.cbegin(), attachments.cend(), std::back_inserter(descriptions), [](const Attachment& attachment) { return attachment.getDescription(); });
+    
     std::vector<std::unique_ptr<Texture>> framebufferTextures;
-    framebufferTextures.reserve(attachments.size());
-
-    for (size_t i = 0; i < attachments.size(); i++) {
-        const VkAttachmentDescription& description = attachments[i].getDescription();
+    framebufferTextures.reserve(descriptions.size());
+    for (const auto& description : descriptions) {
         switch (description.finalLayout) {
-
         case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
             framebufferTextures.emplace_back(nullptr);
             break;

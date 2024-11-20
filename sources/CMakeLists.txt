@@ -27,6 +27,7 @@ add_subdirectory(object)
 add_subdirectory(primitives)
 add_subdirectory(scene)
 add_subdirectory(thread_pool)
+add_subdirectory(framebuffer)
 
 add_compile_definitions(SHADERS_PATH="${CMAKE_SOURCE_DIR}/shaders/")
 add_compile_definitions(TEXTURES_PATH="${CMAKE_SOURCE_DIR}/assets/textures/")

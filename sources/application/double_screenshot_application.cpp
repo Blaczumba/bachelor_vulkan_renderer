@@ -419,7 +419,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         throw std::runtime_error("failed to begin recording command buffer!");
     }
 
-    const auto& clearValues = _renderPass->getClearValues();
+    const auto& clearValues = _renderPass->getAttachmentsLayout().getVkClearValues();
     const VkRenderPassBeginInfo renderPassInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = _renderPass->getVkRenderPass(),
@@ -524,7 +524,7 @@ void SingleApp::recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = extent;
 
-    const auto& clearValues = _shadowRenderPass->getClearValues();
+    const auto& clearValues = _shadowRenderPass->getAttachmentsLayout().getVkClearValues();
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassInfo.pClearValues = clearValues.data();
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);

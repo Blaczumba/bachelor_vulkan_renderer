@@ -15,7 +15,7 @@
 #include "memory_objects/vertex_buffer.h"
 #include "model_loader/obj_loader/obj_loader.h"
 #include "object/object.h"
-#include "render_pass/framebuffer/framebuffer.h"
+#include "framebuffer/framebuffer.h"
 #include "render_pass/render_pass.h"
 #include "scene/octree/octree.h"
 #include "screenshot/screenshot.h"

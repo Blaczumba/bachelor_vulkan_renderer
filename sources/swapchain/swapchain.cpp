@@ -1,6 +1,5 @@
 #include "swapchain.h"
 
-#include "features/swapchain_utils.h"
 #include "logical_device/logical_device.h"
 #include "memory_objects/texture/texture.h"
 #include "physical_device/physical_device.h"
@@ -9,6 +8,14 @@
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
+
+namespace {
+
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats, VkFormat preferredFormat);
+VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes, VkPresentModeKHR preferredMode);
+VkExtent2D chooseSwapExtent(VkExtent2D actualWindowExtent, const VkSurfaceCapabilitiesKHR& capabilities);
+
+}   // namespace
 
 Swapchain::Swapchain(const LogicalDevice& logicalDevice)
 	: _logicalDevice(logicalDevice) {
@@ -141,3 +148,35 @@ VkResult Swapchain::present(uint32_t imageIndex, VkSemaphore waitSemaphore) cons
 
     return vkQueuePresentKHR(_logicalDevice.getPresentQueue(), &presentInfo);
 }
+
+namespace {
+
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats, VkFormat preferredFormat) {
+    auto availableFormat = std::find_if(availableFormats.cbegin(), availableFormats.cend(), [=](const auto& format) {
+        return format.format == preferredFormat && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        });
+
+    return (availableFormat != availableFormats.cend()) ? *availableFormat : availableFormats[0];
+}
+
+VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes, VkPresentModeKHR preferredMode) {
+    auto availablePresentMode = std::find_if(availablePresentModes.cbegin(), availablePresentModes.cend(), [=](const auto& mode) {
+        return mode == preferredMode;
+        });
+
+    return (availablePresentMode != availablePresentModes.cend()) ? *availablePresentMode : VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D chooseSwapExtent(VkExtent2D actualWindowExtent, const VkSurfaceCapabilitiesKHR& capabilities) {
+    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+        return capabilities.currentExtent;
+    }
+    else {
+        actualWindowExtent.width = std::clamp(actualWindowExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        actualWindowExtent.height = std::clamp(actualWindowExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+        return actualWindowExtent;
+    }
+}
+
+}   // namespace
