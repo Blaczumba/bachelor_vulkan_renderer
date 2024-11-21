@@ -71,6 +71,10 @@ void Renderpass::addDependency(uint32_t srcSubpassIndex, uint32_t dstSubpassInde
     _subpassDepencies.push_back(dependency);
 }
 
+std::optional<uint32_t> Renderpass::getPresentImageIndex() const {
+    return _presentImageIndex;
+}
+
 std::vector<std::unique_ptr<Texture>> Renderpass::createTexturesFromRenderpass(const CommandPool& commandPool, const VkExtent2D& extent) {
     const std::vector<Attachment>& attachments = _attachmentsLayout.getAttachments();
     std::vector<VkAttachmentDescription> descriptions;
@@ -79,16 +83,17 @@ std::vector<std::unique_ptr<Texture>> Renderpass::createTexturesFromRenderpass(c
     
     std::vector<std::unique_ptr<Texture>> framebufferTextures;
     framebufferTextures.reserve(descriptions.size());
-    for (const auto& description : descriptions) {
-        switch (description.finalLayout) {
+    for (uint32_t i = 0; i < descriptions.size(); ++i) {
+        switch (descriptions[i].finalLayout) {
         case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+            _presentImageIndex = i;
             framebufferTextures.emplace_back(nullptr);
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            framebufferTextures.emplace_back(TextureFactory::createColorAttachment(commandPool, description.format, description.samples, extent));
+            framebufferTextures.emplace_back(TextureFactory::createColorAttachment(commandPool, descriptions[i].format, descriptions[i].samples, extent));
             break;
         case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            framebufferTextures.emplace_back(TextureFactory::createDepthAttachment(commandPool, description.format, description.samples, extent));
+            framebufferTextures.emplace_back(TextureFactory::createDepthAttachment(commandPool, descriptions[i].format, descriptions[i].samples, extent));
             break;
         default:
             std::runtime_error("failed to recognize final layout in the framebuffer!");

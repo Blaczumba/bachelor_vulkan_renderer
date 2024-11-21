@@ -17,6 +17,7 @@ class Renderpass {
 
 	std::vector<Subpass> _subpasses;
 	std::vector<VkSubpassDependency> _subpassDepencies;
+	std::optional<uint32_t> _presentImageIndex;
 
 	const LogicalDevice& _logicalDevice;
 
@@ -31,6 +32,9 @@ public:
 
 	void addSubpass(const Subpass& subpass);
 	void addDependency(uint32_t srcSubpassIndex, uint32_t dstSubpassIndex, VkPipelineStageFlags srcStageMask, VkAccessFlags srcAccessMask, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask);
-	std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const CommandPool& commandPool, const VkExtent2D& extent);
+	std::optional<uint32_t> getPresentImageIndex() const;
+
 	const LogicalDevice& getLogicalDevice() const;
+
+	std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const CommandPool& commandPool, const VkExtent2D& extent);
 };

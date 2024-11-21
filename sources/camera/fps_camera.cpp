@@ -2,6 +2,8 @@
 
 #include <glm/glm/gtc/constants.hpp>
 
+#include <iostream>
+
 FPSCamera::FPSCamera(float fovyRadians, float aspectRatio, float zNear, float zFar)
     : _fovy(fovyRadians), _aspectRatio(aspectRatio), _zNear(zNear), _zFar(zFar) {
     _projectionMatrix = glm::perspective(fovyRadians, aspectRatio, zNear, zFar);
@@ -30,15 +32,14 @@ void FPSCamera::updateInput(const CallbackData& cbData) {
     }
 
     if (cbData.mouseAction) {
-        _yaw += cbData.xoffset * cbData.deltaTime * _mouseSensitivity;
-        _pitch += cbData.yoffset * cbData.deltaTime * _mouseSensitivity;
+        _yaw += cbData.xoffset * _mouseSensitivity;
+        _pitch += cbData.yoffset * _mouseSensitivity;
         _pitch = std::fminf(_pitch, glm::half_pi<float>() - glm::epsilon<float>()); // constrain pitch
         rotate(_yaw, _pitch);
     }
 }
 
 glm::mat4 FPSCamera::getViewMatrix() const {
-    //return glm::lookAt(glm::vec3(2.0f, 6.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     return glm::lookAt(_position, _position + _front, _up);
 }
 

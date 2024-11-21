@@ -5,6 +5,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include <chrono>
+
 FPSCallbackManager::FPSCallbackManager(WindowGLFW* window) : _window(window) {
 	GLFWwindow* glfwWindow = _window->getGlfwWindow();
 	glfwSetWindowUserPointer(glfwWindow, this);
@@ -18,16 +20,9 @@ FPSCallbackManager::FPSCallbackManager(WindowGLFW* window) : _window(window) {
 CallbackData FPSCallbackManager::_data = {};
 
 void FPSCallbackManager::pollEvents() {
-	_data = {
-		.deltaTime		= 1.0f / 60.0f,
-		.keyboardAction = false,
-		.mouseAction	= false,
-		.keys			= {},
-		.xoffset		= 0.0f,
-		.yoffset		= 0.0f
-	};
-
-	_data.keys.reserve(26);
+	_data.keyboardAction = false;
+	_data.mouseAction = false;
+	_data.keys.clear();
 
 	glfwPollEvents();
 	processKeyboard();
@@ -35,6 +30,9 @@ void FPSCallbackManager::pollEvents() {
 	if (!_data.keys.empty())
 		_data.keyboardAction = true;
 
+	auto currentTimeStamp = std::chrono::high_resolution_clock::now();
+	_data.deltaTime = std::chrono::duration<float>(currentTimeStamp - _lastTimestamp).count();
+	_lastTimestamp = currentTimeStamp;
 	for (auto observer : _observers) {
 		observer->updateInput(_data);
 	}

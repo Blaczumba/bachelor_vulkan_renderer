@@ -2,7 +2,7 @@
 
 #include "callback_manager.h"
 
-#include <iostream>
+#include <chrono>
 #include <functional>
 
 class CallbackData;
@@ -12,6 +12,7 @@ class WindowGLFW;
 class FPSCallbackManager : public CallbackManager {
     static CallbackData _data;
     WindowGLFW* _window;
+    std::chrono::steady_clock::time_point _lastTimestamp = {};
 
 public:
     FPSCallbackManager(WindowGLFW* window);
