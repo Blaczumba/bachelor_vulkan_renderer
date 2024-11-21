@@ -71,36 +71,6 @@ void Renderpass::addDependency(uint32_t srcSubpassIndex, uint32_t dstSubpassInde
     _subpassDepencies.push_back(dependency);
 }
 
-std::optional<uint32_t> Renderpass::getPresentImageIndex() const {
-    return _presentImageIndex;
-}
-
-std::vector<std::unique_ptr<Texture>> Renderpass::createTexturesFromRenderpass(const CommandPool& commandPool, VkExtent2D extent) {
-    const std::vector<Attachment>& attachments = _attachmentsLayout.getAttachments();
-    std::vector<VkAttachmentDescription> descriptions;
-    descriptions.reserve(attachments.size());
-    std::transform(attachments.cbegin(), attachments.cend(), std::back_inserter(descriptions), [](const Attachment& attachment) { return attachment.getDescription(); });
-    
-    std::vector<std::unique_ptr<Texture>> framebufferTextures;
-    framebufferTextures.reserve(descriptions.size());
-    for (uint32_t i = 0; i < descriptions.size(); ++i) {
-        switch (descriptions[i].finalLayout) {
-        case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-            break;
-        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            framebufferTextures.emplace_back(TextureFactory::createColorAttachment(commandPool, descriptions[i].format, descriptions[i].samples, extent));
-            break;
-        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            framebufferTextures.emplace_back(TextureFactory::createDepthAttachment(commandPool, descriptions[i].format, descriptions[i].samples, extent));
-            break;
-        default:
-            std::runtime_error("failed to recognize final layout in the framebuffer!");
-        }
-    }
-
-    return framebufferTextures;
-}
-
 const LogicalDevice& Renderpass::getLogicalDevice() const {
     return _logicalDevice;
 }

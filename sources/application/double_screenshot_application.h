@@ -38,7 +38,6 @@ class SingleApp : public ApplicationBase {
     Registry _registry;
 
     std::shared_ptr<Renderpass> _renderPass;
-    std::vector<std::unique_ptr<Texture>> _framebufferTextures;
     std::vector<std::unique_ptr<Framebuffer>> _framebuffers;
     std::unique_ptr<GraphicsPipeline> _graphicsPipeline;
     std::unique_ptr<GraphicsPipeline> _graphicsPipelineSkybox;

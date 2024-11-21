@@ -11,7 +11,6 @@
 #include "render_pass/attachment/attachment_factory.h"
 #include "render_pass/attachment/attachment_layout.h"
 #include "thread_pool/thread_pool.h"
-#include "utils/utils.h"
 
 #include <algorithm>
 #include <array>
@@ -170,13 +169,9 @@ void SingleApp::createPresentResources() {
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
     );
     _renderPass->create();
-    _framebufferTextures = createTexturesFromRenderpass(*_singleTimeCommandPool, *_renderPass, extent);
 
-    const std::vector<VkImageView>& swapchainViews = _swapchain->getVkImageViews();
-    size_t swapchainImagesCount = _swapchain->getImagesCount();
-    _framebuffers.reserve(swapchainImagesCount);
-    for (size_t i = 0; i < swapchainImagesCount; i++) {
-        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, combineViewsForFramebuffer(_framebufferTextures, swapchainViews[i])));
+    for (uint8_t i = 0; i < _swapchain->getImagesCount(); ++i) {
+        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, *_swapchain, i, *_singleTimeCommandPool));
     }
 
     {
@@ -386,16 +381,11 @@ void SingleApp::createCommandBuffers() {
     }
 }
 
-void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer commandBuffer, const OctreeNode* node, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
-    for (const Object* object : node->getObjects()) {
-        const auto& meshComponent = _registry.getComponent<MeshComponent>(object->getEntity());
-        const IndexBuffer* indexBuffer = meshComponent.indexBuffer.get();
-        const VertexBuffer* vertexBuffer = meshComponent.vertexBuffer.get();
-        vertexBuffer->bind(commandBuffer);
-        indexBuffer->bind(commandBuffer);
-        _entitytoDescriptorSet[object->getEntity()]->bind(commandBuffer, *_graphicsPipeline, { _currentFrame, _entityToIndex[object->getEntity()] });
-        vkCmdDrawIndexed(commandBuffer, indexBuffer->getIndexCount(), 1, 0, 0, 0);
-    }
+void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer commandBuffer, const OctreeNode* rootNode, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
+    if (!rootNode || !rootNode->getVolume().intersectsFrustum(planes)) return;
+
+    std::queue<const OctreeNode*> nodeQueue;
+    nodeQueue.push(rootNode);
 
     static constexpr OctreeNode::Subvolume options[] = {
         OctreeNode::Subvolume::LOWER_LEFT_BACK, OctreeNode::Subvolume::LOWER_LEFT_FRONT,
@@ -404,10 +394,26 @@ void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer command
         OctreeNode::Subvolume::UPPER_RIGHT_BACK, OctreeNode::Subvolume::UPPER_RIGHT_FRONT
     };
 
-    for (auto option : options) {
-        const OctreeNode* n = node->getChild(option);
-        if (n && n->getVolume().intersectsFrustum(planes))
-            recordOctreeSecondaryCommandBuffer(commandBuffer, n, planes);
+    while (!nodeQueue.empty()) {
+        const OctreeNode* node = nodeQueue.front();
+        nodeQueue.pop();
+
+        for (const Object* object : node->getObjects()) {
+            const auto& meshComponent = _registry.getComponent<MeshComponent>(object->getEntity());
+            const IndexBuffer& indexBuffer = *meshComponent.indexBuffer;
+            const VertexBuffer& vertexBuffer = *meshComponent.vertexBuffer;
+            vertexBuffer.bind(commandBuffer);
+            indexBuffer.bind(commandBuffer);
+            _entitytoDescriptorSet[object->getEntity()]->bind(commandBuffer, *_graphicsPipeline, { _currentFrame, _entityToIndex[object->getEntity()] });
+            vkCmdDrawIndexed(commandBuffer, indexBuffer.getIndexCount(), 1, 0, 0, 0);
+        }
+
+        for (auto option : options) {
+            const OctreeNode* childNode = node->getChild(option);
+            if (childNode && childNode->getVolume().intersectsFrustum(planes)) {
+                nodeQueue.push(childNode);
+            }
+        }
     }
 }
 
@@ -474,10 +480,9 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
 
         const OctreeNode* root = _octree->getRoot();
         const auto& planes = extractFrustumPlanes(_camera->getProjectionMatrix() * _camera->getViewMatrix());
-        if (root && root->getVolume().intersectsFrustum(planes)) {
-            vkCmdBindPipeline(commandBuffers[0], _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
-            recordOctreeSecondaryCommandBuffer(commandBuffers[0], root, planes);
-        }
+
+        vkCmdBindPipeline(commandBuffers[0], _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
+        recordOctreeSecondaryCommandBuffer(commandBuffers[0], root, planes);
 
         if (vkEndCommandBuffer(commandBuffers[0]) != VK_SUCCESS) {
             throw std::runtime_error("failed to record command buffer!");
@@ -573,12 +578,7 @@ void SingleApp::recreateSwapChain() {
     vkDeviceWaitIdle(_logicalDevice->getVkDevice());
 
     _swapchain->recrete();
-    _framebuffers.clear();
-    _framebufferTextures = createTexturesFromRenderpass(*_singleTimeCommandPool, *_renderPass, extent);
-    const std::vector<VkImageView>& swapchainViews = _swapchain->getVkImageViews();
-    size_t swapchainImagesCount = _swapchain->getImagesCount();
-    _framebuffers.reserve(swapchainImagesCount);
-    for (size_t i = 0; i < swapchainImagesCount; i++) {
-        _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, extent, combineViewsForFramebuffer(_framebufferTextures, swapchainViews[i])));
+    for (uint8_t i = 0; i < _swapchain->getImagesCount(); ++i) {
+        _framebuffers[i] = std::make_unique<Framebuffer>(*_renderPass, *_swapchain, i, *_singleTimeCommandPool);
     }
 }
