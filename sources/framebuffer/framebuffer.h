@@ -14,7 +14,7 @@ class Framebuffer {
 	const Renderpass& _renderPass;
 
 public:
-	Framebuffer(const Renderpass& renderpass, const VkExtent2D& extent, const std::vector<VkImageView>& imageViews);
+	Framebuffer(const Renderpass& renderpass, VkExtent2D extent, const std::vector<VkImageView>& imageViews);
 	~Framebuffer();
 
 	VkFramebuffer getVkFramebuffer() const;

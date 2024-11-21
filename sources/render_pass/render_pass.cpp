@@ -15,11 +15,11 @@ void Renderpass::create() {
 
     const std::vector<Attachment>& attachments = _attachmentsLayout.getAttachments();
     std::vector<VkAttachmentDescription> attachmentDescriptions;
-    attachmentDescriptions.reserve(attachments.size());
-    std::transform(attachments.cbegin(), attachments.cend(), std::back_inserter(attachmentDescriptions), [](const Attachment& attachment) { return attachment.getDescription(); });
+    attachmentDescriptions.resize(attachments.size());
+    std::transform(attachments.cbegin(), attachments.cend(), attachmentDescriptions.begin(), [](const Attachment& attachment) { return attachment.getDescription(); });
     std::vector<VkSubpassDescription> subpassDescriptions;
-    subpassDescriptions.reserve(_subpasses.size());
-    std::transform(_subpasses.cbegin(), _subpasses.cend(), std::back_inserter(subpassDescriptions), [](const Subpass& subpass) { return subpass.getVkSubpassDescription(); });
+    subpassDescriptions.resize(_subpasses.size());
+    std::transform(_subpasses.cbegin(), _subpasses.cend(), subpassDescriptions.begin(), [](const Subpass& subpass) { return subpass.getVkSubpassDescription(); });
 
     const VkRenderPassCreateInfo renderPassInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -75,7 +75,7 @@ std::optional<uint32_t> Renderpass::getPresentImageIndex() const {
     return _presentImageIndex;
 }
 
-std::vector<std::unique_ptr<Texture>> Renderpass::createTexturesFromRenderpass(const CommandPool& commandPool, const VkExtent2D& extent) {
+std::vector<std::unique_ptr<Texture>> Renderpass::createTexturesFromRenderpass(const CommandPool& commandPool, VkExtent2D extent) {
     const std::vector<Attachment>& attachments = _attachmentsLayout.getAttachments();
     std::vector<VkAttachmentDescription> descriptions;
     descriptions.reserve(attachments.size());
@@ -86,8 +86,6 @@ std::vector<std::unique_ptr<Texture>> Renderpass::createTexturesFromRenderpass(c
     for (uint32_t i = 0; i < descriptions.size(); ++i) {
         switch (descriptions[i].finalLayout) {
         case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-            _presentImageIndex = i;
-            framebufferTextures.emplace_back(nullptr);
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
             framebufferTextures.emplace_back(TextureFactory::createColorAttachment(commandPool, descriptions[i].format, descriptions[i].samples, extent));

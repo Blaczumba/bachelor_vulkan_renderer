@@ -7,7 +7,7 @@
 #include <iterator>
 #include <stdexcept>
 
-Framebuffer::Framebuffer(const Renderpass& renderpass, const VkExtent2D& extent, const std::vector<VkImageView>& imageViews)
+Framebuffer::Framebuffer(const Renderpass& renderpass, VkExtent2D extent, const std::vector<VkImageView>& imageViews)
     : _renderPass(renderpass) {
 
     VkFramebufferCreateInfo framebufferInfo = {

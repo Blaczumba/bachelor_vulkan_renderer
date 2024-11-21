@@ -6,6 +6,7 @@
 #include "render_pass/attachment/attachment_layout.h"
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 class CommandPool;
@@ -36,5 +37,5 @@ public:
 
 	const LogicalDevice& getLogicalDevice() const;
 
-	std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const CommandPool& commandPool, const VkExtent2D& extent);
+	std::vector<std::unique_ptr<Texture>> createTexturesFromRenderpass(const CommandPool& commandPool, VkExtent2D extent);
 };
