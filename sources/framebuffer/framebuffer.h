@@ -4,6 +4,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <initializer_list>
 #include <memory>
 #include <vector>
 
@@ -13,15 +14,16 @@ class Swapchain;
 
 class Framebuffer {
 	VkFramebuffer _framebuffer;
-	std::vector<std::unique_ptr<Texture>> _textureAttachments;
+	std::vector<std::shared_ptr<Texture>> _textureAttachments;
+	const std::optional<uint8_t> _swapchainIndex;
 
 	const Renderpass& _renderpass;
 
 public:
 	// Framebuffer for presenting images to the screen.
-	Framebuffer(const Renderpass& renderpass, const Swapchain& swapchain, uint8_t swapchianIndex, const CommandPool& commandPool);
-	// Ofscreen framebuffer.
-	Framebuffer(const Renderpass& renderpass, VkExtent2D extent, const std::vector<VkImageView>& imageViews);
+	Framebuffer(const Renderpass& renderpass, const Swapchain& swapchain, uint8_t swapchainIndex, const CommandPool& commandPool);
+	// Ofscreen framebuffer requires all textures to have the same size.
+	Framebuffer(const Renderpass& renderpass, std::vector<std::shared_ptr<Texture>>&& textures);
 	~Framebuffer();
 
 	VkFramebuffer getVkFramebuffer() const;
