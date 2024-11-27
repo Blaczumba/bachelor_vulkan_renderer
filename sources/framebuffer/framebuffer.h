@@ -1,6 +1,7 @@
 #pragma once
 
 #include "memory_objects/texture/texture_factory.h"
+#include "render_pass/render_pass.h"
 
 #include <vulkan/vulkan.h>
 
@@ -9,7 +10,6 @@
 #include <vector>
 
 class CommandPool;
-class Renderpass;
 class Swapchain;
 
 class Framebuffer {
@@ -26,5 +26,6 @@ public:
 	Framebuffer(const Renderpass& renderpass, std::vector<std::shared_ptr<Texture>>&& textures);
 	~Framebuffer();
 
+	const Renderpass& getRenderpass() const;
 	VkFramebuffer getVkFramebuffer() const;
 };

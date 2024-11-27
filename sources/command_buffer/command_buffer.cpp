@@ -1,5 +1,7 @@
 #include "command_buffer.h"
 
+#include "framebuffer/framebuffer.h"
+
 #include <stdexcept>
 
 CommandPool::CommandPool(const LogicalDevice& logicalDevice) : _logicalDevice(logicalDevice) {
@@ -33,7 +35,8 @@ const LogicalDevice& CommandPool::getLogicalDevice() const {
     return _logicalDevice;
 }
 
-CommandBuffer::CommandBuffer(const CommandPool& commandPool, VkCommandBufferLevel level) :_commandPool(commandPool) {
+CommandBuffer::CommandBuffer(const CommandPool& commandPool, VkCommandBufferLevel level)
+    :_commandPool(commandPool), _level(level) {
     const VkCommandBufferAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = _commandPool.getVkCommandPool(),
@@ -48,6 +51,51 @@ CommandBuffer::CommandBuffer(const CommandPool& commandPool, VkCommandBufferLeve
 
 CommandBuffer::~CommandBuffer() {
     vkFreeCommandBuffers(_commandPool.getLogicalDevice().getVkDevice(), _commandPool.getVkCommandPool(), 1, &_commandBuffer);
+}
+
+VkResult CommandBuffer::begin(const Framebuffer& framebuffer, VkCommandBufferUsageFlags flags, uint32_t subpassIndex) const {
+    const VkCommandBufferInheritanceInfo inheritance = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+        .renderPass = framebuffer.getRenderpass().getVkRenderPass(),
+        .subpass = subpassIndex,
+        .framebuffer = framebuffer.getVkFramebuffer()
+    };
+    const VkCommandBufferBeginInfo beginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = flags,
+        .pInheritanceInfo = &inheritance
+    };
+
+    return vkBeginCommandBuffer(_commandBuffer, &beginInfo);
+}
+
+VkResult CommandBuffer::submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore, const VkFence waitFence) const {
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkSemaphore waitSemaphores[] = { waitSemaphore };
+    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    if (waitSemaphore != VK_NULL_HANDLE) {
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+    }
+
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &_commandBuffer;
+
+    VkSemaphore signalSemaphores[] = { signalSemaphore };
+    if (signalSemaphore != VK_NULL_HANDLE) {
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+    }
+
+    const LogicalDevice& logicalDevice = _commandPool.getLogicalDevice();
+    if (waitFence != VK_NULL_HANDLE) {
+        vkResetFences(logicalDevice.getVkDevice(), 1, &waitFence);
+    }
+
+    return vkQueueSubmit(logicalDevice.getQueue(type), 1, &submitInfo, waitFence);
 }
 
 void CommandBuffer::resetCommandBuffer() const {
@@ -69,7 +117,7 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(const CommandPool& commandPool,
         throw std::runtime_error("failed to create SingleTimeCommandBuffer fence!");
     }
 
-    VkCommandBufferAllocateInfo allocInfo = {
+    const VkCommandBufferAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = _commandPool.getVkCommandPool(),
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,

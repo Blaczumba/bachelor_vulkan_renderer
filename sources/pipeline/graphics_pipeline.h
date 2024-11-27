@@ -31,14 +31,13 @@ class GraphicsPipeline : public Pipeline {
     const ShaderProgram& _shaderProgram;
 
 public:
-    template<typename VertexType>
-    GraphicsPipeline(const Renderpass& renderpass, const GraphicsShaderProgram<VertexType>& shaderProgram, const GraphicsPipelineParameters& parameters)
+    GraphicsPipeline(const Renderpass& renderpass, const GraphicsShaderProgram& shaderProgram, const GraphicsPipelineParameters& parameters)
         : Pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS), _renderpass(renderpass), _shaderProgram(shaderProgram), _parameters(parameters) {
         const VkDevice device = _renderpass.getLogicalDevice().getVkDevice();
         const auto& descriptorSetLayout = _shaderProgram.getDescriptorSetLayout();
         const auto& shaderStages = _shaderProgram.getVkPipelineShaderStageCreateInfos();
 
-        VkPipelineVertexInputStateCreateInfo vertexInputInfo = GraphicsShaderProgram<VertexType>::getVkPipelineVertexInputStateCreateInfo();
+        const VkPipelineVertexInputStateCreateInfo& vertexInputInfo = shaderProgram.getVkPipelineVertexInputStateCreateInfo();
 
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
         inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

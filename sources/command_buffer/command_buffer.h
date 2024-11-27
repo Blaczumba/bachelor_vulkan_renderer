@@ -7,6 +7,7 @@
 #include <memory>
 
 class CommandBuffer;
+class Framebuffer;
 
 class CommandPool {
 	VkCommandPool _commandPool;
@@ -26,12 +27,15 @@ public:
 
 class CommandBuffer {
 	VkCommandBuffer _commandBuffer;
+	VkCommandBufferLevel _level;
 
 	const CommandPool& _commandPool;
 
 public:
 	CommandBuffer(const CommandPool& commandPool, VkCommandBufferLevel level);
 	~CommandBuffer();
+	VkResult begin(const Framebuffer& framebuffer, VkCommandBufferUsageFlags flags = 0, uint32_t subpassIndex = 0) const;
+	VkResult submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore, const VkFence waitFence) const;
 	void resetCommandBuffer() const;
 	const VkCommandBuffer getVkCommandBuffer() const;
 };

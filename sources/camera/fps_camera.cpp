@@ -47,7 +47,7 @@ const glm::mat4& FPSCamera::getProjectionMatrix() const {
     return _projectionMatrix;
 }
 
-const glm::vec3& FPSCamera::getPosition() const {
+glm::vec3 FPSCamera::getPosition() const {
     return _position;
 }
 

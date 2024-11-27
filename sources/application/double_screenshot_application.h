@@ -65,9 +65,9 @@ class SingleApp : public ApplicationBase {
     std::shared_ptr<DescriptorPool> _descriptorPoolSkybox;
     std::shared_ptr<DescriptorPool> _descriptorPoolShadow;
 
-    std::unique_ptr<ShadowShaderProgram> _shadowShaderProgram;
-    std::unique_ptr<PBRShaderProgram> _pbrShaderProgram;
-    std::unique_ptr<SkyboxShaderProgram> _skyboxShaderProgram;
+    std::unique_ptr<GraphicsShaderProgram> _shadowShaderProgram;
+    std::unique_ptr<GraphicsShaderProgram> _pbrShaderProgram;
+    std::unique_ptr<GraphicsShaderProgram> _skyboxShaderProgram;
 
     std::unique_ptr<Texture> _textureCubemap;
 

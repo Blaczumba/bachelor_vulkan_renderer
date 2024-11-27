@@ -1,7 +1,6 @@
 #include "framebuffer.h"
 
 #include "logical_device/logical_device.h"
-#include "render_pass/render_pass.h"
 #include "swapchain/swapchain.h"
 
 #include <algorithm>
@@ -88,6 +87,10 @@ Framebuffer::~Framebuffer() {
     VkDevice device = _renderpass.getLogicalDevice().getVkDevice();
 
     vkDestroyFramebuffer(device, _framebuffer, nullptr);
+}
+
+const Renderpass& Framebuffer::getRenderpass() const {
+    return _renderpass;
 }
 
 VkFramebuffer Framebuffer::getVkFramebuffer() const {

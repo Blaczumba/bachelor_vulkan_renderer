@@ -8,6 +8,7 @@
 #include "entity_component_system/component/position.h"
 #include "entity_component_system/component/transform.h"
 #include "entity_component_system/component/velocity.h"
+#include "pipeline/shader/shader_program.h"
 #include "render_pass/attachment/attachment_factory.h"
 #include "render_pass/attachment/attachment_layout.h"
 #include "thread_pool/thread_pool.h"
@@ -49,6 +50,7 @@ void SingleApp::loadObjects() {
 
     _objects.reserve(_newVertexDataTBN.size());
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
+        std::cout << _newVertexDataTBN[i].vertices.size() << std::endl;
         Entity e = _registry.createEntity();
         if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
             continue;
@@ -119,9 +121,9 @@ void SingleApp::createDescriptorSets() {
     _skyboxTextureUniform = std::make_unique<UniformBufferTexture>(*_textureCubemap);
     _shadowTextureUniform = std::make_unique<UniformBufferTexture>(*_shadowMap);
 
-    _pbrShaderProgram = std::make_unique<PBRShaderProgram>(*_logicalDevice);
-    _skyboxShaderProgram = std::make_unique<SkyboxShaderProgram>(*_logicalDevice);
-    _shadowShaderProgram = std::make_unique<ShadowShaderProgram>(*_logicalDevice);
+    _pbrShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::PBR, *_logicalDevice);
+    _skyboxShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::SKYBOX, *_logicalDevice);
+    _shadowShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::SHADOW, *_logicalDevice);
 
     _descriptorPool = std::make_shared<DescriptorPool>(*_logicalDevice, _pbrShaderProgram->getDescriptorSetLayout(), 150);
     _descriptorPoolSkybox = std::make_shared<DescriptorPool>(*_logicalDevice, _skyboxShaderProgram->getDescriptorSetLayout(), 1);
@@ -416,7 +418,7 @@ void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer command
 
 void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32_t imageIndex) {
     const VkCommandBufferBeginInfo beginInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
     };
 
     if (vkBeginCommandBuffer(primaryCommandBuffer, &beginInfo) != VK_SUCCESS) {
