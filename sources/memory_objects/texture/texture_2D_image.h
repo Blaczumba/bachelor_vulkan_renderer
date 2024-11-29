@@ -26,15 +26,14 @@ std::unique_ptr<Texture> create2DImage(const CommandPool& commandPool, std::stri
     imageParams.mipLevels = std::floor(std::log2(std::max(imageParams.width, imageParams.height))) + 1u;
     samplerParams.maxLod = static_cast<float>(imageParams.mipLevels);
 
-    VkDeviceSize imageSize = imageParams.width * imageParams.height * 4;
 
     if (!pixels) {
         throw std::runtime_error("failed to load texture image!");
     }
 
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    logicalDevice.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+    const VkDeviceSize imageSize = imageParams.width * imageParams.height * 4;
+    const VkBuffer stagingBuffer = logicalDevice.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    const VkDeviceMemory stagingBufferMemory = logicalDevice.createBufferMemory(stagingBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     void* data;
     vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);

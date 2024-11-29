@@ -93,6 +93,41 @@ void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Vk
     vkBindBufferMemory(_device, buffer, bufferMemory, 0);
 }
 
+const VkBuffer LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage) const {
+    VkBufferCreateInfo bufferInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = size,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+
+    VkBuffer buffer;
+    if (vkCreateBuffer(_device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create buffer!");
+    }
+    return buffer;
+}
+
+const VkDeviceMemory LogicalDevice::createBufferMemory(VkBuffer buffer, VkMemoryPropertyFlags properties) const {
+    const auto& propertyManager = _physicalDevice.getPropertyManager();
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(_device, buffer, &memRequirements);
+
+    const VkMemoryAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = memRequirements.size,
+        .memoryTypeIndex = propertyManager.findMemoryType(memRequirements.memoryTypeBits, properties)
+    };
+
+    VkDeviceMemory bufferMemory;
+    if (vkAllocateMemory(_device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate buffer memory!");
+    }
+    vkBindBufferMemory(_device, buffer, bufferMemory, 0);
+    return bufferMemory;
+}
+
 const VkImage LogicalDevice::createImage(const ImageParameters& params) const {
     VkImageCreateInfo imageInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
