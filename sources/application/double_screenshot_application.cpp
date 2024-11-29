@@ -50,7 +50,6 @@ void SingleApp::loadObjects() {
 
     _objects.reserve(_newVertexDataTBN.size());
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
-        std::cout << _newVertexDataTBN[i].vertices.size() << std::endl;
         Entity e = _registry.createEntity();
         if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
             continue;
@@ -111,12 +110,11 @@ void SingleApp::createDescriptorSets() {
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     _textureCubemap = TextureFactory::createCubemap(*_singleTimeCommandPool, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
-
     _shadowMap = TextureFactory::create2DShadowmap(*_singleTimeCommandPool, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
 
-    _uniformBuffersObjects = std::make_unique<UniformBufferDynamic<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
-    _uniformBuffersLight = std::make_unique<UniformBufferStruct<UniformBufferLight>>(*_logicalDevice);
-    _dynamicUniformBuffersCamera = std::make_unique<UniformBufferDynamic<UniformBufferCamera>>(*_logicalDevice, MAX_FRAMES_IN_FLIGHT);
+    _uniformBuffersObjects = std::make_unique<UniformBufferData<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
+    _uniformBuffersLight = std::make_unique<UniformBufferData<UniformBufferLight>>(*_logicalDevice);
+    _dynamicUniformBuffersCamera = std::make_unique<UniformBufferData<UniformBufferCamera>>(*_logicalDevice, MAX_FRAMES_IN_FLIGHT);
 
     _skyboxTextureUniform = std::make_unique<UniformBufferTexture>(*_textureCubemap);
     _shadowTextureUniform = std::make_unique<UniformBufferTexture>(*_shadowMap);
@@ -308,7 +306,7 @@ void SingleApp::draw() {
 }
 
 VkFormat SingleApp::findDepthFormat() const {
-    std::array<VkFormat, 3> depthFormats = {
+    const std::array<VkFormat, 3> depthFormats = {
         VK_FORMAT_D32_SFLOAT,
         VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_D32_SFLOAT_S8_UINT,
@@ -383,7 +381,7 @@ void SingleApp::createCommandBuffers() {
 void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer commandBuffer, const OctreeNode* rootNode, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
     if (!rootNode || !rootNode->getVolume().intersectsFrustum(planes)) return;
 
-    std::queue<const OctreeNode*> nodeQueue;
+    static std::queue<const OctreeNode*> nodeQueue;
     nodeQueue.push(rootNode);
 
     static constexpr OctreeNode::Subvolume options[] = {
