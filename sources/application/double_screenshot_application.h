@@ -44,7 +44,7 @@ class SingleApp : public ApplicationBase {
 
     std::shared_ptr<Renderpass> _shadowRenderPass;
     std::unique_ptr<Framebuffer> _shadowFramebuffer;
-    std::unique_ptr<Texture> _shadowMap;
+    std::shared_ptr<Texture> _shadowMap;
     std::unique_ptr<GraphicsPipeline> _shadowPipeline;
 
     std::unique_ptr<VertexBuffer> _vertexBufferCube;
@@ -55,9 +55,9 @@ class SingleApp : public ApplicationBase {
     UniformBufferObject _ubObject;
     UniformBufferLight _ubLight;
 
-    std::unique_ptr<UniformBufferDynamic<UniformBufferObject>> _uniformBuffersObjects;
-    std::unique_ptr<UniformBufferStruct<UniformBufferLight>> _uniformBuffersLight;
-    std::unique_ptr<UniformBufferDynamic<UniformBufferCamera>> _dynamicUniformBuffersCamera;
+    std::unique_ptr<UniformBufferData<UniformBufferObject>> _uniformBuffersObjects;
+    std::unique_ptr<UniformBufferData<UniformBufferLight>> _uniformBuffersLight;
+    std::unique_ptr<UniformBufferData<UniformBufferCamera>> _dynamicUniformBuffersCamera;
     std::unique_ptr<UniformBufferTexture> _skyboxTextureUniform;
     std::unique_ptr<UniformBufferTexture> _shadowTextureUniform;
 
@@ -65,9 +65,9 @@ class SingleApp : public ApplicationBase {
     std::shared_ptr<DescriptorPool> _descriptorPoolSkybox;
     std::shared_ptr<DescriptorPool> _descriptorPoolShadow;
 
-    std::unique_ptr<ShadowShaderProgram> _shadowShaderProgram;
-    std::unique_ptr<PBRTesselationShaderProgram> _pbrShaderProgram;
-    std::unique_ptr<SkyboxShaderProgram> _skyboxShaderProgram;
+    std::unique_ptr<GraphicsShaderProgram> _shadowShaderProgram;
+    std::unique_ptr<GraphicsShaderProgram> _pbrShaderProgram;
+    std::unique_ptr<GraphicsShaderProgram> _skyboxShaderProgram;
 
     std::unique_ptr<Texture> _textureCubemap;
 

@@ -2,7 +2,6 @@
 
 #include "descriptor_set/descriptor_set_layout.h"
 #include "memory_objects/uniform_buffer/push_constants.h"
-#include "primitives/primitives.h"
 #include "shader.h"
 
 #include <vulkan/vulkan.h>
@@ -21,60 +20,77 @@ protected:
 	PushConstants _pushConstants;
 
 public:
-	ShaderProgram(const LogicalDevice& logicalDevice);
+	ShaderProgram(const LogicalDevice& logicalDevice, std::vector<Shader>&& shaders, std::unique_ptr<DescriptorSetLayout>&& descriptorSetLayout);
 	std::vector<VkPipelineShaderStageCreateInfo> getVkPipelineShaderStageCreateInfos() const;
 
 	const DescriptorSetLayout& getDescriptorSetLayout() const;
 	const PushConstants& getPushConstants() const;
 };
 
-template<typename VertexType>
 class GraphicsShaderProgram : public ShaderProgram {
 protected:
 	VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
 
 public:
-	GraphicsShaderProgram(const LogicalDevice& logicalDevice) : ShaderProgram(logicalDevice) {}
-	static VkPipelineVertexInputStateCreateInfo getVkPipelineVertexInputStateCreateInfo() {
-		static constexpr VkVertexInputBindingDescription bindingDescription = getBindingDescription<VertexType>();
-		static constexpr auto attributeDescriptions = getAttributeDescriptions<VertexType>();
-
-		return VkPipelineVertexInputStateCreateInfo{
-			.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-			.vertexBindingDescriptionCount = 1,
-			.pVertexBindingDescriptions = &bindingDescription,
-			.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
-			.pVertexAttributeDescriptions = attributeDescriptions.data()
-		};
+    template<typename VertexType>
+    GraphicsShaderProgram(const LogicalDevice& logicalDevice, std::vector<Shader>&& shaders, std::unique_ptr<DescriptorSetLayout>&& descriptorSetLayout, VertexType)
+        : ShaderProgram(logicalDevice, std::move(shaders), std::move(descriptorSetLayout)) {
+        static constexpr VkVertexInputBindingDescription bindingDescription = getBindingDescription<VertexType>();
+        static constexpr auto attributeDescriptions = getAttributeDescriptions<VertexType>();
+        _vertexInputInfo = VkPipelineVertexInputStateCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+            .vertexBindingDescriptionCount = 1,
+            .pVertexBindingDescriptions = &bindingDescription,
+            .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+            .pVertexAttributeDescriptions = attributeDescriptions.data()
+        };
+    }
+	const VkPipelineVertexInputStateCreateInfo& getVkPipelineVertexInputStateCreateInfo() const {
+        return _vertexInputInfo;
 	}
 };
 
-class PBRShaderProgram : public GraphicsShaderProgram<VertexPTNT> {
-public:
-	PBRShaderProgram(const LogicalDevice& logicalDevice);
+enum class ShaderProgramType {
+    PBR,
+    PBR_TESSELLATION,
+    SKYBOX,
+    SHADOW,
+    SKYBOX_OFFSCREEN,
+    PBR_OFFSCREEN
 };
 
-class PBRTesselationShaderProgram : public GraphicsShaderProgram<VertexPTNT> {
+class ShaderProgramFactory {
 public:
-	PBRTesselationShaderProgram(const LogicalDevice& logicalDevice);
-};
+    static std::unique_ptr<GraphicsShaderProgram> createShaderProgram(ShaderProgramType type, const LogicalDevice& logicalDevice) {
+        switch (type) {
+        case ShaderProgramType::PBR:
+            return configurePBRProgram(logicalDevice);
+            break;
+        case ShaderProgramType::PBR_TESSELLATION:
+            return configurePBRTesselationProgram(logicalDevice);
+            break;
+        case ShaderProgramType::SKYBOX:
+            return configureSkyboxProgram(logicalDevice);
+            break;
+        case ShaderProgramType::SHADOW:
+            return configureShadowProgram(logicalDevice);
+            break;
+        case ShaderProgramType::SKYBOX_OFFSCREEN:
+            return configureSkyboxOffscreenProgram(logicalDevice);
+            break;
+        case ShaderProgramType::PBR_OFFSCREEN:
+            return configurePBROffscreenProgram(logicalDevice);
+            break;
+        default:
+            throw std::invalid_argument("Unsupported ShaderProgramType");
+        }
+    }
 
-class SkyboxShaderProgram : public GraphicsShaderProgram<VertexP> {
-public:
-	SkyboxShaderProgram(const LogicalDevice& logicalDevice);
-};
-
-class ShadowShaderProgram : public GraphicsShaderProgram<VertexP> {
-public:
-	ShadowShaderProgram(const LogicalDevice& logicalDevice);
-};
-
-class SkyboxOffscreenShaderProgram : public GraphicsShaderProgram<VertexP> {
-public:
-	SkyboxOffscreenShaderProgram(const LogicalDevice& logicalDevice);
-};
-
-class PBRShaderOffscreenProgram : public GraphicsShaderProgram<VertexPTNT> {
-public:
-	PBRShaderOffscreenProgram(const LogicalDevice& logicalDevice);
+private:
+    static std::unique_ptr<GraphicsShaderProgram> configurePBRProgram(const LogicalDevice& logicalDevice);
+    static std::unique_ptr<GraphicsShaderProgram> configurePBRTesselationProgram(const LogicalDevice& logicalDevice);
+    static std::unique_ptr<GraphicsShaderProgram> configureSkyboxProgram(const LogicalDevice& logicalDevice);
+    static std::unique_ptr<GraphicsShaderProgram> configureShadowProgram(const LogicalDevice& logicalDevice);
+    static std::unique_ptr<GraphicsShaderProgram> configureSkyboxOffscreenProgram(const LogicalDevice& logicalDevice);
+    static std::unique_ptr<GraphicsShaderProgram> configurePBROffscreenProgram(const LogicalDevice& logicalDevice);
 };

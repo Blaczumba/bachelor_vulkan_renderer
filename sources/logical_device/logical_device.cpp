@@ -11,10 +11,10 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     const std::set<uint32_t> uniqueQueueFamilies = { 
-        indices.graphicsFamily.value(), 
-        indices.presentFamily.value(), 
-        indices.computeFamily.value(), 
-        indices.transferFamily.value() 
+        *indices.graphicsFamily, 
+        *indices.presentFamily, 
+        *indices.computeFamily, 
+        *indices.transferFamily 
     };
 
     float queuePriority = 1.0f;
@@ -57,10 +57,10 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
         throw std::runtime_error("failed to create logical device!");
     }
 
-    vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0, &_graphicsQueue);
-    vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &_presentQueue);
-    vkGetDeviceQueue(_device, indices.computeFamily.value(), 0, &_computeQueue);
-    vkGetDeviceQueue(_device, indices.transferFamily.value(), 0, &_transferQueue);
+    vkGetDeviceQueue(_device, *indices.graphicsFamily, 0, &_graphicsQueue);
+    vkGetDeviceQueue(_device, *indices.presentFamily, 0, &_presentQueue);
+    vkGetDeviceQueue(_device, *indices.computeFamily, 0, &_computeQueue);
+    vkGetDeviceQueue(_device, *indices.transferFamily, 0, &_transferQueue);
 }
 
 void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) const {
@@ -188,12 +188,12 @@ const VkSampler LogicalDevice::createSampler(const SamplerParameters& params) co
 
     if (params.maxAnisotropy.has_value()) {
         samplerInfo.anisotropyEnable = VK_TRUE;
-        samplerInfo.maxAnisotropy = params.maxAnisotropy.value();
+        samplerInfo.maxAnisotropy = *params.maxAnisotropy;
     }
 
     if (params.compareOp.has_value()) {
         samplerInfo.compareEnable = VK_TRUE;
-        samplerInfo.compareOp = params.compareOp.value();
+        samplerInfo.compareOp = *params.compareOp;
     }
     else {
         samplerInfo.compareOp = VK_COMPARE_OP_NEVER;

@@ -40,7 +40,7 @@ public:
 
     glm::mat4 getViewMatrix() const override;
     const glm::mat4& getProjectionMatrix() const;
-    const glm::vec3& getPosition() const;
+    glm::vec3 getPosition() const;
 
     void move(glm::vec3 direction);
     void rotate(float theta, float phi);

@@ -25,10 +25,8 @@ static std::vector<char> readFile(const std::string& filename) {
 
 Shader::Shader(const LogicalDevice& logicalDevice, const std::string& shaderPath, const VkShaderStageFlagBits shaderStage) : _logicalDevice(logicalDevice), _shaderStage(shaderStage), _name("main") {
     const auto shaderCode = readFile(shaderPath);
-
     const VkDevice device = _logicalDevice.getVkDevice();
-
-    VkShaderModuleCreateInfo createInfo = {
+    const VkShaderModuleCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .codeSize = shaderCode.size(),
         .pCode = reinterpret_cast<const uint32_t*>(shaderCode.data())
@@ -37,13 +35,6 @@ Shader::Shader(const LogicalDevice& logicalDevice, const std::string& shaderPath
     if (vkCreateShaderModule(device, &createInfo, nullptr, &_shaderModule) != VK_SUCCESS) {
         throw std::runtime_error("failed to create shader module!");
     }
-
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .stage = _shaderStage,
-        .module = _shaderModule,
-        .pName = _name.data()
-    };
 }
 
 Shader::~Shader() {
@@ -51,14 +42,12 @@ Shader::~Shader() {
 }
 
 VkPipelineShaderStageCreateInfo Shader::getVkPipelineStageCreateInfo() const {
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
+    return VkPipelineShaderStageCreateInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = _shaderStage,
         .module = _shaderModule,
         .pName = _name.data()
     };
-
-    return vertShaderStageInfo;
 }
 
 VkShaderStageFlagBits Shader::getVkShaderStageFlagBits() const {

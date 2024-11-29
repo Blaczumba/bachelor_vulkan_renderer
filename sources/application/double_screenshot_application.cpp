@@ -8,6 +8,7 @@
 #include "entity_component_system/component/position.h"
 #include "entity_component_system/component/transform.h"
 #include "entity_component_system/component/velocity.h"
+#include "pipeline/shader/shader_program.h"
 #include "render_pass/attachment/attachment_factory.h"
 #include "render_pass/attachment/attachment_layout.h"
 #include "thread_pool/thread_pool.h"
@@ -109,19 +110,18 @@ void SingleApp::createDescriptorSets() {
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     _textureCubemap = TextureFactory::createCubemap(*_singleTimeCommandPool, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
-
     _shadowMap = TextureFactory::create2DShadowmap(*_singleTimeCommandPool, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
 
-    _uniformBuffersObjects = std::make_unique<UniformBufferDynamic<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
-    _uniformBuffersLight = std::make_unique<UniformBufferStruct<UniformBufferLight>>(*_logicalDevice);
-    _dynamicUniformBuffersCamera = std::make_unique<UniformBufferDynamic<UniformBufferCamera>>(*_logicalDevice, MAX_FRAMES_IN_FLIGHT);
+    _uniformBuffersObjects = std::make_unique<UniformBufferData<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
+    _uniformBuffersLight = std::make_unique<UniformBufferData<UniformBufferLight>>(*_logicalDevice);
+    _dynamicUniformBuffersCamera = std::make_unique<UniformBufferData<UniformBufferCamera>>(*_logicalDevice, MAX_FRAMES_IN_FLIGHT);
 
     _skyboxTextureUniform = std::make_unique<UniformBufferTexture>(*_textureCubemap);
     _shadowTextureUniform = std::make_unique<UniformBufferTexture>(*_shadowMap);
 
-    _pbrShaderProgram = std::make_unique<PBRTesselationShaderProgram>(*_logicalDevice);
-    _skyboxShaderProgram = std::make_unique<SkyboxShaderProgram>(*_logicalDevice);
-    _shadowShaderProgram = std::make_unique<ShadowShaderProgram>(*_logicalDevice);
+    _pbrShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::PBR, *_logicalDevice);
+    _skyboxShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::SKYBOX, *_logicalDevice);
+    _shadowShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::SHADOW, *_logicalDevice);
 
     _descriptorPool = std::make_shared<DescriptorPool>(*_logicalDevice, _pbrShaderProgram->getDescriptorSetLayout(), 150);
     _descriptorPoolSkybox = std::make_shared<DescriptorPool>(*_logicalDevice, _skyboxShaderProgram->getDescriptorSetLayout(), 1);
@@ -141,9 +141,9 @@ void SingleApp::createDescriptorSets() {
 }
 
 void SingleApp::createPresentResources() {
-    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
-    VkFormat swapchainImageFormat = _swapchain->getVkFormat();
-    VkExtent2D extent = _swapchain->getExtent();
+    const VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+    const VkFormat swapchainImageFormat = _swapchain->getVkFormat();
+    const VkExtent2D extent = _swapchain->getExtent();
 
     AttachmentLayout attachmentsLayout;
     attachmentsLayout.addAttachment(AttachmentFactory::createColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE));
@@ -174,26 +174,23 @@ void SingleApp::createPresentResources() {
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, *_swapchain, i, *_singleTimeCommandPool));
     }
 
-    {
-        GraphicsPipelineParameters parameters;
-        parameters.msaaSamples = msaaSamples;
-        parameters.patchControlPoints = 3;
-        _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass, *_pbrShaderProgram, parameters);
-    }
-    {
-        GraphicsPipelineParameters parameters;
-        parameters.msaaSamples = msaaSamples;
-        parameters.cullMode = VK_CULL_MODE_FRONT_BIT;
-        _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_renderPass, *_skyboxShaderProgram, parameters);
-    }
+    const GraphicsPipelineParameters pbrParameters = {
+        .msaaSamples = msaaSamples,
+        // .patchControlPoints = 3,
+    };
+    _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass, *_pbrShaderProgram, pbrParameters);
+
+    const GraphicsPipelineParameters skyboxParameters = {
+        .cullMode = VK_CULL_MODE_FRONT_BIT,
+        .msaaSamples = msaaSamples
+    };
+    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_renderPass, *_skyboxShaderProgram, skyboxParameters);
 }
 
 void SingleApp::createShadowResources() {
-    VkSampleCountFlagBits shadowMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
-    VkFormat imageFormat = VK_FORMAT_D32_SFLOAT;
-    uint32_t width = 1024 * 2;
-    uint32_t height = 1024 * 2;
-    VkExtent2D extent = { width, height };
+    const VkSampleCountFlagBits shadowMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
+    const VkFormat imageFormat = VK_FORMAT_D32_SFLOAT;
+    const VkExtent2D extent = { 1024 * 2, 1024 * 2 };
 
     AttachmentLayout attachmentLayout;
     attachmentLayout.addAttachment(AttachmentFactory::createShadowAttachment(imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
@@ -205,17 +202,17 @@ void SingleApp::createShadowResources() {
     _shadowRenderPass->addSubpass(subpass);
     _shadowRenderPass->create();
 
-    std::vector<VkImageView> imageViews = { _shadowMap->getVkImageView() };
-    _shadowFramebuffer = std::make_unique<Framebuffer>(*_shadowRenderPass, extent, imageViews);
+    _shadowFramebuffer = std::make_unique<Framebuffer>(*_shadowRenderPass, std::vector<std::shared_ptr<Texture>>{ _shadowMap });
 
-    GraphicsPipelineParameters parameters;
-    parameters.depthBiasConstantFactor = 0.7f;
-    parameters.depthBiasSlopeFactor = 2.0f;
+    const GraphicsPipelineParameters parameters = {
+        .depthBiasConstantFactor = 0.7f,
+        .depthBiasSlopeFactor = 2.0f
+    };
     _shadowPipeline = std::make_unique<GraphicsPipeline>(*_shadowRenderPass, *_shadowShaderProgram, parameters);
 }
 
 SingleApp::~SingleApp() {
-    VkDevice device = _logicalDevice->getVkDevice();
+    const VkDevice device = _logicalDevice->getVkDevice();
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(device, _renderFinishedSemaphores[i], nullptr);
@@ -309,7 +306,7 @@ void SingleApp::draw() {
 }
 
 VkFormat SingleApp::findDepthFormat() const {
-    std::array<VkFormat, 3> depthFormats = {
+    const std::array<VkFormat, 3> depthFormats = {
         VK_FORMAT_D32_SFLOAT,
         VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_D32_SFLOAT_S8_UINT,
@@ -352,7 +349,7 @@ void SingleApp::createSyncObjects() {
 }
 
 void SingleApp::updateUniformBuffer(uint32_t currentFrame) {
-    VkExtent2D swapchainExtent = _swapchain->getExtent();
+    const VkExtent2D swapchainExtent = _swapchain->getExtent();
 
     _ubCamera.view = _camera->getViewMatrix();
     _ubCamera.proj = _camera->getProjectionMatrix();
@@ -384,7 +381,7 @@ void SingleApp::createCommandBuffers() {
 void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer commandBuffer, const OctreeNode* rootNode, const std::array<glm::vec4, NUM_CUBE_FACES>& planes) {
     if (!rootNode || !rootNode->getVolume().intersectsFrustum(planes)) return;
 
-    std::queue<const OctreeNode*> nodeQueue;
+    static std::queue<const OctreeNode*> nodeQueue;
     nodeQueue.push(rootNode);
 
     static constexpr OctreeNode::Subvolume options[] = {
@@ -418,8 +415,9 @@ void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer command
 }
 
 void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32_t imageIndex) {
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    const VkCommandBufferBeginInfo beginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    };
 
     if (vkBeginCommandBuffer(primaryCommandBuffer, &beginInfo) != VK_SUCCESS) {
         throw std::runtime_error("failed to begin recording command buffer!");
@@ -440,7 +438,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
 
     vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
-    VkExtent2D swapchainExtent = _swapchain->getExtent();
+    const VkExtent2D swapchainExtent = _swapchain->getExtent();
 
     const VkViewport viewport = {
         .x = 0.0f,
