@@ -27,6 +27,8 @@ public:
 	~LogicalDevice();
 
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) const;
+	const VkBuffer createBuffer(VkDeviceSize size, VkBufferUsageFlags usage) const;
+	const VkDeviceMemory createBufferMemory(VkBuffer buffer, VkMemoryPropertyFlags properties) const;
 	const VkImage createImage(const ImageParameters& params) const;
 	const VkDeviceMemory createImageMemory(const VkImage image, const ImageParameters& params) const;
 	const VkImageView createImageView(const VkImage image, const ImageParameters& params) const;
