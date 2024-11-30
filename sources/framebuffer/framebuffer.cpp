@@ -14,9 +14,7 @@ Framebuffer::Framebuffer(const Renderpass& renderpass, const Swapchain& swapchai
         throw std::runtime_error("swapchainIndex does not fit in swapchain images count!");
     }
 
-    const std::vector<Attachment>& attachments = _renderpass.getAttachmentsLayout().getAttachments();
-    std::vector<VkAttachmentDescription> descriptions;
-    std::transform(attachments.cbegin(), attachments.cend(), std::back_inserter(descriptions), [](const Attachment& attachment) { return attachment.getDescription(); });
+    const std::vector<VkAttachmentDescription>& descriptions = _renderpass.getAttachmentsLayout().getVkAttachmentDescriptions();
 
     std::vector<VkImageView> imageViews;
     for (const auto& description : descriptions) {

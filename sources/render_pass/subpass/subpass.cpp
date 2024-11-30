@@ -22,20 +22,19 @@ void Subpass::addSubpassOutputAttachment(uint32_t attachmentBinding) {
     if (_layout.getAttachmentsCount() <= attachmentBinding)
         throw std::runtime_error("attachmentBinding is not a valid index in attachments vector!");
 
-    const Attachment& attachment = _layout.getAttachments()[attachmentBinding];
     const VkAttachmentReference attachmentReference = {
         .attachment = attachmentBinding,
-        .layout = attachment.getSubpassImageLayout()
+        .layout = _layout.getVkSubpassLayouts()[attachmentBinding]
     };
 
-    switch (attachment.getAttachmentType()) {
-    case Attachment::Type::COLOR_ATTACHMENT:
+    switch (_layout.getAttachmentsTypes()[attachmentBinding]) {
+    case Attachment::Type::COLOR:
         _colorAttachmentRefs.push_back(attachmentReference);
         break;
-    case Attachment::Type::COLOR_ATTACHMENT_RESOLVE:
+    case Attachment::Type::COLOR_RESOLVE:
         _colorAttachmentResolveRefs.push_back(attachmentReference);
         break;
-    case Attachment::Type::DEPTH_ATTACHMENT:
+    case Attachment::Type::DEPTH:
         _depthAttachmentRefs.push_back(attachmentReference);
         break;
     default:

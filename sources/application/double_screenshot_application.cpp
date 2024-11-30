@@ -9,7 +9,6 @@
 #include "entity_component_system/component/transform.h"
 #include "entity_component_system/component/velocity.h"
 #include "pipeline/shader/shader_program.h"
-#include "render_pass/attachment/attachment_factory.h"
 #include "render_pass/attachment/attachment_layout.h"
 #include "thread_pool/thread_pool.h"
 
@@ -146,11 +145,11 @@ void SingleApp::createPresentResources() {
     const VkExtent2D extent = _swapchain->getExtent();
 
     AttachmentLayout attachmentsLayout;
-    attachmentsLayout.addAttachment(AttachmentFactory::createColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE));
-    attachmentsLayout.addAttachment(AttachmentFactory::createColorResolveAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE));
-    attachmentsLayout.addAttachment(AttachmentFactory::createColorAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples));
-    attachmentsLayout.addAttachment(AttachmentFactory::createColorAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples));
-    attachmentsLayout.addAttachment(AttachmentFactory::createDepthAttachment(findDepthFormat(), VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples));
+    attachmentsLayout.addColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+    attachmentsLayout.addColorResolveAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
+    attachmentsLayout.addColorAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples);
+    attachmentsLayout.addColorAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples);
+    attachmentsLayout.addDepthAttachment(findDepthFormat(), VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples);
 
     Subpass subpass(attachmentsLayout);
     subpass.addSubpassOutputAttachment(0);
@@ -193,7 +192,7 @@ void SingleApp::createShadowResources() {
     const VkExtent2D extent = { 1024 * 2, 1024 * 2 };
 
     AttachmentLayout attachmentLayout;
-    attachmentLayout.addAttachment(AttachmentFactory::createShadowAttachment(imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+    attachmentLayout.addShadowAttachment(imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     Subpass subpass(attachmentLayout);
     subpass.addSubpassOutputAttachment(0);
