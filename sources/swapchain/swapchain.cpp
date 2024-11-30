@@ -51,7 +51,7 @@ const std::vector<VkImageView>& Swapchain::getVkImageViews() const {
 }
 
 void Swapchain::cleanup() {
-    VkDevice device = _logicalDevice.getVkDevice();
+    const VkDevice device = _logicalDevice.getVkDevice();
 
     for (const VkImageView view : _views) {
         vkDestroyImageView(device, view, nullptr);
@@ -68,7 +68,7 @@ void Swapchain::create() {
     const VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_MAILBOX_KHR);
     const Window& window = _logicalDevice.getPhysicalDevice().getWindow();
 
-    _surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_R8G8B8A8_SRGB);
+    _surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, VK_FORMAT_B8G8R8A8_SRGB);
     _extent = chooseSwapExtent(window.getFramebufferSize(), swapChainSupport.capabilities);
 
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
@@ -110,9 +110,8 @@ void Swapchain::create() {
 
     vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, nullptr);
     _images.resize(imageCount);
-    _views.resize(imageCount);
     vkGetSwapchainImagesKHR(device, _swapchain, &imageCount, _images.data());
-
+    _views.resize(imageCount);
     std::transform(_images.cbegin(), _images.cend(), _views.begin(),
         [this](const VkImage image) {
             return _logicalDevice.createImageView(image, ImageParameters{
@@ -155,7 +154,6 @@ VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>
     auto availableFormat = std::find_if(availableFormats.cbegin(), availableFormats.cend(), [=](const auto& format) {
         return format.format == preferredFormat && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
         });
-
     return (availableFormat != availableFormats.cend()) ? *availableFormat : availableFormats[0];
 }
 

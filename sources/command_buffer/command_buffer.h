@@ -26,17 +26,16 @@ public:
 };
 
 class CommandBuffer {
+protected:
 	VkCommandBuffer _commandBuffer;
-	VkCommandBufferLevel _level;
+	const VkCommandBufferLevel _level;
 
 	const CommandPool& _commandPool;
 
 public:
 	CommandBuffer(const CommandPool& commandPool, VkCommandBufferLevel level);
 	~CommandBuffer();
-	VkResult begin(const Framebuffer& framebuffer, VkCommandBufferUsageFlags flags = 0, uint32_t subpassIndex = 0) const;
 	VkResult end() const;
-	void beginRenderPass(const Framebuffer& framebuffer, VkExtent2D extent) const;
 	void endRenderPass() const;
 	VkResult submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore, const VkFence waitFence) const;
 	void resetCommandBuffer() const;
@@ -45,7 +44,16 @@ public:
 };
 
 class PrimaryCommandBuffer : public CommandBuffer {
+public:
+	PrimaryCommandBuffer(const CommandPool& commandPool);
+	VkResult begin(VkCommandBufferUsageFlags flags = 0, uint32_t subpassIndex = 0) const;
+	void beginRenderPass(const Framebuffer& framebuffer, VkExtent2D extent) const;
+};
 
+class SecondaryCommandBuffer : public CommandBuffer {
+public:
+	SecondaryCommandBuffer(const CommandPool& commandPool);
+	VkResult begin(const Framebuffer& framebuffer, VkCommandBufferUsageFlags flags = 0, uint32_t subpassIndex = 0) const;
 };
 
 class SingleTimeCommandBuffer {

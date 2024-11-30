@@ -346,12 +346,11 @@ void SingleApp::createSyncObjects() {
         }
     }
 }
-
+int first = 0;
 void SingleApp::updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.view = _camera->getViewMatrix();
     _ubCamera.proj = _camera->getProjectionMatrix();
     _ubCamera.pos = _camera->getPosition();
-
     _dynamicUniformBuffersCamera->updateUniformBuffer(&_ubCamera, currentFrame);
 }
 
@@ -435,7 +434,6 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     };
 
     vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-
 
     const VkViewport viewport = {
         .x = 0.0f,
