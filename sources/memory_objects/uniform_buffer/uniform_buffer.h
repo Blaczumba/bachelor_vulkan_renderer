@@ -82,7 +82,8 @@ UniformBufferData<UniformBufferType>::UniformBufferData(const LogicalDevice& log
 
 	_size = getMemoryAlignment(sizeof(UniformBufferType), limits.minUniformBufferOffsetAlignment);
 	const VkDeviceSize bufferSize = VkDeviceSize{ _count }*_size;
-	_logicalDevice.createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, _uniformBuffer, _uniformBufferMemory);
+	_uniformBuffer = _logicalDevice.createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+	_uniformBufferMemory = _logicalDevice.createBufferMemory(_uniformBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	
 	vkMapMemory(_logicalDevice.getVkDevice(), _uniformBufferMemory, 0, bufferSize, 0, &_uniformBufferMapped);
 	

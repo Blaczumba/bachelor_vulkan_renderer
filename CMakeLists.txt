@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 
-set(CMAKE_PROJECT_NAME VulkanProject)
+set(CMAKE_PROJECT_NAME BejzakEngine)
 
 project(${CMAKE_PROJECT_NAME})
 

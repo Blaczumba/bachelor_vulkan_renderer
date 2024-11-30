@@ -69,6 +69,32 @@ VkResult CommandBuffer::begin(const Framebuffer& framebuffer, VkCommandBufferUsa
     return vkBeginCommandBuffer(_commandBuffer, &beginInfo);
 }
 
+VkResult CommandBuffer::end() const {
+    return vkEndCommandBuffer(_commandBuffer);
+}
+
+void CommandBuffer::beginRenderPass(const Framebuffer& framebuffer, VkExtent2D extent) const {
+    const Renderpass& renderpass = framebuffer.getRenderpass();
+    const auto& clearValues = renderpass.getAttachmentsLayout().getVkClearValues();
+    const VkRenderPassBeginInfo renderPassInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = renderpass.getVkRenderPass(),
+        .framebuffer = framebuffer.getVkFramebuffer(),
+        .renderArea = {
+            .offset = { 0, 0 },
+            .extent = extent
+        },
+        .clearValueCount = static_cast<uint32_t>(clearValues.size()),
+        .pClearValues = clearValues.data()
+    };
+
+    vkCmdBeginRenderPass(_commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+}
+
+void CommandBuffer::endRenderPass() const {
+    vkCmdEndRenderPass(_commandBuffer);
+}
+
 VkResult CommandBuffer::submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore, const VkFence waitFence) const {
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -100,6 +126,10 @@ VkResult CommandBuffer::submit(QueueType type, const VkSemaphore waitSemaphore, 
 
 void CommandBuffer::resetCommandBuffer() const {
     vkResetCommandBuffer(_commandBuffer, 0);
+}
+
+void CommandBuffer::executeSecondaryCommandBuffers(std::initializer_list<VkCommandBuffer> commandBuffers) const {
+    vkCmdExecuteCommands(_commandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.begin());
 }
 
 const VkCommandBuffer CommandBuffer::getVkCommandBuffer() const {
@@ -151,9 +181,9 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
 
     vkQueueSubmit(queue, 1, &submitInfo, _fence);
     vkWaitForFences(device, 1, &_fence, VK_TRUE, UINT64_MAX);
+    vkDestroyFence(device, _fence, nullptr);
 
     vkFreeCommandBuffers(device, _commandPool.getVkCommandPool(), 1, &_commandBuffer);
-    vkDestroyFence(device, _fence, nullptr);
 }
 
 VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const {

@@ -349,8 +349,6 @@ void SingleApp::createSyncObjects() {
 }
 
 void SingleApp::updateUniformBuffer(uint32_t currentFrame) {
-    const VkExtent2D swapchainExtent = _swapchain->getExtent();
-
     _ubCamera.view = _camera->getViewMatrix();
     _ubCamera.proj = _camera->getProjectionMatrix();
     _ubCamera.pos = _camera->getPosition();
@@ -424,13 +422,14 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
     }
 
     const auto& clearValues = _renderPass->getAttachmentsLayout().getVkClearValues();
+    const VkExtent2D extent = _framebuffers[imageIndex]->getVkExtent();
     const VkRenderPassBeginInfo renderPassInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = _renderPass->getVkRenderPass(),
         .framebuffer = _framebuffers[imageIndex]->getVkFramebuffer(),
         .renderArea = {
             .offset = { 0, 0 },
-            .extent = _swapchain->getExtent()
+            .extent = extent
         },
         .clearValueCount = static_cast<uint32_t>(clearValues.size()),
         .pClearValues = clearValues.data()
@@ -438,20 +437,19 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
 
     vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
-    const VkExtent2D swapchainExtent = _swapchain->getExtent();
 
     const VkViewport viewport = {
         .x = 0.0f,
         .y = 0.0f,
-        .width = (float)swapchainExtent.width,
-        .height = (float)swapchainExtent.height,
+        .width = static_cast<float>(extent.width),
+        .height = static_cast<float>(extent.height),
         .minDepth = 0.0f,
         .maxDepth = 1.0f
     };
 
     const VkRect2D scissor = {
         .offset = { 0, 0 },
-        .extent = swapchainExtent
+        .extent = extent
     };
 
     const VkCommandBufferInheritanceInfo inheritanceInfo = {
@@ -467,43 +465,42 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         .pInheritanceInfo = &inheritanceInfo
     };
 
-    std::array<VkCommandBuffer, MAX_THREADS_IN_POOL> commandBuffers;
-    std::transform(_commandBuffers[_currentFrame].cbegin(), _commandBuffers[_currentFrame].cend(), commandBuffers.begin(), [](const std::unique_ptr<CommandBuffer>& cmdBuff) { return cmdBuff->getVkCommandBuffer(); });
-
     _threadPool->getThread(0)->addJob([&]() {
-        vkBeginCommandBuffer(commandBuffers[0], &cmdBufferBeginInfo);
-        vkCmdSetViewport(commandBuffers[0], 0, 1, &viewport);
-        vkCmdSetScissor(commandBuffers[0], 0, 1, &scissor);
-        vkCmdSetViewport(commandBuffers[0], 0, 1, &viewport);
+        const VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][0]->getVkCommandBuffer();
+        vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo);
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
         const OctreeNode* root = _octree->getRoot();
         const auto& planes = extractFrustumPlanes(_camera->getProjectionMatrix() * _camera->getViewMatrix());
 
-        vkCmdBindPipeline(commandBuffers[0], _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
-        recordOctreeSecondaryCommandBuffer(commandBuffers[0], root, planes);
+        vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
+        recordOctreeSecondaryCommandBuffer(commandBuffer, root, planes);
 
-        if (vkEndCommandBuffer(commandBuffers[0]) != VK_SUCCESS) {
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
             throw std::runtime_error("failed to record command buffer!");
         }
     });
 
     _threadPool->getThread(1)->addJob([&]() {
         // Skybox
-        vkBeginCommandBuffer(commandBuffers[1], &cmdBufferBeginInfo);
-        vkCmdSetViewport(commandBuffers[1], 0, 1, &viewport);
-        vkCmdSetScissor(commandBuffers[1], 0, 1, &scissor);
-        vkCmdBindPipeline(commandBuffers[1], _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
+        const VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][1]->getVkCommandBuffer();
+        vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo);
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+        vkCmdBindPipeline(commandBuffer, _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
 
-        _vertexBufferCube->bind(commandBuffers[1]);
-        _indexBufferCube->bind(commandBuffers[1]);
-        _descriptorSetSkybox->bind(commandBuffers[1], *_graphicsPipelineSkybox, { _currentFrame });
-        vkCmdDrawIndexed(commandBuffers[1], _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
-        vkEndCommandBuffer(commandBuffers[1]);
+        _vertexBufferCube->bind(commandBuffer);
+        _indexBufferCube->bind(commandBuffer);
+        _descriptorSetSkybox->bind(commandBuffer, *_graphicsPipelineSkybox, { _currentFrame });
+        vkCmdDrawIndexed(commandBuffer, _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
+        vkEndCommandBuffer(commandBuffer);
     });
 
     _threadPool->wait();
 
-    vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+    _primaryCommandBuffer[_currentFrame]->executeSecondaryCommandBuffers({ _commandBuffers[_currentFrame][0]->getVkCommandBuffer(), _commandBuffers[_currentFrame][1]->getVkCommandBuffer() });
+    // vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
     vkCmdEndRenderPass(primaryCommandBuffer);
 
     if (vkEndCommandBuffer(primaryCommandBuffer) != VK_SUCCESS) {

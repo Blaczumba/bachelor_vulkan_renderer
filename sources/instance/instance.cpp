@@ -10,7 +10,6 @@
 #include <stdexcept>
 
 Instance::Instance(std::string_view engineName, const std::vector<const char*>& requiredExtensions) {
-
 #ifdef VALIDATION_LAYERS_ENABLED
     if (!checkValidationLayerSupport()) {
         throw std::runtime_error("validation layers requested, but not available!");

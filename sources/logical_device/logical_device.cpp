@@ -2,6 +2,8 @@
 
 #include "config/config.h"
 
+#include <vulkan/vulkan.h>
+
 #include <set>
 #include <stdexcept>
 
@@ -61,36 +63,6 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
     vkGetDeviceQueue(_device, *indices.presentFamily, 0, &_presentQueue);
     vkGetDeviceQueue(_device, *indices.computeFamily, 0, &_computeQueue);
     vkGetDeviceQueue(_device, *indices.transferFamily, 0, &_transferQueue);
-}
-
-void LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) const {
-    VkBufferCreateInfo bufferInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = size,
-        .usage = usage,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
-    };
-
-    if (vkCreateBuffer(_device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create buffer!");
-    }
-
-    const auto& propertyManager = _physicalDevice.getPropertyManager();
-
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(_device, buffer, &memRequirements);
-
-    const VkMemoryAllocateInfo allocInfo = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = memRequirements.size,
-        .memoryTypeIndex = propertyManager.findMemoryType(memRequirements.memoryTypeBits, properties)
-    };
-
-    if (vkAllocateMemory(_device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate buffer memory!");
-    }
-
-    vkBindBufferMemory(_device, buffer, bufferMemory, 0);
 }
 
 const VkBuffer LogicalDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage) const {
