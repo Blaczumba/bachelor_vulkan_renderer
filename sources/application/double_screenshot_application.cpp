@@ -411,11 +411,12 @@ void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer command
 }
 
 void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
+    const Framebuffer& framebuffer = *_framebuffers[imageIndex];
     const PrimaryCommandBuffer& primaryCommandBuffer = *_primaryCommandBuffer[_currentFrame];
     primaryCommandBuffer.begin();
-    primaryCommandBuffer.beginRenderPass(*_framebuffers[imageIndex]);
+    primaryCommandBuffer.beginRenderPass(framebuffer);
 
-    const VkExtent2D framebufferExtent = _framebuffers[imageIndex]->getVkExtent();
+    const VkExtent2D framebufferExtent = framebuffer.getVkExtent();
     const VkViewport viewport = {
         .x = 0.0f,
         .y = 0.0f,
@@ -430,9 +431,9 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
     };
     const VkCommandBufferInheritanceInfo inheritanceInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-        .renderPass = _framebuffers[imageIndex]->getRenderpass().getVkRenderPass(),
+        .renderPass = framebuffer.getRenderpass().getVkRenderPass(),
         .subpass = 0,
-        .framebuffer = _framebuffers[imageIndex]->getVkFramebuffer()
+        .framebuffer = framebuffer.getVkFramebuffer()
     };
     const VkCommandBufferBeginInfo cmdBufferBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
