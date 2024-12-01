@@ -2,80 +2,73 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <utility>
+
+namespace {
+
+std::pair<VkAccessFlags, VkPipelineStageFlags> sourceStageAndAccessMask(VkImageLayout layout) {
+    switch (layout) {
+    case VK_IMAGE_LAYOUT_UNDEFINED:
+        return { 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
+    case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+        return { VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+        return { VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+        return { VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+        return { VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    default:
+        return { 0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT };
+    }
+}
+
+std::pair<VkAccessFlags, VkPipelineStageFlags> destinationStageAndAccessMask(VkImageLayout layout) {
+    switch (layout) {
+    case VK_IMAGE_LAYOUT_GENERAL:
+        return { VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+    case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+        return { VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+        return { VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+        return { VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT };
+    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+        return { VK_ACCESS_COLOR_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT };
+    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+        return { VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT };
+    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+        return { VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+    default:
+        return { 0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT };
+    }
+}
+
+}
 
 void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t layerCount) {
-    VkImageSubresourceRange range{};
-    range.aspectMask        = aspectFlags;
-    range.baseMipLevel      = 0;
-    range.levelCount        = mipLevels;
-    range.baseArrayLayer    = 0;
-    range.layerCount        = layerCount;
+    const VkImageSubresourceRange range = {
+        .aspectMask = aspectFlags,
+        .baseMipLevel = 0,
+        .levelCount = mipLevels,
+        .baseArrayLayer = 0,
+        .layerCount = layerCount
+    };
 
-    VkImageMemoryBarrier barrier{};
-    barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout           = oldLayout;
-    barrier.newLayout           = newLayout;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image               = image;
-    barrier.subresourceRange    = range;
+    VkImageMemoryBarrier barrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = image,
+        .subresourceRange = range
+    };
 
-    VkPipelineStageFlags sourceStage;
-    VkPipelineStageFlags destinationStage;
-
-    switch (oldLayout) {
-    case VK_IMAGE_LAYOUT_UNDEFINED:
-        barrier.srcAccessMask = 0;
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        break;
-    case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        break;
-    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        break;
-    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-        barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        break;
-    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-        barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        break;
-    }
-
-    switch (newLayout) {
-    case VK_IMAGE_LAYOUT_GENERAL:
-        barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        break;
-    case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        break;
-    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        break;
-    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        break;
-    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-        destinationStage = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
-        break;
-    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-        barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        break;
-    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-        barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;  // ???
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        break;
-    }
+    VkPipelineStageFlags sourceStage, destinationStage;
+    std::tie(barrier.srcAccessMask, sourceStage) = sourceStageAndAccessMask(oldLayout);
+    std::tie(barrier.dstAccessMask, destinationStage) = destinationStageAndAccessMask(newLayout);
 
     vkCmdPipelineBarrier(
         commandBuffer,
@@ -96,7 +89,7 @@ void copyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuf
 }
 
 void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
-    VkBufferImageCopy region = {
+    const VkBufferImageCopy region = {
         .bufferOffset = 0,
         .bufferRowLength = 0,
         .bufferImageHeight = 0,
@@ -140,7 +133,7 @@ void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage i
 }
 
 void copyImageToBuffer(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout layout, VkBuffer buffer, uint32_t width, uint32_t height) {
-    VkBufferImageCopy region = {
+    const VkBufferImageCopy region = {
         .bufferOffset = 0,
         .bufferRowLength = 0,
         .bufferImageHeight = 0,
@@ -167,19 +160,19 @@ void copyImageToBuffer(VkCommandBuffer commandBuffer, VkImage image, VkImageLayo
 }
 
 void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImage, VkExtent2D srcSize, VkExtent2D dstSize, VkImageAspectFlagBits aspect) {
-    VkOffset3D srcBlitSize = {
+    const VkOffset3D srcBlitSize = {
         .x = static_cast<int32_t>(srcSize.width),
         .y = static_cast<int32_t>(srcSize.height),
         .z = 1
     };
 
-    VkOffset3D dstBlitSize = {
+    const VkOffset3D dstBlitSize = {
         .x = static_cast<int32_t>(dstSize.width),
         .y = static_cast<int32_t>(dstSize.height),
         .z = 1
     };
 
-    VkImageBlit imageBlitRegion = {
+    const VkImageBlit imageBlitRegion = {
         .srcSubresource = {
             .aspectMask = static_cast<VkImageAspectFlags>(aspect),
             .layerCount = 1,
@@ -208,7 +201,7 @@ void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage d
 }
 
 void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImage, VkExtent2D extent, VkImageAspectFlagBits aspect) {
-    VkImageCopy imageCopyRegion = {
+    const VkImageCopy imageCopyRegion = {
         .srcSubresource = {
             .aspectMask = static_cast<VkImageAspectFlags>(aspect),
             .layerCount = 1
