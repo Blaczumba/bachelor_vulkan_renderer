@@ -79,9 +79,9 @@ class SingleApp : public ApplicationBase {
     std::unique_ptr<FPSCamera> _camera;
 
     std::vector<std::unique_ptr<CommandPool>> _commandPool;
-    std::vector<std::unique_ptr<CommandBuffer>> _primaryCommandBuffer;
-    std::vector<std::vector<std::unique_ptr<CommandBuffer>>> _commandBuffers;
-    std::vector<std::vector<std::unique_ptr<CommandBuffer>>> _shadowCommandBuffers;
+    std::vector<std::unique_ptr<PrimaryCommandBuffer>> _primaryCommandBuffer;
+    std::vector<std::vector<std::unique_ptr<SecondaryCommandBuffer>>> _commandBuffers;
+    std::vector<std::vector<std::unique_ptr<SecondaryCommandBuffer>>> _shadowCommandBuffers;
 
     std::unique_ptr<ThreadPool> _threadPool;
     std::vector<VkSemaphore> _shadowMapSemaphores;
@@ -109,7 +109,7 @@ private:
     void createCommandBuffers();
     void createSyncObjects();
     void updateUniformBuffer(uint32_t currentImage);
-    void recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32_t imageIndex);
+    void recordCommandBuffer(uint32_t imageIndex);
     void recordOctreeSecondaryCommandBuffer(const VkCommandBuffer commandBuffer, const OctreeNode* node, const std::array<glm::vec4, NUM_CUBE_FACES>& planes);
     void recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void recreateSwapChain();

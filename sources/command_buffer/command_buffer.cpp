@@ -19,12 +19,12 @@ CommandPool::CommandPool(const LogicalDevice& logicalDevice) : _logicalDevice(lo
 CommandPool::~CommandPool() {
     vkDestroyCommandPool(_logicalDevice.getVkDevice(), _commandPool, nullptr);
 }
-std::unique_ptr<CommandBuffer> CommandPool::createPrimaryCommandBuffer() const {
-    return std::make_unique<CommandBuffer>(*this, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+std::unique_ptr<PrimaryCommandBuffer> CommandPool::createPrimaryCommandBuffer() const {
+    return std::make_unique<PrimaryCommandBuffer>(*this);
 }
 
-std::unique_ptr<CommandBuffer> CommandPool::createSecondaryCommandBuffer() const {
-    return std::make_unique<CommandBuffer>(*this, VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+std::unique_ptr<SecondaryCommandBuffer> CommandPool::createSecondaryCommandBuffer() const {
+    return std::make_unique<SecondaryCommandBuffer>(*this);
 }
 
 const VkCommandPool CommandPool::getVkCommandPool() const {
@@ -81,7 +81,7 @@ VkResult PrimaryCommandBuffer::begin(VkCommandBufferUsageFlags flags, uint32_t s
 void PrimaryCommandBuffer::beginRenderPass(const Framebuffer& framebuffer) const {
     const Renderpass& renderpass = framebuffer.getRenderpass();
     const auto& clearValues = renderpass.getAttachmentsLayout().getVkClearValues();
-    static const VkRenderPassBeginInfo renderPassInfo = {
+    const VkRenderPassBeginInfo renderPassInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = renderpass.getVkRenderPass(),
         .framebuffer = framebuffer.getVkFramebuffer(),
@@ -134,7 +134,7 @@ VkResult PrimaryCommandBuffer::submit(QueueType type, const VkSemaphore waitSema
 }
 
 SecondaryCommandBuffer::SecondaryCommandBuffer(const CommandPool& commandPool)
-    : CommandBuffer(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+    : CommandBuffer(commandPool, VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
 
 }
 

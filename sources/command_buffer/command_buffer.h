@@ -20,8 +20,8 @@ public:
 	CommandPool(const LogicalDevice& logicalDevice);
 	~CommandPool();
 
-	std::unique_ptr<CommandBuffer> createPrimaryCommandBuffer() const;
-	std::unique_ptr<CommandBuffer> createSecondaryCommandBuffer() const;
+	std::unique_ptr<PrimaryCommandBuffer> createPrimaryCommandBuffer() const;
+	std::unique_ptr<SecondaryCommandBuffer> createSecondaryCommandBuffer() const;
 
 	const VkCommandPool getVkCommandPool() const;
 	const LogicalDevice& getLogicalDevice() const;

@@ -268,7 +268,7 @@ void SingleApp::draw() {
         _commandBuffers[_currentFrame][i]->resetCommandBuffer();
 
     //recordShadowCommandBuffer(_shadowCommandBuffers[_currentFrame], imageIndex);
-    recordCommandBuffer(_primaryCommandBuffer[_currentFrame]->getVkCommandBuffer(), imageIndex);
+    recordCommandBuffer(imageIndex);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -410,61 +410,35 @@ void SingleApp::recordOctreeSecondaryCommandBuffer(const VkCommandBuffer command
     }
 }
 
-void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32_t imageIndex) {
-    const VkCommandBufferBeginInfo beginInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-    };
+void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
+    const PrimaryCommandBuffer& primaryCommandBuffer = *_primaryCommandBuffer[_currentFrame];
+    primaryCommandBuffer.begin();
+    primaryCommandBuffer.beginRenderPass(*_framebuffers[imageIndex]);
 
-    if (vkBeginCommandBuffer(primaryCommandBuffer, &beginInfo) != VK_SUCCESS) {
-        throw std::runtime_error("failed to begin recording command buffer!");
-    }
-
-    const auto& clearValues = _renderPass->getAttachmentsLayout().getVkClearValues();
-    const VkRenderPassBeginInfo renderPassInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass = _renderPass->getVkRenderPass(),
-        .framebuffer = _framebuffers[imageIndex]->getVkFramebuffer(),
-        .renderArea = {
-            .offset = { 0, 0 },
-            .extent = _swapchain->getExtent()
-        },
-        .clearValueCount = static_cast<uint32_t>(clearValues.size()),
-        .pClearValues = clearValues.data()
-    };
-
-    vkCmdBeginRenderPass(primaryCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-
-    const VkExtent2D swapchainExtent = _swapchain->getExtent();
-
+    const VkExtent2D framebufferExtent = _framebuffers[imageIndex]->getVkExtent();
     const VkViewport viewport = {
         .x = 0.0f,
         .y = 0.0f,
-        .width = (float)swapchainExtent.width,
-        .height = (float)swapchainExtent.height,
+        .width = (float)framebufferExtent.width,
+        .height = (float)framebufferExtent.height,
         .minDepth = 0.0f,
         .maxDepth = 1.0f
     };
-
     const VkRect2D scissor = {
         .offset = { 0, 0 },
-        .extent = swapchainExtent
+        .extent = framebufferExtent
     };
-
     const VkCommandBufferInheritanceInfo inheritanceInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-        .renderPass = _renderPass->getVkRenderPass(),
+        .renderPass = _framebuffers[imageIndex]->getRenderpass().getVkRenderPass(),
         .subpass = 0,
         .framebuffer = _framebuffers[imageIndex]->getVkFramebuffer()
     };
-
     const VkCommandBufferBeginInfo cmdBufferBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
         .pInheritanceInfo = &inheritanceInfo
     };
-
-    std::array<VkCommandBuffer, MAX_THREADS_IN_POOL> commandBuffers;
-    std::transform(_commandBuffers[_currentFrame].cbegin(), _commandBuffers[_currentFrame].cend(), commandBuffers.begin(), [](const std::unique_ptr<CommandBuffer>& cmdBuff) { return cmdBuff->getVkCommandBuffer(); });
 
     _threadPool->getThread(0)->addJob([&]() {
         VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][0]->getVkCommandBuffer();
@@ -482,7 +456,7 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
             throw std::runtime_error("failed to record command buffer!");
         }
-        });
+    });
 
     _threadPool->getThread(1)->addJob([&]() {
         // Skybox
@@ -497,14 +471,14 @@ void SingleApp::recordCommandBuffer(VkCommandBuffer primaryCommandBuffer, uint32
         _descriptorSetSkybox->bind(commandBuffer, *_graphicsPipelineSkybox, { _currentFrame });
         vkCmdDrawIndexed(commandBuffer, _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
         vkEndCommandBuffer(commandBuffer);
-        });
+    });
 
     _threadPool->wait();
 
-    vkCmdExecuteCommands(primaryCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-    vkCmdEndRenderPass(primaryCommandBuffer);
+    primaryCommandBuffer.executeSecondaryCommandBuffers({ _commandBuffers[_currentFrame][0]->getVkCommandBuffer(), _commandBuffers[_currentFrame][1]->getVkCommandBuffer() });
+    primaryCommandBuffer.endRenderPass();
 
-    if (vkEndCommandBuffer(primaryCommandBuffer) != VK_SUCCESS) {
+    if (primaryCommandBuffer.end() != VK_SUCCESS) {
         throw std::runtime_error("failed to record command buffer!");
     }
 }
