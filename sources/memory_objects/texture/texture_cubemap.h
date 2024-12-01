@@ -11,7 +11,7 @@
 #include <cstring>
 #include <stdexcept>
 
-std::unique_ptr<Texture> createIamgeCubemap(const CommandPool& commandPool, std::string_view texturePath, ImageParameters&& imageParams, SamplerParameters&& samplerParams) {
+std::unique_ptr<Texture> createImageCubemap(const CommandPool& commandPool, std::string_view texturePath, ImageParameters&& imageParams, SamplerParameters&& samplerParams) {
 	const LogicalDevice& logicalDevice = commandPool.getLogicalDevice();
 	const VkDevice device = logicalDevice.getVkDevice();
 
@@ -40,12 +40,8 @@ std::unique_ptr<Texture> createIamgeCubemap(const CommandPool& commandPool, std:
 	vkUnmapMemory(device, stagingBufferMemory);
 
 	std::vector<VkBufferImageCopy> bufferCopyRegions;
-	uint32_t offset = 0;
-
-	for (uint32_t face = 0; face < imageParams.layerCount; face++)
-	{
-		for (uint32_t level = 0; level < imageParams.mipLevels; level++)
-		{
+	for (uint32_t face = 0; face < imageParams.layerCount; face++) {
+		for (uint32_t level = 0; level < imageParams.mipLevels; level++) {
 			// Calculate offset into staging buffer for the current mip level and face
 			ktx_size_t offset;
 			KTX_error_code ret = ktxTexture_GetImageOffset(ktxTexture, level, 0, face, &offset);

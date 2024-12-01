@@ -6,6 +6,8 @@
 
 #include <memory>
 
+class PrimaryCommandBuffer;
+class SecondaryCommandBuffer;
 class CommandBuffer;
 class Framebuffer;
 
@@ -28,18 +30,13 @@ public:
 class CommandBuffer {
 protected:
 	VkCommandBuffer _commandBuffer;
-	const VkCommandBufferLevel _level;
-
 	const CommandPool& _commandPool;
 
 public:
 	CommandBuffer(const CommandPool& commandPool, VkCommandBufferLevel level);
 	~CommandBuffer();
 	VkResult end() const;
-	void endRenderPass() const;
-	VkResult submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore, const VkFence waitFence) const;
 	void resetCommandBuffer() const;
-	void executeSecondaryCommandBuffers(std::initializer_list<VkCommandBuffer> commandBuffers) const;
 	const VkCommandBuffer getVkCommandBuffer() const;
 };
 
@@ -47,7 +44,10 @@ class PrimaryCommandBuffer : public CommandBuffer {
 public:
 	PrimaryCommandBuffer(const CommandPool& commandPool);
 	VkResult begin(VkCommandBufferUsageFlags flags = 0, uint32_t subpassIndex = 0) const;
-	void beginRenderPass(const Framebuffer& framebuffer, VkExtent2D extent) const;
+	void beginRenderPass(const Framebuffer& framebuffer) const;
+	void endRenderPass() const;
+	void executeSecondaryCommandBuffers(std::initializer_list<VkCommandBuffer> commandBuffers) const;
+	VkResult submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore, const VkFence waitFence) const;
 };
 
 class SecondaryCommandBuffer : public CommandBuffer {

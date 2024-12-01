@@ -1,7 +1,7 @@
 #pragma once
 
 #include "physical_device/physical_device.h"
-#include "memory_objects/buffers.h"
+#include "memory_objects/texture/texture.h"
 
 #include <memory>
 

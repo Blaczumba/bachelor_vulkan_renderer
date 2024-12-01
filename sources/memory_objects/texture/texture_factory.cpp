@@ -9,7 +9,7 @@
 #include <array>
 
 std::unique_ptr<Texture> TextureFactory::createCubemap(const CommandPool& commandPool, std::string_view filePath, VkFormat format, float samplerAnisotropy) {
-	return createIamgeCubemap(commandPool, filePath,
+	return createImageCubemap(commandPool, filePath,
         ImageParameters{
 		    .format = format,
 		    .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
