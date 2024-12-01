@@ -70,10 +70,9 @@ PrimaryCommandBuffer::PrimaryCommandBuffer(const CommandPool& commandPool)
 
 }
 
-VkResult PrimaryCommandBuffer::begin(VkCommandBufferUsageFlags flags, uint32_t subpassIndex) const {
+VkResult PrimaryCommandBuffer::begin(uint32_t subpassIndex) const {
     const VkCommandBufferBeginInfo beginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = flags,
     };
     return vkBeginCommandBuffer(_commandBuffer, &beginInfo);
 }
@@ -138,7 +137,7 @@ SecondaryCommandBuffer::SecondaryCommandBuffer(const CommandPool& commandPool)
 
 }
 
-VkResult SecondaryCommandBuffer::begin(const Framebuffer& framebuffer, VkCommandBufferUsageFlags flags, uint32_t subpassIndex) const {
+VkResult SecondaryCommandBuffer::begin(const Framebuffer& framebuffer, uint32_t subpassIndex) const {
     const VkCommandBufferInheritanceInfo inheritance = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
         .renderPass = framebuffer.getRenderpass().getVkRenderPass(),
@@ -147,10 +146,9 @@ VkResult SecondaryCommandBuffer::begin(const Framebuffer& framebuffer, VkCommand
     };
     const VkCommandBufferBeginInfo beginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = flags,
+        .flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
         .pInheritanceInfo = &inheritance
     };
-
     return vkBeginCommandBuffer(_commandBuffer, &beginInfo);
 }
 

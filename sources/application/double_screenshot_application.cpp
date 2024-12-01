@@ -190,10 +190,8 @@ void SingleApp::createShadowResources() {
     const VkSampleCountFlagBits shadowMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
     const VkFormat imageFormat = VK_FORMAT_D32_SFLOAT;
     const VkExtent2D extent = { 1024 * 2, 1024 * 2 };
-
     AttachmentLayout attachmentLayout;
     attachmentLayout.addShadowAttachment(imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
     Subpass subpass(attachmentLayout);
     subpass.addSubpassOutputAttachment(0);
 
@@ -429,21 +427,10 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
         .offset = { 0, 0 },
         .extent = framebufferExtent
     };
-    const VkCommandBufferInheritanceInfo inheritanceInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-        .renderPass = framebuffer.getRenderpass().getVkRenderPass(),
-        .subpass = 0,
-        .framebuffer = framebuffer.getVkFramebuffer()
-    };
-    const VkCommandBufferBeginInfo cmdBufferBeginInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
-        .pInheritanceInfo = &inheritanceInfo
-    };
 
     _threadPool->getThread(0)->addJob([&]() {
+        _commandBuffers[_currentFrame][0]->begin(framebuffer);
         VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][0]->getVkCommandBuffer();
-        vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo);
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
@@ -461,8 +448,8 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
 
     _threadPool->getThread(1)->addJob([&]() {
         // Skybox
+        _commandBuffers[_currentFrame][1]->begin(framebuffer);
         VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][1]->getVkCommandBuffer();
-        vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo);
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
         vkCmdBindPipeline(commandBuffer, _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());

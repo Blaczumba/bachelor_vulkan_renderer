@@ -13,7 +13,6 @@ class Framebuffer;
 
 class CommandPool {
 	VkCommandPool _commandPool;
-
 	const LogicalDevice& _logicalDevice;
 
 public:
@@ -43,7 +42,7 @@ public:
 class PrimaryCommandBuffer : public CommandBuffer {
 public:
 	PrimaryCommandBuffer(const CommandPool& commandPool);
-	VkResult begin(VkCommandBufferUsageFlags flags = 0, uint32_t subpassIndex = 0) const;
+	VkResult begin(uint32_t subpassIndex = 0) const;
 	void beginRenderPass(const Framebuffer& framebuffer) const;
 	void endRenderPass() const;
 	void executeSecondaryCommandBuffers(std::initializer_list<VkCommandBuffer> commandBuffers) const;
@@ -53,7 +52,7 @@ public:
 class SecondaryCommandBuffer : public CommandBuffer {
 public:
 	SecondaryCommandBuffer(const CommandPool& commandPool);
-	VkResult begin(const Framebuffer& framebuffer, VkCommandBufferUsageFlags flags = 0, uint32_t subpassIndex = 0) const;
+	VkResult begin(const Framebuffer& framebuffer, uint32_t subpassIndex = 0) const;
 };
 
 class SingleTimeCommandBuffer {
