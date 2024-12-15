@@ -1,12 +1,13 @@
 #include "physical_device.h"
 
-#include "config/config.h"
 #include "logical_device/logical_device.h"
 
 #include <algorithm>
 #include <array>
 #include <iostream>
 #include <stdexcept>
+
+#include <vulkan/vulkan.hpp>
 
 PhysicalDevice::PhysicalDevice(const Window& window)
 	: _window(window) {

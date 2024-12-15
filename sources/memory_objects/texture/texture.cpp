@@ -2,9 +2,30 @@
 
 #include "logical_device/logical_device.h"
 #include "memory_objects/buffers.h"
+#include "memory_allocator/memory_allocator.h"
+
+#include <vma/vk_mem_alloc.h>
+
+#include <stdexcept>
 
 Texture::Texture(const LogicalDevice& logicalDevice, Texture::Type type, const VkImage image, const VkDeviceMemory memory, const ImageParameters& imageParameters, const VkImageView view, const VkSampler sampler, const SamplerParameters& samplerParameters)
     : _logicalDevice(logicalDevice), _type(type), _image(image), _memory(memory), _imageParameters(imageParameters), _view(view), _sampler(sampler), _samplerParameters(samplerParameters) {
+
+}
+
+namespace {
+
+struct ImageDeleter {
+    VkImage image;
+
+    void operator()(VmaWrapper& allocator) {
+        allocator.destroyVkImage(image);
+    }
+
+    void operator()(auto) {
+        throw std::runtime_error("Invalid memory allocator or memory instance!");
+    }
+};
 
 }
 
@@ -15,17 +36,11 @@ Texture::~Texture() {
     if(_view)
         vkDestroyImageView(device, _view, nullptr);
     if(_image)
-        vkDestroyImage(device, _image, nullptr);
-    if(_memory)
-        vkFreeMemory(device, _memory, nullptr);
+        std::visit(ImageDeleter{ _image }, _logicalDevice.getMemoryAllocator());
 }
 
 const VkImage Texture::getVkImage() const {
     return _image;
-}
-
-const VkDeviceMemory Texture::getVkDeviceMemory() const {
-    return _memory;
 }
 
 const VkImageView Texture::getVkImageView() const {

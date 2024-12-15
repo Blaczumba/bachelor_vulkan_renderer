@@ -3,7 +3,7 @@
 #include "texture.h"
 
 #include "command_buffer/command_buffer.h"
-#include "logical_device/logical_device.h"
+// #include "logical_device/logical_device.h"
 
 #include <vulkan/vulkan.h>
 
@@ -26,7 +26,6 @@ std::unique_ptr<Texture> create2DImage(const CommandPool& commandPool, std::stri
     imageParams.mipLevels = std::floor(std::log2(std::max(imageParams.width, imageParams.height))) + 1u;
     samplerParams.maxLod = static_cast<float>(imageParams.mipLevels);
 
-
     if (!pixels) {
         throw std::runtime_error("failed to load texture image!");
     }
@@ -42,8 +41,7 @@ std::unique_ptr<Texture> create2DImage(const CommandPool& commandPool, std::stri
 
     stbi_image_free(pixels);
 
-    const VkImage image = logicalDevice.createImage(imageParams);
-    const VkDeviceMemory memory = logicalDevice.createImageMemory(image, imageParams);
+    const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
     {
         SingleTimeCommandBuffer handle(commandPool);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
@@ -58,5 +56,5 @@ std::unique_ptr<Texture> create2DImage(const CommandPool& commandPool, std::stri
 
     const VkImageView view = logicalDevice.createImageView(image, imageParams);
     const VkSampler sampler = logicalDevice.createSampler(samplerParams);
-    return std::make_unique<Texture>(logicalDevice, Texture::Type::IMAGE_2D, image, memory, imageParams, view, sampler, samplerParams);
+    return std::make_unique<Texture>(logicalDevice, Texture::Type::IMAGE_2D, image, nullptr, imageParams, view, sampler, samplerParams);
 }

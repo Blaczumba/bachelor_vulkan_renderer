@@ -1,3 +1,5 @@
+#pragma once
+
 #include "texture.h"
 
 #include "command_buffer/command_buffer.h"
@@ -6,8 +8,7 @@
 std::unique_ptr<Texture> createAttachment(const CommandPool& commandPool, VkImageLayout dstLayout, Texture::Type type, ImageParameters&& imageParams) {
     const LogicalDevice& logicalDevice = commandPool.getLogicalDevice();
 
-    const VkImage image = logicalDevice.createImage(imageParams);
-    const VkDeviceMemory memory = logicalDevice.createImageMemory(image, imageParams);
+    const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
     {
         SingleTimeCommandBuffer handle(commandPool);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
@@ -17,5 +18,5 @@ std::unique_ptr<Texture> createAttachment(const CommandPool& commandPool, VkImag
     
     const VkImageView view = logicalDevice.createImageView(image, imageParams);
 
-    return std::make_unique<Texture>(logicalDevice, type, image, memory, imageParams, view);
+    return std::make_unique<Texture>(logicalDevice, type, image, nullptr, imageParams, view);
 }

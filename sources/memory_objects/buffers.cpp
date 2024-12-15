@@ -299,3 +299,7 @@ void generateImageMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat
         0, nullptr,
         1, &barrier);
 }
+
+Buffer createStagingBuffer(size_t size) {
+    return {};
+}

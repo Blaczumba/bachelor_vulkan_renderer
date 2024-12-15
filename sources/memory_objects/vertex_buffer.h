@@ -34,10 +34,7 @@ VertexBuffer::VertexBuffer(const CommandPool& commandPool, const std::vector<Ver
     const VkBuffer stagingBuffer = _logicalDevice.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     const VkDeviceMemory stagingBufferMemory = _logicalDevice.createBufferMemory(stagingBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    std::memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-    vkUnmapMemory(device, stagingBufferMemory);
+    _logicalDevice.sendDataToMemory(stagingBufferMemory, vertices.data(), bufferSize);
 
     _vertexBuffer = _logicalDevice.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     _vertexBufferMemory = _logicalDevice.createBufferMemory(_vertexBuffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);

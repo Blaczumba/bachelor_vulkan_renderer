@@ -70,7 +70,7 @@ public:
 	~UniformBufferData() override;
 
 	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override;
-	void updateUniformBuffer(const UniformBufferType* object, uint32_t index = 0);
+	void updateUniformBuffer(const UniformBufferType* object, size_t index = 0);
 };
 
 template<typename UniformBufferType>
@@ -117,6 +117,6 @@ VkWriteDescriptorSet UniformBufferData<UniformBufferType>::getVkWriteDescriptorS
 }
 
 template<typename UniformBufferType>
-void UniformBufferData<UniformBufferType>::updateUniformBuffer(const UniformBufferType* object, uint32_t index) {
-	std::memcpy(static_cast<uint8_t*>(_uniformBufferMapped) + size_t{ index }*_size, object, sizeof(UniformBufferType));
+void UniformBufferData<UniformBufferType>::updateUniformBuffer(const UniformBufferType* object, size_t index) {
+	std::memcpy(static_cast<uint8_t*>(_uniformBufferMapped) + _size*index, object, sizeof(UniformBufferType));
 }

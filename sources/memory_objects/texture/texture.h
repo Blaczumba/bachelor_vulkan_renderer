@@ -1,11 +1,14 @@
 #pragma once
 
+#include "memory_allocator/memory_allocator.h"
 #include "memory_objects/buffers.h"
 
 #include <vulkan/vulkan.h>
 
 #include <memory>
 #include <optional>
+#include <stdexcept>
+#include <variant>
 
 class LogicalDevice;
 
@@ -39,6 +42,7 @@ struct SamplerParameters {
 	VkBool32 unnormalizedCoordinates = VK_FALSE;
 };
 
+
 struct Texture {
 public:
 	enum class Type : uint8_t {
@@ -68,7 +72,6 @@ public:
 	void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
 
 	const VkImage getVkImage() const;
-	const VkDeviceMemory getVkDeviceMemory() const;
 	const VkImageView getVkImageView() const;
 	const VkSampler getVkSampler() const;
 	const ImageParameters& getImageParameters() const;
@@ -77,4 +80,17 @@ public:
 
 private:
 	void generateMipmaps(VkCommandBuffer commandBuffer);
+};
+
+struct ImageCreator {
+	const ImageParameters& params;
+
+	const VkImage operator()(VmaWrapper& allocator) {
+		return allocator.createVkImage(params, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+	}
+
+	const VkImage operator()(auto) {
+		return nullptr;
+	}
+
 };
