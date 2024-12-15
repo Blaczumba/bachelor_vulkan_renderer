@@ -1,8 +1,11 @@
 #include "buffers.h"
 
+#include "logical_device/logical_device.h"
+
 #include <iostream>
 #include <stdexcept>
 #include <utility>
+#include <variant>
 
 namespace {
 
@@ -300,6 +303,11 @@ void generateImageMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat
         1, &barrier);
 }
 
-Buffer createStagingBuffer(size_t size) {
+Buffer createStagingBuffer(const LogicalDevice& logicalDevice, size_t size) {
+    return {};
+}
+
+template<typename Type>
+Buffer createStagingBuffer(const LogicalDevice& logicalDevice, const std::vector<Type>& data) {
     return {};
 }

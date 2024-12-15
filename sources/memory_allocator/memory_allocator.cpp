@@ -28,7 +28,7 @@ VmaWrapper::~VmaWrapper() {
 		vmaDestroyAllocator(_allocator);
 }
 
-const VkBuffer VmaWrapper::createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) {
+const VkBuffer VmaWrapper::createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags) {
 	const VkBufferCreateInfo bufferInfo = {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		.size = size,
@@ -36,15 +36,21 @@ const VkBuffer VmaWrapper::createVkBuffer(VkDeviceSize size, VkBufferUsageFlags 
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE
 	};
 
-	VmaAllocationCreateInfo vmaallocInfo = {};
-	vmaallocInfo.usage = memoryUsage;
+	VmaAllocationCreateInfo vmaallocInfo = {
+		.flags = flags,
+		.usage = memoryUsage
+	};
 
 	VkBuffer buffer;
 	VmaAllocation allocation;
-	if (vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo, &buffer, &allocation, nullptr) != VK_SUCCESS) {
+	VmaAllocationInfo allocationInfo;
+	if (vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo, &buffer, &allocation, &allocationInfo) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create buffer!");
 	};
 	_bufferAllocations.emplace(buffer, allocation);
+	if (allocationInfo.pMappedData) {
+		_bufferMappings.emplace(buffer, allocationInfo.pMappedData);
+	}
 	return buffer;
 }
 
@@ -95,4 +101,9 @@ void VmaWrapper::destroyVkImage(const VkImage image) {
 	auto allocationPtr = _imageAllocations.find(image);
 	vmaDestroyImage(_allocator, image, allocationPtr->second);
 	_imageAllocations.erase(allocationPtr);
+}
+
+void* VmaWrapper::getMappedData(const VkBuffer buffer) {
+	auto it = _bufferMappings.find(buffer);
+	return (it != _bufferMappings.cend()) ? it->second : nullptr;
 }
