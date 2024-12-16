@@ -17,3 +17,4 @@ public:
 	static std::unique_ptr<Texture> createColorAttachment(const CommandPool& commandPool, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent);
 	static std::unique_ptr<Texture> createDepthAttachment(const CommandPool& commandPool, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent);
 };
+

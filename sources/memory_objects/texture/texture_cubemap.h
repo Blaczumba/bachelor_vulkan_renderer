@@ -16,58 +16,22 @@ std::unique_ptr<Texture> createImageCubemap(const CommandPool& commandPool, std:
 	const LogicalDevice& logicalDevice = commandPool.getLogicalDevice();
 	const VkDevice device = logicalDevice.getVkDevice();
 
-	ktxResult result;
-	ktxTexture* ktxTexture;
+	const ImageLoader::Image imageBuffer = ImageLoader::loadCubemapImage(texturePath);
+	imageParams.width = imageBuffer.width;
+	imageParams.height = imageBuffer.height;
+	imageParams.layerCount = imageBuffer.layerCount;
+	imageParams.mipLevels = imageBuffer.mipLevels;
 
-	result = ktxTexture_CreateFromNamedFile(texturePath.data(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
-	if (result != KTX_SUCCESS) {
-		throw std::runtime_error("failed to load ktx file");
-	}
+	const StagingBuffer stagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ static_cast<uint8_t*>(imageBuffer.data), imageBuffer.size });
 
-	imageParams.width = ktxTexture->baseWidth;
-	imageParams.height = ktxTexture->baseHeight;
-	imageParams.mipLevels = samplerParams.maxLod = ktxTexture->numLevels;
-
-
-	std::vector<VkBufferImageCopy> bufferCopyRegions;
-	for (uint32_t face = 0; face < imageParams.layerCount; face++) {
-		for (uint32_t level = 0; level < imageParams.mipLevels; level++) {
-			// Calculate offset into staging buffer for the current mip level and face
-			ktx_size_t offset;
-			KTX_error_code ret = ktxTexture_GetImageOffset(ktxTexture, level, 0, face, &offset);
-			if (result != KTX_SUCCESS) {
-				throw std::runtime_error("failed to get image offset");
-			}
-
-			const VkBufferImageCopy bufferCopyRegion = {
-				.bufferOffset = offset,
-				.imageSubresource = {
-					.aspectMask = imageParams.aspect,
-					.mipLevel = level,
-					.baseArrayLayer = face,
-					.layerCount = 1
-				},
-				.imageExtent = {
-					.width = imageParams.width >> level,
-					.height = imageParams.height >> level,
-					.depth = 1
-				},
-			};
-
-			bufferCopyRegions.push_back(bufferCopyRegion);
-		}
-	}
-
-	const StagingBuffer stagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ ktxTexture_GetData(ktxTexture), ktxTexture_GetSize(ktxTexture) });
-
-	ktxTexture_Destroy(ktxTexture);
+	std::free(imageBuffer.data);
 
 	const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
 	{
 		SingleTimeCommandBuffer handle(commandPool);
 		VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 		transitionImageLayout(commandBuffer, image, imageParams.layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
-		copyBufferToImage(commandBuffer, stagingBuffer.getBuffer().buffer, image, bufferCopyRegions);
+		copyBufferToImage(commandBuffer, stagingBuffer.getBuffer().buffer, image, imageBuffer.copyRegions);
 		transitionImageLayout(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
 	}
 	imageParams.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
