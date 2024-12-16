@@ -31,8 +31,7 @@ std::unique_ptr<Texture> create2DImage(const CommandPool& commandPool, std::stri
         throw std::runtime_error("failed to load texture image!");
     }
 
-    const VkDeviceSize imageSize = imageParams.width * imageParams.height * 4;
-    StagingBuffer stagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ pixels, imageSize });
+    const StagingBuffer stagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ pixels, imageParams.width * imageParams.height * 4 });
 
     stbi_image_free(pixels);
 

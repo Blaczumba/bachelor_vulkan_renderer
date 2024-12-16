@@ -58,7 +58,7 @@ std::unique_ptr<Texture> createImageCubemap(const CommandPool& commandPool, std:
 		}
 	}
 
-	StagingBuffer stagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ ktxTexture_GetData(ktxTexture), ktxTexture_GetSize(ktxTexture) });
+	const StagingBuffer stagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ ktxTexture_GetData(ktxTexture), ktxTexture_GetSize(ktxTexture) });
 
 	ktxTexture_Destroy(ktxTexture);
 
