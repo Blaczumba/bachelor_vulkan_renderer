@@ -11,6 +11,6 @@ const VkBuffer VertexBuffer::getVkBuffer() const {
 }
 
 void VertexBuffer::bind(const VkCommandBuffer commandBuffer) const {
-    static constexpr VkDeviceSize offsets[] = { 0 };
+    const VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &_vertexBuffer, offsets);
 }

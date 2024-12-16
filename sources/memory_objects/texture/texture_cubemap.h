@@ -4,6 +4,7 @@
 
 #include "command_buffer/command_buffer.h"
 #include "logical_device/logical_device.h"
+#include "memory_objects/staging_buffer.h"
 
 #include <ktxvulkan.h>
 #include <ktx.h>
@@ -27,17 +28,6 @@ std::unique_ptr<Texture> createImageCubemap(const CommandPool& commandPool, std:
 	imageParams.height = ktxTexture->baseHeight;
 	imageParams.mipLevels = samplerParams.maxLod = ktxTexture->numLevels;
 
-	ktx_uint8_t* ktxTextureData = ktxTexture_GetData(ktxTexture);
-	ktx_size_t ktxTextureSize = ktxTexture_GetSize(ktxTexture);
-
-	const VkDeviceSize imageSize = ktxTextureSize;
-	const VkBuffer stagingBuffer = logicalDevice.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-	const VkDeviceMemory stagingBufferMemory = logicalDevice.createBufferMemory(stagingBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	void* data;
-	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-	memcpy(data, ktxTextureData, static_cast<size_t>(imageSize));
-	vkUnmapMemory(device, stagingBufferMemory);
 
 	std::vector<VkBufferImageCopy> bufferCopyRegions;
 	for (uint32_t face = 0; face < imageParams.layerCount; face++) {
@@ -68,18 +58,19 @@ std::unique_ptr<Texture> createImageCubemap(const CommandPool& commandPool, std:
 		}
 	}
 
+	StagingBuffer stagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ ktxTexture_GetData(ktxTexture), ktxTexture_GetSize(ktxTexture) });
+
+	ktxTexture_Destroy(ktxTexture);
+
 	const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
 	{
 		SingleTimeCommandBuffer handle(commandPool);
 		VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 		transitionImageLayout(commandBuffer, image, imageParams.layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
-		copyBufferToImage(commandBuffer, stagingBuffer, image, bufferCopyRegions);
+		copyBufferToImage(commandBuffer, stagingBuffer.getBuffer().buffer, image, bufferCopyRegions);
 		transitionImageLayout(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
 	}
 	imageParams.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
 	const VkImageView view = logicalDevice.createImageView(image, imageParams);
 	const VkSampler sampler = logicalDevice.createSampler(samplerParams);

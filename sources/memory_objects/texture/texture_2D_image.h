@@ -3,7 +3,7 @@
 #include "texture.h"
 
 #include "command_buffer/command_buffer.h"
-// #include "logical_device/logical_device.h"
+#include "memory_objects/staging_buffer.h"
 
 #include <vulkan/vulkan.h>
 
@@ -11,6 +11,7 @@
 #include <stb_image/stb_image.h>
 
 #include <iostream>
+#include <chrono>
 #include <memory>
 #include <stdexcept>
 
@@ -31,30 +32,21 @@ std::unique_ptr<Texture> create2DImage(const CommandPool& commandPool, std::stri
     }
 
     const VkDeviceSize imageSize = imageParams.width * imageParams.height * 4;
-    const VkBuffer stagingBuffer = logicalDevice.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-    const VkDeviceMemory stagingBufferMemory = logicalDevice.createBufferMemory(stagingBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-    void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-    memcpy(data, pixels, static_cast<size_t>(imageSize));
-    vkUnmapMemory(device, stagingBufferMemory);
+    StagingBuffer stagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ pixels, imageSize });
 
     stbi_image_free(pixels);
 
     const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
+    const VkImageView view = logicalDevice.createImageView(image, imageParams);
+    const VkSampler sampler = logicalDevice.createSampler(samplerParams);
     {
         SingleTimeCommandBuffer handle(commandPool);
         VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         transitionImageLayout(commandBuffer, image, imageParams.layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
-        copyBufferToImage(commandBuffer, stagingBuffer, image, imageParams.width, imageParams.height);
+        copyBufferToImage(commandBuffer, stagingBuffer.getBuffer().buffer, image, imageParams.width, imageParams.height);
         generateImageMipmaps(commandBuffer, image, imageParams.format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageParams.width, imageParams.height, imageParams.mipLevels, imageParams.layerCount);
     }
     imageParams.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    vkDestroyBuffer(device, stagingBuffer, nullptr);
-    vkFreeMemory(device, stagingBufferMemory, nullptr);
-
-    const VkImageView view = logicalDevice.createImageView(image, imageParams);
-    const VkSampler sampler = logicalDevice.createSampler(samplerParams);
     return std::make_unique<Texture>(logicalDevice, Texture::Type::IMAGE_2D, image, nullptr, imageParams, view, sampler, samplerParams);
 }

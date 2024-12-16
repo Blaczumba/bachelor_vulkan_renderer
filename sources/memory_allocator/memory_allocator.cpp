@@ -24,8 +24,15 @@ VmaWrapper::VmaWrapper(VmaWrapper&& allocator) {
 }
 
 VmaWrapper::~VmaWrapper() {
-	if (_allocator)
+	for (const auto [buffer, allocation] : _bufferAllocations) {
+		vmaDestroyBuffer(_allocator, buffer, allocation);
+	}
+	for (const auto [image, allocation] : _imageAllocations) {
+		vmaDestroyImage(_allocator, image, allocation);
+	}
+	if (_allocator) {
 		vmaDestroyAllocator(_allocator);
+	}
 }
 
 const VkBuffer VmaWrapper::createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags) {

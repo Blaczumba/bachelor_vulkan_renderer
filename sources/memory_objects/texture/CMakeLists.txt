@@ -11,7 +11,7 @@ set(KTX_SOURCES
 add_library(Texture texture.cpp texture_factory.cpp ${KTX_SOURCES})
 
 target_link_libraries(Texture PUBLIC Vulkan::Vulkan)
-target_link_libraries(Texture PUBLIC LogicalDevice CommandBuffer Buffers)
+target_link_libraries(Texture PUBLIC LogicalDevice CommandBuffer Buffers StagignBuffer)
 
 target_include_directories(Texture PUBLIC ${CMAKE_SOURCE_DIR}/sources)
 target_include_directories(Texture PUBLIC ${CMAKE_SOURCE_DIR}/external/ktx/include)

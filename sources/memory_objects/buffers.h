@@ -5,29 +5,23 @@
 #include <vulkan/vulkan.h>
 
 #include <vector>
-
-class LogicalDevice;
+#include <stdexcept>
 
 struct Buffer {
-	VkBuffer buffer;
-	size_t size;
-	void* data;
+    VkBuffer buffer;
+    size_t size;
+    void* data;
 };
 
-struct StagingBufferAllocator {
-    size_t size;
+struct BufferDeallocator {
+    const VkBuffer buffer;
 
-    Buffer operator()(VmaWrapper& wrapper) {
-        const VkBuffer buffer = wrapper.createVkBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        return Buffer{
-            .buffer = buffer,
-            .size = size,
-            .data = wrapper.getMappedData(buffer)
-        };
+    void operator()(VmaWrapper& allocator) {
+        allocator.destroyVkBuffer(buffer);
     }
 
-    Buffer operator()(auto) {
-        return Buffer{};
+    void operator()(auto) {
+        throw std::runtime_error("BufferDeallocator does not support such MemoryAllocator type!");
     }
 };
 
@@ -39,7 +33,3 @@ void copyImageToBuffer(VkCommandBuffer commandBuffer, VkImage image, VkImageLayo
 void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImage, VkExtent2D srcSize, VkExtent2D dstSize, VkImageAspectFlagBits aspect);
 void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImage, VkExtent2D extent, VkImageAspectFlagBits aspect);
 void generateImageMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat imageFormat, VkImageLayout finalLayout, int32_t texWidth, int32_t texHeight, uint32_t mipLevels, uint32_t layerCount);
-
-Buffer createStagingBuffer(const LogicalDevice& logicalDevice, size_t size);
-template<typename Type>
-Buffer createStagingBuffer(const LogicalDevice& logicalDevice, const std::vector<Type>& data);
