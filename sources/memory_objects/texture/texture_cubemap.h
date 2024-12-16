@@ -21,6 +21,7 @@ std::unique_ptr<Texture> createImageCubemap(const CommandPool& commandPool, std:
 	imageParams.height = imageBuffer.height;
 	imageParams.layerCount = imageBuffer.layerCount;
 	imageParams.mipLevels = imageBuffer.mipLevels;
+	samplerParams.maxLod = imageBuffer.mipLevels;
 
 	const StagingBuffer stagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ static_cast<uint8_t*>(imageBuffer.data), imageBuffer.size });
 
