@@ -28,23 +28,22 @@ std::unique_ptr<Texture> TextureFactory::createCubemap(const LogicalDevice& logi
     return createImageCubemap(logicalDevice, commandBuffer, *stagingBuffer, imageParams, samplerParams);
 }
 
-std::unique_ptr<Texture> TextureFactory::create2DShadowmap(const CommandPool& commandPool, uint32_t width, uint32_t height, VkFormat format) {
-    return createShadowMap(commandPool,
-        ImageParameters{
-            .format = format,
-            .width = width,
-            .height = height,
-            .aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
-            .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-        },
-        SamplerParameters{
-            .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-            .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-            .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-            .compareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
-            .borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE
-        }
-    );
+std::unique_ptr<Texture> TextureFactory::create2DShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, uint32_t width, uint32_t height, VkFormat format) {
+    ImageParameters imageParams = {
+        .format = format,
+        .width = width,
+        .height = height,
+        .aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
+        .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+    };
+    const SamplerParameters samplerParams = {
+        .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+        .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+        .compareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+        .borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE
+    };
+    return createShadowMap(logicalDevice, commandBuffer, imageParams, samplerParams);
 }
 
 std::unique_ptr<Texture> TextureFactory::create2DTextureImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, std::string_view texturePath, VkFormat format, float samplerAnisotropy) {

@@ -2,7 +2,6 @@
 
 #include "texture.h"
 
-#include "command_buffer/command_buffer.h"
 #include "memory_objects/staging_buffer.h"
 #include "model_loader/image_loader/image_loader.h"
 

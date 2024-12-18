@@ -2,7 +2,6 @@
 
 #include "texture.h"
 
-#include "command_buffer/command_buffer.h"
 #include "logical_device/logical_device.h"
 #include "memory_objects/staging_buffer.h"
 

@@ -4,17 +4,11 @@
 
 #include "command_buffer/command_buffer.h"
 
-std::unique_ptr<Texture> createShadowMap(const CommandPool& commandPool, ImageParameters&& imageParams, SamplerParameters&& samplerParams) {
-    const LogicalDevice& logicalDevice = commandPool.getLogicalDevice();
+std::unique_ptr<Texture> createShadowMap(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, ImageParameters& imageParams, const SamplerParameters& samplerParams) {
     const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
-    {
-        SingleTimeCommandBuffer handle(commandPool);
-        VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-        transitionImageLayout(commandBuffer, image, imageParams.layout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
-    }
-    imageParams.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
     const VkImageView view = logicalDevice.createImageView(image, imageParams);
     const VkSampler sampler = logicalDevice.createSampler(samplerParams);
+    transitionImageLayout(commandBuffer, image, imageParams.layout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
+    imageParams.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     return std::make_unique<Texture>(logicalDevice, Texture::Type::SHADOWMAP, image, nullptr, imageParams, view, sampler, samplerParams);
 }

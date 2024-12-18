@@ -126,8 +126,8 @@ void SingleApp::createDescriptorSets() {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         _textureCubemap = TextureFactory::createCubemap(*_logicalDevice, commandBuffer, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
+        _shadowMap = TextureFactory::create2DShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
     }
-    _shadowMap = TextureFactory::create2DShadowmap(*_singleTimeCommandPool, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
 
     _uniformBuffersObjects = std::make_unique<UniformBufferData<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
     _uniformBuffersLight = std::make_unique<UniformBufferData<UniformBufferLight>>(*_logicalDevice);
