@@ -13,6 +13,12 @@ Texture::Texture(const LogicalDevice& logicalDevice, Texture::Type type, const V
 
 }
 
+Texture::Texture(Texture&& texture) noexcept : _logicalDevice(texture._logicalDevice), _type(texture._type),
+    _image(std::exchange(texture._image, VK_NULL_HANDLE)), _view(std::exchange(texture._view, VK_NULL_HANDLE)), _sampler(std::exchange(texture._sampler, VK_NULL_HANDLE)),
+    _imageParameters(texture._imageParameters), _samplerParameters(texture._samplerParameters) {
+
+}
+
 namespace {
 
 struct ImageDeleter {

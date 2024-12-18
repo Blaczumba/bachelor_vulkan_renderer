@@ -9,20 +9,32 @@
 #include <span>
 #include <variant>
 #include <vector>
+#include <iostream>
 
 namespace {
 
 class StagingBuffer {
 public:
     template<typename Type>
-    StagingBuffer(MemoryAllocator& memoryAllocator, const std::span<Type> data) : _memoryAllocator(memoryAllocator), _buffer(std::visit(Allocator{data.size() * sizeof(Type)}, memoryAllocator)) {
+    StagingBuffer(MemoryAllocator& memoryAllocator, const std::span<Type> data, const std::vector<VkBufferImageCopy>& copyRegions = {}) : _memoryAllocator(memoryAllocator), _buffer(std::visit(Allocator{ data.size() * sizeof(Type) }, memoryAllocator)), _copyRegions(copyRegions) {
         std::memcpy(_buffer.data, data.data(), _buffer.size);
     }
     ~StagingBuffer() {
-        std::visit(BufferDeallocator{ _buffer.buffer }, _memoryAllocator);
+        if (_buffer.buffer) {
+            std::visit(BufferDeallocator{ _buffer.buffer }, _memoryAllocator);
+        }
+    }
+    StagingBuffer(StagingBuffer&& stagingBuffer)
+        : _buffer(stagingBuffer._buffer),
+        _copyRegions(std::move(stagingBuffer._copyRegions)),
+        _memoryAllocator(stagingBuffer._memoryAllocator) {
+        stagingBuffer._buffer.buffer = VK_NULL_HANDLE;
     }
     const Buffer& getBuffer() const {
         return _buffer;
+    }
+    const std::vector<VkBufferImageCopy>& getImageCopyRegions() const {
+        return _copyRegions;
     }
 
 private:
@@ -43,7 +55,8 @@ private:
         }
     };
 
-    const Buffer _buffer;
+    Buffer _buffer;
+    std::vector<VkBufferImageCopy> _copyRegions;
     MemoryAllocator& _memoryAllocator;
 };
 

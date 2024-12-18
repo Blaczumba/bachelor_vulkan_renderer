@@ -8,18 +8,24 @@
 
 #include <array>
 
-std::unique_ptr<Texture> TextureFactory::createCubemap(const CommandPool& commandPool, std::string_view filePath, VkFormat format, float samplerAnisotropy) {
-	return createImageCubemap(commandPool, filePath,
-        ImageParameters{
-		    .format = format,
-		    .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-		    .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		    .layerCount = 6U
-	    },
-        SamplerParameters{
-		    .maxAnisotropy = samplerAnisotropy
-	    }
-    );
+std::unique_ptr<Texture> TextureFactory::createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, std::string_view texturePath, VkFormat format, float samplerAnisotropy) {
+    const ImageResource imageBuffer = ImageLoader::loadCubemapImage(texturePath);
+    ImageParameters imageParams = {
+        .format = format,
+        .width = imageBuffer.dimensions.width,
+        .height = imageBuffer.dimensions.height,
+        .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+        .mipLevels = imageBuffer.dimensions.mipLevels,
+        .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        .layerCount = 6U,
+    };
+    const SamplerParameters samplerParams = {
+        .maxAnisotropy = samplerAnisotropy,
+        .maxLod = static_cast<float>(imageBuffer.dimensions.mipLevels)
+    };
+    const StagingBuffer* stagingBuffer(new StagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ static_cast<uint8_t*>(imageBuffer.data), imageBuffer.size }, imageBuffer.dimensions.copyRegions));
+    std::free(imageBuffer.data);
+    return createImageCubemap(logicalDevice, commandBuffer, *stagingBuffer, imageParams, samplerParams);
 }
 
 std::unique_ptr<Texture> TextureFactory::create2DShadowmap(const CommandPool& commandPool, uint32_t width, uint32_t height, VkFormat format) {
@@ -41,16 +47,26 @@ std::unique_ptr<Texture> TextureFactory::create2DShadowmap(const CommandPool& co
     );
 }
 
-std::unique_ptr<Texture> TextureFactory::create2DTextureImage(const CommandPool& commandPool, std::string_view texturePath, VkFormat format, float samplerAnisotropy) {
-    return create2DImage(commandPool, texturePath,
-        ImageParameters{
-            .format = format, .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-            .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
-        },
-        SamplerParameters{
-            .maxAnisotropy = samplerAnisotropy
-        }
-    );
+std::unique_ptr<Texture> TextureFactory::create2DTextureImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, std::string_view texturePath, VkFormat format, float samplerAnisotropy) {
+    const ImageResource imageBuffer = ImageLoader::load2DImage(texturePath);
+    ImageParameters imageParams = {
+        .format = format,
+        .width = imageBuffer.dimensions.width,
+        .height = imageBuffer.dimensions.height,
+        .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+        .mipLevels = imageBuffer.dimensions.mipLevels,
+        .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        .layerCount = 1,
+    };
+    const SamplerParameters samplerParams = {
+        .maxAnisotropy = samplerAnisotropy,
+        .maxLod = static_cast<float>(imageBuffer.dimensions.mipLevels)
+    };
+
+    const StagingBuffer* stagingBuffer(new StagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ static_cast<uint8_t*>(imageBuffer.data), imageBuffer.size }, imageBuffer.dimensions.copyRegions));
+
+    std::free(imageBuffer.data);
+    return create2DImage(logicalDevice, commandBuffer, *stagingBuffer, imageParams, samplerParams);
 }
 
 std::unique_ptr<Texture> TextureFactory::createColorAttachment(const CommandPool& commandPool, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
