@@ -37,9 +37,15 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
         .bufferDeviceAddress = VK_TRUE
     };
 
+    const VkPhysicalDeviceInheritedViewportScissorFeaturesNV viewportScissorsFeatures = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV,
+        .pNext = (void*)&bufferDeviceAddressFeatures,
+        .inheritedViewportScissor2D = VK_TRUE
+    };
+
     const VkPhysicalDeviceFeatures2 deviceFeatures = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-        .pNext = (void*)&bufferDeviceAddressFeatures,
+        .pNext = (void*)&viewportScissorsFeatures,
         .features = {
             .geometryShader = VK_TRUE,
             .tessellationShader = VK_TRUE,

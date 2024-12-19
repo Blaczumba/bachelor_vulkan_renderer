@@ -40,6 +40,8 @@ public:
 };
 
 class PrimaryCommandBuffer : public CommandBuffer {
+	VkViewport _viewport;
+	VkRect2D _scissor;
 public:
 	PrimaryCommandBuffer(const CommandPool& commandPool);
 	VkResult begin(uint32_t subpassIndex = 0) const;
@@ -47,12 +49,14 @@ public:
 	void endRenderPass() const;
 	void executeSecondaryCommandBuffers(std::initializer_list<VkCommandBuffer> commandBuffers) const;
 	VkResult submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore, const VkFence waitFence) const;
+
+	const VkViewport& getViewport() const;
 };
 
 class SecondaryCommandBuffer : public CommandBuffer {
 public:
 	SecondaryCommandBuffer(const CommandPool& commandPool);
-	VkResult begin(const Framebuffer& framebuffer, uint32_t subpassIndex = 0) const;
+	VkResult begin(const Framebuffer& framebuffer, const VkCommandBufferInheritanceViewportScissorInfoNV* scissorViewportInheritance = nullptr, uint32_t subpassIndex = 0) const;
 };
 
 class SingleTimeCommandBuffer {

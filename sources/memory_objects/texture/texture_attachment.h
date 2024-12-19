@@ -5,18 +5,10 @@
 #include "command_buffer/command_buffer.h"
 #include "logical_device/logical_device.h"
 
-std::unique_ptr<Texture> createAttachment(const CommandPool& commandPool, VkImageLayout dstLayout, Texture::Type type, ImageParameters&& imageParams) {
-    const LogicalDevice& logicalDevice = commandPool.getLogicalDevice();
-
+std::unique_ptr<Texture> createAttachment(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, VkImageLayout dstLayout, Texture::Type type, ImageParameters&& imageParams) {
     const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
-    {
-        SingleTimeCommandBuffer handle(commandPool);
-        VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-        transitionImageLayout(commandBuffer, image, imageParams.layout, dstLayout, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
-    }
-    imageParams.layout = dstLayout;
-    
     const VkImageView view = logicalDevice.createImageView(image, imageParams);
-
+    transitionImageLayout(commandBuffer, image, imageParams.layout, dstLayout, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
+    imageParams.layout = dstLayout;
     return std::make_unique<Texture>(logicalDevice, type, image, nullptr, imageParams, view);
 }

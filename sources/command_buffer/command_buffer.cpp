@@ -91,7 +91,8 @@ void PrimaryCommandBuffer::beginRenderPass(const Framebuffer& framebuffer) const
         .clearValueCount = static_cast<uint32_t>(clearValues.size()),
         .pClearValues = clearValues.data()
     };
-
+    vkCmdSetViewport(_commandBuffer, 0, 1, &framebuffer.getViewport());
+    vkCmdSetScissor(_commandBuffer, 0, 1, &framebuffer.getScissor());
     vkCmdBeginRenderPass(_commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 }
 
@@ -137,9 +138,10 @@ SecondaryCommandBuffer::SecondaryCommandBuffer(const CommandPool& commandPool)
 
 }
 
-VkResult SecondaryCommandBuffer::begin(const Framebuffer& framebuffer, uint32_t subpassIndex) const {
+VkResult SecondaryCommandBuffer::begin(const Framebuffer& framebuffer, const VkCommandBufferInheritanceViewportScissorInfoNV* scissorViewportInheritance, uint32_t subpassIndex) const {
     const VkCommandBufferInheritanceInfo inheritance = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+        .pNext = scissorViewportInheritance,
         .renderPass = framebuffer.getRenderpass().getVkRenderPass(),
         .subpass = subpassIndex,
         .framebuffer = framebuffer.getVkFramebuffer()

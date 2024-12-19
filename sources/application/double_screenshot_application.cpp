@@ -279,9 +279,9 @@ void SingleApp::draw() {
     updateUniformBuffer(_currentFrame);
     vkResetFences(device, 1, &_inFlightFences[_currentFrame]);
 
-    _primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
-    for(int i = 0; i < MAX_THREADS_IN_POOL; i++)
-        _commandBuffers[_currentFrame][i]->resetCommandBuffer();
+    //_primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
+    //for(int i = 0; i < MAX_THREADS_IN_POOL; i++)
+    //    _commandBuffers[_currentFrame][i]->resetCommandBuffer();
 
     //recordShadowCommandBuffer(_shadowCommandBuffers[_currentFrame], imageIndex);
     recordCommandBuffer(imageIndex);
@@ -432,31 +432,34 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
     primaryCommandBuffer.begin();
     primaryCommandBuffer.beginRenderPass(framebuffer);
 
-    const VkExtent2D framebufferExtent = framebuffer.getVkExtent();
-    const VkViewport viewport = {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = (float)framebufferExtent.width,
-        .height = (float)framebufferExtent.height,
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f
-    };
-    const VkRect2D scissor = {
-        .offset = { 0, 0 },
-        .extent = framebufferExtent
+    //const VkExtent2D framebufferExtent = framebuffer.getVkExtent();
+    //const VkViewport viewport = {
+    //    .x = 0.0f,
+    //    .y = 0.0f,
+    //    .width = (float)framebufferExtent.width,
+    //    .height = (float)framebufferExtent.height,
+    //    .minDepth = 0.0f,
+    //    .maxDepth = 1.0f
+    //};
+    //const VkRect2D scissor = {
+    //    .offset = { 0, 0 },
+    //    .extent = framebufferExtent
+    //};
+
+    const VkCommandBufferInheritanceViewportScissorInfoNV scissorViewportInheritance = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_VIEWPORT_SCISSOR_INFO_NV,
+        .viewportScissor2D = VK_TRUE,
+        .viewportDepthCount = 1,
+        .pViewportDepths = &framebuffer.getViewport(),
     };
 
     _threadPool->getThread(0)->addJob([&]() {
-        _commandBuffers[_currentFrame][0]->begin(framebuffer);
+        _commandBuffers[_currentFrame][0]->begin(framebuffer, &scissorViewportInheritance);
         VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][0]->getVkCommandBuffer();
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+        vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
 
         const OctreeNode* root = _octree->getRoot();
         const auto& planes = extractFrustumPlanes(_camera->getProjectionMatrix() * _camera->getViewMatrix());
-
-        vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
         recordOctreeSecondaryCommandBuffer(commandBuffer, root, planes);
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
@@ -466,10 +469,8 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
 
     _threadPool->getThread(1)->addJob([&]() {
         // Skybox
-        _commandBuffers[_currentFrame][1]->begin(framebuffer);
+        _commandBuffers[_currentFrame][1]->begin(framebuffer, &scissorViewportInheritance);
         VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][1]->getVkCommandBuffer();
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
         vkCmdBindPipeline(commandBuffer, _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
 
         _vertexBufferCube->bind(commandBuffer);

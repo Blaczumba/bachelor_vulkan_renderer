@@ -17,6 +17,8 @@ class Framebuffer {
 	std::vector<std::shared_ptr<Texture>> _textureAttachments;
 	const std::optional<uint8_t> _swapchainIndex;
 	VkExtent2D _extent;
+	VkViewport _viewport;
+	VkRect2D _scissor;
 
 	const Renderpass& _renderpass;
 
@@ -28,6 +30,8 @@ public:
 	~Framebuffer();
 
 	VkExtent2D getVkExtent() const;
+	const VkViewport& getViewport() const;
+	const VkRect2D& getScissor() const;
 	const Renderpass& getRenderpass() const;
 	VkFramebuffer getVkFramebuffer() const;
 };

@@ -68,8 +68,8 @@ std::unique_ptr<Texture> TextureFactory::create2DTextureImage(const LogicalDevic
     return create2DImage(logicalDevice, commandBuffer, *stagingBuffer, imageParams, samplerParams);
 }
 
-std::unique_ptr<Texture> TextureFactory::createColorAttachment(const CommandPool& commandPool, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
-    return createAttachment(commandPool, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, Texture::Type::COLOR_ATTACHMENT,
+std::unique_ptr<Texture> TextureFactory::createColorAttachment(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
+    return createAttachment(logicalDevice, commandBuffer, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, Texture::Type::COLOR_ATTACHMENT,
         ImageParameters{
             .format = format,
             .width = extent.width,
@@ -92,9 +92,9 @@ bool hasStencil(VkFormat format) {
     return std::find(formats.begin(), formats.end(), format) != std::end(formats);
 }
 
-std::unique_ptr<Texture> TextureFactory::createDepthAttachment(const CommandPool& commandPool, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
+std::unique_ptr<Texture> TextureFactory::createDepthAttachment(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
     const VkImageAspectFlags aspect = hasStencil(format) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
-    return createAttachment(commandPool, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, Texture::Type::DEPTH_ATTACHMENT,
+    return createAttachment(logicalDevice, commandBuffer, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, Texture::Type::DEPTH_ATTACHMENT,
         ImageParameters{
             .format = format,
             .width = extent.width,
