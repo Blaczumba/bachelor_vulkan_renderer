@@ -18,9 +18,9 @@
 #include <chrono>
 
 SingleApp::SingleApp()
-    : ApplicationBase(), _assetManagerThreadPool(20) {
+    : ApplicationBase(), _assetManagerThreadPool(1) {
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
-    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), &_assetManagerThreadPool);
+    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), nullptr);
 
     createDescriptorSets();
     loadObjects();
@@ -72,15 +72,18 @@ void SingleApp::loadObjects() {
             const std::string normalPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0];
 
             if (!_uniformMap.contains(diffusePath)) {
-                _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, commandBuffer, diffusePath, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
+                const auto&[stagingBuffer, imageDimmensions] =  _assetManager->getImageData(diffusePath);
+                _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, commandBuffer, stagingBuffer, imageDimmensions, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
                 _uniformMap.emplace(std::make_pair(diffusePath, std::make_shared<UniformBufferTexture>(*_textures.back())));
             }
             if (!_uniformMap.contains(normalPath)) {
-                _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, commandBuffer, normalPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
+                const auto& [stagingBuffer, imageDimmensions] = _assetManager->getImageData(normalPath);
+                _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, commandBuffer, stagingBuffer, imageDimmensions, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
                 _uniformMap.emplace(std::make_pair(normalPath, std::make_shared<UniformBufferTexture>(*_textures.back())));
             }
             if (!_uniformMap.contains(metallicRoughnessPath)) {
-                _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, commandBuffer, metallicRoughnessPath, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
+                const auto& [stagingBuffer, imageDimmensions] = _assetManager->getImageData(metallicRoughnessPath);
+                _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, commandBuffer, stagingBuffer, imageDimmensions, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
                 _uniformMap.emplace(std::make_pair(metallicRoughnessPath, std::make_shared<UniformBufferTexture>(*_textures.back())));
             }
 
@@ -109,7 +112,6 @@ void SingleApp::loadObjects() {
             _ubObject.model = _newVertexDataTBN[i].model;
             _uniformBuffersObjects->updateUniformBuffer(&_ubObject, index++);
         }
-        int a = 20;
     }
 
     AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;

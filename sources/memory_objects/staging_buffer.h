@@ -11,7 +11,6 @@
 #include <vector>
 #include <iostream>
 
-namespace {
 
 class StagingBuffer {
 public:
@@ -59,7 +58,5 @@ private:
     std::vector<VkBufferImageCopy> _copyRegions;
     MemoryAllocator& _memoryAllocator;
 };
-
-}
 
 

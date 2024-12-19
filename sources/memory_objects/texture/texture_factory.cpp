@@ -87,26 +87,22 @@ std::unique_ptr<Texture> TextureFactory::create2DShadowmap(const LogicalDevice& 
     return createShadowMap(logicalDevice, commandBuffer, imageParams, samplerParams);
 }
 
-std::unique_ptr<Texture> TextureFactory::create2DTextureImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, std::string_view texturePath, VkFormat format, float samplerAnisotropy) {
-    const ImageResource imageBuffer = ImageLoader::load2DImage(texturePath);
+std::unique_ptr<Texture> TextureFactory::create2DTextureImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, const StagingBuffer& stagingBuffer, const ImageDimensions& dimensions, VkFormat format, float samplerAnisotropy) {
     ImageParameters imageParams = {
         .format = format,
-        .width = imageBuffer.dimensions.width,
-        .height = imageBuffer.dimensions.height,
+        .width = dimensions.width,
+        .height = dimensions.height,
         .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-        .mipLevels = imageBuffer.dimensions.mipLevels,
+        .mipLevels = dimensions.mipLevels,
         .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         .layerCount = 1,
     };
     const SamplerParameters samplerParams = {
         .maxAnisotropy = samplerAnisotropy,
-        .maxLod = static_cast<float>(imageBuffer.dimensions.mipLevels)
+        .maxLod = static_cast<float>(dimensions.mipLevels)
     };
 
-    const StagingBuffer* stagingBuffer(new StagingBuffer(logicalDevice.getMemoryAllocator(), std::span{ static_cast<uint8_t*>(imageBuffer.data), imageBuffer.size }, imageBuffer.dimensions.copyRegions));
-
-    std::free(imageBuffer.data);
-    return create2DImage(logicalDevice, commandBuffer, *stagingBuffer, imageParams, samplerParams);
+    return create2DImage(logicalDevice, commandBuffer, stagingBuffer, imageParams, samplerParams);
 }
 
 std::unique_ptr<Texture> TextureFactory::createColorAttachment(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {

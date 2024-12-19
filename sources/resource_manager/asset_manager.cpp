@@ -25,7 +25,6 @@ CacheCode AssetManager::loadImage2D(std::string_view filePath) {
 	}
 	else {
 		ImageResource resource = ImageLoader::load2DImage(filePath);
-		std::lock_guard<std::mutex> lock(_mutex);
 		_imageResources.emplace(filePath, std::make_pair(StagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size), resource.dimensions.copyRegions), resource.dimensions));
 		std::free(resource.data);
 	}

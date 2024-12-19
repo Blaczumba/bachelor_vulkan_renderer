@@ -13,7 +13,7 @@
 
 #include <cmath>
 
-ImageResource ImageLoader::load2DImage(const std::string_view imagePath) {
+ImageResource ImageLoader::load2DImage(std::string_view imagePath) {
     int width, height, channels;
     stbi_uc* pixels = stbi_load(imagePath.data(), &width, &height, &channels, STBI_rgb_alpha);
 
@@ -46,7 +46,7 @@ ImageResource ImageLoader::load2DImage(const std::string_view imagePath) {
     };
 }
 
-ImageResource ImageLoader::loadCubemapImage(const std::string_view imagePath) {
+ImageResource ImageLoader::loadCubemapImage(std::string_view imagePath) {
 	ktxTexture* ktxTexture;
 	if (ktxResult result = ktxTexture_CreateFromNamedFile(imagePath.data(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture); result != KTX_SUCCESS) {
 		throw std::runtime_error("failed to load ktx file");

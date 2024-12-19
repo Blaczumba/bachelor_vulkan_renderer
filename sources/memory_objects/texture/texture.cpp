@@ -9,7 +9,7 @@
 #include <stdexcept>
 
 Texture::Texture(const LogicalDevice& logicalDevice, Texture::Type type, const VkImage image, const VkDeviceMemory memory, const ImageParameters& imageParameters, const VkImageView view, const VkSampler sampler, const SamplerParameters& samplerParameters)
-    : _logicalDevice(logicalDevice), _type(type), _image(image), _memory(memory), _imageParameters(imageParameters), _view(view), _sampler(sampler), _samplerParameters(samplerParameters) {
+    : _logicalDevice(logicalDevice), _type(type), _image(image), _imageParameters(imageParameters), _view(view), _sampler(sampler), _samplerParameters(samplerParameters) {
 
 }
 

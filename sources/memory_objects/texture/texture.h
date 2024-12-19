@@ -26,8 +26,8 @@ public:
 private:
 	const Type _type;
 
+	//Allocation _allocation;
 	VkImage _image = VK_NULL_HANDLE;
-	VkDeviceMemory _memory = VK_NULL_HANDLE;
 	VkImageView _view = VK_NULL_HANDLE;
 	VkSampler _sampler = VK_NULL_HANDLE;
 

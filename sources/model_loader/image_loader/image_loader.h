@@ -10,6 +10,6 @@
 
 class ImageLoader {
 public:
-	static ImageResource loadCubemapImage(const std::string_view imagePath);
-	static ImageResource load2DImage(const std::string_view imagePath);
+	static ImageResource loadCubemapImage(std::string_view imagePath);
+	static ImageResource load2DImage(std::string_view imagePath);
 };

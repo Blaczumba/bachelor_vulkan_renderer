@@ -15,6 +15,7 @@ enum class QueueType : uint8_t {
 };
 
 using MemoryAllocator = std::variant<std::monostate, VmaWrapper>;
+using Allocation = std::variant<std::monostate, VmaAllocation>;
 
 class LogicalDevice {
 	VkDevice _device;
