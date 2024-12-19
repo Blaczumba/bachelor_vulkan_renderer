@@ -20,10 +20,10 @@ public:
 		_allocator = nullptr;
 	}
 
-	const VkBuffer createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags = 0U);
+	std::pair<VkBuffer, VmaAllocation> createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags = 0U);
 	void destroyVkBuffer(const VkBuffer buffer);
 	void sendDataToBufferMemory(const VkBuffer buffer, const void* data, size_t size);
-	const VkImage createVkImage(const ImageParameters& params, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags = 0U);
+	std::pair<VkImage, VmaAllocation> createVkImage(const ImageParameters& params, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags = 0U);
 	void destroyVkImage(const VkImage image);
 	void* getMappedData(const VkBuffer buffer);
 

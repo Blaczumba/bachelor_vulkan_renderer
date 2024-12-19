@@ -1,4 +1,4 @@
-add_library(MemoryAllocator memory_allocator.cpp memory_allocator.h)
+add_library(MemoryAllocator memory_allocator.cpp memory_allocator.h allocation.h)
 
 # target_link_libraries(MemoryAllocator PUBLIC Texture)
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "memory_allocator/memory_allocator.h"
+#include "memory_allocator/allocation.h"
 #include "memory_objects/buffers.h"
 #include "memory_objects/texture/image.h"
 
@@ -26,7 +27,7 @@ public:
 private:
 	const Type _type;
 
-	//Allocation _allocation;
+	Allocation _allocation;
 	VkImage _image = VK_NULL_HANDLE;
 	VkImageView _view = VK_NULL_HANDLE;
 	VkSampler _sampler = VK_NULL_HANDLE;
@@ -36,7 +37,7 @@ private:
 
 	const LogicalDevice& _logicalDevice;
 public:
-	Texture(const LogicalDevice& logicalDevice, Texture::Type type, const VkImage image, const VkDeviceMemory memory, const ImageParameters& imageParameters, const VkImageView view = VK_NULL_HANDLE, const VkSampler sampler = VK_NULL_HANDLE, const SamplerParameters& samplerParameters = {});
+	Texture(const LogicalDevice& logicalDevice, Texture::Type type, const VkImage image, Allocation allocation, const ImageParameters& imageParameters, const VkImageView view = VK_NULL_HANDLE, const VkSampler sampler = VK_NULL_HANDLE, const SamplerParameters& samplerParameters = {});
 	Texture(Texture&& texture) noexcept;
 	~Texture();
 
@@ -54,13 +55,16 @@ private:
 };
 
 struct ImageCreator {
+	Allocation& allocation;
 	const ImageParameters& params;
 
 	const VkImage operator()(VmaWrapper& allocator) {
-		return allocator.createVkImage(params, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+		auto[image, tmpallocation] = allocator.createVkImage(params, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+		allocation = tmpallocation;
+		return image;
 	}
 
-	const VkImage operator()(auto) {
+	const VkImage operator()(auto&&) {
 		return nullptr;
 	}
 

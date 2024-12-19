@@ -9,42 +9,46 @@
 namespace {
 
 std::unique_ptr<Texture> create2DImage(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, const StagingBuffer& stagingBuffer, ImageParameters& imageParams, const SamplerParameters& samplerParams) {
-    const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
+    Allocation allocation;
+    const VkImage image = std::visit(ImageCreator{ allocation, imageParams }, logicalDevice.getMemoryAllocator());
     const VkImageView view = logicalDevice.createImageView(image, imageParams);
     const VkSampler sampler = logicalDevice.createSampler(samplerParams);
     transitionImageLayout(commandBuffer, image, imageParams.layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
     copyBufferToImage(commandBuffer, stagingBuffer.getBuffer().buffer, image, stagingBuffer.getImageCopyRegions());
     generateImageMipmaps(commandBuffer, image, imageParams.format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageParams.width, imageParams.height, imageParams.mipLevels, imageParams.layerCount);
     imageParams.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    return std::make_unique<Texture>(logicalDevice, Texture::Type::IMAGE_2D, image, nullptr, imageParams, view, sampler, samplerParams);
+    return std::make_unique<Texture>(logicalDevice, Texture::Type::IMAGE_2D, image, allocation, imageParams, view, sampler, samplerParams);
 }
 
 std::unique_ptr<Texture> createShadowMap(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, ImageParameters& imageParams, const SamplerParameters& samplerParams) {
-    const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
+    Allocation allocation;
+    const VkImage image = std::visit(ImageCreator{ allocation, imageParams }, logicalDevice.getMemoryAllocator());
     const VkImageView view = logicalDevice.createImageView(image, imageParams);
     const VkSampler sampler = logicalDevice.createSampler(samplerParams);
     transitionImageLayout(commandBuffer, image, imageParams.layout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
     imageParams.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    return std::make_unique<Texture>(logicalDevice, Texture::Type::SHADOWMAP, image, nullptr, imageParams, view, sampler, samplerParams);
+    return std::make_unique<Texture>(logicalDevice, Texture::Type::SHADOWMAP, image, allocation, imageParams, view, sampler, samplerParams);
 }
 
 std::unique_ptr<Texture> createAttachment(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, VkImageLayout dstLayout, Texture::Type type, ImageParameters&& imageParams) {
-    const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
+    Allocation allocation;
+    const VkImage image = std::visit(ImageCreator{ allocation, imageParams }, logicalDevice.getMemoryAllocator());
     const VkImageView view = logicalDevice.createImageView(image, imageParams);
     transitionImageLayout(commandBuffer, image, imageParams.layout, dstLayout, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
     imageParams.layout = dstLayout;
-    return std::make_unique<Texture>(logicalDevice, type, image, nullptr, imageParams, view);
+    return std::make_unique<Texture>(logicalDevice, type, image, allocation, imageParams, view);
 }
 
 std::unique_ptr<Texture> createImageCubemap(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, const StagingBuffer& stagingBuffer, ImageParameters& imageParams, const SamplerParameters& samplerParams) {
-    const VkImage image = std::visit(ImageCreator{ imageParams }, logicalDevice.getMemoryAllocator());
+    Allocation allocation;
+    const VkImage image = std::visit(ImageCreator{ allocation, imageParams }, logicalDevice.getMemoryAllocator());
     const VkImageView view = logicalDevice.createImageView(image, imageParams);
     const VkSampler sampler = logicalDevice.createSampler(samplerParams);
     transitionImageLayout(commandBuffer, image, imageParams.layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
     copyBufferToImage(commandBuffer, stagingBuffer.getBuffer().buffer, image, stagingBuffer.getImageCopyRegions());
     transitionImageLayout(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageParams.aspect, imageParams.mipLevels, imageParams.layerCount);
     imageParams.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    return std::make_unique<Texture>(logicalDevice, Texture::Type::CUBEMAP, image, nullptr, imageParams, view, sampler, samplerParams);
+    return std::make_unique<Texture>(logicalDevice, Texture::Type::CUBEMAP, image, allocation, imageParams, view, sampler, samplerParams);
 }
 
 }

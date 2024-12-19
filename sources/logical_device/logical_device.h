@@ -1,6 +1,7 @@
 #pragma once
 
 #include "physical_device/physical_device.h"
+#include "memory_allocator/allocation.h"
 #include "memory_allocator/memory_allocator.h"
 #include "memory_objects/texture/texture.h"
 
@@ -13,9 +14,6 @@ enum class QueueType : uint8_t {
 	COMPUTE,
 	TRANSFER
 };
-
-using MemoryAllocator = std::variant<std::monostate, VmaWrapper>;
-using Allocation = std::variant<std::monostate, VmaAllocation>;
 
 class LogicalDevice {
 	VkDevice _device;

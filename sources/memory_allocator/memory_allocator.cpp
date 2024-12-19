@@ -35,7 +35,7 @@ VmaWrapper::~VmaWrapper() {
 	}
 }
 
-const VkBuffer VmaWrapper::createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags) {
+std::pair<VkBuffer, VmaAllocation> VmaWrapper::createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags) {
 	const VkBufferCreateInfo bufferInfo = {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		.size = size,
@@ -58,7 +58,7 @@ const VkBuffer VmaWrapper::createVkBuffer(VkDeviceSize size, VkBufferUsageFlags 
 	if (allocationInfo.pMappedData) {
 		_bufferMappings.emplace(buffer, allocationInfo.pMappedData);
 	}
-	return buffer;
+	return { buffer, allocation };
 }
 
 void VmaWrapper::destroyVkBuffer(const VkBuffer buffer) {
@@ -71,7 +71,7 @@ void VmaWrapper::sendDataToBufferMemory(const VkBuffer buffer, const void* data,
 	vmaCopyMemoryToAllocation(_allocator, data, _bufferAllocations[buffer], 0, size);
 }
 
-const VkImage VmaWrapper::createVkImage(const ImageParameters& params, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags) {
+std::pair<VkImage, VmaAllocation> VmaWrapper::createVkImage(const ImageParameters& params, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags) {
 	VkImageCreateInfo imageInfo = {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 		.imageType = VK_IMAGE_TYPE_2D,
@@ -101,7 +101,7 @@ const VkImage VmaWrapper::createVkImage(const ImageParameters& params, VmaMemory
 	VkImage image;
 	vmaCreateImage(_allocator, &imageInfo, &vmaAllocInfo, &image, &allocation, nullptr);
 	_imageAllocations.emplace(image, allocation);
-	return image;
+	return { image, allocation };
 }
 
 void VmaWrapper::destroyVkImage(const VkImage image) {
