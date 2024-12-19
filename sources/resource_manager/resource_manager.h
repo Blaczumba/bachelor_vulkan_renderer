@@ -10,10 +10,10 @@
 class ResourceManager {
 public:
 	ResourceManager(const LogicalDevice& logicalDevice);
-	std::optional<std::reference_wrapper<Texture>> getTexture(const std::string& filePath);
-	Texture& create2DTexture(const std::string& filePath, const VkCommandBuffer commandBuffer, VkFormat format, float samplerAnisotropy, const StagingBuffer& stagingBuffer, const ImageDimensions& imageDimensions);
-	Texture& createCubemap(const std::string& filePath, const VkCommandBuffer commandBuffer, VkFormat format, float samplerAnisotropy, const StagingBuffer& stagingBuffer, const ImageDimensions& imageDimensions);
-	Texture& create2DShadowMap(const std::string& filePath, const VkCommandBuffer commandBuffer, VkFormat format, uint32_t width, uint32_t height);
+	std::optional<std::reference_wrapper<Texture>> getTexture(std::string_view filePath);
+	Texture& create2DTexture(std::string_view filePath, const VkCommandBuffer commandBuffer, VkFormat format, float samplerAnisotropy, const StagingBuffer& stagingBuffer, const ImageDimensions& imageDimensions);
+	Texture& createCubemap(std::string_view filePath, const VkCommandBuffer commandBuffer, VkFormat format, float samplerAnisotropy, const StagingBuffer& stagingBuffer, const ImageDimensions& imageDimensions);
+	Texture& create2DShadowMap(std::string_view filePath, const VkCommandBuffer commandBuffer, VkFormat format, uint32_t width, uint32_t height);
 private:
 	const LogicalDevice& _logicalDevice;
 

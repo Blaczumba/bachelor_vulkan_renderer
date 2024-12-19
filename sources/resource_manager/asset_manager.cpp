@@ -1,16 +1,35 @@
 #include "asset_manager.h"
 
-AssetManager::AssetManager(MemoryAllocator& memoryAllocator) : _memoryAllocator(memoryAllocator) {}
+#include <iostream>
 
-CacheCode AssetManager::loadImage2D(const std::string& filePath) {
-	auto it = _imageResources.find(filePath);
-	if (it == _imageResources.cend()) {
+AssetManager::AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool) : _memoryAllocator(memoryAllocator), _threadPool(threadPool), _index(0) {}
+
+CacheCode AssetManager::loadImage2D(std::string_view filePath) {
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		auto it = _imageResources.find(std::string{ filePath });
+		if (it != _imageResources.cend()) {
+			return CacheCode::CACHED;
+		}
+	}
+	if (_threadPool) {
+		_threadPool->getThread(++_index % _threadPool->getNumThreads())->addJob([&, filePath = std::string{filePath}]() {
+				ImageResource resource = ImageLoader::load2DImage(filePath);
+				{
+					std::lock_guard<std::mutex> lock(_mutex);
+					_imageResources.emplace(filePath, std::make_pair(StagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size), resource.dimensions.copyRegions), resource.dimensions));
+				}
+				std::free(resource.data);
+			}
+		);
+	}
+	else {
 		ImageResource resource = ImageLoader::load2DImage(filePath);
+		std::lock_guard<std::mutex> lock(_mutex);
 		_imageResources.emplace(filePath, std::make_pair(StagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size), resource.dimensions.copyRegions), resource.dimensions));
 		std::free(resource.data);
-		return CacheCode::NOT_CACHED;
 	}
-	return CacheCode::CACHED;
+	return CacheCode::NOT_CACHED;
 }
 
 const std::pair<StagingBuffer, ImageDimensions>& AssetManager::getImageData(const std::string& filePath) const {
@@ -19,6 +38,6 @@ const std::pair<StagingBuffer, ImageDimensions>& AssetManager::getImageData(cons
 		return it->second;
 }
 
-CacheCode AssetManager::deleteImage(const std::string& filePath) {
-	return _imageResources.erase(filePath) ? CacheCode::CACHED : CacheCode::NOT_CACHED;
+CacheCode AssetManager::deleteImage(std::string_view filePath) {
+	return _imageResources.erase(std::string{ filePath }) ? CacheCode::CACHED : CacheCode::NOT_CACHED;
 }

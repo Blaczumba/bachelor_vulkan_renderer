@@ -61,6 +61,10 @@ ThreadPool::ThreadPool(size_t count) {
     }
 }
 
+size_t ThreadPool::getNumThreads() const {
+    return threads.size();
+}
+
 Thread* ThreadPool::getThread(size_t index) {
     return threads[index].get();
 }

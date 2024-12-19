@@ -36,5 +36,6 @@ class ThreadPool {
 public:
     ThreadPool(size_t count);
     Thread* getThread(size_t index);
+    size_t getNumThreads() const;
     void wait();
 };

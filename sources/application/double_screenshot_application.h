@@ -40,6 +40,7 @@ class SingleApp : public ApplicationBase {
     Registry _registry;
     std::unique_ptr<AssetManager> _assetManager;
     std::unique_ptr<ResourceManager> _resourceManager;
+    ThreadPool _assetManagerThreadPool;
 
     std::shared_ptr<Renderpass> _renderPass;
     std::vector<std::unique_ptr<Framebuffer>> _framebuffers;
