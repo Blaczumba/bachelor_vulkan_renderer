@@ -59,13 +59,12 @@ struct ImageCreator {
 	const ImageParameters& params;
 
 	const VkImage operator()(VmaWrapper& allocator) {
-		auto[image, tmpallocation] = allocator.createVkImage(params, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
-		allocation = tmpallocation;
+		auto[image, tmpAllocation] = allocator.createVkImage(params, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+		allocation = tmpAllocation;
 		return image;
 	}
 
 	const VkImage operator()(auto&&) {
-		return nullptr;
+		return VK_NULL_HANDLE;
 	}
-
 };

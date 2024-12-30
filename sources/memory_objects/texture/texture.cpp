@@ -24,11 +24,11 @@ namespace {
 struct ImageDeleter {
     VkImage image;
 
-    void operator()(VmaWrapper& allocator) {
-        allocator.destroyVkImage(image);
+    void operator()(VmaWrapper& allocator, const VmaAllocation allocation) {
+        allocator.destroyVkImage(image, allocation);
     }
 
-    void operator()(auto) {
+    void operator()(auto&&, auto&&) {
         throw std::runtime_error("Invalid memory allocator or memory instance!");
     }
 };
@@ -42,7 +42,7 @@ Texture::~Texture() {
     if(_view)
         vkDestroyImageView(device, _view, nullptr);
     if(_image)
-        std::visit(ImageDeleter{ _image }, _logicalDevice.getMemoryAllocator());
+        std::visit(ImageDeleter{ _image }, _logicalDevice.getMemoryAllocator(), _allocation);
 }
 
 const VkImage Texture::getVkImage() const {

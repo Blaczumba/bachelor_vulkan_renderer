@@ -1,7 +1,7 @@
 #pragma once
 
 #include "memory_allocator/memory_allocator.h"
-#include "memory_objects/buffers.h"
+#include "memory_objects/buffer.h"
 #include "logical_device/logical_device.h"
 
 #include <vulkan/vulkan.h>
@@ -15,12 +15,13 @@
 class StagingBuffer {
 public:
     template<typename Type>
-    StagingBuffer(MemoryAllocator& memoryAllocator, const std::span<Type> data, const std::vector<VkBufferImageCopy>& copyRegions = {}) : _memoryAllocator(memoryAllocator), _buffer(std::visit(Allocator{ data.size() * sizeof(Type) }, memoryAllocator)), _copyRegions(copyRegions) {
+    StagingBuffer(MemoryAllocator& memoryAllocator, const std::span<Type> data, const std::vector<VkBufferImageCopy>& copyRegions = {}) : _memoryAllocator(memoryAllocator), _copyRegions(copyRegions) {
+        _buffer = std::visit(Allocator{ _allocation, data.size() * sizeof(Type) }, memoryAllocator);
         std::memcpy(_buffer.data, data.data(), _buffer.size);
     }
     ~StagingBuffer() {
         if (_buffer.buffer) {
-            std::visit(BufferDeallocator{ _buffer.buffer }, _memoryAllocator);
+            std::visit(BufferDeallocator{ _buffer.buffer }, _memoryAllocator, _allocation);
         }
     }
     StagingBuffer(StagingBuffer&& stagingBuffer)
@@ -38,14 +39,16 @@ public:
 
 private:
     struct Allocator {
+        Allocation& allocation;
         const size_t size;
 
         Buffer operator()(VmaWrapper& wrapper) {
-            const auto[buffer, allocation] = wrapper.createVkBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            const auto[buffer, tmpallocation, data] = wrapper.createVkBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            allocation = tmpallocation;
             return Buffer{
                 .buffer = buffer,
                 .size = size,
-                .data = wrapper.getMappedData(buffer)
+                .data = data
             };
         }
 
@@ -53,7 +56,7 @@ private:
             return Buffer{};
         }
     };
-
+    Allocation _allocation;
     Buffer _buffer;
     std::vector<VkBufferImageCopy> _copyRegions;
     MemoryAllocator& _memoryAllocator;

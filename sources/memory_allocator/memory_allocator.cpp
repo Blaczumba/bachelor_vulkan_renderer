@@ -24,18 +24,12 @@ VmaWrapper::VmaWrapper(VmaWrapper&& allocator) {
 }
 
 VmaWrapper::~VmaWrapper() {
-	for (const auto [buffer, allocation] : _bufferAllocations) {
-		vmaDestroyBuffer(_allocator, buffer, allocation);
-	}
-	for (const auto [image, allocation] : _imageAllocations) {
-		vmaDestroyImage(_allocator, image, allocation);
-	}
 	if (_allocator) {
 		vmaDestroyAllocator(_allocator);
 	}
 }
 
-std::pair<VkBuffer, VmaAllocation> VmaWrapper::createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags) {
+std::tuple<VkBuffer, VmaAllocation, void*> VmaWrapper::createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags) {
 	const VkBufferCreateInfo bufferInfo = {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		.size = size,
@@ -54,21 +48,15 @@ std::pair<VkBuffer, VmaAllocation> VmaWrapper::createVkBuffer(VkDeviceSize size,
 	if (vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo, &buffer, &allocation, &allocationInfo) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create buffer!");
 	};
-	_bufferAllocations.emplace(buffer, allocation);
-	if (allocationInfo.pMappedData) {
-		_bufferMappings.emplace(buffer, allocationInfo.pMappedData);
-	}
-	return { buffer, allocation };
+	return { buffer, allocation, allocationInfo.pMappedData };
 }
 
-void VmaWrapper::destroyVkBuffer(const VkBuffer buffer) {
-	auto allocationPtr = _bufferAllocations.find(buffer);
-	vmaDestroyBuffer(_allocator, buffer, _bufferAllocations[buffer]);
-	_bufferAllocations.erase(allocationPtr);
+void VmaWrapper::destroyVkBuffer(const VkBuffer buffer, const VmaAllocation allocation) {
+	vmaDestroyBuffer(_allocator, buffer, allocation);
 }
 
-void VmaWrapper::sendDataToBufferMemory(const VkBuffer buffer, const void* data, size_t size) {
-	vmaCopyMemoryToAllocation(_allocator, data, _bufferAllocations[buffer], 0, size);
+void VmaWrapper::sendDataToBufferMemory(const VkBuffer buffer, const VmaAllocation allocation, const void* data, size_t size) {
+	vmaCopyMemoryToAllocation(_allocator, data, allocation, 0, size);
 }
 
 std::pair<VkImage, VmaAllocation> VmaWrapper::createVkImage(const ImageParameters& params, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags) {
@@ -100,17 +88,9 @@ std::pair<VkImage, VmaAllocation> VmaWrapper::createVkImage(const ImageParameter
 	VmaAllocation allocation;
 	VkImage image;
 	vmaCreateImage(_allocator, &imageInfo, &vmaAllocInfo, &image, &allocation, nullptr);
-	_imageAllocations.emplace(image, allocation);
 	return { image, allocation };
 }
 
-void VmaWrapper::destroyVkImage(const VkImage image) {
-	auto allocationPtr = _imageAllocations.find(image);
-	vmaDestroyImage(_allocator, image, allocationPtr->second);
-	_imageAllocations.erase(allocationPtr);
-}
-
-void* VmaWrapper::getMappedData(const VkBuffer buffer) {
-	auto it = _bufferMappings.find(buffer);
-	return (it != _bufferMappings.cend()) ? it->second : nullptr;
+void VmaWrapper::destroyVkImage(const VkImage image, const VmaAllocation allocation) {
+	vmaDestroyImage(_allocator, image, allocation);
 }

@@ -20,16 +20,12 @@ public:
 		_allocator = nullptr;
 	}
 
-	std::pair<VkBuffer, VmaAllocation> createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags = 0U);
-	void destroyVkBuffer(const VkBuffer buffer);
-	void sendDataToBufferMemory(const VkBuffer buffer, const void* data, size_t size);
+	std::tuple<VkBuffer, VmaAllocation, void*> createVkBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags = 0U);
+	void destroyVkBuffer(const VkBuffer buffer, const VmaAllocation allocation);
+	void sendDataToBufferMemory(const VkBuffer buffer, const VmaAllocation allocation, const void* data, size_t size);
 	std::pair<VkImage, VmaAllocation> createVkImage(const ImageParameters& params, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags = 0U);
-	void destroyVkImage(const VkImage image);
-	void* getMappedData(const VkBuffer buffer);
+	void destroyVkImage(const VkImage image, const VmaAllocation allocation);
 
 private:
 	VmaAllocator _allocator;
-	std::unordered_map<VkBuffer, VmaAllocation> _bufferAllocations;
-	std::unordered_map<VkBuffer, void*> _bufferMappings;
-	std::unordered_map<VkImage, VmaAllocation> _imageAllocations;
 };

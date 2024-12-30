@@ -1,4 +1,4 @@
-add_library(Buffers buffers.cpp)
+add_library(Buffers buffers.cpp buffer.cpp)
 
 target_link_libraries(Buffers PUBLIC Vulkan::Vulkan)
 target_link_libraries(Buffers PUBLIC MemoryAllocator)

@@ -5,6 +5,7 @@
 #include "model_loader/image_loader/image_loader.h"
 #include "thread_pool/thread_pool.h"
 
+#include <atomic>
 #include <mutex>
 #include <unordered_map>
 #include <string>
@@ -26,7 +27,7 @@ public:
 private:
 	MemoryAllocator& _memoryAllocator;
 	ThreadPool* _threadPool;
-	uint8_t _index;
+	std::atomic<uint8_t> _index;
 	std::mutex _mutex;
 
 	std::unordered_map<std::string, std::pair<StagingBuffer, ImageDimensions>> _imageResources;

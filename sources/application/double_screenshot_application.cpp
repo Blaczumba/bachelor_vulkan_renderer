@@ -18,9 +18,9 @@
 #include <chrono>
 
 SingleApp::SingleApp()
-    : ApplicationBase(), _assetManagerThreadPool(1) {
+    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency()/5) {
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
-    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), nullptr);
+    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), &_assetManagerThreadPool);
 
     createDescriptorSets();
     loadObjects();
@@ -131,7 +131,7 @@ void SingleApp::createDescriptorSets() {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         _textureCubemap = TextureFactory::createCubemap(*_logicalDevice, commandBuffer, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
-        _shadowMap = TextureFactory::create2DShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
+        _shadowMap = TextureFactory::create2DShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D16_UNORM);
     }
 
     _uniformBuffersObjects = std::make_unique<UniformBufferData<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());

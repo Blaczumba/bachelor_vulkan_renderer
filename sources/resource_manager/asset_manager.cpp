@@ -15,9 +15,10 @@ CacheCode AssetManager::loadImage2D(std::string_view filePath) {
 	if (_threadPool) {
 		_threadPool->getThread(++_index % _threadPool->getNumThreads())->addJob([&, filePath = std::string{filePath}]() {
 				ImageResource resource = ImageLoader::load2DImage(filePath);
+				StagingBuffer stagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size), resource.dimensions.copyRegions);
 				{
 					std::lock_guard<std::mutex> lock(_mutex);
-					_imageResources.emplace(filePath, std::make_pair(StagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size), resource.dimensions.copyRegions), resource.dimensions));
+					_imageResources.emplace(filePath, std::make_pair(std::move(stagingBuffer), std::move(resource.dimensions)));
 				}
 				std::free(resource.data);
 			}
@@ -35,6 +36,7 @@ const std::pair<StagingBuffer, ImageDimensions>& AssetManager::getImageData(cons
 	auto it = _imageResources.find(filePath);
 	if (it != _imageResources.cend())
 		return it->second;
+	throw std::runtime_error("Image data not found");
 }
 
 CacheCode AssetManager::deleteImage(std::string_view filePath) {
