@@ -18,9 +18,9 @@
 #include <chrono>
 
 SingleApp::SingleApp()
-    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency()/5) {
+    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency()) {
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
-    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), &_assetManagerThreadPool);
+    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), nullptr);
 
     createDescriptorSets();
     loadObjects();
@@ -112,6 +112,7 @@ void SingleApp::loadObjects() {
             _ubObject.model = _newVertexDataTBN[i].model;
             _uniformBuffersObjects->updateUniformBuffer(&_ubObject, index++);
         }
+
     }
 
     AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;
@@ -127,6 +128,7 @@ void SingleApp::loadObjects() {
 void SingleApp::createDescriptorSets() {
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
+    //_assetManager->loadImage2D()
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
