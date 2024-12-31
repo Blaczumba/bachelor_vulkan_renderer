@@ -13,22 +13,30 @@ CacheCode AssetManager::loadImage2D(std::string_view filePath) {
 		}
 	}
 	if (_threadPool) {
-		_threadPool->getThread(++_index % _threadPool->getNumThreads())->addJob([&, filePath = std::string{filePath}]() {
+		uint8_t index = _index.fetch_add(1);
+		_threadPool->getThread(index % _threadPool->getNumThreads())->addJob([&, filePath = std::string{filePath}]() {
 				ImageResource resource = ImageLoader::load2DImage(filePath);
-				StagingBuffer stagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size), resource.dimensions.copyRegions);
+				StagingBuffer stagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size));
 				{
 					std::lock_guard<std::mutex> lock(_mutex);
 					_imageResources.emplace(filePath, std::make_pair(std::move(stagingBuffer), std::move(resource.dimensions)));
 				}
-				std::free(resource.data);
+				ImageLoader::deallocateResources(resource);
 			}
 		);
 	}
 	else {
 		ImageResource resource = ImageLoader::load2DImage(filePath);
-		_imageResources.emplace(filePath, std::make_pair(StagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size), resource.dimensions.copyRegions), resource.dimensions));
-		std::free(resource.data);
+		_imageResources.emplace(filePath, std::make_pair(StagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size)), resource.dimensions));
+		ImageLoader::deallocateResources(resource);
 	}
+	return CacheCode::NOT_CACHED;
+}
+
+CacheCode AssetManager::loadImageCubemap(std::string_view filePath) {
+	ImageResource resource = ImageLoader::loadCubemapImage(filePath);
+	_imageResources.emplace(filePath, std::make_pair(StagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size)), resource.dimensions));
+	ImageLoader::deallocateResources(resource);
 	return CacheCode::NOT_CACHED;
 }
 

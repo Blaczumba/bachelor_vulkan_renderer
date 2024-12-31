@@ -21,6 +21,7 @@ class AssetManager {
 public:
 	AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool);
 	CacheCode loadImage2D(std::string_view filePath);
+	CacheCode loadImageCubemap(std::string_view filePath);
 	const std::pair<StagingBuffer, ImageDimensions>& getImageData(const std::string& filePath) const;
 	CacheCode deleteImage(std::string_view filePath);
 

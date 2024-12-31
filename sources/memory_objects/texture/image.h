@@ -13,12 +13,6 @@ struct ImageDimensions {
 	std::vector<VkBufferImageCopy> copyRegions;
 };
 
-struct ImageResource {
-	ImageDimensions dimensions;
-	void* data;
-	size_t size;
-};
-
 struct ImageParameters {
 	VkFormat format = VK_FORMAT_UNDEFINED;
 	uint32_t width = 1;

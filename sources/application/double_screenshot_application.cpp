@@ -20,7 +20,7 @@
 SingleApp::SingleApp()
     : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency()) {
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
-    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), nullptr);
+    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), &_assetManagerThreadPool);
 
     createDescriptorSets();
     loadObjects();
@@ -128,12 +128,13 @@ void SingleApp::loadObjects() {
 void SingleApp::createDescriptorSets() {
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
-    //_assetManager->loadImage2D()
+    _assetManager->loadImageCubemap(TEXTURES_PATH "cubemap_yokohama_rgba.ktx");
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-        _textureCubemap = TextureFactory::createCubemap(*_logicalDevice, commandBuffer, TEXTURES_PATH "cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
-        _shadowMap = TextureFactory::create2DShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D16_UNORM);
+        const auto& [stagingBuffer, imageDimmensions] = _assetManager->getImageData(TEXTURES_PATH "cubemap_yokohama_rgba.ktx");
+        _textureCubemap = TextureFactory::createTextureCubemap(*_logicalDevice, commandBuffer, stagingBuffer, imageDimmensions, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy);
+        _shadowMap = TextureFactory::create2DShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
     }
 
     _uniformBuffersObjects = std::make_unique<UniformBufferData<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());

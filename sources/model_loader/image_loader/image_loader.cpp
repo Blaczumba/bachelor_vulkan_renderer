@@ -3,15 +3,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image/stb_image.h>
 
-#include <ktxvulkan.h>
-#include <ktx.h>
-
-#include <vulkan/vulkan.h>
-
+#include <cmath>
 #include <stdexcept>
 #include <vector>
-
-#include <cmath>
 
 ImageResource ImageLoader::load2DImage(std::string_view imagePath) {
     int width, height, channels;
@@ -22,6 +16,7 @@ ImageResource ImageLoader::load2DImage(std::string_view imagePath) {
     }
 
     return ImageResource{
+		.libraryResource = pixels,
 		.dimensions = ImageDimensions {
 			.width = static_cast<uint32_t>(width),
 			.height = static_cast<uint32_t>(height),
@@ -53,6 +48,7 @@ ImageResource ImageLoader::loadCubemapImage(std::string_view imagePath) {
 	}
 
 	ImageResource image{
+		.libraryResource = ktxTexture,
 		.dimensions = ImageDimensions {
 			.width = ktxTexture->baseWidth,
 			.height = ktxTexture->baseHeight,
@@ -89,7 +85,27 @@ ImageResource ImageLoader::loadCubemapImage(std::string_view imagePath) {
 			);
 		}
 	}
-	ktxTexture->pData = nullptr;
-	ktxTexture_Destroy(ktxTexture);
 	return image;
+}
+
+namespace {
+
+struct Deallocator {
+	void operator()(ktxTexture* texture) {
+		ktxTexture_Destroy(texture);
+	}
+
+	void operator()(stbi_uc* texture) {
+		stbi_image_free(texture);
+	}
+
+	void operator()(auto&&) {
+		throw std::runtime_error("Unrecognized type of library image resource to free");
+	}
+};
+
+}
+
+void ImageLoader::deallocateResources(ImageResource& resource) {
+	std::visit(Deallocator{}, resource.libraryResource);
 }
