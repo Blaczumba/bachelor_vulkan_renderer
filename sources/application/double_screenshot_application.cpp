@@ -32,12 +32,12 @@ SingleApp::SingleApp()
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-        _vertexBufferCube = std::make_unique<VertexBuffer>(*_logicalDevice, commandBuffer, _assetManager->getVertexData("cube.obj").vertexBufferPrimitives);
-        _indexBufferCube = std::make_unique<IndexBuffer>(*_singleTimeCommandPool, vertexDataCube.indices);
+        const AssetManager::VertexData& vData = _assetManager->getVertexData("cube.obj");
+        _vertexBufferCube = std::make_unique<VertexBuffer>(*_logicalDevice, commandBuffer, vData.vertexBufferPrimitives);
+        _indexBufferCube = std::make_unique<IndexBuffer>(*_logicalDevice, commandBuffer, vData.indexBuffer, vData.indexType, vData.indexCount);
     }
 
     createCommandBuffers();
-
     //_screenshot = std::make_unique<Screenshot>(*_logicalDevice);
     //_screenshot->addImageToObserved(_framebufferTextures[1]->getImage(), "hig_res_screenshot.ppm");
     _camera = std::make_unique<FPSCamera>(glm::radians(45.0f), 1920.0f / 1080.0f, 0.01f, 100.0f);
@@ -103,8 +103,9 @@ void SingleApp::loadObjects() {
             const AssetManager::VertexData& vData = _assetManager->getVertexData(std::to_string(i));
             MeshComponent msh;
             msh.vertexBuffer = std::make_shared<VertexBuffer>(*_logicalDevice, commandBuffer, vData.vertexBuffer.value());
-            msh.indexBuffer = std::make_shared<IndexBuffer>(*_singleTimeCommandPool, _newVertexDataTBN[i].indices);
+            msh.indexBuffer = std::make_shared<IndexBuffer>(*_logicalDevice, commandBuffer, vData.indexBuffer, vData.indexType, vData.indexCount);
             msh.vertexBufferPrimitive = std::make_shared<VertexBuffer>(*_logicalDevice, commandBuffer, vData.vertexBufferPrimitives);
+            // msh.aabb = vData.aabb;
             msh.aabb = createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model);
             _registry.addComponent<MeshComponent>(e, std::move(msh));
 
@@ -120,7 +121,6 @@ void SingleApp::loadObjects() {
         }
 
     }
-
     AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;
     for (int i = 1; i < _objects.size(); i++) {
         sceneAABB.extend(_registry.getComponent<MeshComponent>(_objects[i].getEntity()).aabb);

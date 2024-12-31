@@ -22,6 +22,24 @@ enum class CacheCode : uint8_t {
 	CACHED
 };
 
+namespace {
+
+template<typename IndexType>
+constexpr std::enable_if_t<std::is_integral<IndexType>::value, VkIndexType> getIndexType() {
+	switch (sizeof(IndexType)) {
+	case 1:
+		return VK_INDEX_TYPE_UINT8_EXT;
+	case 2:
+		return VK_INDEX_TYPE_UINT16;
+	case 4:
+		return VK_INDEX_TYPE_UINT32;
+	default:
+		return VK_INDEX_TYPE_NONE_KHR;
+	}
+}
+
+}
+
 class AssetManager {
 public:
 	AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool);
@@ -30,27 +48,46 @@ public:
 	template<typename VertexType, typename IndexType>
 	CacheCode loadVertexData(std::string_view key, const std::vector<VertexType>& vertices, const std::vector<IndexType>& indices) {
 		static_assert(VertexTraits<VertexType>::hasPosition, "Cannot load vertex data with no position defined");
-		StagingBuffer indexBuffer(_memoryAllocator, std::span(indices.data(), indices.size()));
-		if (typeid(VertexType) == typeid(VertexP)) {
-			StagingBuffer primitivesVertexBuffer(_memoryAllocator, std::span(vertices.data(), vertices.size()));
-			_vertexDataResources.emplace(std::piecewise_construct, std::forward_as_tuple(key), std::forward_as_tuple(std::nullopt, std::move(indexBuffer), std::move(primitivesVertexBuffer), AABB{}));
-			return CacheCode::NOT_CACHED;
-		}
-		StagingBuffer vertexBuffer(_memoryAllocator, std::span(vertices.data(), vertices.size()));
-		std::vector<glm::vec3> primitives;
-		primitives.reserve(vertices.size());
-		std::transform(vertices.cbegin(), vertices.cend(), std::back_inserter(primitives), [](const VertexType& vertex) { return vertex.pos; });
-		StagingBuffer primitivesVertexBuffer(_memoryAllocator, std::span(primitives.data(), primitives.size()));
-		AABB aabb = createAABBfromVertices(primitives);
-		_vertexDataResources.emplace(std::piecewise_construct, std::forward_as_tuple(key), std::forward_as_tuple(std::move(vertexBuffer), std::move(indexBuffer), std::move(primitivesVertexBuffer), aabb));
+		auto createStagingBuffer = [&](auto& data) {
+			return StagingBuffer(_memoryAllocator, std::span(data.data(), data.size()));
+		};
+		StagingBuffer indexBuffer = createStagingBuffer(indices);
+		auto handleVertexBuffer = [&]() -> std::tuple<std::optional<StagingBuffer>, StagingBuffer> {
+			if (typeid(VertexType) == typeid(VertexP)) {
+				return { std::nullopt, createStagingBuffer(vertices)};
+			}
+			else {
+				std::vector<glm::vec3> primitives;
+				primitives.reserve(vertices.size());
+				std::transform(vertices.begin(), vertices.end(), std::back_inserter(primitives), [](const VertexType& vertex) { return vertex.pos; });
+				return { createStagingBuffer(vertices), createStagingBuffer(primitives) };
+			}
+		};
+		auto [vertexBuffer, primitivesVertexBuffer] = handleVertexBuffer();
+		_vertexDataResources.emplace(
+			std::piecewise_construct,
+			std::forward_as_tuple(key),
+			std::forward_as_tuple(
+				std::move(vertexBuffer),
+				std::move(indexBuffer),
+				getIndexType<IndexType>(),
+				indices.size(),
+				std::move(primitivesVertexBuffer),
+				AABB{}
+			)
+		);
+
 		return CacheCode::NOT_CACHED;
 	}
+
 	const std::pair<StagingBuffer, ImageDimensions>& getImageData(const std::string& filePath) const;
 	CacheCode deleteImage(std::string_view filePath);
 
 	struct VertexData {
 		std::optional<StagingBuffer> vertexBuffer;	// std::nullopt when the type is VertexP.
 		StagingBuffer indexBuffer;
+		VkIndexType indexType;
+		uint32_t indexCount;
 		StagingBuffer vertexBufferPrimitives;	// VertexP/glm::vec3 buffer.
 		AABB aabb;
 	};
@@ -66,6 +103,6 @@ private:
 	std::atomic<uint8_t> _index;
 	std::mutex _mutex;
 
-	std::unordered_map<std::string, std::pair<StagingBuffer, ImageDimensions>> _imageResources;
+	std::unordered_map<std::string, std::pair<StagingBuffer, ImageDimensions>> _imageResources; // TODO: change to image data probably.
 	std::unordered_map<std::string, VertexData> _vertexDataResources;
 };
