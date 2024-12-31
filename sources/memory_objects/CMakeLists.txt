@@ -14,7 +14,7 @@ add_subdirectory(uniform_buffer)
 add_library(VertexBuffer vertex_buffer.cpp)
 
 target_link_libraries(VertexBuffer PUBLIC Vulkan::Vulkan)
-target_link_libraries(VertexBuffer PUBLIC LogicalDevice CommandBuffer)
+target_link_libraries(VertexBuffer PUBLIC LogicalDevice CommandBuffer StagignBuffer)
 
 target_include_directories(VertexBuffer PUBLIC ${CMAKE_SOURCE_DIR}/sources)
 target_include_directories(VertexBuffer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

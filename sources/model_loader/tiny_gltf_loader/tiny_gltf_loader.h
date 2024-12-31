@@ -13,54 +13,6 @@
 #include <string>
 #include <vector>
 
-template <typename VertexType>
-struct VertexTraits;
-
-template <>
-struct VertexTraits<VertexP> {
-    static constexpr bool hasPosition = true;
-    static constexpr bool hasTexCoord = false;
-    static constexpr bool hasNormal = false;
-    static constexpr bool hasTangent = false;
-    static constexpr bool hasBitangent = false;
-};
-
-template <>
-struct VertexTraits<VertexPT> {
-    static constexpr bool hasPosition = true;
-    static constexpr bool hasTexCoord = true;
-    static constexpr bool hasNormal = false;
-    static constexpr bool hasTangent = false;
-    static constexpr bool hasBitangent = false;
-};
-
-template <>
-struct VertexTraits<VertexPTN> {
-    static constexpr bool hasPosition = true;
-    static constexpr bool hasTexCoord = true;
-    static constexpr bool hasNormal = true;
-    static constexpr bool hasTangent = false;
-    static constexpr bool hasBitangent = false;
-};
-
-template <>
-struct VertexTraits<VertexPTNT> {
-    static constexpr bool hasPosition = true;
-    static constexpr bool hasTexCoord = true;
-    static constexpr bool hasNormal = true;
-    static constexpr bool hasTangent = true;
-    static constexpr bool hasBitangent = false;
-};
-
-template <>
-struct VertexTraits<VertexPTNTB> {
-    static constexpr bool hasPosition = true;
-    static constexpr bool hasTexCoord = true;
-    static constexpr bool hasNormal = true;
-    static constexpr bool hasTangent = true;
-    static constexpr bool hasBitangent = true;
-};
-
 glm::mat4 GetNodeTransform(const tinygltf::Node& node) {
     glm::mat4 mat(1.0f);
 

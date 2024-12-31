@@ -2,6 +2,7 @@
 
 #include <logical_device/logical_device.h>
 #include <memory_objects/texture/texture.h>
+#include <memory_objects/buffer.h>
 
 #include <vulkan/vulkan.h>
 
@@ -57,7 +58,7 @@ public:
 template<typename UniformBufferType>
 class UniformBufferData : public UniformBuffer {
 	VkBuffer _uniformBuffer;
-	VkDeviceMemory _uniformBufferMemory;
+	Allocation _allocation;
 	void* _uniformBufferMapped;
 
 	VkDescriptorBufferInfo _bufferInfo;
@@ -71,6 +72,22 @@ public:
 
 	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override;
 	void updateUniformBuffer(const UniformBufferType* object, size_t index = 0);
+
+private:
+	struct Allocator {
+		Allocation& allocation;
+		const size_t size;
+
+		std::tuple<VkBuffer, void*> operator()(VmaWrapper& allocator) {
+			auto [buffer, vmaAllocation, data] = allocator.createVkBuffer(size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+			allocation = vmaAllocation;
+			return std::make_tuple(buffer, data);
+		}
+
+		std::tuple<VkBuffer, void*> operator()(auto&&) {
+			throw std::runtime_error("Not recognized allocator for UniformBufferData creation");
+		}
+	};
 };
 
 template<typename UniformBufferType>
@@ -79,13 +96,8 @@ UniformBufferData<UniformBufferType>::UniformBufferData(const LogicalDevice& log
 	_logicalDevice(logicalDevice), _count(count) {
 	const PhysicalDevice& physicalDevice = _logicalDevice.getPhysicalDevice();
 	const auto& limits = physicalDevice.getPropertyManager().getPhysicalDeviceLimits();
-
 	_size = getMemoryAlignment(sizeof(UniformBufferType), limits.minUniformBufferOffsetAlignment);
-	const VkDeviceSize bufferSize = VkDeviceSize{ _count }*_size;
-	_uniformBuffer = _logicalDevice.createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-	_uniformBufferMemory = _logicalDevice.createBufferMemory(_uniformBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	
-	vkMapMemory(_logicalDevice.getVkDevice(), _uniformBufferMemory, 0, bufferSize, 0, &_uniformBufferMapped);
+	std::tie(_uniformBuffer, _uniformBufferMapped) = std::visit(Allocator{ _allocation, _count * _size }, logicalDevice.getMemoryAllocator());
 	
 	_bufferInfo = VkDescriptorBufferInfo{
 		.buffer = _uniformBuffer,
@@ -96,11 +108,9 @@ UniformBufferData<UniformBufferType>::UniformBufferData(const LogicalDevice& log
 
 template<typename UniformBufferType>
 UniformBufferData<UniformBufferType>::~UniformBufferData() {
-	const VkDevice device = _logicalDevice.getVkDevice();
-
-	vkUnmapMemory(device, _uniformBufferMemory);
-	vkFreeMemory(device, _uniformBufferMemory, nullptr);
-	vkDestroyBuffer(device, _uniformBuffer, nullptr);
+	if (_uniformBuffer != VK_NULL_HANDLE) {
+		std::visit(BufferDeallocator{ _uniformBuffer }, _logicalDevice.getMemoryAllocator(), _allocation);
+	}
 }
 
 template<typename UniformBufferType>
@@ -118,5 +128,5 @@ VkWriteDescriptorSet UniformBufferData<UniformBufferType>::getVkWriteDescriptorS
 
 template<typename UniformBufferType>
 void UniformBufferData<UniformBufferType>::updateUniformBuffer(const UniformBufferType* object, size_t index) {
-	std::memcpy(static_cast<uint8_t*>(_uniformBufferMapped) + _size*index, object, sizeof(UniformBufferType));
+	std::memcpy(static_cast<uint8_t*>(_uniformBufferMapped) + _size * index, object, sizeof(UniformBufferType));
 }

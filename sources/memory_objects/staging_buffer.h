@@ -19,18 +19,29 @@ public:
         _buffer = std::visit(Allocator{ _allocation, data.size() * sizeof(Type) }, memoryAllocator);
         std::memcpy(_buffer.data, data.data(), _buffer.size);
     }
+
     ~StagingBuffer() {
         if (_buffer.buffer != VK_NULL_HANDLE) {
             std::visit(BufferDeallocator{ _buffer.buffer }, _memoryAllocator, _allocation);
         }
     }
+
     StagingBuffer(StagingBuffer&& stagingBuffer) noexcept
         : _buffer(stagingBuffer._buffer),
         _memoryAllocator(stagingBuffer._memoryAllocator) {
         stagingBuffer._buffer.buffer = VK_NULL_HANDLE;
     }
+
     const Buffer& getBuffer() const {
         return _buffer;
+    }
+
+    const VkBuffer getVkBuffer() const {
+        return _buffer.buffer;
+    }
+
+    size_t getSize() const {
+        return _buffer.size;
     }
 
 private:
