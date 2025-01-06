@@ -14,7 +14,7 @@ CacheCode AssetManager::loadImage2D(std::string_view filePath) {
 	}
 	if (_threadPool) {
 		uint8_t index = _index.fetch_add(1);
-		_threadPool->getThread(index % _threadPool->getNumThreads())->addJob([&, filePath = std::string{filePath}]() {
+		_threadPool->getThread(index % _threadPool->getNumThreads()).addJob([&, filePath = std::string{filePath}]() {
 				ImageResource resource = ImageLoader::load2DImage(filePath);
 				StagingBuffer stagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size));
 				{

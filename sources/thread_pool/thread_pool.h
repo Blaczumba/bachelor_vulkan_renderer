@@ -14,13 +14,13 @@
 #include <memory>
 
 class Thread {
-    bool destroying = false;
-    std::thread worker;
-    std::queue<std::function<void()>> jobQueue;
-    std::mutex queueMutex;
-    std::condition_variable condition;
+    bool _destroying = false;
+    std::thread _worker;
+    std::queue<std::function<void()>> _jobQueue;
+    std::mutex _queueMutex;
+    std::condition_variable _condition;
 
-    void queueLoop();
+    void queueLoop() noexcept;
 
 public:
     Thread();
@@ -31,11 +31,11 @@ public:
 };
 
 class ThreadPool {
-    std::vector<std::unique_ptr<Thread>> threads;
+    std::vector<Thread> _threads;
 
 public:
     ThreadPool(size_t count);
-    Thread* getThread(size_t index);
+    Thread& getThread(size_t index);
     size_t getNumThreads() const;
     void wait();
 };

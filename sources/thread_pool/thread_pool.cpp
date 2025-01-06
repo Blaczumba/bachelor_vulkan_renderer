@@ -6,71 +6,68 @@
 #include <queue>
 #include <thread>
 
-Thread::Thread() {
-    worker = std::thread(&Thread::queueLoop, this);
+Thread::Thread() : _worker(std::thread(&Thread::queueLoop, this)) {
+
 }
 
 Thread::~Thread() {
-    if (worker.joinable()) {
+    if (_worker.joinable()) {
         wait();
-        queueMutex.lock();
-        destroying = true;
-        condition.notify_one();
-        queueMutex.unlock();
-        worker.join();
+        _queueMutex.lock();
+        _destroying = true;
+        _condition.notify_one();
+        _queueMutex.unlock();
+        _worker.join();
     }
 }
 
-void Thread::queueLoop() {
+void Thread::queueLoop() noexcept {
     while (true) {
         std::function<void()> job;
         {
-            std::unique_lock<std::mutex> lock(queueMutex);
-            condition.wait(lock, [this] { return !jobQueue.empty() || destroying; });
-            if (destroying) {
+            std::unique_lock<std::mutex> lock(_queueMutex);
+            _condition.wait(lock, [this] { return !_jobQueue.empty() || _destroying; });
+            if (_destroying) {
                 break;
             }
-            job = std::move(jobQueue.front());
+            job = std::move(_jobQueue.front());
         }
 
         job();
 
         {
-            std::lock_guard<std::mutex> lock(queueMutex);
-            jobQueue.pop();
-            condition.notify_one();
+            std::lock_guard<std::mutex> lock(_queueMutex);
+            _jobQueue.pop();
+            _condition.notify_one();
         }
     }
 }
 
 void Thread::addJob(std::function<void()> function) {
-    std::lock_guard<std::mutex> lock(queueMutex);
-    jobQueue.push(std::move(function));
-    condition.notify_one();
+    std::lock_guard<std::mutex> lock(_queueMutex);
+    _jobQueue.push(std::move(function));
+    _condition.notify_one();
 }
 
 void Thread::wait() {
-    std::unique_lock<std::mutex> lock(queueMutex);
-    condition.wait(lock, [this]() { return jobQueue.empty(); });
+    std::unique_lock<std::mutex> lock(_queueMutex);
+    _condition.wait(lock, [this]() { return _jobQueue.empty(); });
 }
 
-ThreadPool::ThreadPool(size_t count) {
-    threads.clear();
-    for (uint32_t i = 0; i < count; i++) {
-        threads.push_back(std::make_unique<Thread>());
-    }
+ThreadPool::ThreadPool(size_t count) : _threads(count) {
+
 }
 
 size_t ThreadPool::getNumThreads() const {
-    return threads.size();
+    return _threads.size();
 }
 
-Thread* ThreadPool::getThread(size_t index) {
-    return threads[index].get();
+Thread& ThreadPool::getThread(size_t index) {
+    return _threads[index];
 }
 
 void ThreadPool::wait() {
-    for (auto& thread : threads) {
-        thread->wait();
+    for (auto& thread : _threads) {
+        thread.wait();
     }
 }

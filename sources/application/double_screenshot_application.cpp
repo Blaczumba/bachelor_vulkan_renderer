@@ -18,7 +18,7 @@
 #include <chrono>
 
 SingleApp::SingleApp()
-    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency() / 2) {
+    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency()) {
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
     _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), &_assetManagerThreadPool);
 
@@ -50,6 +50,7 @@ SingleApp::SingleApp()
 }
 
 void SingleApp::loadObjects() {
+    auto start = std::chrono::high_resolution_clock::now();
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
         if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
             continue;
@@ -59,11 +60,13 @@ void SingleApp::loadObjects() {
         _assetManager->loadVertexData(std::to_string(i), _newVertexDataTBN[i].vertices, _newVertexDataTBN[i].indices);
     }
     _assetManagerThreadPool.wait();
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     uint32_t index = 0;
-    auto start = std::chrono::high_resolution_clock::now();
     _objects.reserve(_newVertexDataTBN.size());
+    start = std::chrono::high_resolution_clock::now();
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
@@ -119,7 +122,7 @@ void SingleApp::loadObjects() {
         }
 
     }
-    auto stop = std::chrono::high_resolution_clock::now();
+    stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;
     for (int i = 1; i < _objects.size(); i++) {
@@ -469,7 +472,7 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
         .pViewportDepths = &framebuffer.getViewport(),
     };
 
-    _threadPool->getThread(0)->addJob([&]() {
+    _threadPool->getThread(0).addJob([&]() {
         _commandBuffers[_currentFrame][0]->begin(framebuffer, &scissorViewportInheritance);
         VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][0]->getVkCommandBuffer();
         vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
@@ -483,7 +486,7 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
         }
     });
 
-    _threadPool->getThread(1)->addJob([&]() {
+    _threadPool->getThread(1).addJob([&]() {
         // Skybox
         _commandBuffers[_currentFrame][1]->begin(framebuffer, &scissorViewportInheritance);
         VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][1]->getVkCommandBuffer();
