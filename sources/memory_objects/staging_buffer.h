@@ -1,7 +1,7 @@
 #pragma once
 
 #include "memory_allocator/memory_allocator.h"
-#include "memory_objects/buffer.h"
+#include "memory_objects/buffer_deallocator.h"
 #include "logical_device/logical_device.h"
 
 #include <vulkan/vulkan.h>
@@ -13,57 +13,51 @@
 class StagingBuffer {
 public:
     template<typename Type>
-    StagingBuffer(MemoryAllocator& memoryAllocator, const std::span<Type> data) : _memoryAllocator(memoryAllocator) {
-        _buffer = std::visit(Allocator{ _allocation, data.size() * sizeof(Type) }, memoryAllocator);
-        std::memcpy(_buffer.data, data.data(), _buffer.size);
+    StagingBuffer(MemoryAllocator& memoryAllocator, const std::span<Type> data) : _memoryAllocator(memoryAllocator), _size(data.size() * sizeof(Type)) {
+        std::tie(_buffer, _mappedData) = std::visit(Allocator{ _allocation, _size }, _memoryAllocator);
+        std::memcpy(_mappedData, data.data(), _size);
     }
 
     ~StagingBuffer() {
-        if (_buffer.buffer != VK_NULL_HANDLE) {
-            std::visit(BufferDeallocator{ _buffer.buffer }, _memoryAllocator, _allocation);
+        if (_buffer != VK_NULL_HANDLE) {
+            std::visit(BufferDeallocator{ _buffer }, _memoryAllocator, _allocation);
         }
     }
 
     StagingBuffer(StagingBuffer&& stagingBuffer) noexcept
-        : _buffer(stagingBuffer._buffer),
-        _memoryAllocator(stagingBuffer._memoryAllocator) {
-        stagingBuffer._buffer.buffer = VK_NULL_HANDLE;
-    }
-
-    const Buffer& getBuffer() const {
-        return _buffer;
+        : _buffer(std::exchange(stagingBuffer._buffer, VK_NULL_HANDLE)), _allocation(stagingBuffer._allocation), _size(stagingBuffer._size),
+        _mappedData(stagingBuffer._mappedData), _memoryAllocator(stagingBuffer._memoryAllocator) {
     }
 
     const VkBuffer getVkBuffer() const {
-        return _buffer.buffer;
+        return _buffer;
     }
 
-    size_t getSize() const {
-        return _buffer.size;
+    uint32_t getSize() const {
+        return _size;
     }
 
 private:
+    VkBuffer _buffer;
+    Allocation _allocation;
+    uint32_t _size;
+    void* _mappedData;
+    MemoryAllocator& _memoryAllocator;
+
     struct Allocator {
         Allocation& allocation;
         const size_t size;
 
-        Buffer operator()(VmaWrapper& wrapper) {
+        std::pair<VkBuffer, void*> operator()(VmaWrapper& wrapper) {
             const auto[buffer, tmpallocation, data] = wrapper.createVkBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
             allocation = tmpallocation;
-            return Buffer{
-                .buffer = buffer,
-                .size = size,
-                .data = data
-            };
+            return std::make_pair(buffer, data);
         }
 
-        Buffer operator()(auto) {
-            return Buffer{};
+        std::pair<VkBuffer, void*> operator()(auto) {
+            throw std::runtime_error("Unrecognized allocator during StagingBuffer creation");
         }
     };
-    Allocation _allocation;
-    Buffer _buffer;
-    MemoryAllocator& _memoryAllocator;
 };
 
 

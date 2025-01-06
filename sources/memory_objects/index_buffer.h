@@ -20,7 +20,7 @@ class IndexBuffer {
     const LogicalDevice& _logicalDevice;
 
 public:
-    IndexBuffer(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, const StagingBuffer& stagingBuffer, VkIndexType indexType, uint32_t indexCount);
+    IndexBuffer(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, const StagingBuffer& stagingBuffer, VkIndexType indexType);
     ~IndexBuffer();
 
     VkIndexType getIndexType() const;

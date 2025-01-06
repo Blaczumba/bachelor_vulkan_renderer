@@ -25,7 +25,7 @@ enum class CacheCode : uint8_t {
 namespace {
 
 template<typename IndexType>
-constexpr std::enable_if_t<std::is_integral<IndexType>::value, VkIndexType> getIndexType() {
+constexpr std::enable_if_t<std::is_unsigned<IndexType>::value, VkIndexType> getIndexType() {
 	switch (sizeof(IndexType)) {
 	case 1:
 		return VK_INDEX_TYPE_UINT8_EXT;
@@ -71,7 +71,6 @@ public:
 				std::move(vertexBuffer),
 				std::move(indexBuffer),
 				getIndexType<IndexType>(),
-				indices.size(),
 				std::move(primitivesVertexBuffer),
 				AABB{}
 			)
@@ -87,7 +86,6 @@ public:
 		std::optional<StagingBuffer> vertexBuffer;	// std::nullopt when the type is VertexP.
 		StagingBuffer indexBuffer;
 		VkIndexType indexType;
-		uint32_t indexCount;
 		StagingBuffer vertexBufferPrimitives;	// VertexP/glm::vec3 buffer.
 		AABB aabb;
 	};

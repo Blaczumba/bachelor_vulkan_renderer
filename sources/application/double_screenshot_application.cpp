@@ -18,23 +18,23 @@
 #include <chrono>
 
 SingleApp::SingleApp()
-    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency()) {
+    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency() / 2) {
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
-    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), nullptr);
+    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), &_assetManagerThreadPool);
 
     createDescriptorSets();
     loadObjects();
     createPresentResources();
     createShadowResources();
 
-    VertexData<VertexP, uint16_t> vertexDataCube = TinyOBJLoaderVertex::extract<VertexP, uint16_t>(MODELS_PATH "cube.obj");
+    VertexData<VertexP, uint8_t> vertexDataCube = TinyOBJLoaderVertex::extract<VertexP, uint8_t>(MODELS_PATH "cube.obj");
     _assetManager->loadVertexData("cube.obj", vertexDataCube.vertices, vertexDataCube.indices);
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         const AssetManager::VertexData& vData = _assetManager->getVertexData("cube.obj");
         _vertexBufferCube = std::make_unique<VertexBuffer>(*_logicalDevice, commandBuffer, vData.vertexBufferPrimitives);
-        _indexBufferCube = std::make_unique<IndexBuffer>(*_logicalDevice, commandBuffer, vData.indexBuffer, vData.indexType, vData.indexCount);
+        _indexBufferCube = std::make_unique<IndexBuffer>(*_logicalDevice, commandBuffer, vData.indexBuffer, vData.indexType);
     }
 
     createCommandBuffers();
@@ -50,7 +50,6 @@ SingleApp::SingleApp()
 }
 
 void SingleApp::loadObjects() {
-    auto start = std::chrono::high_resolution_clock::now();
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
         if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
             continue;
@@ -60,11 +59,10 @@ void SingleApp::loadObjects() {
         _assetManager->loadVertexData(std::to_string(i), _newVertexDataTBN[i].vertices, _newVertexDataTBN[i].indices);
     }
     _assetManagerThreadPool.wait();
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     uint32_t index = 0;
+    auto start = std::chrono::high_resolution_clock::now();
     _objects.reserve(_newVertexDataTBN.size());
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
@@ -103,9 +101,9 @@ void SingleApp::loadObjects() {
             const AssetManager::VertexData& vData = _assetManager->getVertexData(std::to_string(i));
             MeshComponent msh;
             msh.vertexBuffer = std::make_shared<VertexBuffer>(*_logicalDevice, commandBuffer, vData.vertexBuffer.value());
-            msh.indexBuffer = std::make_shared<IndexBuffer>(*_logicalDevice, commandBuffer, vData.indexBuffer, vData.indexType, vData.indexCount);
+            msh.indexBuffer = std::make_shared<IndexBuffer>(*_logicalDevice, commandBuffer, vData.indexBuffer, vData.indexType);
             msh.vertexBufferPrimitive = std::make_shared<VertexBuffer>(*_logicalDevice, commandBuffer, vData.vertexBufferPrimitives);
-            // msh.aabb = vData.aabb;
+            //msh.aabb = vData.aabb;
             msh.aabb = createAABBfromVertices(pVertexData, _newVertexDataTBN[i].model);
             _registry.addComponent<MeshComponent>(e, std::move(msh));
 
@@ -121,6 +119,8 @@ void SingleApp::loadObjects() {
         }
 
     }
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;
     for (int i = 1; i < _objects.size(); i++) {
         sceneAABB.extend(_registry.getComponent<MeshComponent>(_objects[i].getEntity()).aabb);
@@ -263,6 +263,8 @@ void SingleApp::run() {
         recordShadowCommandBuffer(commandBuffer, 0);
     }
 
+    // TODO not necessary
+    _newVertexDataTBN.clear();
     for (auto& object : _objects) {
         _registry.getComponent<MeshComponent>(object.getEntity()).vertexBufferPrimitive.reset();
     }
@@ -547,8 +549,8 @@ void SingleApp::recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_
         VkBuffer vertexBuffers[] = { meshComponent.vertexBufferPrimitive->getVkBuffer() };
         const IndexBuffer* indexBuffer = meshComponent.indexBuffer.get();
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getVkBuffer(), 0, indexBuffer->getIndexType());
         _descriptorSetShadow->bind(commandBuffer, *_shadowPipeline, { _entityToIndex[object.getEntity()] });
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getVkBuffer(), 0, indexBuffer->getIndexType());
         vkCmdDrawIndexed(commandBuffer, indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
 

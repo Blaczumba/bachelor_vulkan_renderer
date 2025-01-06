@@ -1,4 +1,4 @@
-add_library(Buffers buffers.cpp buffer.cpp)
+add_library(Buffers buffers.cpp)
 
 target_link_libraries(Buffers PUBLIC Vulkan::Vulkan)
 target_link_libraries(Buffers PUBLIC MemoryAllocator)
@@ -6,7 +6,7 @@ target_link_libraries(Buffers PUBLIC MemoryAllocator)
 add_library(StagignBuffer staging_buffer.cpp)
 
 target_link_libraries(StagignBuffer PUBLIC Vulkan::Vulkan)
-target_link_libraries(StagignBuffer PUBLIC LogicalDevice MemoryAllocator Buffers)
+target_link_libraries(StagignBuffer PUBLIC LogicalDevice MemoryAllocator)
 
 add_subdirectory(texture)
 add_subdirectory(uniform_buffer)

@@ -31,9 +31,14 @@ LogicalDevice::LogicalDevice(const PhysicalDevice& physicalDevice)
             }
         );
     }
+    const VkPhysicalDeviceIndexTypeUint8FeaturesEXT uint8IndexFeatures = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT,
+        .indexTypeUint8 = VK_TRUE
+    };
 
     const VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+        .pNext = (void*)&uint8IndexFeatures,
         .bufferDeviceAddress = VK_TRUE
     };
 

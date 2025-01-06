@@ -4,8 +4,26 @@
 #include "command_buffer/command_buffer.h"
 #include "logical_device/logical_device.h"
 
-IndexBuffer::IndexBuffer(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, const StagingBuffer& stagingBuffer, VkIndexType indexType, uint32_t indexCount)
-    : _logicalDevice(logicalDevice), _indexCount(indexCount), _indexType(indexType) {
+namespace {
+
+constexpr uint8_t getIndexSize(VkIndexType indexType) {
+    switch (indexType) {
+    case VK_INDEX_TYPE_UINT8_EXT:
+        return 1;
+    case VK_INDEX_TYPE_UINT16:
+        return 2;
+    case VK_INDEX_TYPE_UINT32:
+        return 4;
+    default:
+        return 0;
+    }
+}
+
+}
+
+
+IndexBuffer::IndexBuffer(const LogicalDevice& logicalDevice, const VkCommandBuffer commandBuffer, const StagingBuffer& stagingBuffer, VkIndexType indexType)
+    : _logicalDevice(logicalDevice), _indexCount(stagingBuffer.getSize() / getIndexSize(indexType)), _indexType(indexType) {
     _indexBuffer = std::visit(Allocator{ _allocation, stagingBuffer.getSize() }, _logicalDevice.getMemoryAllocator());
     copyBufferToBuffer(commandBuffer, stagingBuffer.getVkBuffer(), _indexBuffer, stagingBuffer.getSize());
 }

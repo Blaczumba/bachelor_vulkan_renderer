@@ -37,7 +37,7 @@ std::tuple<VkBuffer, VmaAllocation, void*> VmaWrapper::createVkBuffer(VkDeviceSi
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE
 	};
 
-	VmaAllocationCreateInfo vmaallocInfo = {
+	const VmaAllocationCreateInfo vmaallocInfo = {
 		.flags = flags,
 		.usage = memoryUsage
 	};
@@ -81,9 +81,10 @@ std::pair<VkImage, VmaAllocation> VmaWrapper::createVkImage(const ImageParameter
 	if (params.layerCount == 6)
 		imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-	VmaAllocationCreateInfo vmaAllocInfo = {};
-	vmaAllocInfo.usage = memoryUsage;
-	vmaAllocInfo.flags = flags;
+	const VmaAllocationCreateInfo vmaAllocInfo = {
+		.flags = flags,
+		.usage = memoryUsage
+	};
 
 	VmaAllocation allocation;
 	VkImage image;

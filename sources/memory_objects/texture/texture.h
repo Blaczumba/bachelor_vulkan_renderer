@@ -24,19 +24,6 @@ public:
 		CUBEMAP
 	};
 
-private:
-	const Type _type;
-
-	Allocation _allocation;
-	VkImage _image = VK_NULL_HANDLE;
-	VkImageView _view = VK_NULL_HANDLE;
-	VkSampler _sampler = VK_NULL_HANDLE;
-
-	ImageParameters _imageParameters;
-	SamplerParameters _samplerParameters;
-
-	const LogicalDevice& _logicalDevice;
-public:
 	Texture(const LogicalDevice& logicalDevice, Texture::Type type, const VkImage image, Allocation allocation, const ImageParameters& imageParameters, const VkImageView view = VK_NULL_HANDLE, const VkSampler sampler = VK_NULL_HANDLE, const SamplerParameters& samplerParameters = {});
 	Texture(Texture&& texture) noexcept;
 	~Texture();
@@ -51,6 +38,18 @@ public:
 	VkExtent2D getVkExtent2D() const;
 
 private:
+	const Type _type;
+
+	Allocation _allocation;
+	VkImage _image = VK_NULL_HANDLE;
+	VkImageView _view = VK_NULL_HANDLE;
+	VkSampler _sampler = VK_NULL_HANDLE;
+
+	ImageParameters _imageParameters;
+	SamplerParameters _samplerParameters;
+
+	const LogicalDevice& _logicalDevice;
+
 	void generateMipmaps(VkCommandBuffer commandBuffer);
 };
 
@@ -65,6 +64,6 @@ struct ImageCreator {
 	}
 
 	const VkImage operator()(auto&&) {
-		return VK_NULL_HANDLE;
+		throw std::runtime_error("Unrecognized allocator during Texture creation");
 	}
 };

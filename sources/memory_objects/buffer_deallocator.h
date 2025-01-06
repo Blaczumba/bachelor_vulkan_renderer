@@ -7,16 +7,13 @@
 #include <vector>
 #include <stdexcept>
 
-struct Buffer {
-    VkBuffer buffer;
-    size_t size;
-    void* data;
-};
-
 struct BufferDeallocator {
     const VkBuffer buffer;
 
-    void operator()(VmaWrapper& allocator, const VmaAllocation allocation);
+    void operator()(VmaWrapper& allocator, const VmaAllocation allocation) {
+        allocator.destroyVkBuffer(buffer, allocation);
+    }
+
     void operator()(auto&&, auto&&) {
         throw std::runtime_error("BufferDeallocator does not support such MemoryAllocator type!");
     }

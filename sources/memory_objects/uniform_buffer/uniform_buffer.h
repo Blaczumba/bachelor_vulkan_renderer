@@ -2,7 +2,7 @@
 
 #include <logical_device/logical_device.h>
 #include <memory_objects/texture/texture.h>
-#include <memory_objects/buffer.h>
+#include <memory_objects/buffer_deallocator.h>
 
 #include <vulkan/vulkan.h>
 
@@ -67,7 +67,7 @@ class UniformBufferData : public UniformBuffer {
 	const LogicalDevice& _logicalDevice;
 
 public:
-	UniformBufferData(const LogicalDevice& logicalDevice, uint32_t count = 1U);
+	UniformBufferData(const LogicalDevice& logicalDevice, uint32_t count = 1);
 	~UniformBufferData() override;
 
 	VkWriteDescriptorSet getVkWriteDescriptorSet(VkDescriptorSet descriptorSet, uint32_t binding) const override;
