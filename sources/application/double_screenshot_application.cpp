@@ -18,7 +18,7 @@
 #include <chrono>
 
 SingleApp::SingleApp()
-    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency()) {
+    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency() / 4 * 3) {
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
     _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), &_assetManagerThreadPool);
 
@@ -54,6 +54,10 @@ void SingleApp::loadObjects() {
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
         if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
             continue;
+        //std::cout << "I: " << i << std::endl;
+        //std::cout << std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0] << std::endl;
+        //std::cout << std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0] << std::endl;
+        //std::cout << std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0] << std::endl;
         _assetManager->loadImage2D(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0]);
         _assetManager->loadImage2D(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0]);
         _assetManager->loadImage2D(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0]);

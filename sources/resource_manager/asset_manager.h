@@ -15,10 +15,12 @@
 #include <string_view>
 #include <span>
 #include <unordered_map>
+#include <unordered_set>
 #include <optional>
 
 enum class CacheCode : uint8_t {
 	NOT_CACHED,
+	NOT_YET_PROCESSED,
 	CACHED
 };
 
@@ -103,4 +105,7 @@ private:
 
 	std::unordered_map<std::string, std::pair<StagingBuffer, ImageDimensions>> _imageResources; // TODO: change to image data probably.
 	std::unordered_map<std::string, VertexData> _vertexDataResources;
+
+	std::unordered_set<std::string> _awaitingImageResources;
+	std::mutex _awaitingImageMutex;
 };

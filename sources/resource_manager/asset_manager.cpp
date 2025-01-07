@@ -1,16 +1,20 @@
 #include "asset_manager.h"
 
-#include <iostream>
-
 AssetManager::AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool) : _memoryAllocator(memoryAllocator), _threadPool(threadPool), _index(0) {}
 
 CacheCode AssetManager::loadImage2D(std::string_view filePath) {
 	{
 		std::lock_guard<std::mutex> lock(_mutex);
-		auto it = _imageResources.find(std::string{ filePath });
-		if (it != _imageResources.cend()) {
+		if (_imageResources.contains(std::string{ filePath })) {
 			return CacheCode::CACHED;
 		}
+	}
+	{
+		std::unique_lock<std::mutex> lock(_awaitingImageMutex);
+		if (_awaitingImageResources.contains(std::string{ filePath })) {
+			return CacheCode::NOT_YET_PROCESSED;
+		}
+		_awaitingImageResources.emplace(filePath);
 	}
 	if (_threadPool) {
 		uint8_t index = _index.fetch_add(1);
@@ -20,6 +24,10 @@ CacheCode AssetManager::loadImage2D(std::string_view filePath) {
 				{
 					std::lock_guard<std::mutex> lock(_mutex);
 					_imageResources.emplace(filePath, std::make_pair(std::move(stagingBuffer), std::move(resource.dimensions)));
+				}
+				{
+					std::lock_guard<std::mutex> lock(_awaitingImageMutex);
+					_awaitingImageResources.erase(filePath);
 				}
 				ImageLoader::deallocateResources(resource);
 			}

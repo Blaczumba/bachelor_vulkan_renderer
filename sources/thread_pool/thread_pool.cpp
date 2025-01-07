@@ -13,10 +13,11 @@ Thread::Thread() : _worker(std::thread(&Thread::queueLoop, this)) {
 Thread::~Thread() {
     if (_worker.joinable()) {
         wait();
-        _queueMutex.lock();
-        _destroying = true;
-        _condition.notify_one();
-        _queueMutex.unlock();
+        {
+            std::lock_guard<std::mutex> lck(_queueMutex);
+            _destroying = true;
+            _condition.notify_one();
+        }
         _worker.join();
     }
 }
