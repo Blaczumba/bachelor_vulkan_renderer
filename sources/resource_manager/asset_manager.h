@@ -11,12 +11,12 @@
 #include <atomic>
 #include <iterator>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <span>
 #include <unordered_map>
 #include <unordered_set>
-#include <optional>
 
 enum class CacheCode : uint8_t {
 	NOT_CACHED,
@@ -45,7 +45,7 @@ constexpr std::enable_if_t<std::is_unsigned<IndexType>::value, VkIndexType> getI
 class AssetManager {
 public:
 	AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool);
-	CacheCode loadImage2D(std::string_view filePath);
+	std::future<StagingBuffer*> loadImage2DAsync(const std::string& filePath);
 	CacheCode loadImageCubemap(std::string_view filePath);
 	template<typename VertexType, typename IndexType>
 	CacheCode loadVertexData(std::string_view key, const std::vector<VertexType>& vertices, const std::vector<IndexType>& indices) {
@@ -100,7 +100,7 @@ public:
 private:
 	MemoryAllocator& _memoryAllocator;
 	ThreadPool* _threadPool;
-	std::atomic<uint8_t> _index;
+	uint8_t _index;
 	std::mutex _mutex;
 
 	std::unordered_map<std::string, std::pair<StagingBuffer, ImageDimensions>> _imageResources; // TODO: change to image data probably.

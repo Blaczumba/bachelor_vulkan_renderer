@@ -2,43 +2,42 @@
 
 AssetManager::AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool) : _memoryAllocator(memoryAllocator), _threadPool(threadPool), _index(0) {}
 
-CacheCode AssetManager::loadImage2D(std::string_view filePath) {
+std::future<StagingBuffer*> AssetManager::loadImage2DAsync(const std::string& filePath) {
+	std::shared_ptr<std::promise<StagingBuffer*>> promise = std::make_shared<std::promise<StagingBuffer*>>();
+	std::future<StagingBuffer*> future = promise->get_future();
 	{
 		std::lock_guard<std::mutex> lock(_mutex);
-		if (_imageResources.contains(std::string{ filePath })) {
-			return CacheCode::CACHED;
+		auto it = _imageResources.find(filePath);
+		if (it != _imageResources.cend()) {
+			promise->set_value(&it->second.first);
+			return future;
 		}
 	}
 	{
+		//TODO: if we assume that filePath does not repeat then we can get rid of it.
 		std::unique_lock<std::mutex> lock(_awaitingImageMutex);
-		if (_awaitingImageResources.contains(std::string{ filePath })) {
-			return CacheCode::NOT_YET_PROCESSED;
+		auto it = _awaitingImageResources.find(filePath);
+		if (it != _awaitingImageResources.cend()) {
+			promise->set_value(nullptr);
+			return future;
 		}
 		_awaitingImageResources.emplace(filePath);
 	}
-	if (_threadPool) {
-		uint8_t index = _index.fetch_add(1);
-		_threadPool->getThread(index % _threadPool->getNumThreads()).addJob([&, filePath = std::string{filePath}]() {
-				ImageResource resource = ImageLoader::load2DImage(filePath);
-				StagingBuffer stagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size));
-				{
-					std::lock_guard<std::mutex> lock(_mutex);
-					_imageResources.emplace(filePath, std::make_pair(std::move(stagingBuffer), std::move(resource.dimensions)));
-				}
-				{
-					std::lock_guard<std::mutex> lock(_awaitingImageMutex);
-					_awaitingImageResources.erase(filePath);
-				}
-				ImageLoader::deallocateResources(resource);
+	_threadPool->getThread((++_index) % _threadPool->getNumThreads()).addJob([&, filePath = filePath, promise = std::move(promise)]() {
+			ImageResource resource = ImageLoader::load2DImage(filePath);
+			StagingBuffer stagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size));
+			{
+				std::lock_guard<std::mutex> lock(_mutex);
+				promise->set_value(&_imageResources.emplace(filePath, std::make_pair(std::move(stagingBuffer), std::move(resource.dimensions))).first->second.first);
 			}
-		);
-	}
-	else {
-		ImageResource resource = ImageLoader::load2DImage(filePath);
-		_imageResources.emplace(filePath, std::make_pair(StagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size)), resource.dimensions));
-		ImageLoader::deallocateResources(resource);
-	}
-	return CacheCode::NOT_CACHED;
+			{
+				std::lock_guard<std::mutex> lock(_awaitingImageMutex);
+				_awaitingImageResources.erase(filePath);
+			}
+			ImageLoader::deallocateResources(resource);
+		}
+	);
+	return future;
 }
 
 CacheCode AssetManager::loadImageCubemap(std::string_view filePath) {

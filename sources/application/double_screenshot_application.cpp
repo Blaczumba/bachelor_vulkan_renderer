@@ -18,12 +18,15 @@
 #include <chrono>
 
 SingleApp::SingleApp()
-    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency() / 4 * 3) {
+    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency()) {
+    auto start = std::chrono::high_resolution_clock::now();
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
+    auto stop = std::chrono::high_resolution_clock::now();
     _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), &_assetManagerThreadPool);
 
     createDescriptorSets();
     loadObjects();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     createPresentResources();
     createShadowResources();
 
@@ -54,18 +57,14 @@ void SingleApp::loadObjects() {
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
         if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
             continue;
-        //std::cout << "I: " << i << std::endl;
-        //std::cout << std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0] << std::endl;
-        //std::cout << std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0] << std::endl;
-        //std::cout << std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0] << std::endl;
-        _assetManager->loadImage2D(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0]);
-        _assetManager->loadImage2D(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0]);
-        _assetManager->loadImage2D(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0]);
+        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0]);
+        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0]);
+        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0]);
         _assetManager->loadVertexData(std::to_string(i), _newVertexDataTBN[i].vertices, _newVertexDataTBN[i].indices);
     }
     _assetManagerThreadPool.wait();
     auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
+    std::cout << std::endl << std::endl << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     uint32_t index = 0;
