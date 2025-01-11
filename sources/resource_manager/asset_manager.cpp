@@ -2,59 +2,50 @@
 
 AssetManager::AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool) : _memoryAllocator(memoryAllocator), _threadPool(threadPool), _index(0) {}
 
-std::future<StagingBuffer*> AssetManager::loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction) {
-	std::shared_ptr<std::promise<StagingBuffer*>> promise = std::make_shared<std::promise<StagingBuffer*>>();
-	std::future<StagingBuffer*> future = promise->get_future();
+std::shared_future<std::pair<StagingBuffer, ImageDimensions>*> AssetManager::loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction) {
+	std::shared_ptr<std::promise<std::pair<StagingBuffer, ImageDimensions>*>> promise;
+	std::shared_future<std::pair<StagingBuffer, ImageDimensions>*> future;
 	{
-		std::lock_guard<std::mutex> lock(_mutex);
-		auto it = _imageResources.find(filePath);
-		if (it != _imageResources.cend()) {
-			promise->set_value(&it->second.first);
-			return future;
-		}
-	}
-	{
-		//TODO: if we assume that filePath does not repeat then we can get rid of it.
 		std::unique_lock<std::mutex> lock(_awaitingImageMutex);
 		auto it = _awaitingImageResources.find(filePath);
 		if (it != _awaitingImageResources.cend()) {
-			promise->set_value(nullptr);
-			return future;
+			return it->second;
 		}
-		_awaitingImageResources.emplace(filePath);
+		promise = std::make_shared<std::promise<std::pair<StagingBuffer, ImageDimensions>*>>();
+		future = promise->get_future().share();
+		_awaitingImageResources.emplace(filePath, future);
 	}
 	_threadPool->getThread((++_index) % _threadPool->getNumThreads()).addJob([&, filePath = filePath, promise = std::move(promise), loadingFunction = std::move(loadingFunction)]() {
 			ImageResource resource = loadingFunction(filePath);
 			StagingBuffer stagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size));
 			{
 				std::lock_guard<std::mutex> lock(_mutex);
-				promise->set_value(&_imageResources.emplace(filePath, std::make_pair(std::move(stagingBuffer), std::move(resource.dimensions))).first->second.first);
-			}
-			{
-				std::lock_guard<std::mutex> lock(_awaitingImageMutex);
-				_awaitingImageResources.erase(filePath);
+				_imageResources.emplace_back(std::move(stagingBuffer), std::move(resource.dimensions));
+				promise->set_value(&_imageResources.back());
 			}
 			ImageLoader::deallocateResources(resource);
 		}
 	);
 	return future;
+
 }
 
-std::future<StagingBuffer*> AssetManager::loadImage2DAsync(const std::string& filePath) {
+std::shared_future<std::pair<StagingBuffer, ImageDimensions>*> AssetManager::loadImage2DAsync(const std::string& filePath) {
 	return loadImageAsync(filePath, ImageLoader::load2DImage);
 }
 
-std::future<StagingBuffer*> AssetManager::loadImageCubemapAsync(const std::string& filePath) {
+std::shared_future<std::pair<StagingBuffer, ImageDimensions>*> AssetManager::loadImageCubemapAsync(const std::string& filePath) {
 	return loadImageAsync(filePath, ImageLoader::loadCubemapImage);
 }
 
 const std::pair<StagingBuffer, ImageDimensions>& AssetManager::getImageData(const std::string& filePath) const {
-	auto it = _imageResources.find(filePath);
-	if (it != _imageResources.cend())
-		return it->second;
+	auto it = _awaitingImageResources.find(filePath);
+	if (it != _awaitingImageResources.cend())
+		return *it->second.get();
 	throw std::runtime_error("Image data not found");
 }
 
-CacheCode AssetManager::deleteImage(std::string_view filePath) {
-	return _imageResources.erase(std::string{ filePath }) ? CacheCode::CACHED : CacheCode::NOT_CACHED;
+void AssetManager::deleteImage(std::string_view filePath) {
+
+	return;
 }

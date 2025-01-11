@@ -45,9 +45,9 @@ constexpr std::enable_if_t<std::is_unsigned<IndexType>::value, VkIndexType> getI
 class AssetManager {
 public:
 	AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool);
-	std::future<StagingBuffer*> loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
-	std::future<StagingBuffer*> loadImage2DAsync(const std::string& filePath);
-	std::future<StagingBuffer*> loadImageCubemapAsync(const std::string& filePath);
+	std::shared_future<std::pair<StagingBuffer, ImageDimensions>*> loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
+	std::shared_future<std::pair<StagingBuffer, ImageDimensions>*> loadImage2DAsync(const std::string& filePath);
+	std::shared_future<std::pair<StagingBuffer, ImageDimensions>*> loadImageCubemapAsync(const std::string& filePath);
 	template<typename VertexType, typename IndexType>
 	CacheCode loadVertexData(std::string_view key, const std::vector<VertexType>& vertices, const std::vector<IndexType>& indices) {
 		static_assert(VertexTraits<VertexType>::hasPosition, "Cannot load vertex data with no position defined");
@@ -83,7 +83,7 @@ public:
 	}
 
 	const std::pair<StagingBuffer, ImageDimensions>& getImageData(const std::string& filePath) const;
-	CacheCode deleteImage(std::string_view filePath);
+	void deleteImage(std::string_view filePath);
 
 	struct VertexData {
 		std::optional<StagingBuffer> vertexBuffer;	// std::nullopt when the type is VertexP.
@@ -104,9 +104,9 @@ private:
 	uint8_t _index;
 	std::mutex _mutex;
 
-	std::unordered_map<std::string, std::pair<StagingBuffer, ImageDimensions>> _imageResources; // TODO: change to image data probably.
+	std::deque<std::pair<StagingBuffer, ImageDimensions>> _imageResources;
 	std::unordered_map<std::string, VertexData> _vertexDataResources;
 
-	std::unordered_set<std::string> _awaitingImageResources;
+	std::unordered_map<std::string, std::shared_future<std::pair<StagingBuffer, ImageDimensions>*>> _awaitingImageResources;
 	std::mutex _awaitingImageMutex;
 };
