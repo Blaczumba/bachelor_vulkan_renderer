@@ -140,7 +140,7 @@ void SingleApp::loadObjects() {
 void SingleApp::createDescriptorSets() {
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
-    _assetManager->loadImageCubemap(TEXTURES_PATH "cubemap_yokohama_rgba.ktx");
+    _assetManager->loadImageCubemapAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx").wait();
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();

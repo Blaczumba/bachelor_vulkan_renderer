@@ -45,8 +45,9 @@ constexpr std::enable_if_t<std::is_unsigned<IndexType>::value, VkIndexType> getI
 class AssetManager {
 public:
 	AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool);
+	std::future<StagingBuffer*> loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
 	std::future<StagingBuffer*> loadImage2DAsync(const std::string& filePath);
-	CacheCode loadImageCubemap(std::string_view filePath);
+	std::future<StagingBuffer*> loadImageCubemapAsync(const std::string& filePath);
 	template<typename VertexType, typename IndexType>
 	CacheCode loadVertexData(std::string_view key, const std::vector<VertexType>& vertices, const std::vector<IndexType>& indices) {
 		static_assert(VertexTraits<VertexType>::hasPosition, "Cannot load vertex data with no position defined");

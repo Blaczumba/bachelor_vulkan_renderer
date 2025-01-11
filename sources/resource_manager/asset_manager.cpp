@@ -2,7 +2,7 @@
 
 AssetManager::AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool) : _memoryAllocator(memoryAllocator), _threadPool(threadPool), _index(0) {}
 
-std::future<StagingBuffer*> AssetManager::loadImage2DAsync(const std::string& filePath) {
+std::future<StagingBuffer*> AssetManager::loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction) {
 	std::shared_ptr<std::promise<StagingBuffer*>> promise = std::make_shared<std::promise<StagingBuffer*>>();
 	std::future<StagingBuffer*> future = promise->get_future();
 	{
@@ -23,8 +23,8 @@ std::future<StagingBuffer*> AssetManager::loadImage2DAsync(const std::string& fi
 		}
 		_awaitingImageResources.emplace(filePath);
 	}
-	_threadPool->getThread((++_index) % _threadPool->getNumThreads()).addJob([&, filePath = filePath, promise = std::move(promise)]() {
-			ImageResource resource = ImageLoader::load2DImage(filePath);
+	_threadPool->getThread((++_index) % _threadPool->getNumThreads()).addJob([&, filePath = filePath, promise = std::move(promise), loadingFunction = std::move(loadingFunction)]() {
+			ImageResource resource = loadingFunction(filePath);
 			StagingBuffer stagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size));
 			{
 				std::lock_guard<std::mutex> lock(_mutex);
@@ -40,11 +40,12 @@ std::future<StagingBuffer*> AssetManager::loadImage2DAsync(const std::string& fi
 	return future;
 }
 
-CacheCode AssetManager::loadImageCubemap(std::string_view filePath) {
-	ImageResource resource = ImageLoader::loadCubemapImage(filePath);
-	_imageResources.emplace(filePath, std::make_pair(StagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size)), resource.dimensions));
-	ImageLoader::deallocateResources(resource);
-	return CacheCode::NOT_CACHED;
+std::future<StagingBuffer*> AssetManager::loadImage2DAsync(const std::string& filePath) {
+	return loadImageAsync(filePath, ImageLoader::load2DImage);
+}
+
+std::future<StagingBuffer*> AssetManager::loadImageCubemapAsync(const std::string& filePath) {
+	return loadImageAsync(filePath, ImageLoader::loadCubemapImage);
 }
 
 const std::pair<StagingBuffer, ImageDimensions>& AssetManager::getImageData(const std::string& filePath) const {
