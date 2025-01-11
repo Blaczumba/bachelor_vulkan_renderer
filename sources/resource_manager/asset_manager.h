@@ -45,9 +45,9 @@ constexpr std::enable_if_t<std::is_unsigned<IndexType>::value, VkIndexType> getI
 class AssetManager {
 public:
 	AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool);
-	std::shared_future<std::pair<StagingBuffer, ImageDimensions>*> loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
-	std::shared_future<std::pair<StagingBuffer, ImageDimensions>*> loadImage2DAsync(const std::string& filePath);
-	std::shared_future<std::pair<StagingBuffer, ImageDimensions>*> loadImageCubemapAsync(const std::string& filePath);
+	std::shared_future<std::unique_ptr<std::pair<StagingBuffer, ImageDimensions>>> loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
+	std::shared_future<std::unique_ptr<std::pair<StagingBuffer, ImageDimensions>>> loadImage2DAsync(const std::string& filePath);
+	std::shared_future<std::unique_ptr<std::pair<StagingBuffer, ImageDimensions>>> loadImageCubemapAsync(const std::string& filePath);
 	template<typename VertexType, typename IndexType>
 	CacheCode loadVertexData(std::string_view key, const std::vector<VertexType>& vertices, const std::vector<IndexType>& indices) {
 		static_assert(VertexTraits<VertexType>::hasPosition, "Cannot load vertex data with no position defined");
@@ -102,11 +102,9 @@ private:
 	MemoryAllocator& _memoryAllocator;
 	ThreadPool* _threadPool;
 	uint8_t _index;
-	std::mutex _mutex;
 
-	std::deque<std::pair<StagingBuffer, ImageDimensions>> _imageResources;
 	std::unordered_map<std::string, VertexData> _vertexDataResources;
 
-	std::unordered_map<std::string, std::shared_future<std::pair<StagingBuffer, ImageDimensions>*>> _awaitingImageResources;
+	std::unordered_map<std::string, std::shared_future<std::unique_ptr<std::pair<StagingBuffer, ImageDimensions>>>> _awaitingImageResources;
 	std::mutex _awaitingImageMutex;
 };
