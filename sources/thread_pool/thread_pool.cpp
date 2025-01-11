@@ -45,7 +45,7 @@ void Thread::queueLoop() noexcept {
     }
 }
 
-void Thread::addJob(std::function<void()> function) {
+void Thread::addJob(std::function<void()>&& function) {
     std::lock_guard<std::mutex> lock(_queueMutex);
     _jobQueue.emplace(std::move(function));
     _condition.notify_one();

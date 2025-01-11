@@ -26,7 +26,7 @@ public:
     Thread();
     ~Thread();
 
-    void addJob(std::function<void()> function);
+    void addJob(std::function<void()>&& function);
     void wait();
 };
 
