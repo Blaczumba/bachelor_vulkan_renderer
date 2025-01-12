@@ -44,10 +44,25 @@ constexpr std::enable_if_t<std::is_unsigned<IndexType>::value, VkIndexType> getI
 
 class AssetManager {
 public:
-	AssetManager(MemoryAllocator& memoryAllocator, ThreadPool* threadPool);
-	std::shared_future<std::unique_ptr<std::pair<StagingBuffer, ImageDimensions>>> loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
-	std::shared_future<std::unique_ptr<std::pair<StagingBuffer, ImageDimensions>>> loadImage2DAsync(const std::string& filePath);
-	std::shared_future<std::unique_ptr<std::pair<StagingBuffer, ImageDimensions>>> loadImageCubemapAsync(const std::string& filePath);
+	AssetManager(MemoryAllocator& memoryAllocator);
+	
+	struct ImageData {
+		StagingBuffer stagingBuffer;
+		ImageDimensions imageDimensions;
+	};
+
+	struct VertexData {
+		std::optional<StagingBuffer> vertexBuffer;	// std::nullopt when the type is VertexP.
+		StagingBuffer indexBuffer;
+		VkIndexType indexType;
+		StagingBuffer vertexBufferPrimitives;	// VertexP/glm::vec3 buffer.
+		AABB aabb;
+	};
+
+	std::shared_future<std::unique_ptr<ImageData>> loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
+	std::shared_future<std::unique_ptr<ImageData>> loadImage2DAsync(const std::string& filePath);
+	std::shared_future<std::unique_ptr<ImageData>> loadImageCubemapAsync(const std::string& filePath);
+
 	template<typename VertexType, typename IndexType>
 	CacheCode loadVertexData(std::string_view key, const std::vector<VertexType>& vertices, const std::vector<IndexType>& indices) {
 		static_assert(VertexTraits<VertexType>::hasPosition, "Cannot load vertex data with no position defined");
@@ -82,16 +97,8 @@ public:
 		return CacheCode::NOT_CACHED;
 	}
 
-	const std::pair<StagingBuffer, ImageDimensions>& getImageData(const std::string& filePath) const;
+	const ImageData& getImageData(const std::string& filePath) const;
 	void deleteImage(std::string_view filePath);
-
-	struct VertexData {
-		std::optional<StagingBuffer> vertexBuffer;	// std::nullopt when the type is VertexP.
-		StagingBuffer indexBuffer;
-		VkIndexType indexType;
-		StagingBuffer vertexBufferPrimitives;	// VertexP/glm::vec3 buffer.
-		AABB aabb;
-	};
 
 	const VertexData& getVertexData(std::string_view key) const {
 		auto ptr = _vertexDataResources.find(std::string{ key });
@@ -100,11 +107,9 @@ public:
 
 private:
 	MemoryAllocator& _memoryAllocator;
-	ThreadPool* _threadPool;
-	uint8_t _index;
 
 	std::unordered_map<std::string, VertexData> _vertexDataResources;
 
-	std::unordered_map<std::string, std::shared_future<std::unique_ptr<std::pair<StagingBuffer, ImageDimensions>>>> _awaitingImageResources;
+	std::unordered_map<std::string, std::shared_future<std::unique_ptr<ImageData>>> _awaitingImageResources;
 	std::mutex _awaitingImageMutex;
 };

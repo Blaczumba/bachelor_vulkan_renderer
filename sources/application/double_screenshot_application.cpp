@@ -18,11 +18,11 @@
 #include <chrono>
 
 SingleApp::SingleApp()
-    : ApplicationBase(), _assetManagerThreadPool(std::thread::hardware_concurrency()) {
+    : ApplicationBase() {
     auto start = std::chrono::high_resolution_clock::now();
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
     auto stop = std::chrono::high_resolution_clock::now();
-    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator(), &_assetManagerThreadPool);
+    _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator());
 
     createDescriptorSets();
     loadObjects();
@@ -53,16 +53,19 @@ SingleApp::SingleApp()
 }
 
 void SingleApp::loadObjects() {
+    std::vector<std::shared_future<std::unique_ptr<AssetManager::ImageData>>> futures;
+    futures.reserve(70);
     auto start = std::chrono::high_resolution_clock::now();
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
         if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
             continue;
-        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0]);
-        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0]);
-        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0]);
+        futures.emplace_back(_assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0]));
+        futures.emplace_back(_assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0]));
+        futures.emplace_back(_assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0]));
         _assetManager->loadVertexData(std::to_string(i), _newVertexDataTBN[i].vertices, _newVertexDataTBN[i].indices);
     }
-    _assetManagerThreadPool.wait();
+    for (const auto& el : futures)
+        el.wait();
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::endl << std::endl << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     const auto& propertyManager = _physicalDevice->getPropertyManager();
