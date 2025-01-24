@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <condition_variable>
 #include <iterator>
 #include <mutex>
 #include <optional>
@@ -59,7 +60,7 @@ public:
 		AABB aabb;
 	};
 
-	std::shared_future<std::unique_ptr<ImageData>> loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
+	std::shared_future<std::unique_ptr<VertexData>> loadVertexDataAsync(const std::string& identifier, std::function<ImageResource()>&& loadingFunction);
 	std::shared_future<std::unique_ptr<ImageData>> loadImage2DAsync(const std::string& filePath);
 	std::shared_future<std::unique_ptr<ImageData>> loadImageCubemapAsync(const std::string& filePath);
 
@@ -97,7 +98,8 @@ public:
 		return CacheCode::NOT_CACHED;
 	}
 
-	const ImageData& getImageData(const std::string& filePath) const;
+	const ImageData& getImageData(const std::string& filePath);
+	void waitForImagesToLoad() const;
 	void deleteImage(std::string_view filePath);
 
 	const VertexData& getVertexData(std::string_view key) const {
@@ -106,10 +108,13 @@ public:
 	}
 
 private:
+	std::shared_future<std::unique_ptr<ImageData>> loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
+
 	MemoryAllocator& _memoryAllocator;
 
 	std::unordered_map<std::string, VertexData> _vertexDataResources;
+	std::unordered_map<std::string, std::shared_future<std::unique_ptr<VertexData>>> _awaitingVertexDataResources;
 
+	std::unordered_map<std::string, ImageData> _imageResources;
 	std::unordered_map<std::string, std::shared_future<std::unique_ptr<ImageData>>> _awaitingImageResources;
-	std::mutex _awaitingImageMutex;
 };

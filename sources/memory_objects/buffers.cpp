@@ -7,7 +7,12 @@
 
 namespace {
 
-std::pair<VkAccessFlags, VkPipelineStageFlags> sourceStageAndAccessMask(VkImageLayout layout) {
+struct PipelineStageInfo {
+    VkAccessFlags accessFlags;
+    VkPipelineStageFlags stageFlags;
+};
+
+constexpr PipelineStageInfo sourceStageAndAccessMask(VkImageLayout layout) {
     switch (layout) {
     case VK_IMAGE_LAYOUT_UNDEFINED:
         return { 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
@@ -24,7 +29,7 @@ std::pair<VkAccessFlags, VkPipelineStageFlags> sourceStageAndAccessMask(VkImageL
     }
 }
 
-std::pair<VkAccessFlags, VkPipelineStageFlags> destinationStageAndAccessMask(VkImageLayout layout) {
+constexpr PipelineStageInfo destinationStageAndAccessMask(VkImageLayout layout) {
     switch (layout) {
     case VK_IMAGE_LAYOUT_GENERAL:
         return { VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
@@ -67,13 +72,14 @@ void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImage
         .subresourceRange = range
     };
 
-    VkPipelineStageFlags sourceStage, destinationStage;
-    std::tie(barrier.srcAccessMask, sourceStage) = sourceStageAndAccessMask(oldLayout);
-    std::tie(barrier.dstAccessMask, destinationStage) = destinationStageAndAccessMask(newLayout);
+    const PipelineStageInfo srcStageInfo = sourceStageAndAccessMask(oldLayout);
+    const PipelineStageInfo dstStageInfo = sourceStageAndAccessMask(newLayout);
+    barrier.srcAccessMask = srcStageInfo.accessFlags;
+    barrier.dstAccessMask = dstStageInfo.accessFlags;
 
     vkCmdPipelineBarrier(
         commandBuffer,
-        sourceStage, destinationStage,
+        srcStageInfo.stageFlags, dstStageInfo.stageFlags,
         0,
         0, nullptr,
         0, nullptr,
@@ -243,17 +249,20 @@ void generateImageMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat
     int32_t mipHeight = texHeight;
 
     for (uint32_t i = 1; i < mipLevels; i++) {
-        VkPipelineStageFlags srcStageFlags, dstStageFlags;
-        barrier.subresourceRange.baseMipLevel = i - 1;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        std::tie(barrier.srcAccessMask, srcStageFlags) = sourceStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        std::tie(barrier.dstAccessMask, dstStageFlags) = destinationStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-        vkCmdPipelineBarrier(commandBuffer,
-            srcStageFlags, dstStageFlags, 0,
-            0, nullptr,
-            0, nullptr,
-            1, &barrier);
+        {
+            constexpr PipelineStageInfo srcStageInfo = sourceStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            constexpr PipelineStageInfo dstStageInfo = destinationStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+            barrier.subresourceRange.baseMipLevel = i - 1;
+            barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            barrier.srcAccessMask = srcStageInfo.accessFlags;
+            barrier.dstAccessMask = dstStageInfo.accessFlags;
+            vkCmdPipelineBarrier(commandBuffer,
+                srcStageInfo.stageFlags, dstStageInfo.stageFlags, 0,
+                0, nullptr,
+                0, nullptr,
+                1, &barrier);
+        }
 
         const VkImageBlit blit = {
             .srcSubresource = {
@@ -277,13 +286,15 @@ void generateImageMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat
             1, &blit,
             VK_FILTER_LINEAR);
 
+        constexpr PipelineStageInfo srcStageInfo = sourceStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        const PipelineStageInfo dstStageInfo = destinationStageAndAccessMask(finalLayout);
         barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         barrier.newLayout = finalLayout;
-        std::tie(barrier.srcAccessMask, srcStageFlags) = sourceStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-        std::tie(barrier.dstAccessMask, dstStageFlags) = destinationStageAndAccessMask(finalLayout);
+        barrier.srcAccessMask = srcStageInfo.accessFlags;
+        barrier.dstAccessMask = dstStageInfo.accessFlags;
 
         vkCmdPipelineBarrier(commandBuffer,
-            srcStageFlags, dstStageFlags, 0,
+            srcStageInfo.stageFlags, dstStageInfo.stageFlags, 0,
             0, nullptr,
             0, nullptr,
             1, &barrier);
@@ -292,14 +303,15 @@ void generateImageMipmaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat
         if (mipHeight > 1) mipHeight /= 2;
     }
 
-    VkPipelineStageFlags srcStageFlags, dstStageFlags;
+    constexpr PipelineStageInfo srcStageInfo = sourceStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    const PipelineStageInfo dstStageInfo = destinationStageAndAccessMask(finalLayout);
     barrier.subresourceRange.baseMipLevel = mipLevels - 1;
     barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     barrier.newLayout = finalLayout;
-    std::tie(barrier.srcAccessMask, srcStageFlags) = sourceStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    std::tie(barrier.dstAccessMask, dstStageFlags) = destinationStageAndAccessMask(finalLayout);
+    barrier.srcAccessMask = srcStageInfo.accessFlags;
+    barrier.dstAccessMask = dstStageInfo.accessFlags;
     vkCmdPipelineBarrier(commandBuffer,
-        srcStageFlags, dstStageFlags, 0,
+        srcStageInfo.stageFlags, dstStageInfo.stageFlags, 0,
         0, nullptr,
         0, nullptr,
         1, &barrier);

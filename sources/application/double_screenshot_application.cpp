@@ -18,7 +18,7 @@
 #include <chrono>
 
 SingleApp::SingleApp()
-    : ApplicationBase() {
+    : ApplicationBase(), _threadPool(MAX_THREADS_IN_POOL) {
     auto start = std::chrono::high_resolution_clock::now();
     _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
     auto stop = std::chrono::high_resolution_clock::now();
@@ -278,8 +278,6 @@ void SingleApp::run() {
         _registry.getComponent<MeshComponent>(object.getEntity()).vertexBufferPrimitive.reset();
     }
 
-    _threadPool = std::make_unique<ThreadPool>(MAX_THREADS_IN_POOL);
-
     while (_window->open()) {
         _callbackManager->pollEvents();
         draw();
@@ -478,7 +476,7 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
         .pViewportDepths = &framebuffer.getViewport(),
     };
 
-    _threadPool->getThread(0).addJob([&]() {
+    _threadPool.getThread(0).addJob([&]() {
         _commandBuffers[_currentFrame][0]->begin(framebuffer, &scissorViewportInheritance);
         VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][0]->getVkCommandBuffer();
         vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(), _graphicsPipeline->getVkPipeline());
@@ -492,7 +490,7 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
         }
     });
 
-    _threadPool->getThread(1).addJob([&]() {
+    _threadPool.getThread(1).addJob([&]() {
         // Skybox
         _commandBuffers[_currentFrame][1]->begin(framebuffer, &scissorViewportInheritance);
         VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][1]->getVkCommandBuffer();
@@ -505,7 +503,7 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
         vkEndCommandBuffer(commandBuffer);
     });
 
-    _threadPool->wait();
+    _threadPool.wait();
 
     primaryCommandBuffer.executeSecondaryCommandBuffers({ _commandBuffers[_currentFrame][0]->getVkCommandBuffer(), _commandBuffers[_currentFrame][1]->getVkCommandBuffer() });
     primaryCommandBuffer.endRenderPass();

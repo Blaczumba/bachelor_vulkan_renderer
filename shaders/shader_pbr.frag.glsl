@@ -76,7 +76,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
 }
 
 void main() {
-    vec3 albedo = texture(texSampler, fragTexCoord).rgb;
+    vec3 albedo = texture(texSampler, fragTexCoord, 0).rgb;
     vec2 metallicRoughness = texture(metallicRoughnessMap, fragTexCoord).bg;
     vec3 normal = normalize(2.0 * texture(normalMap, fragTexCoord).rgb - 1.0);
 
