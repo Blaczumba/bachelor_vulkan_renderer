@@ -45,6 +45,39 @@ glm::mat4 GetNodeTransform(const tinygltf::Node& node) {
 }
 
 template<typename VertexType, typename IndexType>
+std::enable_if_t<std::is_unsigned<IndexType>::value> processTangentsBitangents(IndexType* indices, size_t size, std::vector<VertexType>& vertices) {
+    for (size_t i = 0; i < size; i += 3) {
+        VertexType& v0 = vertices[indices[i]];
+        VertexType& v1 = vertices[indices[i + 1]];
+        VertexType& v2 = vertices[indices[i + 2]];
+
+        glm::vec3 edge1 = v1.pos - v0.pos;
+        glm::vec3 edge2 = v2.pos - v0.pos;
+        glm::vec2 deltaUV1 = v1.texCoord - v0.texCoord;
+        glm::vec2 deltaUV2 = v2.texCoord - v0.texCoord;
+
+        glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2);
+
+        // float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+
+        if constexpr (VertexTraits<VertexType>::hasTangent) {
+            glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2); // f scale
+            v0.tangent = tangent;
+            v1.tangent = tangent;
+            v2.tangent = tangent;
+        }
+
+        if constexpr (VertexTraits<VertexType>::hasBitangent) {
+            glm::vec3 bitangent = glm::normalize(-deltaUV2.x * edge1 + deltaUV1.x * edge2); // f scale
+            v0.bitangent = bitangent;
+            v1.bitangent = bitangent;
+            v2.bitangent = bitangent;
+        }
+    }
+}
+
+template<typename VertexType, typename IndexType>
 void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::mat4 parentTransform, std::vector<VertexData<VertexType, IndexType>>& vertexDataList) {
     glm::mat4 currentTransform = parentTransform * GetNodeTransform(node);
 
@@ -192,10 +225,20 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
                 const uint32_t* data = reinterpret_cast<const uint32_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
                 processIndices(data);
             }
-            vertexData.indicesS = std::move(indices);
-            vertexData.indicesCount = indicesCount;
-            vertexData.indexType = indexType;
         }
+
+        if constexpr (VertexTraits<VertexType>::hasTangent || VertexTraits<VertexType>::hasBitangent) {
+            if(indexType == IndexTypeT::UINT8)
+                processTangentsBitangents(reinterpret_cast<uint8_t*>(indices.get()), indicesCount, vertexData.vertices);
+            else if(indexType == IndexTypeT::UINT16)
+                processTangentsBitangents(reinterpret_cast<uint16_t*>(indices.get()), indicesCount, vertexData.vertices);
+            else if (indexType == IndexTypeT::UINT32)
+                processTangentsBitangents(reinterpret_cast<uint32_t*>(indices.get()), indicesCount, vertexData.vertices);
+        }
+
+        vertexData.indicesS = std::move(indices);
+        vertexData.indicesCount = indicesCount;
+        vertexData.indexType = indexType;
 
         // Load textures
         if (primitive.material >= 0) {
@@ -220,39 +263,6 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
     }
 
     vertexDataList.emplace_back(std::move(vertexData));
-
-    // Calculate tangents and bitangents (only if the vertex type has them)
-    if constexpr (VertexTraits<VertexType>::hasTangent || VertexTraits<VertexType>::hasBitangent) {
-        for (size_t i = 0; i < vertexDataList.back().indices.size(); i += 3) {
-            VertexType& v0 = vertexDataList.back().vertices[vertexDataList.back().indices[i + 0]];
-            VertexType& v1 = vertexDataList.back().vertices[vertexDataList.back().indices[i + 1]];
-            VertexType& v2 = vertexDataList.back().vertices[vertexDataList.back().indices[i + 2]];
-
-            glm::vec3 edge1 = v1.pos - v0.pos;
-            glm::vec3 edge2 = v2.pos - v0.pos;
-            glm::vec2 deltaUV1 = v1.texCoord - v0.texCoord;
-            glm::vec2 deltaUV2 = v2.texCoord - v0.texCoord;
-
-            glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2);
-
-            // float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-
-
-            if constexpr (VertexTraits<VertexType>::hasTangent) {
-                glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2); // f scale
-                v0.tangent = tangent;
-                v1.tangent = tangent;
-                v2.tangent = tangent;
-            }
-
-            if constexpr (VertexTraits<VertexType>::hasBitangent) {
-                glm::vec3 bitangent = glm::normalize(-deltaUV2.x * edge1 + deltaUV1.x * edge2); // f scale
-                v0.bitangent = bitangent;
-                v1.bitangent = bitangent;
-                v2.bitangent = bitangent;
-            }
-        }
-    }
 
     for (const auto& childIndex : node.children) {
         ProcessNode<VertexType, IndexType>(model, model.nodes[childIndex], currentTransform, vertexDataList);

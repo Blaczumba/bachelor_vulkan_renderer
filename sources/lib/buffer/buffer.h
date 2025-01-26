@@ -37,6 +37,14 @@ public:
         return *this;
     }
 
+    T& operator[](size_t index) {
+        return _buffer[index];
+    }
+
+    const T& operator[](size_t index) const {
+        return _buffer[index];
+    }
+
 	T* get() { return _buffer.get(); }
 	size_t size() const { return _size; }
 };
