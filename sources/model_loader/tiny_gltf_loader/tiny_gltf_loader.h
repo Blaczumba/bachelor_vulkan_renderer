@@ -67,7 +67,7 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
         std::vector<glm::vec3> normals;
         std::vector<glm::vec3> tangents;
         std::vector<glm::vec3> bitangents;
-        std::unique_ptr<uint8_t[]> indices;
+        Buffer<uint8_t> indices;
         uint32_t indicesCount;
         IndexTypeT indexType;
 
@@ -161,7 +161,7 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
             }
 
             indicesCount = accessor.count;
-            indices = std::make_unique_for_overwrite<uint8_t[]>(indicesCount * size_t{ indexType });
+            indices = Buffer<uint8_t>(indicesCount * size_t{ indexType });
             size_t index = {};
             auto processIndices = [&](auto data) {
                 for (size_t i = 0; i < indicesCount; ++i) {

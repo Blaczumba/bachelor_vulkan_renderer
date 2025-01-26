@@ -1,5 +1,7 @@
 #pragma once
 
+#include "lib/buffer/buffer.h"
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -24,7 +26,7 @@ struct VertexData {
 	std::vector<std::string> metallicRoughnessTextures;
 	glm::mat4 model;
 
-	std::unique_ptr<uint8_t[]> indicesS;
+	Buffer<uint8_t> indicesS;
 	uint32_t indicesCount;
 	IndexTypeT indexType;
 };
