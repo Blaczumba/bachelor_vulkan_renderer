@@ -44,6 +44,21 @@ glm::mat4 GetNodeTransform(const tinygltf::Node& node) {
     return mat;
 }
 
+template<typename IndexType>
+std::enable_if_t<std::is_unsigned<IndexType>::value> processIndices(uint8_t* dstIndices, const IndexType* srcIndices, size_t indicesCount, IndexTypeT indexType) {
+    size_t offset = {};
+    switch (indexType) {
+    case IndexTypeT::UINT8:
+        std::for_each(srcIndices, srcIndices + indicesCount, [=, &offset](const IndexType& srcIndex) {std::memcpy(dstIndices + offset, &static_cast<const uint8_t&>(srcIndex), size_t{ indexType }); offset += size_t{ indexType }; });
+        break;
+    case IndexTypeT::UINT16:
+        std::for_each(srcIndices, srcIndices + indicesCount, [=, &offset](const IndexType& srcIndex) {std::memcpy(dstIndices + offset, &static_cast<const uint16_t&>(srcIndex), size_t{ indexType }); offset += size_t{ indexType }; });
+        break;
+    case IndexTypeT::UINT32:
+        std::for_each(srcIndices, srcIndices + indicesCount, [=, &offset](const IndexType& srcIndex) {std::memcpy(dstIndices + offset, &static_cast<const uint32_t&>(srcIndex), size_t{ indexType }); offset += size_t{ indexType }; });
+    }
+}
+
 template<typename VertexType, typename IndexType>
 std::enable_if_t<std::is_unsigned<IndexType>::value> processTangentsBitangents(IndexType* indices, size_t size, std::vector<VertexType>& vertices) {
     for (size_t i = 0; i < size; i += 3) {
@@ -59,7 +74,6 @@ std::enable_if_t<std::is_unsigned<IndexType>::value> processTangentsBitangents(I
         glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2);
 
         // float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-
 
         if constexpr (VertexTraits<VertexType>::hasTangent) {
             glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2); // f scale
@@ -182,7 +196,6 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
             const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
             const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
-            vertexData.indices.reserve(accessor.count);
             if (accessor.count <= std::numeric_limits<uint8_t>::max()) {
                 indexType = IndexTypeT::UINT8;
             }
@@ -195,45 +208,33 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
 
             indicesCount = accessor.count;
             indices = Buffer<uint8_t>(indicesCount * size_t{ indexType });
-            size_t index = {};
-            auto processIndices = [&](auto data) {
-                for (size_t i = 0; i < indicesCount; ++i) {
-                    vertexData.indices.push_back(static_cast<IndexType>(data[i]));
-                    switch (indexType) {
-                    case IndexTypeT::UINT8:
-                        std::memcpy(indices.get() + index, &static_cast<const uint8_t&>(data[i]), sizeof(uint8_t));
-                        break;
-                    case IndexTypeT::UINT16:
-                        std::memcpy(indices.get() + index, &static_cast<const uint16_t&>(data[i]), sizeof(uint16_t));
-                        break;
-                    case IndexTypeT::UINT32:
-                        std::memcpy(indices.get() + index, &static_cast<const uint32_t&>(data[i]), sizeof(uint32_t));
-                        break;
-                    }
-                    index += size_t{ indexType };
-                }
-            };
 
             // Determine the component type and process
             if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-                std::cout << "SHORT " << indicesCount << std::endl;
                 const uint16_t* data = reinterpret_cast<const uint16_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-                processIndices(data);
+                processIndices(indices.get(), data, indicesCount, indexType);
             }
             else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-                std::cout << "INT " << indicesCount << std::endl;
                 const uint32_t* data = reinterpret_cast<const uint32_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-                processIndices(data);
+                processIndices(indices.get(), data, indicesCount, indexType);
+            }
+            else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
+                const uint8_t* data = reinterpret_cast<const uint8_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+                processIndices(indices.get(), data, indicesCount, indexType);
             }
         }
 
         if constexpr (VertexTraits<VertexType>::hasTangent || VertexTraits<VertexType>::hasBitangent) {
-            if(indexType == IndexTypeT::UINT8)
+            switch (indexType) {
+            case IndexTypeT::UINT8:
                 processTangentsBitangents(reinterpret_cast<uint8_t*>(indices.get()), indicesCount, vertexData.vertices);
-            else if(indexType == IndexTypeT::UINT16)
+                break;
+            case IndexTypeT::UINT16:
                 processTangentsBitangents(reinterpret_cast<uint16_t*>(indices.get()), indicesCount, vertexData.vertices);
-            else if (indexType == IndexTypeT::UINT32)
+                break;
+            case IndexTypeT::UINT32:
                 processTangentsBitangents(reinterpret_cast<uint32_t*>(indices.get()), indicesCount, vertexData.vertices);
+            }
         }
 
         vertexData.indicesS = std::move(indices);
