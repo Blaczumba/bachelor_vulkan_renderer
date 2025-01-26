@@ -27,9 +27,8 @@ enum class CacheCode : uint8_t {
 
 namespace {
 
-template<typename IndexType>
-constexpr std::enable_if_t<std::is_unsigned<IndexType>::value, VkIndexType> getIndexType() {
-	switch (sizeof(IndexType)) {
+constexpr VkIndexType getIndexType(uint8_t indexSize) {
+	switch (indexSize) {
 	case 1:
 		return VK_INDEX_TYPE_UINT8_EXT;
 	case 2:
@@ -64,22 +63,22 @@ public:
 	std::shared_future<std::unique_ptr<ImageData>> loadImage2DAsync(const std::string& filePath);
 	std::shared_future<std::unique_ptr<ImageData>> loadImageCubemapAsync(const std::string& filePath);
 
-	template<typename VertexType, typename IndexType>
-	CacheCode loadVertexData(std::string_view key, const std::vector<VertexType>& vertices, const std::vector<IndexType>& indices) {
+	template<typename VertexType>
+	CacheCode loadVertexData(std::string_view key, const std::vector<VertexType>& vertices, const std::span<uint8_t> indices, uint8_t indexSize) {
 		static_assert(VertexTraits<VertexType>::hasPosition, "Cannot load vertex data with no position defined");
-		auto createStagingBuffer = [&](auto& data) {
-			return StagingBuffer(_memoryAllocator, std::span(data.data(), data.size()));
+		auto createStagingBuffer = [&](const auto& data) {
+			return StagingBuffer(_memoryAllocator, data);
 		};
 		StagingBuffer indexBuffer = createStagingBuffer(indices);
 		auto handleVertexBuffer = [&]() -> std::tuple<std::optional<StagingBuffer>, StagingBuffer> {
 			if (typeid(VertexType) == typeid(VertexP)) {
-				return { std::nullopt, createStagingBuffer(vertices)};
+				return { std::nullopt, createStagingBuffer(std::span(vertices.data(), vertices.size()))};
 			}
 			else {
 				std::vector<glm::vec3> primitives;
 				primitives.reserve(vertices.size());
 				std::transform(vertices.begin(), vertices.end(), std::back_inserter(primitives), [](const VertexType& vertex) { return vertex.pos; });
-				return { createStagingBuffer(vertices), createStagingBuffer(primitives) };
+				return { createStagingBuffer(std::span(vertices.data(), vertices.size())), createStagingBuffer(std::span(primitives.data(), primitives.size())) };
 			}
 		};
 		auto [vertexBuffer, primitivesVertexBuffer] = handleVertexBuffer();
@@ -89,7 +88,7 @@ public:
 			std::forward_as_tuple(
 				std::move(vertexBuffer),
 				std::move(indexBuffer),
-				getIndexType<IndexType>(),
+				getIndexType(indexSize),
 				std::move(primitivesVertexBuffer),
 				AABB{}
 			)

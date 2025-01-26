@@ -12,6 +12,15 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <memory>
+
+struct VertexDataResource {
+    std::vector<glm::vec3> positions;
+    std::vector<glm::vec2> texCoords;
+    std::vector<glm::vec3> normals;
+    std::vector<glm::vec3> tangents;
+    std::vector<glm::vec3> bitangents;
+};
 
 glm::mat4 GetNodeTransform(const tinygltf::Node& node) {
     glm::mat4 mat(1.0f);
@@ -58,6 +67,9 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
         std::vector<glm::vec3> normals;
         std::vector<glm::vec3> tangents;
         std::vector<glm::vec3> bitangents;
+        std::unique_ptr<uint8_t[]> indices;
+        uint32_t indicesCount;
+        IndexTypeT indexType;
 
         if constexpr (VertexTraits<VertexType>::hasPosition) {
             if (attributes.find("POSITION") != attributes.end()) {
@@ -120,14 +132,14 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
         for (size_t i = 0; i < positions.size(); ++i) {
             VertexType vertex{};
             if constexpr (VertexTraits<VertexType>::hasPosition) vertex.pos = positions[i];
-            if constexpr (VertexTraits<VertexType>::hasTexCoord) 
+            if constexpr (VertexTraits<VertexType>::hasTexCoord)
                 if (i < texCoords.size()) vertex.texCoord = texCoords[i];
             if constexpr (VertexTraits<VertexType>::hasNormal)
                 if (i < normals.size()) vertex.normal = normals[i];
-            if constexpr (VertexTraits<VertexType>::hasTangent)
-                if (i < tangents.size()) vertex.tangent = tangents[i];
-            if constexpr (VertexTraits<VertexType>::hasBitangent)
-                if (i < bitangents.size()) vertex.bitangent = bitangents[i];
+            //if constexpr (VertexTraits<VertexType>::hasTangent)
+            //    if (i < tangents.size()) vertex.tangent = tangents[i];
+            //if constexpr (VertexTraits<VertexType>::hasBitangent)
+            //    if (i < bitangents.size()) vertex.bitangent = bitangents[i];
             vertexData.vertices.push_back(vertex);
         }
 
@@ -138,18 +150,51 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
             const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
             vertexData.indices.reserve(accessor.count);
-            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-                const uint16_t* data = reinterpret_cast<const uint16_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-                for (size_t i = 0; i < accessor.count; ++i) {
+            if (accessor.count <= std::numeric_limits<uint8_t>::max()) {
+                indexType = IndexTypeT::UINT8;
+            }
+            else if (accessor.count <= std::numeric_limits<uint16_t>::max()) {
+                indexType = IndexTypeT::UINT16;
+            }
+            else if (accessor.count <= std::numeric_limits<uint32_t>::max()) {
+                indexType = IndexTypeT::UINT32;
+            }
+
+            indicesCount = accessor.count;
+            indices = std::make_unique_for_overwrite<uint8_t[]>(indicesCount * size_t{ indexType });
+            size_t index = {};
+            auto processIndices = [&](auto data) {
+                for (size_t i = 0; i < indicesCount; ++i) {
                     vertexData.indices.push_back(static_cast<IndexType>(data[i]));
+                    switch (indexType) {
+                    case IndexTypeT::UINT8:
+                        std::memcpy(indices.get() + index, &static_cast<const uint8_t&>(data[i]), sizeof(uint8_t));
+                        break;
+                    case IndexTypeT::UINT16:
+                        std::memcpy(indices.get() + index, &static_cast<const uint16_t&>(data[i]), sizeof(uint16_t));
+                        break;
+                    case IndexTypeT::UINT32:
+                        std::memcpy(indices.get() + index, &static_cast<const uint32_t&>(data[i]), sizeof(uint32_t));
+                        break;
+                    }
+                    index += size_t{ indexType };
                 }
+            };
+
+            // Determine the component type and process
+            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+                std::cout << "SHORT " << indicesCount << std::endl;
+                const uint16_t* data = reinterpret_cast<const uint16_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+                processIndices(data);
             }
             else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+                std::cout << "INT " << indicesCount << std::endl;
                 const uint32_t* data = reinterpret_cast<const uint32_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-                for (size_t i = 0; i < accessor.count; ++i) {
-                    vertexData.indices.push_back(static_cast<IndexType>(data[i]));
-                }
+                processIndices(data);
             }
+            vertexData.indicesS = std::move(indices);
+            vertexData.indicesCount = indicesCount;
+            vertexData.indexType = indexType;
         }
 
         // Load textures
@@ -174,7 +219,7 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
         }
     }
 
-    vertexDataList.push_back(vertexData);
+    vertexDataList.emplace_back(std::move(vertexData));
 
     // Calculate tangents and bitangents (only if the vertex type has them)
     if constexpr (VertexTraits<VertexType>::hasTangent || VertexTraits<VertexType>::hasBitangent) {
@@ -235,12 +280,15 @@ std::vector<VertexData<VertexType, IndexType>> LoadGLTF(const std::string& fileP
 
     std::vector<VertexData<VertexType, IndexType>> vertexDataList;
 
+    auto start = std::chrono::high_resolution_clock::now();
     for (const auto& scene : model.scenes) {
         for (const auto& nodeIndex : scene.nodes) {
             const tinygltf::Node& node = model.nodes[nodeIndex];
             ProcessNode<VertexType, IndexType>(model, node, glm::mat4(1.0f), vertexDataList);
         }
     }
-
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Elapsed time: " << duration << " milliseconds" << std::endl;
     return vertexDataList;
 }

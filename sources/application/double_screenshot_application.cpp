@@ -31,7 +31,7 @@ SingleApp::SingleApp()
     createShadowResources();
 
     VertexData<VertexP, uint8_t> vertexDataCube = TinyOBJLoaderVertex::extract<VertexP, uint8_t>(MODELS_PATH "cube.obj");
-    _assetManager->loadVertexData("cube.obj", vertexDataCube.vertices, vertexDataCube.indices);
+    _assetManager->loadVertexData("cube.obj", vertexDataCube.vertices, std::span(vertexDataCube.indices.data(), vertexDataCube.indices.size()), 1);
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
@@ -62,7 +62,8 @@ void SingleApp::loadObjects() {
         futures.emplace_back(_assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0]));
         futures.emplace_back(_assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0]));
         futures.emplace_back(_assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0]));
-        _assetManager->loadVertexData(std::to_string(i), _newVertexDataTBN[i].vertices, _newVertexDataTBN[i].indices);
+        uint8_t indexSize = static_cast<uint8_t>(_newVertexDataTBN[i].indexType);
+        _assetManager->loadVertexData(std::to_string(i), _newVertexDataTBN[i].vertices, std::span(_newVertexDataTBN[i].indicesS.get(), _newVertexDataTBN[i].indicesCount * indexSize), indexSize);
     }
     for (const auto& el : futures)
         el.wait();
