@@ -71,22 +71,16 @@ std::enable_if_t<std::is_unsigned<IndexType>::value> processTangentsBitangents(I
         glm::vec2 deltaUV1 = v1.texCoord - v0.texCoord;
         glm::vec2 deltaUV2 = v2.texCoord - v0.texCoord;
 
-        glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2);
-
         // float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
 
         if constexpr (VertexTraits<VertexType>::hasTangent) {
             glm::vec3 tangent = glm::normalize(deltaUV2.y * edge1 - deltaUV1.y * edge2); // f scale
-            v0.tangent = tangent;
-            v1.tangent = tangent;
-            v2.tangent = tangent;
+            v0.tangent = v1.tangent = v2.tangent = tangent;
         }
 
         if constexpr (VertexTraits<VertexType>::hasBitangent) {
             glm::vec3 bitangent = glm::normalize(-deltaUV2.x * edge1 + deltaUV1.x * edge2); // f scale
-            v0.bitangent = bitangent;
-            v1.bitangent = bitangent;
-            v2.bitangent = bitangent;
+            v0.bitangent = v1.bitangent = v2.bitangent = bitangent;
         }
     }
 }
@@ -160,20 +154,6 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
             }
         }
 
-        //if constexpr (VertexTraits<VertexType>::hasTangent) {
-        //    if (attributes.find("TANGENT") != attributes.end()) {
-        //        const tinygltf::Accessor& accessor = model.accessors[attributes.at("TANGENT")];
-        //        const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-        //        const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
-
-        //        const float* data = reinterpret_cast<const float*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-        //        tangents.reserve(accessor.count);
-        //        for (size_t i = 0; i < accessor.count; ++i) {
-        //            tangents.emplace_back(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
-        //        }
-        //    }
-        //}
-
         // Combine vertex attributes into VertexType
         vertexData.vertices.reserve(positions.size());
         for (size_t i = 0; i < positions.size(); ++i) {
@@ -189,6 +169,7 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
             //    if (i < bitangents.size()) vertex.bitangent = bitangents[i];
             vertexData.vertices.push_back(vertex);
         }
+
 
         // Load indices
         if (primitive.indices >= 0) {
@@ -244,21 +225,20 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
         // Load textures
         if (primitive.material >= 0) {
             const tinygltf::Material& material = model.materials[primitive.material];
-
             if (material.values.find("baseColorTexture") != material.values.end()) {
                 const tinygltf::Texture& texture = model.textures[material.values.at("baseColorTexture").TextureIndex()];
                 const tinygltf::Image& image = model.images[texture.source];
-                vertexData.diffuseTextures.push_back(image.uri);
+                vertexData.diffuseTexture = std::move(image.uri);
             }
             if (material.values.find("metallicRoughnessTexture") != material.values.end()) {
                 const tinygltf::Texture& texture = model.textures[material.values.at("metallicRoughnessTexture").TextureIndex()];
                 const tinygltf::Image& image = model.images[texture.source];
-                vertexData.metallicRoughnessTextures.push_back(image.uri);
+                vertexData.metallicRoughnessTexture = std::move(image.uri);
             }
             if (material.additionalValues.find("normalTexture") != material.additionalValues.end()) {
                 const tinygltf::Texture& texture = model.textures[material.additionalValues.at("normalTexture").TextureIndex()];
                 const tinygltf::Image& image = model.images[texture.source];
-                vertexData.normalTextures.push_back(image.uri);
+                vertexData.normalTexture = std::move(image.uri);
             }
         }
     }

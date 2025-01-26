@@ -21,9 +21,9 @@ template<typename VertexType, typename IndexType>
 struct VertexData {
 	std::vector<VertexType> vertices;
 	std::vector<IndexType> indices;
-	std::vector<std::string> diffuseTextures;
-	std::vector<std::string> normalTextures;
-	std::vector<std::string> metallicRoughnessTextures;
+	std::string diffuseTexture;
+	std::string normalTexture;
+	std::string metallicRoughnessTexture;
 	glm::mat4 model;
 
 	Buffer<uint8_t> indicesS;

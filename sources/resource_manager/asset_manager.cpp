@@ -22,10 +22,10 @@ std::shared_future<std::unique_ptr<VertexData>> AssetManager::loadVertexDataAsyn
     //return future;
 }
 
-std::shared_future<std::unique_ptr<ImageData>> AssetManager::loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction) {
+void AssetManager::loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction) {
     auto it = _awaitingImageResources.find(filePath);
     if (it != _awaitingImageResources.end()) {
-        return it->second;
+        return;
     }
 
     auto future = std::async(std::launch::async, ([this, filePath, loadingFunction = std::move(loadingFunction)]() {
@@ -33,18 +33,16 @@ std::shared_future<std::unique_ptr<ImageData>> AssetManager::loadImageAsync(cons
         StagingBuffer stagingBuffer(_memoryAllocator, std::span(static_cast<uint8_t*>(resource.data), resource.size));
         ImageLoader::deallocateResources(resource);
         return std::make_unique<ImageData>(std::move(stagingBuffer), std::move(resource.dimensions));
-    })).share();
-
-    _awaitingImageResources.emplace(filePath, future);
-    return future;
+    }));
+    _awaitingImageResources.emplace(filePath, std::move(future));
 }
 
-std::shared_future<std::unique_ptr<ImageData>> AssetManager::loadImage2DAsync(const std::string& filePath) {
-	return loadImageAsync(filePath, ImageLoader::load2DImage);
+void AssetManager::loadImage2DAsync(const std::string& filePath) {
+	loadImageAsync(filePath, ImageLoader::load2DImage);
 }
 
-std::shared_future<std::unique_ptr<ImageData>> AssetManager::loadImageCubemapAsync(const std::string& filePath) {
-	return loadImageAsync(filePath, ImageLoader::loadCubemapImage);
+void AssetManager::loadImageCubemapAsync(const std::string& filePath) {
+	loadImageAsync(filePath, ImageLoader::loadCubemapImage);
 }
 
 const ImageData& AssetManager::getImageData(const std::string& filePath) {

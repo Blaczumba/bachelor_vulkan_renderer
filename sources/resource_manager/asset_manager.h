@@ -60,8 +60,8 @@ public:
 	};
 
 	std::shared_future<std::unique_ptr<VertexData>> loadVertexDataAsync(const std::string& identifier, std::function<ImageResource()>&& loadingFunction);
-	std::shared_future<std::unique_ptr<ImageData>> loadImage2DAsync(const std::string& filePath);
-	std::shared_future<std::unique_ptr<ImageData>> loadImageCubemapAsync(const std::string& filePath);
+	void loadImage2DAsync(const std::string& filePath);
+	void loadImageCubemapAsync(const std::string& filePath);
 
 	template<typename VertexType>
 	CacheCode loadVertexData(std::string_view key, const std::vector<VertexType>& vertices, const std::span<uint8_t> indices, uint8_t indexSize) {
@@ -107,7 +107,7 @@ public:
 	}
 
 private:
-	std::shared_future<std::unique_ptr<ImageData>> loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
+	void loadImageAsync(const std::string& filePath, std::function<ImageResource(std::string_view)>&& loadingFunction);
 
 	MemoryAllocator& _memoryAllocator;
 
@@ -115,5 +115,5 @@ private:
 	std::unordered_map<std::string, std::shared_future<std::unique_ptr<VertexData>>> _awaitingVertexDataResources;
 
 	std::unordered_map<std::string, ImageData> _imageResources;
-	std::unordered_map<std::string, std::shared_future<std::unique_ptr<ImageData>>> _awaitingImageResources;
+	std::unordered_map<std::string, std::future<std::unique_ptr<ImageData>>> _awaitingImageResources;
 };

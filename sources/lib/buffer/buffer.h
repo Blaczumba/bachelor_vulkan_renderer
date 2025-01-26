@@ -15,7 +15,7 @@ public:
 	Buffer(const Buffer& other) : Buffer(other._size) {
 		std::copy(other._buffer.get(), other._buffer.get() + _size, _buffer.get());
 	}
-	Buffer(Buffer&& other) : _buffer(std::move(other._buffer)), _size(other._size) {}
+	Buffer(Buffer&& other) noexcept : _buffer(std::move(other._buffer)), _size(other._size) {}
 
     Buffer& operator=(const Buffer& other) {
         if (this == &other) {

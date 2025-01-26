@@ -53,52 +53,44 @@ SingleApp::SingleApp()
 }
 
 void SingleApp::loadObjects() {
-    std::vector<std::shared_future<std::unique_ptr<AssetManager::ImageData>>> futures;
-    futures.reserve(70);
-    auto start = std::chrono::high_resolution_clock::now();
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
-        if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
+        if (_newVertexDataTBN[i].normalTexture.empty() || _newVertexDataTBN[i].metallicRoughnessTexture.empty())
             continue;
-        futures.emplace_back(_assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0]));
-        futures.emplace_back(_assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0]));
-        futures.emplace_back(_assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0]));
+        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTexture);
+        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTexture);
+        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTexture);
         uint8_t indexSize = static_cast<uint8_t>(_newVertexDataTBN[i].indexType);
         _assetManager->loadVertexData(std::to_string(i), _newVertexDataTBN[i].vertices, std::span(_newVertexDataTBN[i].indicesS.get(), _newVertexDataTBN[i].indicesCount * indexSize), indexSize);
     }
-    for (const auto& el : futures)
-        el.wait();
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << std::endl << std::endl << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
     uint32_t index = 0;
     _objects.reserve(_newVertexDataTBN.size());
-    start = std::chrono::high_resolution_clock::now();
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
         for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
             Entity e = _registry.createEntity();
-            if (_newVertexDataTBN[i].normalTextures.empty() || _newVertexDataTBN[i].metallicRoughnessTextures.empty())
+            if (_newVertexDataTBN[i].normalTexture.empty() || _newVertexDataTBN[i].metallicRoughnessTexture.empty())
                 continue;
-            const std::string diffusePath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTextures[0];
-            const std::string metallicRoughnessPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTextures[0];
-            const std::string normalPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTextures[0];
+            const std::string diffusePath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTexture;
+            const std::string metallicRoughnessPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTexture;
+            const std::string normalPath = std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTexture;
 
             if (!_uniformMap.contains(diffusePath)) {
                 const auto&[stagingBuffer, imageDimmensions] =  _assetManager->getImageData(diffusePath);
                 _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, commandBuffer, stagingBuffer, imageDimmensions, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
-                _uniformMap.emplace(std::make_pair(diffusePath, std::make_shared<UniformBufferTexture>(*_textures.back())));
+                _uniformMap.emplace(diffusePath, std::make_shared<UniformBufferTexture>(*_textures.back()));
             }
             if (!_uniformMap.contains(normalPath)) {
                 const auto& [stagingBuffer, imageDimmensions] = _assetManager->getImageData(normalPath);
                 _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, commandBuffer, stagingBuffer, imageDimmensions, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
-                _uniformMap.emplace(std::make_pair(normalPath, std::make_shared<UniformBufferTexture>(*_textures.back())));
+                _uniformMap.emplace(normalPath, std::make_shared<UniformBufferTexture>(*_textures.back()));
             }
             if (!_uniformMap.contains(metallicRoughnessPath)) {
                 const auto& [stagingBuffer, imageDimmensions] = _assetManager->getImageData(metallicRoughnessPath);
                 _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, commandBuffer, stagingBuffer, imageDimmensions, VK_FORMAT_R8G8B8A8_UNORM, maxSamplerAnisotropy));
-                _uniformMap.emplace(std::make_pair(metallicRoughnessPath, std::make_shared<UniformBufferTexture>(*_textures.back())));
+                _uniformMap.emplace(metallicRoughnessPath, std::make_shared<UniformBufferTexture>(*_textures.back()));
             }
 
             auto descriptorSet = _descriptorPool->createDesriptorSet();
@@ -129,8 +121,6 @@ void SingleApp::loadObjects() {
         }
 
     }
-    stop = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;
     for (int i = 1; i < _objects.size(); i++) {
         sceneAABB.extend(_registry.getComponent<MeshComponent>(_objects[i].getEntity()).aabb);
@@ -144,7 +134,7 @@ void SingleApp::loadObjects() {
 void SingleApp::createDescriptorSets() {
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
-    _assetManager->loadImageCubemapAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx").wait();
+    _assetManager->loadImageCubemapAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx");
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
@@ -303,9 +293,9 @@ void SingleApp::draw() {
     updateUniformBuffer(_currentFrame);
     vkResetFences(device, 1, &_inFlightFences[_currentFrame]);
 
-    //_primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
-    //for(int i = 0; i < MAX_THREADS_IN_POOL; i++)
-    //    _commandBuffers[_currentFrame][i]->resetCommandBuffer();
+    _primaryCommandBuffer[_currentFrame]->resetCommandBuffer();
+    for(int i = 0; i < MAX_THREADS_IN_POOL; i++)
+        _commandBuffers[_currentFrame][i]->resetCommandBuffer();
 
     //recordShadowCommandBuffer(_shadowCommandBuffers[_currentFrame], imageIndex);
     recordCommandBuffer(imageIndex);
