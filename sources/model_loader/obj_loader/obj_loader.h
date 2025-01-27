@@ -1,5 +1,6 @@
 #pragma once
 
+#include "lib/buffer/buffer.h"
 #include "model_loader/model_loader.h"
 #include "primitives/primitives.h"
 
@@ -32,6 +33,7 @@ struct Indices {
 
 
 class TinyOBJLoaderVertex {
+public:
     template<typename VertexType>
     static VertexData<VertexType, uint32_t> templatedExtractor(const std::string& filePath) {
         tinyobj::attrib_t attrib;
@@ -84,22 +86,18 @@ class TinyOBJLoaderVertex {
                     vertices.push_back(vertex);
                 }
             }
+            IndexTypeT indexType = getMatchingIndexType(indices.size());
+            Buffer<uint8_t> indicesBuffer(indices.size() * size_t{ indexType });
+            processIndices(indicesBuffer.get(), indices.data(), indices.size(), indexType);
+            return VertexData<VertexType, uint32_t>{ 
+                .vertices = std::move(vertices),
+                .indicesS = std::move(indicesBuffer),
+                .indicesCount = static_cast<uint32_t>(indices.size()),
+                .indexType = indexType
+            };
         }
-        return { vertices, indices };
     }
-public:
 	TinyOBJLoaderVertex() = default;
-
-    template<typename VertexType, typename IndexType>
-	static VertexData<VertexType, IndexType> extract(const std::string& filePath);
 };
 
-template<typename VertexType, typename IndexType>
-VertexData<VertexType, IndexType> TinyOBJLoaderVertex::extract(const std::string& filePath) {
-    VertexData<VertexType, uint32_t> data =  templatedExtractor<VertexType>(filePath);
-    VertexData<VertexType, IndexType> output;
-    output.vertices = std::move(data.vertices);
-    std::transform(data.indices.cbegin(), data.indices.cend(), std::back_inserter(output.indices), [](uint32_t index) { return static_cast<IndexType>(index); });
-    return output;
-}
 

@@ -17,6 +17,23 @@ enum class IndexTypeT : uint8_t {
 	UINT32 = 4
 };
 
+IndexTypeT getMatchingIndexType(size_t indicesCount);
+
+template<typename IndexType>
+std::enable_if_t<std::is_unsigned<IndexType>::value> processIndices(uint8_t* dstIndices, const IndexType* srcIndices, size_t indicesCount, IndexTypeT indexType) {
+	size_t offset = {};
+	switch (indexType) {
+	case IndexTypeT::UINT8:
+		std::for_each(srcIndices, srcIndices + indicesCount, [=, &offset](const IndexType& srcIndex) {std::memcpy(dstIndices + offset, &static_cast<const uint8_t&>(srcIndex), size_t{ indexType }); offset += size_t{ indexType }; });
+		break;
+	case IndexTypeT::UINT16:
+		std::for_each(srcIndices, srcIndices + indicesCount, [=, &offset](const IndexType& srcIndex) {std::memcpy(dstIndices + offset, &static_cast<const uint16_t&>(srcIndex), size_t{ indexType }); offset += size_t{ indexType }; });
+		break;
+	case IndexTypeT::UINT32:
+		std::for_each(srcIndices, srcIndices + indicesCount, [=, &offset](const IndexType& srcIndex) {std::memcpy(dstIndices + offset, &static_cast<const uint32_t&>(srcIndex), size_t{ indexType }); offset += size_t{ indexType }; });
+	}
+}
+
 template<typename VertexType, typename IndexType>
 struct VertexData {
 	std::vector<VertexType> vertices;

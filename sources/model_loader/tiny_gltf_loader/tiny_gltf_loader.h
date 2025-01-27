@@ -14,14 +14,6 @@
 #include <vector>
 #include <memory>
 
-struct VertexDataResource {
-    std::vector<glm::vec3> positions;
-    std::vector<glm::vec2> texCoords;
-    std::vector<glm::vec3> normals;
-    std::vector<glm::vec3> tangents;
-    std::vector<glm::vec3> bitangents;
-};
-
 glm::mat4 GetNodeTransform(const tinygltf::Node& node) {
     glm::mat4 mat(1.0f);
 
@@ -42,21 +34,6 @@ glm::mat4 GetNodeTransform(const tinygltf::Node& node) {
     }
 
     return mat;
-}
-
-template<typename IndexType>
-std::enable_if_t<std::is_unsigned<IndexType>::value> processIndices(uint8_t* dstIndices, const IndexType* srcIndices, size_t indicesCount, IndexTypeT indexType) {
-    size_t offset = {};
-    switch (indexType) {
-    case IndexTypeT::UINT8:
-        std::for_each(srcIndices, srcIndices + indicesCount, [=, &offset](const IndexType& srcIndex) {std::memcpy(dstIndices + offset, &static_cast<const uint8_t&>(srcIndex), size_t{ indexType }); offset += size_t{ indexType }; });
-        break;
-    case IndexTypeT::UINT16:
-        std::for_each(srcIndices, srcIndices + indicesCount, [=, &offset](const IndexType& srcIndex) {std::memcpy(dstIndices + offset, &static_cast<const uint16_t&>(srcIndex), size_t{ indexType }); offset += size_t{ indexType }; });
-        break;
-    case IndexTypeT::UINT32:
-        std::for_each(srcIndices, srcIndices + indicesCount, [=, &offset](const IndexType& srcIndex) {std::memcpy(dstIndices + offset, &static_cast<const uint32_t&>(srcIndex), size_t{ indexType }); offset += size_t{ indexType }; });
-    }
 }
 
 template<typename VertexType, typename IndexType>
@@ -177,17 +154,8 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
             const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
             const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
-            if (accessor.count <= std::numeric_limits<uint8_t>::max()) {
-                indexType = IndexTypeT::UINT8;
-            }
-            else if (accessor.count <= std::numeric_limits<uint16_t>::max()) {
-                indexType = IndexTypeT::UINT16;
-            }
-            else if (accessor.count <= std::numeric_limits<uint32_t>::max()) {
-                indexType = IndexTypeT::UINT32;
-            }
-
             indicesCount = accessor.count;
+            indexType = getMatchingIndexType(indicesCount);
             indices = Buffer<uint8_t>(indicesCount * size_t{ indexType });
 
             // Determine the component type and process

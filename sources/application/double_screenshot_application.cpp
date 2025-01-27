@@ -30,8 +30,8 @@ SingleApp::SingleApp()
     createPresentResources();
     createShadowResources();
 
-    VertexData<VertexP, uint8_t> vertexDataCube = TinyOBJLoaderVertex::extract<VertexP, uint8_t>(MODELS_PATH "cube.obj");
-    _assetManager->loadVertexData("cube.obj", vertexDataCube.vertices, std::span(vertexDataCube.indices.data(), vertexDataCube.indices.size()), 1);
+    VertexData<VertexP, uint32_t> vertexDataCube = TinyOBJLoaderVertex::templatedExtractor<VertexP>(MODELS_PATH "cube.obj");
+    _assetManager->loadVertexData("cube.obj", vertexDataCube.vertices, std::span(vertexDataCube.indicesS.get(), vertexDataCube.indicesS.size()), uint8_t{ vertexDataCube.indexType });
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
