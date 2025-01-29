@@ -20,7 +20,7 @@
 SingleApp::SingleApp()
     : ApplicationBase(), _threadPool(MAX_THREADS_IN_POOL) {
     auto start = std::chrono::high_resolution_clock::now();
-    _newVertexDataTBN = LoadGLTF<VertexPTNT, uint16_t>(MODELS_PATH "sponza/scene.gltf");
+    _newVertexDataTBN = LoadGLTF<VertexPTNT>(MODELS_PATH "sponza/scene.gltf");
     auto stop = std::chrono::high_resolution_clock::now();
     _assetManager = std::make_unique<AssetManager>(_logicalDevice->getMemoryAllocator());
 
@@ -30,7 +30,7 @@ SingleApp::SingleApp()
     createPresentResources();
     createShadowResources();
 
-    VertexData<VertexP, uint32_t> vertexDataCube = TinyOBJLoaderVertex::templatedExtractor<VertexP>(MODELS_PATH "cube.obj");
+    VertexData<VertexP> vertexDataCube = TinyOBJLoaderVertex::load<VertexP>(MODELS_PATH "cube.obj");
     _assetManager->loadVertexData("cube.obj", vertexDataCube.vertices, std::span(vertexDataCube.indicesS.get(), vertexDataCube.indicesS.size()), uint8_t{ vertexDataCube.indexType });
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
@@ -53,14 +53,14 @@ SingleApp::SingleApp()
 }
 
 void SingleApp::loadObjects() {
+    // TODO needs refactoring
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
         if (_newVertexDataTBN[i].normalTexture.empty() || _newVertexDataTBN[i].metallicRoughnessTexture.empty())
             continue;
         _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTexture);
         _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTexture);
         _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTexture);
-        uint8_t indexSize = static_cast<uint8_t>(_newVertexDataTBN[i].indexType);
-        _assetManager->loadVertexData(std::to_string(i), _newVertexDataTBN[i].vertices, std::span(_newVertexDataTBN[i].indicesS.get(), _newVertexDataTBN[i].indicesCount * indexSize), indexSize);
+        _assetManager->loadVertexData(std::to_string(i), _newVertexDataTBN[i].vertices, std::span(_newVertexDataTBN[i].indicesS.get(), _newVertexDataTBN[i].indicesS.size()), uint8_t{ _newVertexDataTBN[i].indexType });
     }
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();

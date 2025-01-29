@@ -28,7 +28,7 @@
 #include <unordered_map>
 
 class SingleApp : public ApplicationBase {
-    std::vector<VertexData<VertexPTNT, uint16_t>> _newVertexDataTBN;
+    std::vector<VertexData<VertexPTNT>> _newVertexDataTBN;
     std::vector<std::unique_ptr<Texture>> _textures;
     std::unordered_map<std::string, std::shared_ptr<UniformBufferTexture>> _uniformMap;
     std::unordered_map<std::string, std::shared_ptr<VertexBuffer>> _vertexBufferMap;

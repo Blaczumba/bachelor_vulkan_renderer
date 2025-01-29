@@ -62,19 +62,19 @@ std::enable_if_t<std::is_unsigned<IndexType>::value> processTangentsBitangents(I
     }
 }
 
-template<typename VertexType, typename IndexType>
-void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::mat4 parentTransform, std::vector<VertexData<VertexType, IndexType>>& vertexDataList) {
+template<typename VertexType>
+void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::mat4 parentTransform, std::vector<VertexData<VertexType>>& vertexDataList) {
     glm::mat4 currentTransform = parentTransform * GetNodeTransform(node);
 
     if (node.mesh < 0) {
         for (const auto& childIndex : node.children) {
-            ProcessNode<VertexType, IndexType>(model, model.nodes[childIndex], currentTransform, vertexDataList);
+            ProcessNode<VertexType>(model, model.nodes[childIndex], currentTransform, vertexDataList);
         }
         return;
     }
 
     const auto& mesh = model.meshes[node.mesh];
-    VertexData<VertexType, IndexType> vertexData;
+    VertexData<VertexType> vertexData;
     vertexData.model = currentTransform;
 
     for (const auto& primitive : mesh.primitives) {
@@ -187,7 +187,6 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
         }
 
         vertexData.indicesS = std::move(indices);
-        vertexData.indicesCount = indicesCount;
         vertexData.indexType = indexType;
 
         // Load textures
@@ -214,12 +213,12 @@ void ProcessNode(const tinygltf::Model& model, const tinygltf::Node& node, glm::
     vertexDataList.emplace_back(std::move(vertexData));
 
     for (const auto& childIndex : node.children) {
-        ProcessNode<VertexType, IndexType>(model, model.nodes[childIndex], currentTransform, vertexDataList);
+        ProcessNode<VertexType>(model, model.nodes[childIndex], currentTransform, vertexDataList);
     }
 }
 
-template<typename VertexType, typename IndexType>
-std::vector<VertexData<VertexType, IndexType>> LoadGLTF(const std::string& filePath) {
+template<typename VertexType>
+std::vector<VertexData<VertexType>> LoadGLTF(const std::string& filePath) {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;
@@ -237,13 +236,13 @@ std::vector<VertexData<VertexType, IndexType>> LoadGLTF(const std::string& fileP
         throw std::runtime_error("Failed to load GLTF file: " + filePath + "\n" + err);
     }
 
-    std::vector<VertexData<VertexType, IndexType>> vertexDataList;
+    std::vector<VertexData<VertexType>> vertexDataList;
 
     auto start = std::chrono::high_resolution_clock::now();
     for (const auto& scene : model.scenes) {
         for (const auto& nodeIndex : scene.nodes) {
             const tinygltf::Node& node = model.nodes[nodeIndex];
-            ProcessNode<VertexType, IndexType>(model, node, glm::mat4(1.0f), vertexDataList);
+            ProcessNode<VertexType>(model, node, glm::mat4(1.0f), vertexDataList);
         }
     }
     auto end = std::chrono::high_resolution_clock::now();

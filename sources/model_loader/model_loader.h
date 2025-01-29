@@ -34,17 +34,15 @@ std::enable_if_t<std::is_unsigned<IndexType>::value> processIndices(uint8_t* dst
 	}
 }
 
-template<typename VertexType, typename IndexType>
+template<typename VertexType>
 struct VertexData {
 	std::vector<VertexType> vertices;
-	std::vector<IndexType> indices;
 	std::string diffuseTexture;
 	std::string normalTexture;
 	std::string metallicRoughnessTexture;
 	glm::mat4 model;
 
 	Buffer<uint8_t> indicesS;
-	uint32_t indicesCount;
 	IndexTypeT indexType;
 };
 
