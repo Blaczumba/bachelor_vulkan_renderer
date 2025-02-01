@@ -26,6 +26,7 @@ SingleApp::SingleApp()
 
     createDescriptorSets();
     loadObjects();
+    loadObject();
     std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() << std::endl;
     createPresentResources();
     createShadowResources();
@@ -52,19 +53,52 @@ SingleApp::SingleApp()
     createSyncObjects();
 }
 
+void SingleApp::loadObject() {
+    const std::string drakanTexturePath = TEXTURES_PATH "drakan.jpg";
+    _assetManager->loadImage2DAsync(drakanTexturePath);
+
+    const auto& propertyManager = _physicalDevice->getPropertyManager();
+    float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
+
+    {
+        SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
+        const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+
+        VertexData<VertexPTN> vertexData = TinyOBJLoaderVertex::load<VertexPTN>(MODELS_PATH "cylinder.obj");
+        _assetManager->loadVertexData("cube_normal.obj", vertexData.vertices, std::span(vertexData.indicesS.get(), vertexData.indicesS.size()), uint8_t{ vertexData.indexType });
+        const AssetManager::VertexData& vData = _assetManager->getVertexData("cube_normal.obj");
+        _vertexBufferObject = std::make_unique<VertexBuffer>(*_logicalDevice, commandBuffer, *vData.vertexBuffer);
+        _vertexBufferPrimitiveObject = std::make_unique<VertexBuffer>(*_logicalDevice, commandBuffer, vData.vertexBufferPrimitives);
+        _indexBufferObject = std::make_unique<IndexBuffer>(*_logicalDevice, commandBuffer, vData.indexBuffer, vData.indexType);
+
+        const auto& [stagingBuffer, imageDimmensions] = _assetManager->getImageData(drakanTexturePath);
+        _textures.emplace_back(TextureFactory::create2DTextureImage(*_logicalDevice, commandBuffer, stagingBuffer, imageDimmensions, VK_FORMAT_R8G8B8A8_SRGB, maxSamplerAnisotropy));
+    }
+
+    _uniformMap.emplace(drakanTexturePath, std::make_shared<UniformBufferTexture>(*_textures.back()));
+    UniformBufferObject object = {
+        .model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f))
+    };
+    _objectUniform = std::make_unique<UniformBufferData<UniformBufferObject>>(*_logicalDevice);
+    _objectUniform->updateUniformBuffer(object);
+    auto descriptorSet = _descriptorPoolNormal->createDesriptorSet();
+    descriptorSet->updateDescriptorSet({ _dynamicUniformBuffersCamera.get(), _uniformBuffersLight.get(), _objectUniform.get(), _uniformMap[drakanTexturePath].get(), _shadowTextureUniform.get() });
+    _objectEntity = _registry.createEntity();
+    _entitytoDescriptorSet.emplace(_objectEntity, std::move(descriptorSet));
+}
+
 void SingleApp::loadObjects() {
     // TODO needs refactoring
     for (uint32_t i = 0; i < _newVertexDataTBN.size(); i++) {
         if (_newVertexDataTBN[i].normalTexture.empty() || _newVertexDataTBN[i].metallicRoughnessTexture.empty())
             continue;
-        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].diffuseTexture);
-        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].metallicRoughnessTexture);
-        _assetManager->loadImage2DAsync(std::string(MODELS_PATH) + "sponza/" + _newVertexDataTBN[i].normalTexture);
+        _assetManager->loadImage2DAsync(MODELS_PATH "sponza/" + _newVertexDataTBN[i].diffuseTexture);
+        _assetManager->loadImage2DAsync(MODELS_PATH "sponza/" + _newVertexDataTBN[i].metallicRoughnessTexture);
+        _assetManager->loadImage2DAsync(MODELS_PATH "sponza/" + _newVertexDataTBN[i].normalTexture);
         _assetManager->loadVertexData(std::to_string(i), _newVertexDataTBN[i].vertices, std::span(_newVertexDataTBN[i].indicesS.get(), _newVertexDataTBN[i].indicesS.size()), uint8_t{ _newVertexDataTBN[i].indexType });
     }
     const auto& propertyManager = _physicalDevice->getPropertyManager();
     float maxSamplerAnisotropy = propertyManager.getMaxSamplerAnisotropy();
-    uint32_t index = 0;
     _objects.reserve(_newVertexDataTBN.size());
     {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
@@ -117,9 +151,10 @@ void SingleApp::loadObjects() {
             _entitytoDescriptorSet.emplace(e, std::move(descriptorSet));
         
             _ubObject.model = _newVertexDataTBN[i].model;
-            _uniformBuffersObjects->updateUniformBuffer(&_ubObject, index++);
+            _uniformBuffersObjects->updateUniformBuffer(_ubObject, index++);
         }
-
+        _ubObject.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f));
+        _uniformBuffersObjects->updateUniformBuffer(_ubObject, index);
     }
     AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;
     for (int i = 1; i < _objects.size(); i++) {
@@ -143,20 +178,22 @@ void SingleApp::createDescriptorSets() {
         _shadowMap = TextureFactory::create2DShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
     }
 
-    _uniformBuffersObjects = std::make_unique<UniformBufferData<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size());
+    _uniformBuffersObjects = std::make_unique<UniformBufferData<UniformBufferObject>>(*_logicalDevice, _newVertexDataTBN.size() + 1);
     _uniformBuffersLight = std::make_unique<UniformBufferData<UniformBufferLight>>(*_logicalDevice);
     _dynamicUniformBuffersCamera = std::make_unique<UniformBufferData<UniformBufferCamera>>(*_logicalDevice, MAX_FRAMES_IN_FLIGHT);
 
     _skyboxTextureUniform = std::make_unique<UniformBufferTexture>(*_textureCubemap);
     _shadowTextureUniform = std::make_unique<UniformBufferTexture>(*_shadowMap);
 
-    _pbrShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::PBR, *_logicalDevice);
+    _pbrShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::PBR_TESSELLATION, *_logicalDevice);
+    _normalShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::NORMAL, *_logicalDevice);
     _skyboxShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::SKYBOX, *_logicalDevice);
     _shadowShaderProgram = ShaderProgramFactory::createShaderProgram(ShaderProgramType::SHADOW, *_logicalDevice);
 
     _descriptorPool = std::make_shared<DescriptorPool>(*_logicalDevice, _pbrShaderProgram->getDescriptorSetLayout(), 150);
+    _descriptorPoolNormal = std::make_unique<DescriptorPool>(*_logicalDevice, _normalShaderProgram->getDescriptorSetLayout(), 1);
     _descriptorPoolSkybox = std::make_shared<DescriptorPool>(*_logicalDevice, _skyboxShaderProgram->getDescriptorSetLayout(), 1);
-    _descriptorPoolShadow = std::make_shared<DescriptorPool>(*_logicalDevice, _shadowShaderProgram->getDescriptorSetLayout(), 1);
+    _descriptorPoolShadow = std::make_shared<DescriptorPool>(*_logicalDevice, _shadowShaderProgram->getDescriptorSetLayout(), 2);
 
     _descriptorSetSkybox = _descriptorPoolSkybox->createDesriptorSet();
     _descriptorSetShadow = _descriptorPoolShadow->createDesriptorSet();
@@ -168,7 +205,7 @@ void SingleApp::createDescriptorSets() {
     _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.01f, 40.0f);
     _ubLight.projView[1][1] = -_ubLight.projView[1][1];
     _ubLight.projView = _ubLight.projView * glm::lookAt(_ubLight.pos, glm::vec3(-3.82383f, 3.66503f, 1.30751f), glm::vec3(0.0f, 1.0f, 0.0f));
-    _uniformBuffersLight->updateUniformBuffer(&_ubLight);
+    _uniformBuffersLight->updateUniformBuffer(_ubLight);
 }
 
 void SingleApp::createPresentResources() {
@@ -204,18 +241,26 @@ void SingleApp::createPresentResources() {
     for (uint8_t i = 0; i < _swapchain->getImagesCount(); ++i) {
         _framebuffers.emplace_back(std::make_unique<Framebuffer>(*_renderPass, *_swapchain, i, *_singleTimeCommandPool));
     }
-
-    const GraphicsPipelineParameters pbrParameters = {
-        .msaaSamples = msaaSamples,
-        // .patchControlPoints = 3,
-    };
-    _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass, *_pbrShaderProgram, pbrParameters);
-
-    const GraphicsPipelineParameters skyboxParameters = {
-        .cullMode = VK_CULL_MODE_FRONT_BIT,
-        .msaaSamples = msaaSamples
-    };
-    _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_renderPass, *_skyboxShaderProgram, skyboxParameters);
+    {
+        const GraphicsPipelineParameters parameters = {
+            .msaaSamples = msaaSamples,
+            .patchControlPoints = 3,
+        };
+        _graphicsPipeline = std::make_unique<GraphicsPipeline>(*_renderPass, *_pbrShaderProgram, parameters);
+    }
+    {
+        const GraphicsPipelineParameters parameters = {
+            .cullMode = VK_CULL_MODE_FRONT_BIT,
+            .msaaSamples = msaaSamples
+        };
+        _graphicsPipelineSkybox = std::make_unique<GraphicsPipeline>(*_renderPass, *_skyboxShaderProgram, parameters);
+    }
+    {
+        const GraphicsPipelineParameters parameters = {
+            .msaaSamples = msaaSamples
+        };
+        _graphicsPipelineNormal = std::make_unique<GraphicsPipeline>(*_renderPass, *_normalShaderProgram, parameters);
+    }
 }
 
 void SingleApp::createShadowResources() {
@@ -234,8 +279,9 @@ void SingleApp::createShadowResources() {
     _shadowFramebuffer = std::make_unique<Framebuffer>(*_shadowRenderPass, std::vector<std::shared_ptr<Texture>>{ _shadowMap });
 
     const GraphicsPipelineParameters parameters = {
+        .cullMode = VK_CULL_MODE_FRONT_BIT,
         .depthBiasConstantFactor = 0.7f,
-        .depthBiasSlopeFactor = 2.0f
+        .depthBiasSlopeFactor = 2.0f,
     };
     _shadowPipeline = std::make_unique<GraphicsPipeline>(*_shadowRenderPass, *_shadowShaderProgram, parameters);
 }
@@ -381,7 +427,7 @@ void SingleApp::updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.view = _camera->getViewMatrix();
     _ubCamera.proj = _camera->getProjectionMatrix();
     _ubCamera.pos = _camera->getPosition();
-    _dynamicUniformBuffersCamera->updateUniformBuffer(&_ubCamera, currentFrame);
+    _dynamicUniformBuffersCamera->updateUniformBuffer(_ubCamera, currentFrame);
 }
 
 void SingleApp::createCommandBuffers() {
@@ -485,12 +531,20 @@ void SingleApp::recordCommandBuffer(uint32_t imageIndex) {
         // Skybox
         _commandBuffers[_currentFrame][1]->begin(framebuffer, &scissorViewportInheritance);
         VkCommandBuffer commandBuffer = _commandBuffers[_currentFrame][1]->getVkCommandBuffer();
-        vkCmdBindPipeline(commandBuffer, _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
 
+        vkCmdBindPipeline(commandBuffer, _graphicsPipelineSkybox->getVkPipelineBindPoint(), _graphicsPipelineSkybox->getVkPipeline());
         _vertexBufferCube->bind(commandBuffer);
         _indexBufferCube->bind(commandBuffer);
         _descriptorSetSkybox->bind(commandBuffer, *_graphicsPipelineSkybox, { _currentFrame });
         vkCmdDrawIndexed(commandBuffer, _indexBufferCube->getIndexCount(), 1, 0, 0, 0);
+
+        // Object
+        vkCmdBindPipeline(commandBuffer, _graphicsPipelineNormal->getVkPipelineBindPoint(), _graphicsPipelineNormal->getVkPipeline());
+        _vertexBufferObject->bind(commandBuffer);
+        _indexBufferObject->bind(commandBuffer);
+        _entitytoDescriptorSet[_objectEntity]->bind(commandBuffer, *_graphicsPipelineNormal, { _currentFrame });
+        vkCmdDrawIndexed(commandBuffer, _indexBufferObject->getIndexCount(), 1, 0, 0, 0);
+
         vkEndCommandBuffer(commandBuffer);
     });
 
@@ -551,6 +605,11 @@ void SingleApp::recordShadowCommandBuffer(VkCommandBuffer commandBuffer, uint32_
         vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getVkBuffer(), 0, indexBuffer->getIndexType());
         vkCmdDrawIndexed(commandBuffer, indexBuffer->getIndexCount(), 1, 0, 0, 0);
     }
+
+    _vertexBufferPrimitiveObject->bind(commandBuffer);
+    _indexBufferObject->bind(commandBuffer);
+    _descriptorSetShadow->bind(commandBuffer, *_shadowPipeline, { index });
+    vkCmdDrawIndexed(commandBuffer, _indexBufferObject->getIndexCount(), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
     //if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {

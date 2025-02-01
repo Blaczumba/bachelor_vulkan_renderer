@@ -6,20 +6,20 @@ layout(binding=0) uniform CameraUniform {
     vec3 pos;
 } camera;
 
-layout(binding = 1) uniform sampler2D texSampler;
 
-layout(binding = 2) uniform Light {
+layout(binding = 1) uniform Light {
     mat4 projView;
 
     vec3 pos;
 
 } light;
 
-layout(binding = 3) uniform ObjectUniform {
+layout(binding = 2) uniform ObjectUniform {
     mat4 model;
 
 } object;
 
+layout(binding = 3) uniform sampler2D texSampler;
 layout(binding = 4) uniform sampler2DShadow shadowMap;
 
 layout(location = 0) in vec3 fragPosition;
@@ -42,10 +42,15 @@ float calculateShadow() {
     if(lightFrag.z >= 1.0)
         return 1.0;
 
-    float sum = 0.0;
-    for(int i = 0; i < KELNER_SIZE; i++)
-        sum += textureOffset(shadowMap,
-        lightFrag.xyz, offsets[i]);
+    float sum = textureOffset(shadowMap, lightFrag.xyz, offsets[0])
+        + textureOffset(shadowMap, lightFrag.xyz, offsets[1])
+        + textureOffset(shadowMap, lightFrag.xyz, offsets[2])
+        + textureOffset(shadowMap, lightFrag.xyz, offsets[3])
+        + textureOffset(shadowMap, lightFrag.xyz, offsets[4])
+        + textureOffset(shadowMap, lightFrag.xyz, offsets[5])
+        + textureOffset(shadowMap, lightFrag.xyz, offsets[6])
+        + textureOffset(shadowMap, lightFrag.xyz, offsets[7])
+        + textureOffset(shadowMap, lightFrag.xyz, offsets[8]);
 
     return sum / KELNER_SIZE;
 }

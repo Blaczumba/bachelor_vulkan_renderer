@@ -57,11 +57,8 @@ void main() {
     gl_Position = camera.proj * camera.view * pos;
 
     teTBNfragPosition = TBNMat * pos.xyz;
-
     teTBNLightPos = TBNMat * light.pos;
-
     teTBNViewPos = TBNMat * camera.viewPos;
-
     teFragTexCoord = gl_TessCoord.x * inTexCoord[0] +
             gl_TessCoord.y * inTexCoord[1] +
             gl_TessCoord.z * inTexCoord[2];

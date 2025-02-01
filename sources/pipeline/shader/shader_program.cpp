@@ -25,7 +25,23 @@ std::vector<VkPipelineShaderStageCreateInfo> ShaderProgram::getVkPipelineShaderS
     return shaderStages;
 }
 
-std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configurePBRProgram(const LogicalDevice& logicalDevice) {
+std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::createNormalMappingProgram(const LogicalDevice& logicalDevice) {
+    std::vector<Shader> shaders;
+    shaders.reserve(2);
+    shaders.emplace_back(logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    shaders.emplace_back(logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    auto descriptorSetLayout = std::make_unique<DescriptorSetLayout>(logicalDevice);
+    descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+    descriptorSetLayout->create();
+    return std::make_unique<GraphicsShaderProgram>(logicalDevice, std::move(shaders), std::move(descriptorSetLayout), VertexPTN{});
+}
+
+std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::createPBRProgram(const LogicalDevice& logicalDevice) {
     std::vector<Shader> shaders;
     shaders.reserve(2);
     shaders.emplace_back(logicalDevice, SHADERS_PATH "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -43,7 +59,7 @@ std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configurePBRProgram
     return std::make_unique<GraphicsShaderProgram>(logicalDevice, std::move(shaders), std::move(descriptorSetLayout), VertexPTNT{});
 }
 
-std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configurePBRTesselationProgram(const LogicalDevice& logicalDevice) {
+std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::createPBRTesselationProgram(const LogicalDevice& logicalDevice) {
     std::vector<Shader> shaders;
     shaders.reserve(4);
     shaders.emplace_back(logicalDevice, SHADERS_PATH "shader_pbr_tesselation.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -63,7 +79,7 @@ std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configurePBRTessela
     return std::make_unique<GraphicsShaderProgram>(logicalDevice, std::move(shaders), std::move(descriptorSetLayout), VertexPTNT{});
 }
 
-std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configureSkyboxProgram(const LogicalDevice& logicalDevice) {
+std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::createSkyboxProgram(const LogicalDevice& logicalDevice) {
     std::vector<Shader> shaders;
     shaders.reserve(2);
     shaders.emplace_back(logicalDevice, SHADERS_PATH "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -76,7 +92,7 @@ std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configureSkyboxProg
     return std::make_unique<GraphicsShaderProgram>(logicalDevice, std::move(shaders), std::move(descriptorSetLayout), VertexP{});
 }
 
-std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configureShadowProgram(const LogicalDevice& logicalDevice) {
+std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::createShadowProgram(const LogicalDevice& logicalDevice) {
     std::vector<Shader> shaders;
     shaders.reserve(2);
     shaders.emplace_back(logicalDevice, SHADERS_PATH "shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -89,7 +105,7 @@ std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configureShadowProg
     return std::make_unique<GraphicsShaderProgram>(logicalDevice, std::move(shaders), std::move(descriptorSetLayout), VertexP{});
 }
 
-std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configureSkyboxOffscreenProgram(const LogicalDevice& logicalDevice) {
+std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::createSkyboxOffscreenProgram(const LogicalDevice& logicalDevice) {
     std::vector<Shader> shaders;
     shaders.reserve(2);
     shaders.emplace_back(logicalDevice, SHADERS_PATH "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -107,7 +123,7 @@ std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configureSkyboxOffs
     return std::make_unique<GraphicsShaderProgram>(logicalDevice, std::move(shaders), std::move(descriptorSetLayout), VertexPTNT{});
 }
 
-std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::configurePBROffscreenProgram(const LogicalDevice& logicalDevice) {
+std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::createPBROffscreenProgram(const LogicalDevice& logicalDevice) {
     std::vector<Shader> shaders;
     shaders.reserve(2);
     shaders.emplace_back(logicalDevice, SHADERS_PATH "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);

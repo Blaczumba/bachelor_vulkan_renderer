@@ -7,14 +7,14 @@ layout(binding=0) uniform CameraUniform {
 
 } camera;
 
-layout(binding = 2) uniform Light {
+layout(binding = 1) uniform Light {
     mat4 projView;
 
     vec3 pos;
 
 } light;
 
-layout(binding = 3) uniform ObjectUniform {
+layout(binding = 2) uniform ObjectUniform {
     mat4 model;
 
 } object;

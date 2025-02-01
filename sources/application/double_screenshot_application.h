@@ -28,6 +28,7 @@
 #include <unordered_map>
 
 class SingleApp : public ApplicationBase {
+    uint32_t index = 0;
     std::vector<VertexData<VertexPTNT>> _newVertexDataTBN;
     std::vector<std::unique_ptr<Texture>> _textures;
     std::unordered_map<std::string, std::shared_ptr<UniformBufferTexture>> _uniformMap;
@@ -44,12 +45,20 @@ class SingleApp : public ApplicationBase {
     std::shared_ptr<Renderpass> _renderPass;
     std::vector<std::unique_ptr<Framebuffer>> _framebuffers;
     std::unique_ptr<GraphicsPipeline> _graphicsPipeline;
+    std::unique_ptr<GraphicsPipeline> _graphicsPipelineNormal;
     std::unique_ptr<GraphicsPipeline> _graphicsPipelineSkybox;
 
     std::shared_ptr<Renderpass> _shadowRenderPass;
     std::unique_ptr<Framebuffer> _shadowFramebuffer;
     std::shared_ptr<Texture> _shadowMap;
     std::unique_ptr<GraphicsPipeline> _shadowPipeline;
+
+    std::unique_ptr<VertexBuffer> _vertexBufferObject;
+    std::unique_ptr<VertexBuffer> _vertexBufferPrimitiveObject;
+    std::unique_ptr<IndexBuffer> _indexBufferObject;
+    std::unique_ptr<DescriptorSet> _objectDescriptorSet;
+    std::unique_ptr<UniformBufferData<UniformBufferObject>> _objectUniform;
+    Entity _objectEntity;
 
     std::unique_ptr<VertexBuffer> _vertexBufferCube;
     std::unique_ptr<IndexBuffer> _indexBufferCube;
@@ -66,10 +75,12 @@ class SingleApp : public ApplicationBase {
     std::unique_ptr<UniformBufferTexture> _shadowTextureUniform;
 
     std::shared_ptr<DescriptorPool> _descriptorPool;
+    std::shared_ptr<DescriptorPool> _descriptorPoolNormal;
     std::shared_ptr<DescriptorPool> _descriptorPoolSkybox;
     std::shared_ptr<DescriptorPool> _descriptorPoolShadow;
 
     std::unique_ptr<GraphicsShaderProgram> _shadowShaderProgram;
+    std::unique_ptr<GraphicsShaderProgram> _normalShaderProgram;
     std::unique_ptr<GraphicsShaderProgram> _pbrShaderProgram;
     std::unique_ptr<GraphicsShaderProgram> _skyboxShaderProgram;
 
@@ -123,4 +134,5 @@ private:
     void createShadowResources();
 
     void loadObjects();
+    void loadObject();
 };
