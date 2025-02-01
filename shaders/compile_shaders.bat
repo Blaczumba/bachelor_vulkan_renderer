@@ -1,7 +1,7 @@
 set "SCRIPT_DIR=%~dp0"
 
-glslc.exe -fshader-stage=vertex "%SCRIPT_DIR%\shader_normal_mapping.vert.glsl" -O -o "%SCRIPT_DIR%\shader_normal_mapping.vert.spv"
-glslc.exe -fshader-stage=fragment "%SCRIPT_DIR%\shader_normal_mapping.frag.glsl" -O -o "%SCRIPT_DIR%\shader_normal_mapping.frag.spv"
+glslc.exe -fshader-stage=vertex "%SCRIPT_DIR%\shader_blinn_phong.vert.glsl" -O -o "%SCRIPT_DIR%\shader_blinn_phong.vert.spv"
+glslc.exe -fshader-stage=fragment "%SCRIPT_DIR%\shader_blinn_phong.frag.glsl" -O -o "%SCRIPT_DIR%\shader_blinn_phong.frag.spv"
 
 glslc.exe -fshader-stage=fragment "%SCRIPT_DIR%\offscreen.frag.glsl" -O -o "%SCRIPT_DIR%\off.frag.spv"
 

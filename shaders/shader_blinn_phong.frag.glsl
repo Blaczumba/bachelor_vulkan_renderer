@@ -56,7 +56,8 @@ float calculateShadow() {
 }
 
 void main() {
-    vec3 color = texture(texSampler, fragTexCoord).rgb;
+    // vec3 color = texture(texSampler, fragTexCoord).rgb;
+    vec3 color = 0.6 * vec3(1.0, 1.0, 1.0);
     const bool blinn = true;
 
     vec3 ambient = 0.05 * color;

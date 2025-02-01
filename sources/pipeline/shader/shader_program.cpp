@@ -28,8 +28,8 @@ std::vector<VkPipelineShaderStageCreateInfo> ShaderProgram::getVkPipelineShaderS
 std::unique_ptr<GraphicsShaderProgram> ShaderProgramFactory::createNormalMappingProgram(const LogicalDevice& logicalDevice) {
     std::vector<Shader> shaders;
     shaders.reserve(2);
-    shaders.emplace_back(logicalDevice, SHADERS_PATH "shader_normal_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    shaders.emplace_back(logicalDevice, SHADERS_PATH "shader_normal_mapping.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    shaders.emplace_back(logicalDevice, SHADERS_PATH "shader_blinn_phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    shaders.emplace_back(logicalDevice, SHADERS_PATH "shader_blinn_phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     auto descriptorSetLayout = std::make_unique<DescriptorSetLayout>(logicalDevice);
     descriptorSetLayout->addLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
