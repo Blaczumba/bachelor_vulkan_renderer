@@ -28,7 +28,6 @@ layout(location = 2) in vec4 lightFragPosition;
 layout(location = 3) in vec3 fragNormal;
 
 layout(location = 0) out vec4 outColor;
-layout(location = 1) out vec4 outColor1;
 
 const int KELNER_SIZE = 9;  // size of offsets
 const ivec2 offsets[] = ivec2[](
@@ -56,8 +55,8 @@ float calculateShadow() {
 }
 
 void main() {
-    // vec3 color = texture(texSampler, fragTexCoord).rgb;
-    vec3 color = 0.6 * vec3(1.0, 1.0, 1.0);
+    vec3 color = texture(texSampler, fragTexCoord).rgb;
+    // vec3 color = 0.6 * vec3(1.0, 1.0, 1.0);
     const bool blinn = true;
 
     vec3 ambient = 0.05 * color;
@@ -83,5 +82,4 @@ void main() {
     vec3 specular = vec3(0.3) * spec; // assuming bright white light color
 
     outColor = vec4(ambient + calculateShadow()*(diffuse + specular), 1.0);
-    outColor1 = outColor;
 }

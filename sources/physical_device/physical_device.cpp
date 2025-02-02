@@ -39,7 +39,6 @@ PhysicalDevice::PhysicalDevice(const Window& window)
         };
 
         bool suitable = std::all_of(conditions.cbegin(), conditions.cend(), [](bool condition) { return condition; });
-
         if (suitable) {
             _device = device;
             break;

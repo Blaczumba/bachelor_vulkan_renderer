@@ -215,17 +215,17 @@ void SingleApp::createPresentResources() {
 
     AttachmentLayout attachmentsLayout;
     attachmentsLayout.addColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE);
-    attachmentsLayout.addColorResolveAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
+    //attachmentsLayout.addColorResolveAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
     attachmentsLayout.addColorAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples);
-    attachmentsLayout.addColorAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples);
+    //attachmentsLayout.addColorAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples);
     attachmentsLayout.addDepthAttachment(findDepthFormat(), VK_ATTACHMENT_STORE_OP_DONT_CARE, msaaSamples);
 
     Subpass subpass(attachmentsLayout);
     subpass.addSubpassOutputAttachment(0);
     subpass.addSubpassOutputAttachment(1);
     subpass.addSubpassOutputAttachment(2);
-    subpass.addSubpassOutputAttachment(3);
-    subpass.addSubpassOutputAttachment(4);
+    //subpass.addSubpassOutputAttachment(3);
+    //subpass.addSubpassOutputAttachment(4);
 
     _renderPass = std::make_shared<Renderpass>(*_logicalDevice, attachmentsLayout);
     _renderPass->addSubpass(subpass);
@@ -377,8 +377,9 @@ void SingleApp::draw() {
         throw std::runtime_error("failed to present swap chain image!");
     }
 
-    if (++_currentFrame == MAX_FRAMES_IN_FLIGHT)
+    if (++_currentFrame == MAX_FRAMES_IN_FLIGHT) {
         _currentFrame = 0;
+    }
 }
 
 VkFormat SingleApp::findDepthFormat() const {
@@ -423,7 +424,7 @@ void SingleApp::createSyncObjects() {
         }
     }
 }
-int first = 0;
+
 void SingleApp::updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.view = _camera->getViewMatrix();
     _ubCamera.proj = _camera->getProjectionMatrix();

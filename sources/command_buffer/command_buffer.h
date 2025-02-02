@@ -21,6 +21,7 @@ public:
 
 	std::unique_ptr<PrimaryCommandBuffer> createPrimaryCommandBuffer() const;
 	std::unique_ptr<SecondaryCommandBuffer> createSecondaryCommandBuffer() const;
+	void reset() const;
 
 	const VkCommandPool getVkCommandPool() const;
 	const LogicalDevice& getLogicalDevice() const;

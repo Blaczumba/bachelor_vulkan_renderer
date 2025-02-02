@@ -7,7 +7,7 @@
 CommandPool::CommandPool(const LogicalDevice& logicalDevice) : _logicalDevice(logicalDevice) {
     const VkCommandPoolCreateInfo poolInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, 
         .queueFamilyIndex = _logicalDevice.getPhysicalDevice().getPropertyManager().getQueueFamilyIndices().graphicsFamily.value()
     };
 
@@ -25,6 +25,10 @@ std::unique_ptr<PrimaryCommandBuffer> CommandPool::createPrimaryCommandBuffer() 
 
 std::unique_ptr<SecondaryCommandBuffer> CommandPool::createSecondaryCommandBuffer() const {
     return std::make_unique<SecondaryCommandBuffer>(*this);
+}
+
+void CommandPool::reset() const {
+    vkResetCommandPool(_logicalDevice.getVkDevice(), _commandPool, 0);
 }
 
 const VkCommandPool CommandPool::getVkCommandPool() const {
