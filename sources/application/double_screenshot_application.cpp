@@ -64,7 +64,7 @@ void SingleApp::loadObject() {
         SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
         const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
-        VertexData<VertexPTN> vertexData = TinyOBJLoaderVertex::load<VertexPTN>(MODELS_PATH "cylinder.obj");
+        VertexData<VertexPTN> vertexData = TinyOBJLoaderVertex::load<VertexPTN>(MODELS_PATH "cylinder8.obj");
         _assetManager->loadVertexData("cube_normal.obj", vertexData.vertices, std::span(vertexData.indicesS.get(), vertexData.indicesS.size()), uint8_t{ vertexData.indexType });
         const AssetManager::VertexData& vData = _assetManager->getVertexData("cube_normal.obj");
         _vertexBufferObject = std::make_unique<VertexBuffer>(*_logicalDevice, commandBuffer, *vData.vertexBuffer);
@@ -257,7 +257,8 @@ void SingleApp::createPresentResources() {
     }
     {
         const GraphicsPipelineParameters parameters = {
-            .msaaSamples = msaaSamples
+            .msaaSamples = msaaSamples,
+            .patchControlPoints = 3
         };
         _graphicsPipelineNormal = std::make_unique<GraphicsPipeline>(*_renderPass, *_normalShaderProgram, parameters);
     }
