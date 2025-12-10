@@ -91,6 +91,7 @@ AttachmentLayout& AttachmentLayout::addDepthAttachment(
   return *this;
 }
 
+// TODO: Use depth attachment.
 AttachmentLayout& AttachmentLayout::addShadowAttachment(
     VkFormat format, VkImageLayout finalLayout) {
   _clearValues.push_back(VkClearValue{

@@ -227,9 +227,11 @@ Status ShaderProgramManager::addShader(
 
 ErrorOr<DescriptorSetType> ShaderProgramManager::getOrCreateBindlessLayout(
     const LogicalDevice& logicalDevice) {
-  static constexpr DescriptorSetType layoutType = DescriptorSetType::BINDLESS;
-  if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
-    return it->first;
+  static constexpr DescriptorSetType type = DescriptorSetType::BINDLESS;
+  auto [it, inserted] = _descriptorSetLayouts.try_emplace(type);
+
+  if (!inserted) {
+    return type;
   }
 
   static constexpr VkDescriptorSetLayoutBinding bindings[] = {
@@ -247,24 +249,28 @@ ErrorOr<DescriptorSetType> ShaderProgramManager::getOrCreateBindlessLayout(
      }
   };
 
-  static constexpr VkDescriptorBindingFlags flags{
-    VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT};
+  static constexpr VkDescriptorBindingFlags flags =
+      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
   static constexpr VkDescriptorBindingFlags bindingFlags[] = {flags, flags};
 
   ASSIGN_OR_RETURN(
       DescriptorSetLayout layout,
       DescriptorSetLayout::create(logicalDevice, bindings, bindingFlags,
                                   VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT));
-  _descriptorSetLayouts.emplace(layoutType, std::move(layout));
-  return layoutType;
+
+  it->second = std::move(layout);
+  return type;
 }
 
 ErrorOr<DescriptorSetType> ShaderProgramManager::getOrCreateCameraLayout(
     const LogicalDevice& logicalDevice) {
   static constexpr DescriptorSetType layoutType = DescriptorSetType::CAMERA;
-  if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
-    return it->first;
+  auto [it, inserted] = _descriptorSetLayouts.try_emplace(layoutType);
+
+  if (!inserted) {
+    return layoutType;
   }
+
   static constexpr VkDescriptorSetLayoutBinding bindings[] = {
     {
      .binding = 0,
@@ -273,8 +279,10 @@ ErrorOr<DescriptorSetType> ShaderProgramManager::getOrCreateCameraLayout(
      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
      },
   };
+
   ASSIGN_OR_RETURN(
       DescriptorSetLayout layout, DescriptorSetLayout::create(logicalDevice, bindings));
-  _descriptorSetLayouts.emplace(layoutType, std::move(layout));
+  it->second = std::move(layout);
+
   return layoutType;
 }

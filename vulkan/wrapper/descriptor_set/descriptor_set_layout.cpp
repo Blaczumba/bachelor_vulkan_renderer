@@ -21,20 +21,18 @@ DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& layout
 }
 
 DescriptorSetLayout::~DescriptorSetLayout() {
-  vkDestroyDescriptorSetLayout(_logicalDevice->getVkDevice(), _descriptorSetLayout, nullptr);
+  if (_descriptorSetLayout != VK_NULL_HANDLE) {
+    vkDestroyDescriptorSetLayout(_logicalDevice->getVkDevice(), _descriptorSetLayout, nullptr);
+  }
 }
 
 ErrorOr<DescriptorSetLayout> DescriptorSetLayout::create(
     const LogicalDevice& logicalDevice, std::span<const VkDescriptorSetLayoutBinding> bindings,
     std::span<const VkDescriptorBindingFlags> bindFlags, VkDescriptorSetLayoutCreateFlags flags) {
-  VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlags = {
+  const VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlags = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
     .bindingCount = static_cast<uint32_t>(bindFlags.size()),
-  };
-
-  if (!bindFlags.empty()) {
-    bindingFlags.pBindingFlags = bindFlags.data();
-  }
+    .pBindingFlags = (!bindFlags.empty()) ? bindFlags.data() : nullptr};
 
   const VkDescriptorSetLayoutCreateInfo layoutInfo = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,

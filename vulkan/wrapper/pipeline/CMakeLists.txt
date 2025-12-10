@@ -1,4 +1,4 @@
-add_library(Pipeline pipeline.cpp graphics_pipeline.cpp compute_pipeline.cpp shader.cpp shader_program.cpp)
+add_library(Pipeline pipeline.cpp graphics_pipeline.cpp compute_pipeline.cpp shader.cpp shader_program.cpp graphics_pipeline_builder.h graphics_pipeline_builder.cpp pipeline_layout.h pipeline_layout.cpp)
 
 target_link_libraries(Pipeline PUBLIC Vulkan::Vulkan)
 target_link_libraries(Pipeline PUBLIC LogicalDevice Renderpass)

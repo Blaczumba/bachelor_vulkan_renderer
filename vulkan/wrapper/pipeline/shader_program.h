@@ -14,9 +14,8 @@
 #include "lib/buffer/buffer.h"
 #include "shader.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
+#include "vulkan/wrapper/logical_device/logical_device.h"
 
-class LogicalDevice;
-class DescriptorSetLayout;
 class ShaderProgram;
 
 enum class DescriptorSetType : uint8_t {
