@@ -10,7 +10,7 @@
 #include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 
-enum class RAIIDescriptorSetType : uint8_t {
+enum class DescriptorSetType : uint8_t {
   BINDLESS,
   CAMERA
 };
@@ -23,7 +23,9 @@ public:
 
   const Shader* getShader(std::string_view shaderPath) const;
 
-  VkDescriptorSetLayout getVkDescriptorSetLayout(DescriptorSetType type) const;
+  ErrorOr<VkDescriptorSetLayout> getOrCreateBindlessLayout(const LogicalDevice& logicalDevice);
+
+  ErrorOr<VkDescriptorSetLayout> getOrCreateCameraLayout(const LogicalDevice& logicalDevice);
 
   ErrorOr<GraphicsPipelineBuilder> createPBRProgram(const Renderpass& renderpass);
 
@@ -37,15 +39,11 @@ private:
   std::shared_ptr<FileLoader> _fileLoader;
 
   std::unordered_map<std::string_view, Shader> _shaders;
-  std::unordered_map<RAIIDescriptorSetType, DescriptorSetLayout> _descriptorSetLayouts;
+  std::unordered_map<DescriptorSetType, DescriptorSetLayout> _descriptorSetLayouts;
   std::unordered_map<std::string_view, PipelineLayout> _pipelineLayouts;
 
   ErrorOr<std::reference_wrapper<const Shader>> addShader(const LogicalDevice& logicalDevice, std::string_view shaderFile,
                    VkShaderStageFlagBits shaderStages);
-
-  ErrorOr<VkDescriptorSetLayout> getOrCreateBindlessLayout(const LogicalDevice& logicalDevice);
-
-  ErrorOr<VkDescriptorSetLayout> getOrCreateCameraLayout(const LogicalDevice& logicalDevice);
 
   ErrorOr<std::reference_wrapper<const PipelineLayout>> getOrCreatePipelineLayout(
       std::string_view id, const LogicalDevice& logicalDevice,

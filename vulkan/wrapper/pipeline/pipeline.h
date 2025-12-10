@@ -3,45 +3,30 @@
 #include <vulkan/vulkan.h>
 
 #include "common/status/status.h"
-#include "vulkan/wrapper/pipeline/pipeline_layout.h"
+#include <vulkan/wrapper/logical_device/logical_device.h>
+
 
 class Pipeline {
-protected:
-  VkPipeline _pipeline = VK_NULL_HANDLE;
-  VkPipelineLayout _pipelineLayout = VK_NULL_HANDLE;
-  VkPipelineBindPoint _pipelineBindPoint;
-
-public:
-  Pipeline(VkPipelineBindPoint pipelineBindPoint);
-  virtual ~Pipeline() = default;
-
-  VkPipeline getVkPipeline() const;
-  VkPipelineLayout getVkPipelineLayout() const;
-  VkPipelineBindPoint getVkPipelineBindPoint() const;
-};
-
-
-class PipelineRAII {
-  PipelineRAII(const LogicalDevice& logicalDevice, VkPipeline pipeline,
+  Pipeline(const LogicalDevice& logicalDevice, VkPipeline pipeline,
                VkPipelineBindPoint bindPoint, VkPipelineLayout layout);
 
 public:
-  PipelineRAII() = default;
+  Pipeline() = default;
 
-  static ErrorOr<PipelineRAII> create(
+  static ErrorOr<Pipeline> create(
       const LogicalDevice& logicalDevice, const VkGraphicsPipelineCreateInfo& createInfo);
 
-  static std::vector<ErrorOr<PipelineRAII>> create(
+  static std::vector<ErrorOr<Pipeline>> create(
       const LogicalDevice& logicalDevice,
       std::span<const VkGraphicsPipelineCreateInfo> createInfos);
 
   // TODO: Create with other types of create infos.
 
-  PipelineRAII(PipelineRAII&& other) noexcept;
+  Pipeline(Pipeline&& other) noexcept;
 
-  PipelineRAII& operator=(PipelineRAII&& other) noexcept;
+  Pipeline& operator=(Pipeline&& other) noexcept;
 
-  ~PipelineRAII();
+  ~Pipeline();
 
   VkPipeline getVkPipeline() const;
 

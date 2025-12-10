@@ -1,6 +1,7 @@
 #include "graphics_pipeline_builder.h"
 
 #include <algorithm>
+#include <array>
 
 // We need to pass the dynamic state in the constructor because some other states depend on it
 GraphicsPipelineBuilder::GraphicsPipelineBuilder(
@@ -21,7 +22,7 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder(
     std::span<const VkDynamicState> dynamicStates, VkPipelineDynamicStateCreateFlags flags)
   : GraphicsPipelineBuilder(lib::Buffer<VkDynamicState>(dynamicStates), flags) {}
 
-ErrorOr<PipelineRAII> GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo(){
+ErrorOr<Pipeline> GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo(){
   if (_renderpass == nullptr || _pipelineLayout == nullptr) {
     return Error(EngineError::NULLPTR_REFERENCE);
   }
@@ -41,10 +42,10 @@ ErrorOr<PipelineRAII> GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo()
     .pDynamicState = &_dynamicState,
     .layout = _pipelineLayout->getVkPipelineLayout(),
     .renderPass = _renderpass->getVkRenderPass()};
-  return PipelineRAII::create(_renderpass->getLogicalDevice(), createInfo);
+  return Pipeline::create(_renderpass->getLogicalDevice(), createInfo);
 }
 
-std::vector<ErrorOr<PipelineRAII>> GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo(
+std::vector<ErrorOr<Pipeline>> GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo(
     std::span<const GraphicsPipelineBuilder> builders) {
   std::vector<VkGraphicsPipelineCreateInfo> createInfos;
   createInfos.reserve(builders.size());
@@ -75,7 +76,7 @@ std::vector<ErrorOr<PipelineRAII>> GraphicsPipelineBuilder::getVkGraphicsPipelin
     return {};
   }
 
-  return PipelineRAII::create(builders[0]._renderpass->getLogicalDevice(), createInfos);
+  return Pipeline::create(builders[0]._renderpass->getLogicalDevice(), createInfos);
 }
 
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withRenderpass(const Renderpass& renderpass) {

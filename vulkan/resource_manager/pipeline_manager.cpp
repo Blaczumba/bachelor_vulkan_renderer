@@ -29,7 +29,7 @@ ErrorOr<std::reference_wrapper<const Shader>> PipelineManager::addShader(
 
 ErrorOr<VkDescriptorSetLayout> PipelineManager::getOrCreateBindlessLayout(
     const LogicalDevice& logicalDevice) {
-  static constexpr RAIIDescriptorSetType layoutType = RAIIDescriptorSetType::BINDLESS;
+  static constexpr DescriptorSetType layoutType = DescriptorSetType::BINDLESS;
   if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
     return it->second.getVkDescriptorSetLayout();
   }
@@ -64,7 +64,7 @@ ErrorOr<VkDescriptorSetLayout> PipelineManager::getOrCreateBindlessLayout(
 
 ErrorOr<VkDescriptorSetLayout> PipelineManager::getOrCreateCameraLayout(
     const LogicalDevice& logicalDevice) {
-  static constexpr RAIIDescriptorSetType layoutType = RAIIDescriptorSetType::CAMERA;
+  static constexpr DescriptorSetType layoutType = DescriptorSetType::CAMERA;
   if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
     return it->second.getVkDescriptorSetLayout();
   }

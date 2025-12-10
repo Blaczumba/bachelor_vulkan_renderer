@@ -1,12 +1,20 @@
 #pragma once
 
+#include <array>
 #include <vulkan/vulkan.h>
 #include <initializer_list>
+#include <map>
 
-#include "vulkan/wrapper/pipeline/graphics_pipeline.h"
+#include "vulkan/wrapper/pipeline/pipeline.h"
 #include "vulkan/wrapper/pipeline/pipeline_layout.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
 #include "common/status/status.h"
+
+struct SpecializationData {
+  void* data;
+  size_t dataSize;
+  std::map<VkShaderStageFlagBits, std::vector<VkSpecializationMapEntry>> mapEntries;
+};
 
 class GraphicsPipelineBuilder {
 public:
@@ -29,9 +37,9 @@ public:
 
   ~GraphicsPipelineBuilder() = default;
 
-  ErrorOr<PipelineRAII> getVkGraphicsPipelineCreateInfo();
+  ErrorOr<Pipeline> getVkGraphicsPipelineCreateInfo();
 
-  static std::vector<ErrorOr<PipelineRAII>> getVkGraphicsPipelineCreateInfo(std::span<const GraphicsPipelineBuilder> builders);
+  static std::vector<ErrorOr<Pipeline>> getVkGraphicsPipelineCreateInfo(std::span<const GraphicsPipelineBuilder> builders);
 
   GraphicsPipelineBuilder& withRenderpass(const Renderpass& renderpass);
 

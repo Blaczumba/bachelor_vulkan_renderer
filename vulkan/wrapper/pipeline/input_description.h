@@ -168,3 +168,30 @@ getAttributeDescriptions<VertexP>() {
                                       }
   };
 }
+
+struct PushConstantsPBR {
+  glm::mat4 model;
+  uint32_t uniformIndex;
+  uint32_t diffuse;
+  uint32_t normal;
+  uint32_t metallicRoughness;
+  uint32_t shadow;
+  uint32_t padding[3];
+};
+
+struct PushConstantsShadow {
+  glm::mat4 model;
+  glm::mat4 lightProjView;
+};
+
+struct PushConstantsPhongEnv {
+  glm::mat4 lightProjView;
+  glm::mat3x4 model;
+  uint32_t envMapHandle;
+};
+
+struct PushConstantsSkybox {
+  glm::mat4 proj;
+  glm::mat3x4 view;
+  uint32_t skyboxHandle;
+};
