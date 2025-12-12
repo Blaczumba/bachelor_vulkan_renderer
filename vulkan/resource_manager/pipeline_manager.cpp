@@ -15,15 +15,15 @@ PipelineManager::PipelineManager(const std::shared_ptr<FileLoader>& fileLoader) 
 ErrorOr<std::reference_wrapper<const Shader>> PipelineManager::addShader(
     const LogicalDevice& logicalDevice, std::string_view shaderFile,
     VkShaderStageFlagBits shaderStages) {
-  if (auto it = _shaders.find(shaderFile); it != _shaders.cend()) {
+  auto [it, inserted] = _shaders.try_emplace(shaderFile);
+  if (!inserted) {
     return it->second;
   }
 
   ASSIGN_OR_RETURN(
       const lib::Buffer<std::byte> shaderData,
       _fileLoader->loadFileToBuffer((std::filesystem::path(SHADERS_PATH) / shaderFile).string()));
-  ASSIGN_OR_RETURN(Shader shader, Shader::create(logicalDevice, shaderData, shaderStages));
-  const auto[it, _] = _shaders.emplace(shaderFile, std::move(shader));
+  ASSIGN_OR_RETURN(it->second, Shader::create(logicalDevice, shaderData, shaderStages));
   return it->second;
 }
 
