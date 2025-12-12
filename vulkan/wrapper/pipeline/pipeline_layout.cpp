@@ -6,13 +6,11 @@
 #include "vulkan/wrapper/util/check.h"
 
 PipelineLayout::PipelineLayout(const LogicalDevice& logicalDevice, VkPipelineLayout layout)
-	: _logicalDevice(&logicalDevice), _layout(layout) {}
+  : _logicalDevice(&logicalDevice), _layout(layout) {}
 
 ErrorOr<PipelineLayout> PipelineLayout::create(
-    const LogicalDevice& logicalDevice,
-    std::span<const VkDescriptorSetLayout> descriptorSetLayouts,
-    std::span<const VkPushConstantRange> pushConstantRanges,
-    VkPipelineLayoutCreateFlags flags) {
+    const LogicalDevice& logicalDevice, std::span<const VkDescriptorSetLayout> descriptorSetLayouts,
+    std::span<const VkPushConstantRange> pushConstantRanges, VkPipelineLayoutCreateFlags flags) {
   const VkPipelineLayoutCreateInfo pipelineLayoutInfo{
     .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
     .flags = flags,

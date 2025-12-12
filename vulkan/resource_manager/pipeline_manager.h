@@ -1,14 +1,13 @@
 #pragma once
 
-#include <unordered_map>
 #include <string_view>
+#include <unordered_map>
 
-#include "common/status/status.h"
-
-#include "vulkan/wrapper/pipeline/shader.h"
 #include "common/file/file_loader.h"
+#include "common/status/status.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
+#include "vulkan/wrapper/pipeline/shader.h"
 
 enum class DescriptorSetType : uint8_t {
   BINDLESS,
@@ -42,8 +41,9 @@ private:
   std::unordered_map<DescriptorSetType, DescriptorSetLayout> _descriptorSetLayouts;
   std::unordered_map<std::string_view, PipelineLayout> _pipelineLayouts;
 
-  ErrorOr<std::reference_wrapper<const Shader>> addShader(const LogicalDevice& logicalDevice, std::string_view shaderFile,
-                   VkShaderStageFlagBits shaderStages);
+  ErrorOr<std::reference_wrapper<const Shader>> addShader(
+      const LogicalDevice& logicalDevice, std::string_view shaderFile,
+      VkShaderStageFlagBits shaderStages);
 
   ErrorOr<std::reference_wrapper<const PipelineLayout>> getOrCreatePipelineLayout(
       std::string_view id, const LogicalDevice& logicalDevice,

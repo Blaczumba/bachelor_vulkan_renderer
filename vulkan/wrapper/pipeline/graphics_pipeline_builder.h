@@ -1,14 +1,14 @@
 #pragma once
 
 #include <array>
-#include <vulkan/vulkan.h>
 #include <initializer_list>
 #include <map>
+#include <vulkan/vulkan.h>
 
+#include "common/status/status.h"
 #include "vulkan/wrapper/pipeline/pipeline.h"
 #include "vulkan/wrapper/pipeline/pipeline_layout.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
-#include "common/status/status.h"
 
 struct SpecializationData {
   void* data;
@@ -18,11 +18,11 @@ struct SpecializationData {
 
 class GraphicsPipelineBuilder {
 public:
-  GraphicsPipelineBuilder(lib::Buffer<VkDynamicState>&& dynamicStates,
-                          VkPipelineDynamicStateCreateFlags flags = 0);
-
   GraphicsPipelineBuilder(
-      std::initializer_list<VkDynamicState> dynamicStates, VkPipelineDynamicStateCreateFlags flags = 0);
+      lib::Buffer<VkDynamicState>&& dynamicStates, VkPipelineDynamicStateCreateFlags flags = 0);
+
+  GraphicsPipelineBuilder(std::initializer_list<VkDynamicState> dynamicStates,
+                          VkPipelineDynamicStateCreateFlags flags = 0);
 
   GraphicsPipelineBuilder(
       std::span<const VkDynamicState> dynamicStates, VkPipelineDynamicStateCreateFlags flags = 0);
@@ -39,14 +39,16 @@ public:
 
   ErrorOr<Pipeline> getVkGraphicsPipelineCreateInfo();
 
-  static std::vector<ErrorOr<Pipeline>> getVkGraphicsPipelineCreateInfo(std::span<const GraphicsPipelineBuilder> builders);
+  static std::vector<ErrorOr<Pipeline>> getVkGraphicsPipelineCreateInfo(
+      std::span<const GraphicsPipelineBuilder> builders);
 
   GraphicsPipelineBuilder& withRenderpass(const Renderpass& renderpass);
 
   GraphicsPipelineBuilder& withPipelineLayout(const PipelineLayout& pipelineLayout);
 
   GraphicsPipelineBuilder& withShaderStageCreateInfo(
-      lib::Buffer<VkPipelineShaderStageCreateInfo>&& shaderStages, std::optional<SpecializationData> specializationData = std::nullopt);
+      lib::Buffer<VkPipelineShaderStageCreateInfo>&& shaderStages,
+      std::optional<SpecializationData> specializationData = std::nullopt);
 
   GraphicsPipelineBuilder& withShaderStageCreateInfo(
       std::span<const VkPipelineShaderStageCreateInfo> shaderStages,
@@ -73,8 +75,8 @@ public:
 
   GraphicsPipelineBuilder& withRasterizationStateCreateInfo(
       VkPolygonMode polygonMode, VkCullModeFlags cullMode,
-      std::optional<std::pair<float, float>> depthBiasConstantSlopeFactors = std::nullopt, float depthBiasClamp = 0.0f,
-      float lineWidth = 1.0f);
+      std::optional<std::pair<float, float>> depthBiasConstantSlopeFactors = std::nullopt,
+      float depthBiasClamp = 0.0f, float lineWidth = 1.0f);
 
   GraphicsPipelineBuilder& withMultisampleStateCreateInfo(
       VkSampleCountFlagBits numMsaaSamples, std::optional<float> minSampleShading = std::nullopt,
@@ -94,7 +96,8 @@ public:
       VkPipelineColorBlendStateCreateFlags flags = 0);
 
   GraphicsPipelineBuilder& withDepthStencilStateCreateInfo(
-      std::optional<VkCompareOp> depthCompareOp, std::optional<std::pair<float, float>> depthBounds = std::nullopt,
+      std::optional<VkCompareOp> depthCompareOp,
+      std::optional<std::pair<float, float>> depthBounds = std::nullopt,
       std::optional<std::pair<VkStencilOpState, VkStencilOpState>> frontBack = std::nullopt,
       VkPipelineDepthStencilStateCreateFlags flags = 0);
 

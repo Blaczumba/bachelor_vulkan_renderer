@@ -1,14 +1,13 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-
-#include "common/status/status.h"
 #include <vulkan/wrapper/logical_device/logical_device.h>
 
+#include "common/status/status.h"
 
 class Pipeline {
-  Pipeline(const LogicalDevice& logicalDevice, VkPipeline pipeline,
-               VkPipelineBindPoint bindPoint, VkPipelineLayout layout);
+  Pipeline(const LogicalDevice& logicalDevice, VkPipeline pipeline, VkPipelineBindPoint bindPoint,
+           VkPipelineLayout layout);
 
 public:
   Pipeline() = default;

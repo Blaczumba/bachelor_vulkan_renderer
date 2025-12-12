@@ -22,7 +22,7 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder(
     std::span<const VkDynamicState> dynamicStates, VkPipelineDynamicStateCreateFlags flags)
   : GraphicsPipelineBuilder(lib::Buffer<VkDynamicState>(dynamicStates), flags) {}
 
-ErrorOr<Pipeline> GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo(){
+ErrorOr<Pipeline> GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo() {
   if (_renderpass == nullptr || _pipelineLayout == nullptr) {
     return Error(EngineError::NULLPTR_REFERENCE);
   }
@@ -52,7 +52,7 @@ std::vector<ErrorOr<Pipeline>> GraphicsPipelineBuilder::getVkGraphicsPipelineCre
 
   for (const GraphicsPipelineBuilder& builder : builders) {
     if (builder._renderpass == nullptr || builder._pipelineLayout == nullptr) {
-      continue; // TODO: handle it better
+      continue;  // TODO: handle it better
     }
 
     createInfos.emplace_back(VkGraphicsPipelineCreateInfo{
@@ -135,13 +135,13 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::withVertexInputStateCreateInfo
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withInputAssemblyStateCreateInfo(
     VkPrimitiveTopology topology, VkBool32 primitiveRestartEnable,
     VkPipelineInputAssemblyStateCreateFlags flags) {
-    _inputAssemblyState = {
+  _inputAssemblyState = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
     .flags = flags,
     .topology = topology,
     .primitiveRestartEnable = primitiveRestartEnable};
 
-    return *this;
+  return *this;
 }
 
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withTessellationStateCreateInfo(
@@ -171,7 +171,7 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::withViewportStateCreateInfo(
     .viewportCount = dynamicViewport ? 1 : static_cast<uint32_t>(_viewports.size()),
     .pViewports = dynamicViewport ? nullptr : _viewports.data(),
     .scissorCount = dynamicScissor ? 1 : static_cast<uint32_t>(_scissors.size()),
-    .pScissors = dynamicScissor ? nullptr : _scissors.data() };
+    .pScissors = dynamicScissor ? nullptr : _scissors.data()};
   return *this;
 }
 
@@ -187,8 +187,8 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::withRasterizationStateCreateIn
     .cullMode = cullMode,
     .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
     .depthBiasEnable = depthBiasConstantSlopeFactors.has_value() ? VK_TRUE : VK_FALSE,
-    .depthBiasConstantFactor = depthBiasConstantSlopeFactors.has_value() ?
-    depthBiasConstantSlopeFactors->first : 0.0f,
+    .depthBiasConstantFactor =
+        depthBiasConstantSlopeFactors.has_value() ? depthBiasConstantSlopeFactors->first : 0.0f,
     .depthBiasClamp = depthBiasClamp,
     .depthBiasSlopeFactor =
         depthBiasConstantSlopeFactors.has_value() ? depthBiasConstantSlopeFactors->second : 0.0f,
@@ -212,8 +212,7 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::withMultisampleStateCreateInfo
 
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withColorBlendStateCreateInfo(
     lib::Buffer<VkPipelineColorBlendAttachmentState>&& colorBlendAttachments,
-    std::array<float, 4> blendConstants,
-    std::optional<VkLogicOp> logicOp,
+    std::array<float, 4> blendConstants, std::optional<VkLogicOp> logicOp,
     VkPipelineColorBlendStateCreateFlags flags) {
   _colorBlendAttachments = std::move(colorBlendAttachments);
   _colorBlendState = VkPipelineColorBlendStateCreateInfo{
@@ -230,12 +229,11 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::withColorBlendStateCreateInfo(
 
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withColorBlendStateCreateInfo(
     std::span<const VkPipelineColorBlendAttachmentState> colorBlendAttachments,
-    std::array<float, 4> blendConstants,
-    std::optional<VkLogicOp> logicOp,
+    std::array<float, 4> blendConstants, std::optional<VkLogicOp> logicOp,
     VkPipelineColorBlendStateCreateFlags flags) {
   return withColorBlendStateCreateInfo(
-      lib::Buffer<VkPipelineColorBlendAttachmentState>(colorBlendAttachments),
-      blendConstants, logicOp, flags);
+      lib::Buffer<VkPipelineColorBlendAttachmentState>(colorBlendAttachments), blendConstants,
+      logicOp, flags);
 }
 
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withDepthStencilStateCreateInfo(

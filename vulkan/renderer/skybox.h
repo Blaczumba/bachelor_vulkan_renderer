@@ -2,6 +2,4 @@
 
 #include ""
 
-namespace RendererFactory {
-
-}
+namespace RendererFactory {}

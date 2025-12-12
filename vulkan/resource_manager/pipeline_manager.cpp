@@ -1,16 +1,16 @@
 #include "pipeline_manager.h"
 
 #include <array>
+#include <filesystem>
 #include <string_view>
 #include <vulkan/vulkan.h>
-#include <filesystem>
 
 #include "lib/buffer/buffer.h"
-
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 #include "vulkan/wrapper/pipeline/input_description.h"
 
-PipelineManager::PipelineManager(const std::shared_ptr<FileLoader>& fileLoader) : _fileLoader(fileLoader) {}
+PipelineManager::PipelineManager(const std::shared_ptr<FileLoader>& fileLoader)
+  : _fileLoader(fileLoader) {}
 
 ErrorOr<std::reference_wrapper<const Shader>> PipelineManager::addShader(
     const LogicalDevice& logicalDevice, std::string_view shaderFile,
@@ -86,8 +86,7 @@ ErrorOr<VkDescriptorSetLayout> PipelineManager::getOrCreateCameraLayout(
 ErrorOr<std::reference_wrapper<const PipelineLayout>> PipelineManager::getOrCreatePipelineLayout(
     std::string_view id, const LogicalDevice& logicalDevice,
     std::span<const VkDescriptorSetLayout> descriptorSetLayouts,
-    std::span<const VkPushConstantRange> pushConstantRanges,
-    VkPipelineLayoutCreateFlags flags) {
+    std::span<const VkPushConstantRange> pushConstantRanges, VkPipelineLayoutCreateFlags flags) {
   auto [it, inserted] = _pipelineLayouts.try_emplace(id);
 
   if (!inserted) {
@@ -114,8 +113,8 @@ constexpr VkPushConstantRange getPushConstantRange(
 
 ErrorOr<GraphicsPipelineBuilder> PipelineManager::createPBRProgram(const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
-  ASSIGN_OR_RETURN(
-      const Shader& vertex, addShader(logicalDevice, "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
+  ASSIGN_OR_RETURN(const Shader& vertex,
+                   addShader(logicalDevice, "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
   ASSIGN_OR_RETURN(const Shader& fragment,
                    addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
 
@@ -128,8 +127,8 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createPBRProgram(const Renderp
   ASSIGN_OR_RETURN(descriptorSetLayouts[1], getOrCreateCameraLayout(logicalDevice));
 
   ASSIGN_OR_RETURN(const PipelineLayout& pipelineLayout,
-                   getOrCreatePipelineLayout("PbrBindlessCam", logicalDevice,
-                                             descriptorSetLayouts, pushConstantRanges));
+                   getOrCreatePipelineLayout(
+                       "PbrBindlessCam", logicalDevice, descriptorSetLayouts, pushConstantRanges));
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -144,25 +143,27 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createPBRProgram(const Renderp
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  return ErrorOr<GraphicsPipelineBuilder>(
-      std::move(GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
-      .withRenderpass(renderpass)
-      .withPipelineLayout(pipelineLayout)
-      .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-      .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
-      .withShaderStageCreateInfo(shaderStages)
-      .withViewportStateCreateInfo()
-      .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
-      .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
-      .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
-      .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
+  return ErrorOr<GraphicsPipelineBuilder>(std::move(
+      GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+          .withRenderpass(renderpass)
+          .withPipelineLayout(pipelineLayout)
+          .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+          .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
+          .withShaderStageCreateInfo(shaderStages)
+          .withViewportStateCreateInfo()
+          .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
+          .withMultisampleStateCreateInfo(
+              renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
+          .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
+          .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
 }
 
 ErrorOr<GraphicsPipelineBuilder> PipelineManager::createPbrEnvMappingProgram(
     const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
-  ASSIGN_OR_RETURN(const Shader& vertex,
-                   addShader(logicalDevice, "pbr_env_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
+  ASSIGN_OR_RETURN(
+      const Shader& vertex,
+      addShader(logicalDevice, "pbr_env_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
   ASSIGN_OR_RETURN(const Shader& fragment,
                    addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
 
@@ -220,9 +221,9 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createSkyboxProgram(
     getPushConstantRange<PushConstantsSkybox>(
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)};
 
-  ASSIGN_OR_RETURN(const PipelineLayout& pipelineLayout,
-                   getOrCreatePipelineLayout(
-                       "Skybox", logicalDevice, descriptorSetLayouts, pushConstantRanges));
+  ASSIGN_OR_RETURN(
+      const PipelineLayout& pipelineLayout,
+      getOrCreatePipelineLayout("Skybox", logicalDevice, descriptorSetLayouts, pushConstantRanges));
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -252,7 +253,8 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createSkyboxProgram(
           .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
 }
 
-ErrorOr<GraphicsPipelineBuilder> PipelineManager::createShadowProgram(const Renderpass& renderpass) {
+ErrorOr<GraphicsPipelineBuilder> PipelineManager::createShadowProgram(
+    const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   ASSIGN_OR_RETURN(const Shader& vertex,
                    addShader(logicalDevice, "shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
@@ -260,16 +262,14 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createShadowProgram(const Rend
                    addShader(logicalDevice, "shadow.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
 
   static constexpr VkPushConstantRange pushConstantRanges[] = {
-    getPushConstantRange<PushConstantsShadow>(
-        VK_SHADER_STAGE_VERTEX_BIT)};
+    getPushConstantRange<PushConstantsShadow>(VK_SHADER_STAGE_VERTEX_BIT)};
 
   ASSIGN_OR_RETURN(const PipelineLayout& pipelineLayout,
                    getOrCreatePipelineLayout("Shadow", logicalDevice, {}, pushConstantRanges));
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
-      VkPipelineColorBlendAttachmentState{
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT});
+      VkPipelineColorBlendAttachmentState{.colorWriteMask = VK_COLOR_COMPONENT_R_BIT});
 
   static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
     getBindingDescription<VertexP>()};
@@ -286,10 +286,9 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createShadowProgram(const Rend
           .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
           .withShaderStageCreateInfo(shaderStages)
           .withViewportStateCreateInfo()
-          .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, std::pair{0.7f, 2.0f})
-          .withMultisampleStateCreateInfo(
-              renderpass.getAttachmentsLayout().getNumMsaaSamples())
+          .withRasterizationStateCreateInfo(
+              VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, std::pair{0.7f, 2.0f})
+          .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples())
           .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
           .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
 }
-
