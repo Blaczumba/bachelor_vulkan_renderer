@@ -29,21 +29,27 @@ class LogicalDevice {
   VkQueue _transferQueue = VK_NULL_HANDLE;
 
   LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice,
-                std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
-                    make_unique<ImmediateResourceDestroyer>());
+                std::unique_ptr<ResourceDestroyer>&& resourceDestroyer);
 
 public:
   LogicalDevice() = default;
 
-  static ErrorOr<LogicalDevice> create(const PhysicalDevice& physicalDevice);
+  static ErrorOr<LogicalDevice> create(
+      const PhysicalDevice& physicalDevice,
+      std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
+          make_unique<ThreadedResourceDestroyer>());
 
-  static ErrorOr<LogicalDevice> wrap(VkDevice device, const PhysicalDevice& physicalDevice);
+  static ErrorOr<LogicalDevice> wrap(VkDevice device, const PhysicalDevice& physicalDevice,
+                                     std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
+                                         make_unique<ImmediateResourceDestroyer>());
 
   LogicalDevice(LogicalDevice&& logicalDevice) noexcept;
 
   LogicalDevice& operator=(LogicalDevice&& logicalDevice) noexcept;
 
   ~LogicalDevice();
+
+  void destroyResource(std::function<void(VkDevice)>&& destroyResource) const;
 
   ErrorOr<VkSampler> createSampler(const SamplerParameters& params) const;
 

@@ -28,6 +28,7 @@ LogicalDevice::LogicalDevice(LogicalDevice&& logicalDevice) noexcept
   : _device(std::exchange(logicalDevice._device, VK_NULL_HANDLE)),
     _physicalDevice(std::exchange(logicalDevice._physicalDevice, nullptr)),
     _memoryAllocator(std::move(logicalDevice._memoryAllocator)),
+    _resourceDestroyer(std::move(logicalDevice._resourceDestroyer)),
     _graphicsQueue(std::exchange(logicalDevice._graphicsQueue, VK_NULL_HANDLE)),
     _presentQueue(std::exchange(logicalDevice._presentQueue, VK_NULL_HANDLE)),
     _computeQueue(std::exchange(logicalDevice._computeQueue, VK_NULL_HANDLE)),
@@ -41,6 +42,7 @@ LogicalDevice& LogicalDevice::operator=(LogicalDevice&& logicalDevice) noexcept 
   _device = std::exchange(logicalDevice._device, VK_NULL_HANDLE);
   _physicalDevice = std::exchange(logicalDevice._physicalDevice, nullptr);
   _memoryAllocator = std::move(logicalDevice._memoryAllocator);
+  _resourceDestroyer = std::move(logicalDevice._resourceDestroyer);
   _graphicsQueue = std::exchange(logicalDevice._graphicsQueue, VK_NULL_HANDLE);
   _presentQueue = std::exchange(logicalDevice._presentQueue, VK_NULL_HANDLE);
   _computeQueue = std::exchange(logicalDevice._computeQueue, VK_NULL_HANDLE);
@@ -52,11 +54,17 @@ LogicalDevice::~LogicalDevice() {
   // TODO refactor
   if (_device != VK_NULL_HANDLE) {
     std::get<VmaWrapper>(_memoryAllocator).destroy();
+    _resourceDestroyer.reset();
     vkDestroyDevice(_device, nullptr);
   }
 }
 
-ErrorOr<LogicalDevice> LogicalDevice::create(const PhysicalDevice& physicalDevice) {
+void LogicalDevice::destroyResource(std::function<void(VkDevice)>&& destroyResource) const {
+  _resourceDestroyer->destroyResource(std::move(destroyResource));
+}
+
+ErrorOr<LogicalDevice> LogicalDevice::create(
+    const PhysicalDevice& physicalDevice, std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) {
   const QueueFamilyIndices& indices = physicalDevice.getQueueFamilyIndices();
   const std::set<uint32_t> uniqueQueueFamilies = {*indices.graphicsFamily, *indices.presentFamily,
                                                   *indices.computeFamily, *indices.transferFamily};
@@ -110,14 +118,17 @@ ErrorOr<LogicalDevice> LogicalDevice::create(const PhysicalDevice& physicalDevic
   CHECK_VKCMD(
       vkCreateDevice(physicalDevice.getVkPhysicalDevice(), &createInfo, nullptr, &logicalDevice));
 
-  return LogicalDevice(logicalDevice, physicalDevice);
+  resourceDestroyer->setupContext(logicalDevice);
+  return LogicalDevice(logicalDevice, physicalDevice, std::move(resourceDestroyer));
 }
 
-ErrorOr<LogicalDevice> LogicalDevice::wrap(VkDevice device, const PhysicalDevice& physicalDevice) {
+ErrorOr<LogicalDevice> LogicalDevice::wrap(VkDevice device, const PhysicalDevice& physicalDevice,
+                                           std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) {
   if (device == VK_NULL_HANDLE) {
     return Error(EngineError::NULLPTR_REFERENCE);
   }
-  return LogicalDevice(device, physicalDevice);
+  resourceDestroyer->setupContext(device);
+  return LogicalDevice(device, physicalDevice, std::move(resourceDestroyer));
 }
 
 ErrorOr<VkImageView> LogicalDevice::createImageView(
