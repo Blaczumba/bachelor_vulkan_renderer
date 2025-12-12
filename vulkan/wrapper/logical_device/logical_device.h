@@ -7,6 +7,7 @@
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 
 enum class QueueType : uint8_t {
   GRAPHICS = 0,
@@ -20,13 +21,16 @@ class LogicalDevice {
 
   const PhysicalDevice* _physicalDevice = nullptr;
   mutable MemoryAllocator _memoryAllocator;
+  std::unique_ptr<ResourceDestroyer> _resourceDestroyer;
 
   VkQueue _graphicsQueue = VK_NULL_HANDLE;
   VkQueue _presentQueue = VK_NULL_HANDLE;
   VkQueue _computeQueue = VK_NULL_HANDLE;
   VkQueue _transferQueue = VK_NULL_HANDLE;
 
-  LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice);
+  LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice,
+                std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
+                    make_unique<ImmediateResourceDestroyer>());
 
 public:
   LogicalDevice() = default;

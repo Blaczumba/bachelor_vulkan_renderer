@@ -11,11 +11,12 @@
 #include "vulkan/wrapper/instance/extensions.h"
 #include "vulkan/wrapper/util/check.h"
 
-LogicalDevice::LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice)
+LogicalDevice::LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice,
+                             std::unique_ptr<ResourceDestroyer>&& resourceDestroyer)
   : _device(logicalDevice), _physicalDevice(&physicalDevice),
     _memoryAllocator(
         std::in_place_type<VmaWrapper>, logicalDevice, physicalDevice.getVkPhysicalDevice(),
-        physicalDevice.getInstance().getVkInstance()) {
+        physicalDevice.getInstance().getVkInstance()), _resourceDestroyer(std::move(resourceDestroyer)) {
   const QueueFamilyIndices& queueFamilyIndices = physicalDevice.getQueueFamilyIndices();
   vkGetDeviceQueue(logicalDevice, *queueFamilyIndices.graphicsFamily, 0, &_graphicsQueue);
   vkGetDeviceQueue(logicalDevice, *queueFamilyIndices.presentFamily, 0, &_presentQueue);
