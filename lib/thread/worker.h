@@ -1,14 +1,15 @@
 #pragma once
 
-#include <thread>
-#include <mutex>
+#include <array>
 #include <condition_variable>
 #include <functional>
+#include <mutex>
 #include <queue>
+#include <thread>
 
 namespace lib::thread {
 
-template<typename... Args>
+template <size_t N, typename... Args>
 class Worker {
 public:
   using Context = std::tuple<Args...>;
@@ -16,9 +17,9 @@ public:
 
   Worker() = default;
 
-  Worker(Args... args, size_t batch = 8);
+  Worker(Args... args);
 
-  void startWorkingThread(Args... args, size_t batch = 8);
+  void startWorkingThread(Args... args);
 
   ~Worker();
 
@@ -28,21 +29,19 @@ private:
   void workingThread();
 
   Context _context;
-  size_t _batch;
-  bool _stop;
   std::queue<Job> _tasks;
   std::thread _thread;
   std::mutex _mtx;
   std::condition_variable _cv;
+  bool _stop;
 };
 
-template <typename... Args>
-Worker<Args...>::Worker(Args... args, size_t batch)
-  : _context(std::forward<Args>(args)...), _batch(batch), _stop(false),
-    _thread(&Worker::workingThread, this) {}
+template <size_t N, typename... Args>
+Worker<N, Args...>::Worker(Args... args)
+  : _context(std::forward<Args>(args)...), _stop(false), _thread(&Worker::workingThread, this) {}
 
-template <typename... Args>
-Worker<Args...>::~Worker() {
+template <size_t N, typename... Args>
+Worker<N, Args...>::~Worker() {
   {
     std::lock_guard<std::mutex> lock(_mtx);
     _stop = true;
@@ -54,31 +53,31 @@ Worker<Args...>::~Worker() {
   }
 }
 
-template <typename... Args>
-void Worker<Args...>::startWorkingThread(Args... args, size_t batch) {
-  _context = Context{std::forward<Args>(args)...};
-  if (!_thread.joinable()) {
-    _batch = batch;
-    _stop = false;
-    _thread = std::thread(&Worker::workingThread, this);
+template <size_t N, typename... Args>
+void Worker<N, Args...>::startWorkingThread(Args... args) {
+  if (_thread.joinable()) [[unlikely]] {
+    return;
   }
+  _context = Context{std::forward<Args>(args)...};
+  _stop = false;
+  _thread = std::thread(&Worker::workingThread, this);
 }
 
-template <typename... Args>
-void Worker<Args...>::workingThread() {
-  std::vector<Job> tasksToProcess(_batch);  // TODO: Change to inline vector
+template <size_t N, typename... Args>
+void Worker<N, Args...>::workingThread() {
+  std::array<Job, N> tasksToProcess;  // TODO: Change to inline vector
   while (true) {
     {
       std::unique_lock<std::mutex> lock(_mtx);
       _cv.wait(lock, [this]() {
-        return _tasks.size() > _batch || _stop;
+        return _tasks.size() > N || _stop;
       });
 
       if (_stop) [[unlikely]] {
         break;
       }
 
-      for (size_t i = 0; i < _batch; i++) {
+      for (size_t i = 0; i < N; i++) {
         tasksToProcess[i] = std::move(_tasks.front());
         _tasks.pop();
       }
@@ -95,13 +94,13 @@ void Worker<Args...>::workingThread() {
   }
 }
 
-template <typename... Args>
-void Worker<Args...>::addJob(Job&& job) {
+template <size_t N, typename... Args>
+void Worker<N, Args...>::addJob(Job&& job) {
   std::lock_guard<std::mutex> lock(_mtx);
   _tasks.push(std::move(job));
-  if (_tasks.size() >= _batch) {
-      _cv.notify_one();
+  if (_tasks.size() >= N) {
+    _cv.notify_one();
   }
 }
 
-}  // lib::thread
+}  // namespace lib::thread

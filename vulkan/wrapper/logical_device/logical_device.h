@@ -20,7 +20,7 @@ class LogicalDevice {
   VkDevice _device = VK_NULL_HANDLE;
 
   const PhysicalDevice* _physicalDevice = nullptr;
-  mutable MemoryAllocator _memoryAllocator;
+  MemoryAllocatorPtr _memoryAllocator;
   std::unique_ptr<ResourceDestroyer> _resourceDestroyer;
 
   VkQueue _graphicsQueue = VK_NULL_HANDLE;

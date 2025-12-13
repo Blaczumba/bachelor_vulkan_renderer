@@ -18,8 +18,6 @@ public:
 
   ~VmaWrapper();
 
-  void destroy();
-
   struct Buffer {
     VkBuffer buffer;
     VmaAllocation allocation;

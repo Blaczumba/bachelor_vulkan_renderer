@@ -36,7 +36,7 @@ public:
                     MemoryAllocator* memoryAllocator) override;
 
 private:
-  lib::thread::Worker<DestroyerContext> _worker;
+  lib::thread::Worker<8ULL, DestroyerContext> _worker;
 };
 
 class ImmediateResourceDestroyer : public ResourceDestroyer {

@@ -37,11 +37,6 @@ VmaWrapper::~VmaWrapper() {
   }
 }
 
-void VmaWrapper::destroy() {
-  vmaDestroyAllocator(_allocator);
-  _allocator = nullptr;
-}
-
 ErrorOr<VmaWrapper::Buffer> VmaWrapper::createVkBuffer(
     VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage,
     VmaAllocationCreateFlags flags) {

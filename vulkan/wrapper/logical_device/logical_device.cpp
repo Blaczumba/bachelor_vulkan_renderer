@@ -14,11 +14,11 @@
 LogicalDevice::LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice,
                              std::unique_ptr<ResourceDestroyer>&& resourceDestroyer)
   : _device(logicalDevice), _physicalDevice(&physicalDevice),
-    _memoryAllocator(
+    _memoryAllocator(std::make_unique<MemoryAllocator>(
         std::in_place_type<VmaWrapper>, logicalDevice, physicalDevice.getVkPhysicalDevice(),
-        physicalDevice.getInstance().getVkInstance()),
+        physicalDevice.getInstance().getVkInstance())),
     _resourceDestroyer(std::move(resourceDestroyer)) {
-  _resourceDestroyer->setupContext(_device, nullptr, &_memoryAllocator);
+  _resourceDestroyer->setupContext(_device, nullptr, _memoryAllocator.get());
   const QueueFamilyIndices& queueFamilyIndices = physicalDevice.getQueueFamilyIndices();
   vkGetDeviceQueue(logicalDevice, *queueFamilyIndices.graphicsFamily, 0, &_graphicsQueue);
   vkGetDeviceQueue(logicalDevice, *queueFamilyIndices.presentFamily, 0, &_presentQueue);
@@ -34,9 +34,7 @@ LogicalDevice::LogicalDevice(LogicalDevice&& logicalDevice) noexcept
     _graphicsQueue(std::exchange(logicalDevice._graphicsQueue, VK_NULL_HANDLE)),
     _presentQueue(std::exchange(logicalDevice._presentQueue, VK_NULL_HANDLE)),
     _computeQueue(std::exchange(logicalDevice._computeQueue, VK_NULL_HANDLE)),
-    _transferQueue(std::exchange(logicalDevice._transferQueue, VK_NULL_HANDLE)) {
-  _resourceDestroyer->setupContext(_device, nullptr, &_memoryAllocator);
-}
+    _transferQueue(std::exchange(logicalDevice._transferQueue, VK_NULL_HANDLE)) {}
 
 LogicalDevice& LogicalDevice::operator=(LogicalDevice&& logicalDevice) noexcept {
   if (this == &logicalDevice) {
@@ -47,7 +45,6 @@ LogicalDevice& LogicalDevice::operator=(LogicalDevice&& logicalDevice) noexcept 
   _physicalDevice = std::exchange(logicalDevice._physicalDevice, nullptr);
   _memoryAllocator = std::move(logicalDevice._memoryAllocator);
   _resourceDestroyer = std::move(logicalDevice._resourceDestroyer);
-  _resourceDestroyer->setupContext(_device, nullptr, &_memoryAllocator);
   _graphicsQueue = std::exchange(logicalDevice._graphicsQueue, VK_NULL_HANDLE);
   _presentQueue = std::exchange(logicalDevice._presentQueue, VK_NULL_HANDLE);
   _computeQueue = std::exchange(logicalDevice._computeQueue, VK_NULL_HANDLE);
@@ -56,10 +53,9 @@ LogicalDevice& LogicalDevice::operator=(LogicalDevice&& logicalDevice) noexcept 
 }
 
 LogicalDevice::~LogicalDevice() {
-  // TODO refactor
   if (_device != VK_NULL_HANDLE) {
     _resourceDestroyer.reset();
-    std::get<VmaWrapper>(_memoryAllocator).destroy();
+    _memoryAllocator.reset();
     vkDestroyDevice(_device, nullptr);
   }
 }
@@ -188,7 +184,7 @@ const PhysicalDevice& LogicalDevice::getPhysicalDevice() const {
 }
 
 MemoryAllocator& LogicalDevice::getMemoryAllocator() const {
-  return _memoryAllocator;
+  return *_memoryAllocator;
 }
 
 VkQueue LogicalDevice::getVkQueue(QueueType queueType) const {
