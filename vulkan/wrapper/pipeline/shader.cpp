@@ -41,27 +41,6 @@ Shader& Shader::operator=(Shader&& other) noexcept {
   return *this;
 }
 
-size_t g_allocCount{0};
-size_t g_deallocCount{0};
-
-void* operator new(std::size_t size) {
-  g_allocCount++;
-  if (void* ptr = std::malloc(size)) {
-    return ptr;
-  }
-  throw std::bad_alloc{};
-}
-
-void operator delete(void* ptr) noexcept {
-  g_deallocCount++;
-  std::free(ptr);
-}
-
-void operator delete(void* ptr, std::size_t) noexcept {
-  g_deallocCount++;
-  std::free(ptr);
-}
-
 Shader::~Shader() {
   if (_shaderModule != VK_NULL_HANDLE) {
     _logicalDevice->destroyResource(std::bind(

@@ -22,7 +22,8 @@ DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& layout
 
 DescriptorSetLayout::~DescriptorSetLayout() {
   if (_descriptorSetLayout != VK_NULL_HANDLE) {
-    vkDestroyDescriptorSetLayout(_logicalDevice->getVkDevice(), _descriptorSetLayout, nullptr);
+    _logicalDevice->destroyResource(std::bind(vkDestroyDescriptorSetLayout, std::placeholders::_1,
+                                              _descriptorSetLayout, std::placeholders::_2));
   }
 }
 

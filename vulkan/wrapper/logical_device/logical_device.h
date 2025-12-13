@@ -37,7 +37,7 @@ public:
   static ErrorOr<LogicalDevice> create(
       const PhysicalDevice& physicalDevice,
       std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
-          make_unique<ThreadedResourceDestroyer>());
+          make_unique<ImmediateResourceDestroyer>());
 
   static ErrorOr<LogicalDevice> wrap(VkDevice device, const PhysicalDevice& physicalDevice,
                                      std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::

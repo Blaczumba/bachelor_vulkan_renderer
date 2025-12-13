@@ -20,7 +20,8 @@ ErrorOr<std::unique_ptr<CommandPool>> CommandPool::create(
 }
 
 CommandPool::~CommandPool() {
-  vkDestroyCommandPool(_logicalDevice.getVkDevice(), _commandPool, nullptr);
+  _logicalDevice.destroyResource(
+      std::bind(vkDestroyCommandPool, std::placeholders::_1, _commandPool, std::placeholders::_2));
 }
 ErrorOr<CommandBuffer> CommandPool::createCommandBuffer(VkCommandBufferLevel level) const {
   return CommandBuffer::create(shared_from_this(), level);
@@ -65,8 +66,11 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& other) noexcept {
 
 CommandBuffer::~CommandBuffer() {
   if (_commandBuffer != VK_NULL_HANDLE) {
-    vkFreeCommandBuffers(_commandPool->getLogicalDevice().getVkDevice(),
-                         _commandPool->getVkCommandPool(), 1, &_commandBuffer);
+    _commandPool->getLogicalDevice().destroyResource(
+        [pool = _commandPool->getVkCommandPool(),
+         buffer = _commandBuffer](VkDevice device, VkAllocationCallbacks*) {
+          vkFreeCommandBuffers(device, pool, 1, &buffer);
+        });
   }
 }
 

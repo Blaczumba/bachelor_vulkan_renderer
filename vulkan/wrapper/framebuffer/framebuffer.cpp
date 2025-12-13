@@ -178,7 +178,8 @@ Framebuffer& Framebuffer::operator=(Framebuffer&& framebuffer) noexcept {
 
 Framebuffer::~Framebuffer() {
   if (_framebuffer != VK_NULL_HANDLE && _renderpass != nullptr) {
-    vkDestroyFramebuffer(_renderpass->getLogicalDevice().getVkDevice(), _framebuffer, nullptr);
+    _renderpass->getLogicalDevice().destroyResource(std::bind(
+        vkDestroyFramebuffer, std::placeholders::_1, _framebuffer, std::placeholders::_2));
   }
 }
 

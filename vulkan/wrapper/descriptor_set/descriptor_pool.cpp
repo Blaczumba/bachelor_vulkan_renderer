@@ -13,7 +13,8 @@ DescriptorPool::DescriptorPool(
     _allocatedSets(0) {}
 
 DescriptorPool::~DescriptorPool() {
-  vkDestroyDescriptorPool(_logicalDevice.getVkDevice(), _descriptorPool, nullptr);
+  _logicalDevice.destroyResource(std::bind(
+      vkDestroyDescriptorPool, std::placeholders::_1, _descriptorPool, std::placeholders::_2));
 }
 
 ErrorOr<std::unique_ptr<DescriptorPool>> DescriptorPool::create(

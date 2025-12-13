@@ -67,15 +67,21 @@ struct ImageDeleter {
 Texture::~Texture() {
   const VkDevice device = _logicalDevice->getVkDevice();
   if (_sampler != VK_NULL_HANDLE) {
-    vkDestroySampler(device, _sampler, nullptr);
+    _logicalDevice->destroyResource(
+        std::bind(vkDestroySampler, std::placeholders::_1, _sampler, std::placeholders::_2));
   }
 
   for (VkImageView view : _views) {
-    vkDestroyImageView(device, view, nullptr);
+    _logicalDevice->destroyResource(
+        std::bind(vkDestroyImageView, std::placeholders::_1, view, std::placeholders::_2));
   }
 
   if (_image != VK_NULL_HANDLE) {
-    std::visit(ImageDeleter{_image}, _logicalDevice->getMemoryAllocator(), _allocation);
+    _logicalDevice->destroyResource(
+        [image = _image, allocator = &_logicalDevice->getMemoryAllocator(),
+         allocation = _allocation](VkDevice, VkAllocationCallbacks*) {
+          std::visit(ImageDeleter{image}, *allocator, allocation);
+        });
   }
 }
 
