@@ -149,8 +149,9 @@ Renderpass& Renderpass::operator=(Renderpass&& renderpass) noexcept {
 
 Renderpass::~Renderpass() {
   if (_renderpass != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource(
-        std::bind(vkDestroyRenderPass, std::placeholders::_1, _renderpass, std::placeholders::_2));
+    _logicalDevice->destroyResource([renderpass = _renderpass](DestroyerContext context) {
+      vkDestroyRenderPass(context.device, renderpass, context.allocationCallbacks);
+    });
   }
 }
 

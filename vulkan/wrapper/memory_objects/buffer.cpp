@@ -32,7 +32,10 @@ Buffer& Buffer::operator=(Buffer&& buffer) noexcept {
 
 Buffer::~Buffer() {
   if (_buffer != VK_NULL_HANDLE) {
-    std::visit(BufferDeallocator{_buffer}, _logicalDevice->getMemoryAllocator(), _allocation);
+    _logicalDevice->destroyResource(
+        [buffer = _buffer, allocation = _allocation](DestroyerContext context) {
+          std::visit(BufferDeallocator{buffer}, *context.memoryAllocator, allocation);
+        });
   }
 }
 

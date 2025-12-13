@@ -3,11 +3,11 @@
 #include <variant>
 
 #include "common/status/status.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
-#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 
 enum class QueueType : uint8_t {
   GRAPHICS = 0,

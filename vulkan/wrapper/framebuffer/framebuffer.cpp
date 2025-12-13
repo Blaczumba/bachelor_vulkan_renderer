@@ -177,9 +177,11 @@ Framebuffer& Framebuffer::operator=(Framebuffer&& framebuffer) noexcept {
 }
 
 Framebuffer::~Framebuffer() {
-  if (_framebuffer != VK_NULL_HANDLE && _renderpass != nullptr) {
-    _renderpass->getLogicalDevice().destroyResource(std::bind(
-        vkDestroyFramebuffer, std::placeholders::_1, _framebuffer, std::placeholders::_2));
+  if (_framebuffer != VK_NULL_HANDLE) {
+    _renderpass->getLogicalDevice().destroyResource(
+        [framebuffer = _framebuffer](DestroyerContext context) {
+          vkDestroyFramebuffer(context.device, framebuffer, context.allocationCallbacks);
+        });
   }
 }
 

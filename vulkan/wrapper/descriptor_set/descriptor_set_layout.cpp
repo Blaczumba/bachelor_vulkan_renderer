@@ -22,8 +22,11 @@ DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& layout
 
 DescriptorSetLayout::~DescriptorSetLayout() {
   if (_descriptorSetLayout != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource(std::bind(vkDestroyDescriptorSetLayout, std::placeholders::_1,
-                                              _descriptorSetLayout, std::placeholders::_2));
+    _logicalDevice->destroyResource(
+        [descriptorSetlayout = _descriptorSetLayout](DestroyerContext context) {
+          vkDestroyDescriptorSetLayout(
+              context.device, descriptorSetlayout, context.allocationCallbacks);
+        });
   }
 }
 

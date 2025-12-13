@@ -1,11 +1,18 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
 #include <functional>
+#include <vulkan/vulkan.h>
 
 #include "lib/thread/worker.h"
+#include "vulkan/wrapper/memory_allocator/allocation.h"
 
-using ResourceDestroyerJob = std::function<void(VkDevice, VkAllocationCallbacks*)>;
+struct DestroyerContext {
+  VkDevice device = VK_NULL_HANDLE;
+  VkAllocationCallbacks* allocationCallbacks = nullptr;
+  MemoryAllocator* memoryAllocator = nullptr;
+};
+
+using ResourceDestroyerJob = std::function<void(DestroyerContext)>;
 
 class ResourceDestroyer {
 public:
@@ -13,7 +20,8 @@ public:
 
   virtual void destroyResource(ResourceDestroyerJob&& destroyResource) = 0;
 
-  virtual void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks) = 0;
+  virtual void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks,
+                            MemoryAllocator* memoryAllocator) = 0;
 };
 
 class ThreadedResourceDestroyer : public ResourceDestroyer {
@@ -24,10 +32,11 @@ public:
 
   void destroyResource(ResourceDestroyerJob&& destroyResource) override;
 
-  void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks) override;
+  void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks,
+                    MemoryAllocator* memoryAllocator) override;
 
 private:
-  lib::thread::Worker<VkDevice, VkAllocationCallbacks*> _worker;
+  lib::thread::Worker<DestroyerContext> _worker;
 };
 
 class ImmediateResourceDestroyer : public ResourceDestroyer {
@@ -38,9 +47,9 @@ public:
 
   void destroyResource(ResourceDestroyerJob&& destroyResource) override;
 
-  void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks) override;
+  void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks,
+                    MemoryAllocator* memoryAllocator) override;
 
 private:
-  VkDevice _device = VK_NULL_HANDLE;
-  VkAllocationCallbacks* _allocationCallback = nullptr;
+  DestroyerContext _context{};
 };

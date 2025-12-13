@@ -43,8 +43,9 @@ Shader& Shader::operator=(Shader&& other) noexcept {
 
 Shader::~Shader() {
   if (_shaderModule != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource(std::bind(
-        vkDestroyShaderModule, std::placeholders::_1, _shaderModule, std::placeholders::_2));
+    _logicalDevice->destroyResource([shaderModule = _shaderModule](DestroyerContext context) {
+      vkDestroyShaderModule(context.device, shaderModule, context.allocationCallbacks);
+    });
   }
 }
 

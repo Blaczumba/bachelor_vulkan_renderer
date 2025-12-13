@@ -23,13 +23,15 @@ Swapchain::Swapchain(Swapchain&& swapchain) noexcept
 
 void Swapchain::tryDestroySwapchain() {
   for (const VkImageView view : _views) {
-    _logicalDevice->destroyResource(
-        std::bind(vkDestroyImageView, std::placeholders::_1, view, std::placeholders::_2));
+    _logicalDevice->destroyResource([view](DestroyerContext context) {
+      vkDestroyImageView(context.device, view, context.allocationCallbacks);
+    });
   }
 
   if (_swapchain != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource(
-        std::bind(vkDestroySwapchainKHR, std::placeholders::_1, _swapchain, std::placeholders::_2));
+    _logicalDevice->destroyResource([swapchain = _swapchain](DestroyerContext context) {
+      vkDestroySwapchainKHR(context.device, swapchain, context.allocationCallbacks);
+    });
   }
 }
 

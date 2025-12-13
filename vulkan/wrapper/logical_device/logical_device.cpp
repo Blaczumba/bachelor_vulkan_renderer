@@ -16,7 +16,9 @@ LogicalDevice::LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physi
   : _device(logicalDevice), _physicalDevice(&physicalDevice),
     _memoryAllocator(
         std::in_place_type<VmaWrapper>, logicalDevice, physicalDevice.getVkPhysicalDevice(),
-        physicalDevice.getInstance().getVkInstance()), _resourceDestroyer(std::move(resourceDestroyer)) {
+        physicalDevice.getInstance().getVkInstance()),
+    _resourceDestroyer(std::move(resourceDestroyer)) {
+  _resourceDestroyer->setupContext(_device, nullptr, &_memoryAllocator);
   const QueueFamilyIndices& queueFamilyIndices = physicalDevice.getQueueFamilyIndices();
   vkGetDeviceQueue(logicalDevice, *queueFamilyIndices.graphicsFamily, 0, &_graphicsQueue);
   vkGetDeviceQueue(logicalDevice, *queueFamilyIndices.presentFamily, 0, &_presentQueue);
@@ -32,7 +34,9 @@ LogicalDevice::LogicalDevice(LogicalDevice&& logicalDevice) noexcept
     _graphicsQueue(std::exchange(logicalDevice._graphicsQueue, VK_NULL_HANDLE)),
     _presentQueue(std::exchange(logicalDevice._presentQueue, VK_NULL_HANDLE)),
     _computeQueue(std::exchange(logicalDevice._computeQueue, VK_NULL_HANDLE)),
-    _transferQueue(std::exchange(logicalDevice._transferQueue, VK_NULL_HANDLE)) {}
+    _transferQueue(std::exchange(logicalDevice._transferQueue, VK_NULL_HANDLE)) {
+  _resourceDestroyer->setupContext(_device, nullptr, &_memoryAllocator);
+}
 
 LogicalDevice& LogicalDevice::operator=(LogicalDevice&& logicalDevice) noexcept {
   if (this == &logicalDevice) {
@@ -43,6 +47,7 @@ LogicalDevice& LogicalDevice::operator=(LogicalDevice&& logicalDevice) noexcept 
   _physicalDevice = std::exchange(logicalDevice._physicalDevice, nullptr);
   _memoryAllocator = std::move(logicalDevice._memoryAllocator);
   _resourceDestroyer = std::move(logicalDevice._resourceDestroyer);
+  _resourceDestroyer->setupContext(_device, nullptr, &_memoryAllocator);
   _graphicsQueue = std::exchange(logicalDevice._graphicsQueue, VK_NULL_HANDLE);
   _presentQueue = std::exchange(logicalDevice._presentQueue, VK_NULL_HANDLE);
   _computeQueue = std::exchange(logicalDevice._computeQueue, VK_NULL_HANDLE);
@@ -118,7 +123,6 @@ ErrorOr<LogicalDevice> LogicalDevice::create(
   CHECK_VKCMD(
       vkCreateDevice(physicalDevice.getVkPhysicalDevice(), &createInfo, nullptr, &logicalDevice));
 
-  resourceDestroyer->setupContext(logicalDevice, nullptr);
   return LogicalDevice(logicalDevice, physicalDevice, std::move(resourceDestroyer));
 }
 
@@ -128,7 +132,6 @@ ErrorOr<LogicalDevice> LogicalDevice::wrap(VkDevice device, const PhysicalDevice
     return Error(EngineError::NULLPTR_REFERENCE);
   }
 
-  resourceDestroyer->setupContext(device, nullptr);
   return LogicalDevice(device, physicalDevice, std::move(resourceDestroyer));
 }
 

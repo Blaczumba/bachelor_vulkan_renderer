@@ -20,8 +20,9 @@ ErrorOr<std::unique_ptr<CommandPool>> CommandPool::create(
 }
 
 CommandPool::~CommandPool() {
-  _logicalDevice.destroyResource(
-      std::bind(vkDestroyCommandPool, std::placeholders::_1, _commandPool, std::placeholders::_2));
+  _logicalDevice.destroyResource([commandPool = _commandPool](DestroyerContext context) {
+    vkDestroyCommandPool(context.device, commandPool, context.allocationCallbacks);
+  });
 }
 ErrorOr<CommandBuffer> CommandPool::createCommandBuffer(VkCommandBufferLevel level) const {
   return CommandBuffer::create(shared_from_this(), level);
@@ -68,8 +69,8 @@ CommandBuffer::~CommandBuffer() {
   if (_commandBuffer != VK_NULL_HANDLE) {
     _commandPool->getLogicalDevice().destroyResource(
         [pool = _commandPool->getVkCommandPool(),
-         buffer = _commandBuffer](VkDevice device, VkAllocationCallbacks*) {
-          vkFreeCommandBuffers(device, pool, 1, &buffer);
+         buffer = _commandBuffer](DestroyerContext context) {
+          vkFreeCommandBuffers(context.device, pool, 1, &buffer);
         });
   }
 }
