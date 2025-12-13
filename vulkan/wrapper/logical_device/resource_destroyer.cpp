@@ -6,7 +6,7 @@ void ThreadedResourceDestroyer::destroyResource(ResourceDestroyerJob&& destroyRe
 
 void ThreadedResourceDestroyer::setupContext(
     VkDevice device, VkAllocationCallbacks* allocationCallbacks, MemoryAllocator* memoryAllocator) {
-  _worker.startWorkingThread({device, allocationCallbacks, memoryAllocator});
+  _worker.startWorkingThread(DestroyerContext{device, allocationCallbacks, memoryAllocator});
 }
 
 void ImmediateResourceDestroyer::destroyResource(ResourceDestroyerJob&& destroyResource) {
@@ -15,5 +15,5 @@ void ImmediateResourceDestroyer::destroyResource(ResourceDestroyerJob&& destroyR
 
 void ImmediateResourceDestroyer::setupContext(
     VkDevice device, VkAllocationCallbacks* allocationCallbacks, MemoryAllocator* memoryAllocator) {
-  _context = {device, allocationCallbacks, memoryAllocator};
+  _context = DestroyerContext{device, allocationCallbacks, memoryAllocator};
 }

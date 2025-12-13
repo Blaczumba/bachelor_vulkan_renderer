@@ -56,13 +56,12 @@ Worker<Args...>::~Worker() {
 
 template <typename... Args>
 void Worker<Args...>::startWorkingThread(Args... args, size_t batch) {
-  if (_thread.joinable()) {
-    return;
-  }
   _context = Context{std::forward<Args>(args)...};
-  _batch = batch;
-  _stop = false;
-  _thread = std::thread(&Worker::workingThread, this);
+  if (!_thread.joinable()) {
+    _batch = batch;
+    _stop = false;
+    _thread = std::thread(&Worker::workingThread, this);
+  }
 }
 
 template <typename... Args>
@@ -98,13 +97,10 @@ void Worker<Args...>::workingThread() {
 
 template <typename... Args>
 void Worker<Args...>::addJob(Job&& job) {
-  {
-    std::lock_guard<std::mutex> lock(_mtx);
-    _tasks.push(std::move(job));
-  }
-
+  std::lock_guard<std::mutex> lock(_mtx);
+  _tasks.push(std::move(job));
   if (_tasks.size() >= _batch) {
-    _cv.notify_one();
+      _cv.notify_one();
   }
 }
 

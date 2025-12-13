@@ -80,9 +80,10 @@ Texture::~Texture() {
 
   if (_image != VK_NULL_HANDLE) {
     _logicalDevice->destroyResource(
-        [image = _image, allocation = _allocation](DestroyerContext context) {
+        [image = _image, allocation = std::move(_allocation)](DestroyerContext context) {
           std::visit(ImageDeleter{image}, *context.memoryAllocator, allocation);
         });
+    // std::visit(ImageDeleter{_image}, _logicalDevice->getMemoryAllocator(), _allocation);
   }
 }
 
