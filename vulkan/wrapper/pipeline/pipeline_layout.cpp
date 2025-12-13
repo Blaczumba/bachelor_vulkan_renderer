@@ -50,7 +50,8 @@ PipelineLayout& PipelineLayout::operator=(PipelineLayout&& other) noexcept {
 
 PipelineLayout ::~PipelineLayout() {
   if (_layout != VK_NULL_HANDLE) {
-    vkDestroyPipelineLayout(_logicalDevice->getVkDevice(), _layout, nullptr);
+    _logicalDevice->destroyResource(
+        std::bind(vkDestroyPipelineLayout, std::placeholders::_1, _layout, std::placeholders::_2));
   }
 }
 

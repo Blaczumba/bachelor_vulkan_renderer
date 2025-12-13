@@ -49,7 +49,7 @@ public:
 
   ~LogicalDevice();
 
-  void destroyResource(std::function<void(VkDevice)>&& destroyResource) const;
+  void destroyResource(ResourceDestroyerJob&& destroyResource) const;
 
   ErrorOr<VkSampler> createSampler(const SamplerParameters& params) const;
 

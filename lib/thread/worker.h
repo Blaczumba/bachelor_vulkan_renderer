@@ -8,16 +8,17 @@
 
 namespace lib::thread {
 
-template<typename Context>
+template<typename... Args>
 class Worker {
 public:
-  using Job = std::function<void(Context)>;
+  using Context = std::tuple<Args...>;
+  using Job = std::function<void(Args...)>;
 
   Worker() = default;
 
-  Worker(const Context& context, size_t batch = 8);
+  Worker(Args... args, size_t batch = 8);
 
-  void startWorkingThread(const Context& context, size_t batch = 8);
+  void startWorkingThread(Args... args, size_t batch = 8);
 
   ~Worker();
 
@@ -35,12 +36,13 @@ private:
   std::condition_variable _cv;
 };
 
-template <typename Context>
-Worker<Context>::Worker(const Context& context, size_t batch)
-  : _context(context), _batch(batch), _stop(false), _thread(&Worker::workingThread, this) {}
+template <typename... Args>
+Worker<Args...>::Worker(Args... args, size_t batch)
+  : _context(std::forward<Args>(args)...), _batch(batch), _stop(false),
+    _thread(&Worker::workingThread, this) {}
 
-template <typename Context>
-Worker<Context>::~Worker() {
+template <typename... Args>
+Worker<Args...>::~Worker() {
   {
     std::lock_guard<std::mutex> lock(_mtx);
     _stop = true;
@@ -52,19 +54,19 @@ Worker<Context>::~Worker() {
   }
 }
 
-template <typename Context>
-void Worker<Context>::startWorkingThread(const Context& context, size_t batch) {
+template <typename... Args>
+void Worker<Args...>::startWorkingThread(Args... args, size_t batch) {
   if (_thread.joinable()) {
     return;
   }
-  _context = context;
+  _context = Context{std::forward<Args>(args)...};
   _batch = batch;
   _stop = false;
   _thread = std::thread(&Worker::workingThread, this);
 }
 
-template <typename Context>
-void Worker<Context>::workingThread() {
+template <typename... Args>
+void Worker<Args...>::workingThread() {
   std::vector<Job> tasksToProcess(_batch);  // TODO: Change to inline vector
   while (true) {
     {
@@ -84,23 +86,26 @@ void Worker<Context>::workingThread() {
     }
 
     for (Job& task : tasksToProcess) {
-      task(_context);
+      std::apply(task, _context);
     }
   }
 
   while (!_tasks.empty()) {
-    _tasks.front()(_context);
+    std::apply(_tasks.front(), _context);
     _tasks.pop();
   }
 }
 
-template <typename Context>
-void Worker<Context>::addJob(Job&& job) {
-  std::lock_guard<std::mutex> lock(_mtx);
-  _tasks.push(std::move(job));
+template <typename... Args>
+void Worker<Args...>::addJob(Job&& job) {
+  {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _tasks.push(std::move(job));
+  }
+
   if (_tasks.size() >= _batch) {
     _cv.notify_one();
   }
 }
 
-}  // namespace lib::thread
+}  // lib::thread

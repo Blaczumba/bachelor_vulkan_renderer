@@ -56,7 +56,8 @@ Pipeline& Pipeline::operator=(Pipeline&& other) noexcept {
 
 Pipeline::~Pipeline() {
   if (_pipeline != VK_NULL_HANDLE) {
-    vkDestroyPipeline(_logicalDevice->getVkDevice(), _pipeline, nullptr);
+    _logicalDevice->destroyResource(
+        std::bind(vkDestroyPipeline, std::placeholders::_1, _pipeline, std::placeholders::_2));
   }
 }
 

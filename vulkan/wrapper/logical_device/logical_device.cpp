@@ -53,13 +53,13 @@ LogicalDevice& LogicalDevice::operator=(LogicalDevice&& logicalDevice) noexcept 
 LogicalDevice::~LogicalDevice() {
   // TODO refactor
   if (_device != VK_NULL_HANDLE) {
-    std::get<VmaWrapper>(_memoryAllocator).destroy();
     _resourceDestroyer.reset();
+    std::get<VmaWrapper>(_memoryAllocator).destroy();
     vkDestroyDevice(_device, nullptr);
   }
 }
 
-void LogicalDevice::destroyResource(std::function<void(VkDevice)>&& destroyResource) const {
+void LogicalDevice::destroyResource(ResourceDestroyerJob&& destroyResource) const {
   _resourceDestroyer->destroyResource(std::move(destroyResource));
 }
 
@@ -118,7 +118,7 @@ ErrorOr<LogicalDevice> LogicalDevice::create(
   CHECK_VKCMD(
       vkCreateDevice(physicalDevice.getVkPhysicalDevice(), &createInfo, nullptr, &logicalDevice));
 
-  resourceDestroyer->setupContext(logicalDevice);
+  resourceDestroyer->setupContext(logicalDevice, nullptr);
   return LogicalDevice(logicalDevice, physicalDevice, std::move(resourceDestroyer));
 }
 
@@ -127,7 +127,8 @@ ErrorOr<LogicalDevice> LogicalDevice::wrap(VkDevice device, const PhysicalDevice
   if (device == VK_NULL_HANDLE) {
     return Error(EngineError::NULLPTR_REFERENCE);
   }
-  resourceDestroyer->setupContext(device);
+
+  resourceDestroyer->setupContext(device, nullptr);
   return LogicalDevice(device, physicalDevice, std::move(resourceDestroyer));
 }
 
@@ -152,7 +153,7 @@ ErrorOr<VkImageView> LogicalDevice::createImageView(
 }
 
 ErrorOr<VkSampler> LogicalDevice::createSampler(const SamplerParameters& params) const {
-  VkSamplerCreateInfo samplerInfo = {
+  const VkSamplerCreateInfo samplerInfo = {
     .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
     .magFilter = params.magFilter,
     .minFilter = params.minFilter,
@@ -161,22 +162,14 @@ ErrorOr<VkSampler> LogicalDevice::createSampler(const SamplerParameters& params)
     .addressModeV = params.addressModeV,
     .addressModeW = params.addressModeW,
     .mipLodBias = params.mipLodBias,
+    .anisotropyEnable = params.maxAnisotropy.has_value() ? VK_TRUE : VK_FALSE,
+    .maxAnisotropy = params.maxAnisotropy.value_or(0.0f),
+    .compareEnable = params.compareOp.has_value() ? VK_TRUE : VK_FALSE,
+    .compareOp = params.compareOp.value_or(VK_COMPARE_OP_NEVER),
     .minLod = params.minLod,
     .maxLod = params.maxLod,
     .borderColor = params.borderColor,
     .unnormalizedCoordinates = params.unnormalizedCoordinates};
-
-  if (params.maxAnisotropy.has_value()) {
-    samplerInfo.anisotropyEnable = VK_TRUE;
-    samplerInfo.maxAnisotropy = *params.maxAnisotropy;
-  }
-
-  if (params.compareOp.has_value()) {
-    samplerInfo.compareEnable = VK_TRUE;
-    samplerInfo.compareOp = *params.compareOp;
-  } else {
-    samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
-  }
 
   VkSampler sampler;
   CHECK_VKCMD(vkCreateSampler(_device, &samplerInfo, nullptr, &sampler));

@@ -5,13 +5,15 @@
 
 #include "lib/thread/worker.h"
 
+using ResourceDestroyerJob = std::function<void(VkDevice, VkAllocationCallbacks*)>;
+
 class ResourceDestroyer {
 public:
   virtual ~ResourceDestroyer() = default;
 
-  virtual void destroyResource(std::function<void(VkDevice)>&& destroyResource) = 0;
+  virtual void destroyResource(ResourceDestroyerJob&& destroyResource) = 0;
 
-  virtual void setupContext(VkDevice device) = 0;
+  virtual void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks) = 0;
 };
 
 class ThreadedResourceDestroyer : public ResourceDestroyer {
@@ -20,12 +22,12 @@ public:
 
   ~ThreadedResourceDestroyer() override = default;
 
-  void destroyResource(std::function<void(VkDevice)>&& destroyResource) override;
+  void destroyResource(ResourceDestroyerJob&& destroyResource) override;
 
-  void setupContext(VkDevice device) override;
+  void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks) override;
 
 private:
-  lib::thread::Worker<VkDevice> _worker;
+  lib::thread::Worker<VkDevice, VkAllocationCallbacks*> _worker;
 };
 
 class ImmediateResourceDestroyer : public ResourceDestroyer {
@@ -34,10 +36,11 @@ public:
 
   ~ImmediateResourceDestroyer() override = default;
 
-  void destroyResource(std::function<void(VkDevice)>&& destroyResource) override;
+  void destroyResource(ResourceDestroyerJob&& destroyResource) override;
 
-  void setupContext(VkDevice device) override;
+  void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks) override;
 
 private:
   VkDevice _device = VK_NULL_HANDLE;
+  VkAllocationCallbacks* _allocationCallback = nullptr;
 };
