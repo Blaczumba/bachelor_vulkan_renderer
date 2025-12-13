@@ -65,7 +65,7 @@ void Worker<N, Args...>::startWorkingThread(Args... args) {
 
 template <size_t N, typename... Args>
 void Worker<N, Args...>::workingThread() {
-  std::array<Job, N> tasksToProcess;  // TODO: Change to inline vector
+  std::array<Job, N> tasksToProcess;
   while (true) {
     {
       std::unique_lock<std::mutex> lock(_mtx);
@@ -77,8 +77,8 @@ void Worker<N, Args...>::workingThread() {
         break;
       }
 
-      for (size_t i = 0; i < N; i++) {
-        tasksToProcess[i] = std::move(_tasks.front());
+      for (Job& task : tasksToProcess) {
+        task = std::move(_tasks.front());
         _tasks.pop();
       }
     }
