@@ -23,7 +23,7 @@ AssetManager& AssetManager::operator=(AssetManager&& assetManager) noexcept {
 
 void AssetManager::loadImageAsync(
     const std::string& filePath,
-    std::function<ErrorOr<ImageResource>(std::span<const std::byte>)>&& loadingFunction) {
+    std::function<ImageResource(std::span<const std::byte>)>&& loadingFunction) {
   if (_awaitingImageResources.contains(filePath)) {
     return;
   }
@@ -33,12 +33,12 @@ void AssetManager::loadImageAsync(
        loadingFunction = std::move(loadingFunction)]() -> ErrorOr<ImageData> {  // TODO:
         // boost::asio::post,
         // boost::asio::use_future
-        ASSIGN_OR_RETURN(lib::Buffer<std::byte> fileData, _fileLoader->loadFileToBuffer(filePath));
-        ASSIGN_OR_RETURN(ImageResource resource, loadingFunction(fileData));
-        ASSIGN_OR_RETURN(
-            auto stagingBuffer, Buffer::createStagingBuffer(*_logicalDevice, resource.size));
-        RETURN_IF_ERROR(stagingBuffer.copyData(
-            std::span(static_cast<const std::byte*>(resource.data), resource.size)));
+
+        ImageResource resource = loadingFunction(_fileLoader->loadFileToBuffer(filePath));
+
+        auto stagingBuffer = Buffer::createStagingBuffer(*_logicalDevice, resource.size);
+        stagingBuffer.copyData(
+            std::span(static_cast<const std::byte*>(resource.data), resource.size));
         ImageLoader::deallocateResources(resource);
         return ImageData(std::move(stagingBuffer), resource.width, resource.height,
                          resource.mipLevels, resource.layerCount, std::move(resource.subresources));

@@ -7,8 +7,6 @@
 #include <variant>
 #include <vector>
 
-#include "common/status/status.h"
-
 struct ImageSubresource {
   size_t offset;
   uint32_t mipLevel;
@@ -32,7 +30,7 @@ struct ImageResource {
 
 class ImageLoader {
 public:
-  static ErrorOr<ImageResource> loadImageStbi(std::span<const std::byte> imagePath);
-  static ErrorOr<ImageResource> loadImageKtx(std::span<const std::byte> imagePath);
+  static ImageResource loadImageStbi(std::span<const std::byte> imagePath);
+  static ImageResource loadImageKtx(std::span<const std::byte> imagePath);
   static void deallocateResources(ImageResource& resource);
 };

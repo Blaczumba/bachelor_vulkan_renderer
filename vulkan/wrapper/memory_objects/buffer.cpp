@@ -1,5 +1,6 @@
 #include "buffer.h"
 
+#include <format>
 #include <glm/glm.hpp>
 #include <iterator>
 #include <numeric>
@@ -126,83 +127,95 @@ struct UniformBufferAllocator {
 
 }  // namespace
 
-ErrorOr<Buffer> Buffer::createVertexBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
+Buffer Buffer::createVertexBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
   const BufferData bufferData =
       std::visit(VertexBufferAllocator{size}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
                 bufferData.mappedMemory);
 }
 
-ErrorOr<Buffer> Buffer::createIndexBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
+Buffer Buffer::createIndexBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
   const BufferData bufferData =
       std::visit(IndexBufferAllocator{size}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
                 bufferData.mappedMemory);
 }
 
-ErrorOr<Buffer> Buffer::createStagingBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
+Buffer Buffer::createStagingBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
   const BufferData bufferData =
       std::visit(StagingBufferAllocator{size}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
                 bufferData.mappedMemory);
 }
 
-ErrorOr<Buffer> Buffer::createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
+Buffer Buffer::createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
   const BufferData bufferData =
       std::visit(UniformBufferAllocator{size}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
                 bufferData.mappedMemory);
 }
 
-Status Buffer::copyBuffer(
+void Buffer::copyBuffer(
     const VkCommandBuffer commandBuffer, const Buffer& srcBuffer,
     std::optional<VkDeviceSize> srcSize, VkDeviceSize srcOffset, VkDeviceSize dstOffset) {
   if ((_usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) == 0) [[unlikely]] {
-    return Error(EngineError::FLAG_NOT_SPECIFIED);
+    throw EngineException(
+        "When copying one buffer to other the destination one must have "
+        "VK_BUFFER_USAGE_TRANSFER_DST_BIT specified.");
   }
 
   if ((srcBuffer._usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) == 0) [[unlikely]] {
-    return Error(EngineError::FLAG_NOT_SPECIFIED);
+    throw EngineException(
+        "When copying one buffer to other the source one must have "
+        "VK_BUFFER_USAGE_TRANSFER_SRC_BIT specified.");
   }
 
   const VkDeviceSize size = srcSize.value_or(srcBuffer._size);
   if (srcOffset + size > srcBuffer._size) [[unlikely]] {
-    return Error(EngineError::INDEX_OUT_OF_RANGE);
+    // TODO:
+    throw EngineException(std::format(
+        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
+        srcOffset, size, srcBuffer._size));
   }
 
   if (dstOffset + size > _size) [[unlikely]] {
-    return Error(EngineError::INDEX_OUT_OF_RANGE);
+    // TODO:
+    throw EngineException(std::format(
+        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
+        srcOffset, size, srcBuffer._size));
   }
 
   copyBufferToBuffer(commandBuffer, srcBuffer._buffer, _buffer, srcOffset, dstOffset, size);
-  return StatusOk();
 }
 
-Status Buffer::copyAndShrinkData(std::span<const std::byte> data, size_t dstIndexSize,
-                                 size_t srcIndexSize, VkDeviceSize offset) {
+void Buffer::copyAndShrinkData(std::span<const std::byte> data, size_t dstIndexSize,
+                               size_t srcIndexSize, VkDeviceSize offset) {
   if (!_mappedMemory) {
-    return Error(EngineError::NOT_MAPPED);
+    throw EngineException("Cannot copy raw data to unmapped memory.");
   }
 
   if (_size < dstIndexSize * data.size() / srcIndexSize + offset) {
-    return Error(EngineError::INDEX_OUT_OF_RANGE);
+    throw EngineException(std::format(
+        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
+        offset, dstIndexSize * data.size() / srcIndexSize, _size));
   }
 
   copyAndShrinkIndices(static_cast<uint8_t*>(_mappedMemory) + offset, dstIndexSize, data.data(),
                        srcIndexSize, data.size() / srcIndexSize);
-  return StatusOk();
 }
 
-Status Buffer::copyDataInterleaving(std::span<const AttributeDescription> attributes) {
+void Buffer::copyDataInterleaving(std::span<const AttributeDescription> attributes) {
   if (!_mappedMemory) [[unlikely]] {
-    return Error(EngineError::NOT_MAPPED);
+    throw EngineException("Cannot copy raw data to unmapped memory.");
   }
 
   if (std::any_of(std::cbegin(attributes), std::cend(attributes),
                   [first = attributes[0].count](const AttributeDescription& attribute) {
                     return attribute.count != first;
                   })) {
-    return Error(EngineError::SIZE_MISMATCH);
+    throw EngineException(
+        "When copying buffers in an interleaving manner the buffers must have equal number of "
+        "elements.");
   }
 
   std::vector<uint8_t*> offsetMemory;
@@ -224,8 +237,6 @@ Status Buffer::copyDataInterleaving(std::span<const AttributeDescription> attrib
                   static_cast<uint8_t*>(attribute.data) + j * attribute.size, attribute.size);
     }
   }
-
-  return StatusOk();
 }
 
 VkBufferUsageFlags Buffer::getUsage() const {

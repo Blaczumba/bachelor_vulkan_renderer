@@ -2,8 +2,11 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <format>
 #include <limits>
 #include <span>
+
+#include "common/util/engine_exception.h"
 
 namespace {
 
@@ -51,7 +54,7 @@ size_t getMaxIndex(std::span<const std::byte> indicesBuffer, size_t indexSize) {
  * create a buffer with interleaving buffers accordingly:
  * (descs[0], descs[1], descs[2], descs[0]).
  */
-ErrorOr<std::vector<BufferDescription>> analyzeConfig(
+std::vector<BufferDescription> analyzeConfig(
     std::span<const std::pair<std::string, std::string>> orders,
     std::span<const AttributeDescription> descs) {
   std::vector<BufferDescription> descriptions;
@@ -64,7 +67,9 @@ ErrorOr<std::vector<BufferDescription>> analyzeConfig(
     size_t totalSize = 0;
     for (size_t i = 0; i < config.size(); ++i) {
       if (!std::isdigit(config[i])) [[unlikely]] {
-        return Error(EngineError::LOAD_FAILURE);
+        throw EngineException(std::format(
+            "The format of config string in analyzeConfig must contain digits only. Got: {}.",
+            config[i]));
       }
 
       orderedDescs.push_back(descs[static_cast<size_t>(config[i] - '0')]);

@@ -20,9 +20,8 @@ ErrorOr<std::reference_wrapper<const Shader>> PipelineManager::addShader(
     return it->second;
   }
 
-  ASSIGN_OR_RETURN(
-      const lib::Buffer<std::byte> shaderData,
-      _fileLoader->loadFileToBuffer((std::filesystem::path(SHADERS_PATH) / shaderFile).string()));
+  const lib::Buffer<std::byte> shaderData =
+      _fileLoader->loadFileToBuffer((std::filesystem::path(SHADERS_PATH) / shaderFile).string());
   ASSIGN_OR_RETURN(it->second, Shader::create(logicalDevice, shaderData, shaderStages));
   return it->second;
 }

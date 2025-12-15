@@ -64,9 +64,8 @@ public:
   ErrorOr<std::reference_wrapper<const VertexData>> getVertexData(const std::string& filePath);
 
 private:
-  void loadImageAsync(
-      const std::string& filePath,
-      std::function<ErrorOr<ImageResource>(std::span<const std::byte>)>&& loadingFunction);
+  void loadImageAsync(const std::string& filePath,
+                      std::function<ImageResource(std::span<const std::byte>)>&& loadingFunction);
 
   std::launch _launchPolicy;
 
@@ -102,22 +101,19 @@ void AssetManager::loadVertexDataInterleavingAsync(
           ...
         };
 
-        ASSIGN_OR_RETURN(
-            std::vector<BufferDescription> bufferDescriptions, analyzeConfig(orders, descs));
+        std::vector<BufferDescription> bufferDescriptions = analyzeConfig(orders, descs);
 
         for (BufferDescription& description : bufferDescriptions) {
-          ASSIGN_OR_RETURN(auto vertexBuffer,
-                           Buffer::createStagingBuffer(*_logicalDevice, description.totalSize));
-          RETURN_IF_ERROR(vertexBuffer.copyDataInterleaving(description.attributes));
+          auto vertexBuffer = Buffer::createStagingBuffer(*_logicalDevice, description.totalSize);
+          vertexBuffer.copyDataInterleaving(description.attributes);
           vertexData.buffers.emplace(std::move(description.name), std::move(vertexBuffer));
         }
 
         const size_t shrunkIndexSize = getShrunkIndexSize(indices, indexSize);
-        ASSIGN_OR_RETURN(vertexData.indexBuffer,
-                         Buffer::createStagingBuffer(
-                             *_logicalDevice, indices.size() / indexSize * shrunkIndexSize));
-        RETURN_IF_ERROR(
-            vertexData.indexBuffer.copyAndShrinkData(indices, shrunkIndexSize, indexSize));
+        vertexData.indexBuffer = Buffer::createStagingBuffer(
+            *_logicalDevice, indices.size() / indexSize * shrunkIndexSize);
+
+        vertexData.indexBuffer.copyAndShrinkData(indices, shrunkIndexSize, indexSize);
 
         vertexData.indexType = getIndexType(shrunkIndexSize);
 
@@ -139,11 +135,11 @@ void AssetManager::loadVertexDataAsync(
       [this, modelPtr, indices, indexSize,
        vertices]() -> ErrorOr<VertexData> {  // TODO: boost::asio::post,
                                              // boost::asio::use_future
-        ASSIGN_OR_RETURN(auto vertexBuffer, Buffer::createStagingBuffer(
-                                                *_logicalDevice, vertices.size() * sizeof(Type)));
+        auto vertexBuffer =
+            Buffer::createStagingBuffer(*_logicalDevice, vertices.size() * sizeof(Type));
         RETURN_IF_ERROR(vertexBuffer.copyData(vertices));
-        ASSIGN_OR_RETURN(
-            auto indexBuffer, Buffer::createStagingBuffer(*_logicalDevice, indices.size()));
+
+        auto indexBuffer = Buffer::createStagingBuffer(*_logicalDevice, indices.size());
         RETURN_IF_ERROR(indexBuffer.copyData(indices));
         return VertexData{
           Buffer(), std::move(indexBuffer), getIndexType(indexSize), std::move(vertexBuffer)};
