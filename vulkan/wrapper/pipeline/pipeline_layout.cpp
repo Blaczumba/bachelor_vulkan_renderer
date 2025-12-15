@@ -8,7 +8,7 @@
 PipelineLayout::PipelineLayout(const LogicalDevice& logicalDevice, VkPipelineLayout layout)
   : _logicalDevice(&logicalDevice), _layout(layout) {}
 
-ErrorOr<PipelineLayout> PipelineLayout::create(
+PipelineLayout PipelineLayout::create(
     const LogicalDevice& logicalDevice, std::span<const VkDescriptorSetLayout> descriptorSetLayouts,
     std::span<const VkPushConstantRange> pushConstantRanges, VkPipelineLayoutCreateFlags flags) {
   const VkPipelineLayoutCreateInfo pipelineLayoutInfo{
@@ -22,7 +22,8 @@ ErrorOr<PipelineLayout> PipelineLayout::create(
 
   VkPipelineLayout layout;
   CHECK_VKCMD(
-      vkCreatePipelineLayout(logicalDevice.getVkDevice(), &pipelineLayoutInfo, nullptr, &layout));
+      vkCreatePipelineLayout(logicalDevice.getVkDevice(), &pipelineLayoutInfo, nullptr, &layout),
+      "Failed to create VkPipelineLayout.");
   return PipelineLayout(logicalDevice, layout);
 }
 

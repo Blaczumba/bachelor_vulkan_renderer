@@ -15,7 +15,8 @@ ErrorOr<std::unique_ptr<CommandPool>> CommandPool::create(
     .queueFamilyIndex = *logicalDevice.getPhysicalDevice().getQueueFamilyIndices().graphicsFamily};
 
   VkCommandPool commandPool;
-  CHECK_VKCMD(vkCreateCommandPool(logicalDevice.getVkDevice(), &poolInfo, nullptr, &commandPool));
+  CHECK_VKCMD(vkCreateCommandPool(logicalDevice.getVkDevice(), &poolInfo, nullptr, &commandPool),
+              "Failed to create VkCommandPool in CommandPool::create.");
   return std::unique_ptr<CommandPool>(new CommandPool(logicalDevice, commandPool));
 }
 
@@ -79,7 +80,8 @@ ErrorOr<CommandBuffer> CommandBuffer::create(
     const std::shared_ptr<const CommandPool>& commandPool, VkCommandBufferLevel level) {
   VkCommandBuffer commandBuffer;
   CHECK_VKCMD(createCommandBuffers(commandPool->getLogicalDevice().getVkDevice(),
-                                   commandPool->getVkCommandPool(), level, {&commandBuffer, 1}));
+                                   commandPool->getVkCommandPool(), level, {&commandBuffer, 1}),
+              "Failed to create VkCommandBuffer.");
   return CommandBuffer(commandPool, commandBuffer, level);
 }
 
@@ -88,7 +90,8 @@ ErrorOr<std::vector<CommandBuffer>> CommandBuffer::create(
     uint32_t count) {
   lib::Buffer<VkCommandBuffer> vkCommandBuffers(count);
   CHECK_VKCMD(createCommandBuffers(commandPool->getLogicalDevice().getVkDevice(),
-                                   commandPool->getVkCommandPool(), level, vkCommandBuffers));
+                                   commandPool->getVkCommandPool(), level, vkCommandBuffers),
+              "Failed to create VkCommandBuffer.");
   std::vector<CommandBuffer> commandBuffers;
   commandBuffers.reserve(vkCommandBuffers.size());
   std::transform(
@@ -131,7 +134,8 @@ Status CommandBuffer::beginAsPrimary(uint32_t subpassIndex) const {
 
   const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                               .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
-  CHECK_VKCMD(vkBeginCommandBuffer(_commandBuffer, &beginInfo));
+  CHECK_VKCMD(vkBeginCommandBuffer(_commandBuffer, &beginInfo),
+              "Failed to vkBeginCommandBuffer for primary command buffer.");
   return StatusOk();
 }
 
@@ -156,7 +160,8 @@ Status CommandBuffer::beginAsSecondary(
              | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     .pInheritanceInfo = &inheritanceInfo};
 
-  CHECK_VKCMD(vkBeginCommandBuffer(_commandBuffer, &beginInfo));
+  CHECK_VKCMD(vkBeginCommandBuffer(_commandBuffer, &beginInfo),
+              "Failed to vkBeginCommandBuffer for secondary command buffer.");
   return StatusOk();
 }
 
@@ -201,10 +206,12 @@ Status CommandBuffer::submit(QueueType type, const VkSemaphore waitSemaphore,
 
   const LogicalDevice& logicalDevice = _commandPool->getLogicalDevice();
   if (waitFence != VK_NULL_HANDLE) {
-    CHECK_VKCMD(vkResetFences(logicalDevice.getVkDevice(), 1, &waitFence));
+    CHECK_VKCMD(vkResetFences(logicalDevice.getVkDevice(), 1, &waitFence),
+                "Failed to vkResetFences in CommandBuffer::submit.");
   }
 
-  CHECK_VKCMD(vkQueueSubmit(logicalDevice.getVkQueue(type), 1, &submitInfo, waitFence));
+  CHECK_VKCMD(vkQueueSubmit(logicalDevice.getVkQueue(type), 1, &submitInfo, waitFence),
+              "Failed to vkQueueSubmit in CommandBuffer::submit.");
   return StatusOk();
 }
 

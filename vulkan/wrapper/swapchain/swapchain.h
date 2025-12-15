@@ -2,7 +2,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
@@ -61,8 +60,7 @@ public:
 
   SwapchainBuilder& withClipped(VkBool32 clipped);
 
-  ErrorOr<Swapchain> build(
-      const LogicalDevice& logicalDevice, VkSurfaceKHR surface, VkExtent2D extent);
+  Swapchain build(const LogicalDevice& logicalDevice, VkSurfaceKHR surface, VkExtent2D extent);
 
 private:
   VkSwapchainKHR _oldSwapchain = nullptr;

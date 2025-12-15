@@ -160,7 +160,7 @@ VkExtent2D chooseSwapExtent(
 
 }  // namespace
 
-ErrorOr<Swapchain> SwapchainBuilder::build(
+Swapchain SwapchainBuilder::build(
     const LogicalDevice& logicalDevice, VkSurfaceKHR surface, VkExtent2D extent) {
   const SwapChainSupportDetails swapChainSupport =
       logicalDevice.getPhysicalDevice().getSwapchainSupportDetails(surface);
@@ -204,18 +204,20 @@ ErrorOr<Swapchain> SwapchainBuilder::build(
   }
 
   VkSwapchainKHR swapchain;
-  CHECK_VKCMD(vkCreateSwapchainKHR(logicalDevice.getVkDevice(), &createInfo, nullptr, &swapchain));
+  CHECK_VKCMD(vkCreateSwapchainKHR(logicalDevice.getVkDevice(), &createInfo, nullptr, &swapchain),
+              "Failed to create VkSwapchainKHR.");
 
   vkGetSwapchainImagesKHR(logicalDevice.getVkDevice(), swapchain, &imageCount, nullptr);
   lib::Buffer<VkImage> images(imageCount);
   vkGetSwapchainImagesKHR(logicalDevice.getVkDevice(), swapchain, &imageCount, images.data());
 
   lib::Buffer<VkImageView> views(imageCount);
-  for (size_t i = 0; i < images.size(); i++) {
-    ASSIGN_OR_RETURN(views[i], logicalDevice.createImageView(
-                                   images[i], VK_IMAGE_VIEW_TYPE_2D, surfaceFormat.format,
-                                   VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1));
-  }
+  std::transform(
+      images.cbegin(), images.cend(), views.begin(),
+      [logicalDevice = &logicalDevice, format = surfaceFormat.format](const VkImage image) {
+        return logicalDevice->createImageView(
+            image, VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+      });
 
   return Swapchain(swapchain, logicalDevice, surfaceFormat.format, actualExtent, std::move(images),
                    std::move(views));

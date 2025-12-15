@@ -93,9 +93,8 @@ ErrorOr<std::reference_wrapper<const PipelineLayout>> PipelineManager::getOrCrea
     return it->second;
   }
 
-  ASSIGN_OR_RETURN(
-      PipelineLayout layout,
-      PipelineLayout::create(logicalDevice, descriptorSetLayouts, pushConstantRanges, flags));
+  PipelineLayout layout =
+      PipelineLayout::create(logicalDevice, descriptorSetLayouts, pushConstantRanges, flags);
 
   it->second = std::move(layout);
   return it->second;

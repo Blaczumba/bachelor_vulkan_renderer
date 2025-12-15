@@ -6,8 +6,8 @@
 
 #include "common/status/status.h"
 #include "lib/buffer/buffer.h"
-#include "vulkan/wrapper/render_pass/render_pass.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
+#include "vulkan/wrapper/render_pass/render_pass.h"
 
 class Framebuffer {
   Framebuffer(VkFramebuffer framebuffer, const Renderpass& renderpass, const VkViewport& viewport,
@@ -16,11 +16,11 @@ class Framebuffer {
 public:
   Framebuffer() = default;
 
-  static ErrorOr<Framebuffer> createFromSwapchain(
+  static Framebuffer createFromSwapchain(
       VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent,
       VkImageView swapchainImageView, std::vector<Texture>& attachments);
 
-  static ErrorOr<Framebuffer> createFromTextures(
+  static Framebuffer createFromTextures(
       const Renderpass& renderpass, std::span<const Texture> textures);
 
   Framebuffer(Framebuffer&& framebuffer) noexcept;

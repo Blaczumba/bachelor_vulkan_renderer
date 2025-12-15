@@ -2,7 +2,6 @@
 
 #include <memory>
 
-#include "common/status/status.h"
 #include "common/window/window.h"
 #include "vulkan/vulkan.h"
 #include "vulkan/wrapper/instance/instance.h"
@@ -13,7 +12,7 @@ class Surface {
 public:
   Surface() = default;
 
-  static ErrorOr<Surface> create(const Instance& instance, const Window& window);
+  static Surface create(const Instance& instance, const Window& window);
 
   Surface(Surface&& other) noexcept;
 

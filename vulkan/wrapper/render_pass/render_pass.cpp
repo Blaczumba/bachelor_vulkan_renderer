@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iterator>
 
+#include "common/util/engine_exception.h"
 #include "vulkan/wrapper/render_pass/attachment_layout.h"
 #include "vulkan/wrapper/util/check.h"
 
@@ -21,13 +22,12 @@ RenderpassBuilder& RenderpassBuilder::addSubpass(std::initializer_list<uint8_t> 
                                                  std::initializer_list<uint8_t> inputAttachments) {
   Subpass subpass;
   for (uint8_t index : outputAttachments) {
-    UPDATE_STATUS(_status, subpass.addOutputAttachment(_attachmentLayout, index));
+    subpass.addOutputAttachment(_attachmentLayout, index);
   }
 
   for (uint8_t index : inputAttachments) {
     // TODO set proper image layouts
-    UPDATE_STATUS(
-        _status, subpass.addInputAttachment(_attachmentLayout, index, VK_IMAGE_LAYOUT_GENERAL));
+    subpass.addInputAttachment(_attachmentLayout, index, VK_IMAGE_LAYOUT_GENERAL);
   }
 
   _subpasses.push_back(subpass);
@@ -51,7 +51,7 @@ Status RenderpassBuilder::Subpass::addOutputAttachment(
     const AttachmentLayout& layout, uint32_t attachmentBinding) {
   std::span<const AttachmentType> attachmentTypes = layout.getAttachmentsTypes();
   if (attachmentTypes.size() <= attachmentBinding) {
-    return Error(EngineError::INDEX_OUT_OF_RANGE);
+    throw EngineException("Attachment binding exceeds the total number of attachments.");
   }
 
   switch (attachmentTypes[attachmentBinding]) {
@@ -68,7 +68,7 @@ Status RenderpassBuilder::Subpass::addOutputAttachment(
           attachmentBinding, layout.getVkSubpassLayouts()[attachmentBinding]);
       break;
     default:
-      return Error(EngineError::NOT_RECOGNIZED_TYPE);
+      throw EngineException("Failed to recognize attachment type.");
   }
   return StatusOk();
 }
@@ -96,8 +96,7 @@ VkSubpassDescription RenderpassBuilder::Subpass::getVkSubpassDescription() const
         !_depthAttachmentRefs.empty() ? _depthAttachmentRefs.data() : nullptr};
 }
 
-ErrorOr<Renderpass> RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
-  RETURN_IF_ERROR(_status);
+Renderpass RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
   std::span<const VkAttachmentDescription> attachmentDescriptions =
       _attachmentLayout.getVkAttachmentDescriptions();
   lib::Buffer<VkSubpassDescription> subpassDescriptions(_subpasses.size());
@@ -123,7 +122,8 @@ ErrorOr<Renderpass> RenderpassBuilder::build(const LogicalDevice& logicalDevice)
 
   VkRenderPass renderpass;
   CHECK_VKCMD(
-      vkCreateRenderPass(logicalDevice.getVkDevice(), &renderPassInfo, nullptr, &renderpass));
+      vkCreateRenderPass(logicalDevice.getVkDevice(), &renderPassInfo, nullptr, &renderpass),
+      "Failed to create VkRenderPass.");
   return Renderpass(logicalDevice, renderpass, _attachmentLayout);
 }
 

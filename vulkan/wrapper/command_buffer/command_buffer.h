@@ -121,7 +121,8 @@ ErrorOr<std::array<CommandBuffer, COUNT>> CommandBuffer::create(
     const std::shared_ptr<const CommandPool>& commandPool, VkCommandBufferLevel level) {
   VkCommandBuffer vkCommandBuffers[COUNT];
   CHECK_VKCMD(createCommandBuffers(commandPool->getLogicalDevice().getVkDevice(),
-                                   commandPool->getVkCommandPool(), level, vkCommandBuffers));
+                                   commandPool->getVkCommandPool(), level, vkCommandBuffers),
+              "Failed to create VkCommandBuffer.");
 
   std::array<CommandBuffer, COUNT> commandBuffers;
   std::transform(std::cbegin(vkCommandBuffers), std::cend(vkCommandBuffers), commandBuffers.begin(),

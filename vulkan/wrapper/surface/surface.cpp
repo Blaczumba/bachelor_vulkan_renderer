@@ -1,5 +1,6 @@
 #include "surface.h"
 
+#include "common/util/engine_exception.h"
 #include "vulkan/wrapper/util/check.h"
 
 #if (defined(WIN32) || defined(__unix__)) && !defined(ANDROID)
@@ -9,17 +10,18 @@
 Surface::Surface(VkSurfaceKHR surface, const Instance& instance)
   : _surface(surface), _instance(&instance) {}
 
-ErrorOr<Surface> Surface::create(const Instance& instance, const Window& window) {
+Surface Surface::create(const Instance& instance, const Window& window) {
 #if (defined(WIN32) || defined(__unix__)) && !defined(ANDROID)
   if (dynamic_cast<const WindowGlfw*>(&window) != nullptr) {
     VkSurfaceKHR surface;
     CHECK_VKCMD(glfwCreateWindowSurface(
-        instance.getVkInstance(), static_cast<GLFWwindow*>(window.getNativeHandler()), nullptr,
-        &surface));
+                    instance.getVkInstance(), static_cast<GLFWwindow*>(window.getNativeHandler()),
+                    nullptr, &surface),
+                "Failed to create VkSurfaceKHR.");
     return Surface(surface, instance);
   }
 #endif
-  return Error(EngineError::NOT_RECOGNIZED_TYPE);
+  throw EngineException("Failed to recognize window type for surface creation.");
 }
 
 Surface::Surface(Surface&& other) noexcept

@@ -37,7 +37,7 @@ VmaWrapper::~VmaWrapper() {
   }
 }
 
-ErrorOr<VmaWrapper::Buffer> VmaWrapper::createVkBuffer(
+VmaWrapper::Buffer VmaWrapper::createVkBuffer(
     VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage,
     VmaAllocationCreateFlags flags) {
   const VkBufferCreateInfo bufferInfo = {
@@ -52,7 +52,8 @@ ErrorOr<VmaWrapper::Buffer> VmaWrapper::createVkBuffer(
   VmaAllocation allocation;
   VmaAllocationInfo allocationInfo;
   CHECK_VKCMD(vmaCreateBuffer(
-      _allocator, &bufferInfo, &vmaallocInfo, &buffer, &allocation, &allocationInfo));
+                  _allocator, &bufferInfo, &vmaallocInfo, &buffer, &allocation, &allocationInfo),
+              "Failed to create VkBuffer by VMA.");
   return VmaWrapper::Buffer{buffer, allocation, allocationInfo.pMappedData};
 }
 
@@ -65,7 +66,7 @@ void VmaWrapper::sendDataToBufferMemory(
   vmaCopyMemoryToAllocation(_allocator, data, allocation, 0, size);
 }
 
-ErrorOr<VmaWrapper::Image> VmaWrapper::createVkImage(
+VmaWrapper::Image VmaWrapper::createVkImage(
     const ImageParameters& params, VkImageLayout layout, VmaMemoryUsage memoryUsage,
     VmaAllocationCreateFlags flags) {
   const VkImageCreateInfo imageInfo = {
@@ -86,7 +87,8 @@ ErrorOr<VmaWrapper::Image> VmaWrapper::createVkImage(
 
   VmaAllocation allocation;
   VkImage image;
-  CHECK_VKCMD(vmaCreateImage(_allocator, &imageInfo, &vmaAllocInfo, &image, &allocation, nullptr));
+  CHECK_VKCMD(vmaCreateImage(_allocator, &imageInfo, &vmaAllocInfo, &image, &allocation, nullptr),
+              "Failed to create VkImage by VMA.");
   return VmaWrapper::Image{image, allocation};
 }
 

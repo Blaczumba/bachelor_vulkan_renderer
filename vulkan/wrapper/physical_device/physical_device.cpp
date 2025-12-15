@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vulkan/vulkan.hpp>
 
+#include "common/util/engine_exception.h"
 #include "lib/algorithm.h"
 #include "vulkan/wrapper/instance/extensions.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
@@ -127,10 +128,9 @@ PhysicalDevice::PhysicalDevice(VkPhysicalDevice physicalDevice, const Instance& 
   vkGetPhysicalDeviceProperties(_device, &_properties);
 }
 
-ErrorOr<std::unique_ptr<PhysicalDevice>> PhysicalDevice::create(
+std::unique_ptr<PhysicalDevice> PhysicalDevice::create(
     const Instance& instance, VkSurfaceKHR surface) {
-  ASSIGN_OR_RETURN(
-      const lib::Buffer<VkPhysicalDevice> devices, instance.getAvailablePhysicalDevices());
+  const lib::Buffer<VkPhysicalDevice> devices = instance.getAvailablePhysicalDevices();
   for (const auto device : devices) {
     const QueueFamilyIndices queueFamilyIndices = findQueueFamilyIncides(device, surface);
     const SwapChainSupportDetails swapchainSupportDetails =
@@ -157,7 +157,7 @@ ErrorOr<std::unique_ptr<PhysicalDevice>> PhysicalDevice::create(
           new PhysicalDevice(device, instance, queueFamilyIndices));
     }
   }
-  return Error(EngineError::NOT_FOUND);
+  throw EngineException("Failed to find suitable physical device.");
 }
 
 ErrorOr<std::unique_ptr<PhysicalDevice>> PhysicalDevice::wrap(

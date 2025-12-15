@@ -32,7 +32,8 @@ ErrorOr<DebugMessenger> DebugMessenger::create(
   if (auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
           instance.getVkInstance(), "vkCreateDebugUtilsMessengerEXT");
       func != nullptr) {
-    CHECK_VKCMD(func(instance.getVkInstance(), &createInfo, nullptr, &debugUtilsMessenger));
+    CHECK_VKCMD(func(instance.getVkInstance(), &createInfo, nullptr, &debugUtilsMessenger),
+                "Failed to create VkDebugUtilsMessengerEXT.");
   } else {
     return Error(VK_ERROR_EXTENSION_NOT_PRESENT);
   }

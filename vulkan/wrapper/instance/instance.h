@@ -20,7 +20,7 @@ public:
 
   ~Instance();
 
-  static ErrorOr<Instance> create(
+  static Instance create(
       std::string_view engineName, std::span<const char* const> requiredExtensions,
       PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
 
@@ -28,7 +28,7 @@ public:
 
   VkInstance getVkInstance() const;
 
-  ErrorOr<lib::Buffer<VkPhysicalDevice>> getAvailablePhysicalDevices() const;
+  lib::Buffer<VkPhysicalDevice> getAvailablePhysicalDevices() const;
 
 private:
   VkInstance _instance = VK_NULL_HANDLE;

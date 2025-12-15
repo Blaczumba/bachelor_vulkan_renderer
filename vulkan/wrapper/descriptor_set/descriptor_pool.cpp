@@ -35,7 +35,8 @@ ErrorOr<std::unique_ptr<DescriptorPool>> DescriptorPool::create(
 
   VkDescriptorPool descriptorPool;
   CHECK_VKCMD(
-      vkCreateDescriptorPool(logicalDevice.getVkDevice(), &poolInfo, nullptr, &descriptorPool));
+      vkCreateDescriptorPool(logicalDevice.getVkDevice(), &poolInfo, nullptr, &descriptorPool),
+      "Failed to create VkDescriptorPool.");
   return std::unique_ptr<DescriptorPool>(
       new DescriptorPool(descriptorPool, logicalDevice, maxNumSets));
 }

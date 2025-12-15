@@ -44,7 +44,8 @@ ErrorOr<DescriptorSet> DescriptorSet::create(
 
   VkDescriptorSet descriptorSet;
   CHECK_VKCMD(vkAllocateDescriptorSets(
-      descriptorPool->getLogicalDevice().getVkDevice(), &allocInfo, &descriptorSet));
+                  descriptorPool->getLogicalDevice().getVkDevice(), &allocInfo, &descriptorSet),
+              "Failed to create VkDescriptorSet.");
   return DescriptorSet(descriptorSet, descriptorPool);
 }
 
@@ -60,8 +61,9 @@ ErrorOr<std::vector<DescriptorSet>> DescriptorSet::create(
   };
 
   lib::Buffer<VkDescriptorSet> descriptorSets(numSets);
-  CHECK_VKCMD(vkAllocateDescriptorSets(
-      descriptorPool->getLogicalDevice().getVkDevice(), &allocInfo, descriptorSets.data()));
+  CHECK_VKCMD(vkAllocateDescriptorSets(descriptorPool->getLogicalDevice().getVkDevice(), &allocInfo,
+                                       descriptorSets.data()),
+              "Failed to create VkDescriptorSet.");
 
   std::vector<DescriptorSet> descSets;
   descSets.reserve(descriptorSets.size());

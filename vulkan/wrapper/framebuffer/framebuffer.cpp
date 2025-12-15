@@ -2,18 +2,17 @@
 
 #include <optional>
 
+#include "common/util/engine_exception.h"
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
-#include "vulkan/wrapper/util/check.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
+#include "vulkan/wrapper/util/check.h"
 
 namespace {
 
-ErrorOr<Texture> createColorAttachment(
-    const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkFormat format,
-    VkSampleCountFlagBits samples, VkExtent2D extent) {
-  ASSIGN_OR_RETURN(
-      Texture texture,
+Texture createColorAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                              VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
+  Texture texture =
       TextureBuilder()
           .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
           .withExtent(extent.width, extent.height)
@@ -21,8 +20,8 @@ ErrorOr<Texture> createColorAttachment(
           .withNumSamples(samples)
           .withUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
           .withLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-          .buildAttachment(logicalDevice, commandBuffer));
-  RETURN_IF_ERROR(texture.addCreateVkImageView(0, 1, 0, 1));
+          .buildAttachment(logicalDevice, commandBuffer);
+  texture.addCreateVkImageView(0, 1, 0, 1);
   return texture;
 }
 
@@ -32,11 +31,9 @@ bool hasStencil(VkFormat format) {
   return std::find(std::cbegin(formats), std::cend(formats), format) != std::cend(formats);
 }
 
-ErrorOr<Texture> createDepthAttachment(
-    const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkFormat format,
-    VkSampleCountFlagBits samples, VkExtent2D extent) {
-  ASSIGN_OR_RETURN(
-      Texture texture,
+Texture createDepthAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                              VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
+  Texture texture =
       TextureBuilder()
           .withAspect(hasStencil(format) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
                                            VK_IMAGE_ASPECT_DEPTH_BIT)
@@ -47,14 +44,14 @@ ErrorOr<Texture> createDepthAttachment(
               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)
           .withLayout(hasStencil(format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
                                            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
-          .buildAttachment(logicalDevice, commandBuffer));
-  RETURN_IF_ERROR(texture.addCreateVkImageView(0, 1, 0, 1));
+          .buildAttachment(logicalDevice, commandBuffer);
+  texture.addCreateVkImageView(0, 1, 0, 1);
   return texture;
 }
 
 }  // namespace
 
-ErrorOr<Framebuffer> Framebuffer::createFromSwapchain(
+Framebuffer Framebuffer::createFromSwapchain(
     VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent,
     VkImageView swapchainImageView, std::vector<Texture>& attachments) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
@@ -70,24 +67,24 @@ ErrorOr<Framebuffer> Framebuffer::createFromSwapchain(
         break;
       case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
         {
-          ASSIGN_OR_RETURN(Texture attachment,
-                           createColorAttachment(logicalDevice, commandBuffer, description.format,
-                                                 description.samples, swapchainExtent));
+          Texture attachment = createColorAttachment(
+              logicalDevice, commandBuffer, description.format, description.samples,
+              swapchainExtent);
           imageViews.push_back(attachment.getVkImageView());
           attachments.push_back(std::move(attachment));
           break;
         }
       case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
         {
-          ASSIGN_OR_RETURN(Texture attachment,
-                           createDepthAttachment(logicalDevice, commandBuffer, description.format,
-                                                 description.samples, swapchainExtent));
+          Texture attachment = createDepthAttachment(
+              logicalDevice, commandBuffer, description.format, description.samples,
+              swapchainExtent);
           imageViews.push_back(attachment.getVkImageView());
           attachments.push_back(std::move(attachment));
           break;
         }
       default:
-        return Error(EngineError::NOT_RECOGNIZED_TYPE);
+        throw EngineException("Not recognized type of VkImageLayout during Framebuffer creation.");
     }
   }
 
@@ -102,8 +99,9 @@ ErrorOr<Framebuffer> Framebuffer::createFromSwapchain(
   };
 
   VkFramebuffer framebuffer;
-  CHECK_VKCMD(vkCreateFramebuffer(
-      renderpass.getLogicalDevice().getVkDevice(), &framebufferInfo, nullptr, &framebuffer));
+  CHECK_VKCMD(vkCreateFramebuffer(renderpass.getLogicalDevice().getVkDevice(), &framebufferInfo,
+                                  nullptr, &framebuffer),
+              "Failed to create VkFramebuffer.");
 
   const VkViewport viewport = {
     .width = static_cast<float>(swapchainExtent.width),
@@ -114,7 +112,7 @@ ErrorOr<Framebuffer> Framebuffer::createFromSwapchain(
   return Framebuffer(framebuffer, renderpass, viewport, scissor);
 }
 
-ErrorOr<Framebuffer> Framebuffer::createFromTextures(
+Framebuffer Framebuffer::createFromTextures(
     const Renderpass& renderpass, std::span<const Texture> textures) {
   std::vector<VkImageView> imageViews;
   imageViews.reserve(textures.size());
@@ -125,12 +123,12 @@ ErrorOr<Framebuffer> Framebuffer::createFromTextures(
       extent = texture.getVkExtent2D();
     } else if (VkExtent2D tmpExtent = texture.getVkExtent2D();
                extent->width != tmpExtent.width || extent->height != tmpExtent.height) {
-      return Error(EngineError::SIZE_MISMATCH);
+      throw EngineException("All images must have the same size to create a Framebuffer.");
     }
   }
 
   if (!extent.has_value()) {
-    return Error(EngineError::EMPTY_COLLECTION);
+    throw EngineException("Framebuffer must have an attachment.");
   }
 
   const VkFramebufferCreateInfo framebufferInfo = {
@@ -144,8 +142,9 @@ ErrorOr<Framebuffer> Framebuffer::createFromTextures(
   };
 
   VkFramebuffer framebuffer;
-  CHECK_VKCMD(vkCreateFramebuffer(
-      renderpass.getLogicalDevice().getVkDevice(), &framebufferInfo, nullptr, &framebuffer));
+  CHECK_VKCMD(vkCreateFramebuffer(renderpass.getLogicalDevice().getVkDevice(), &framebufferInfo,
+                                  nullptr, &framebuffer),
+              "Failed to create VkFramebuffer.");
 
   const VkViewport viewport = {
     .width = static_cast<float>(extent->width),

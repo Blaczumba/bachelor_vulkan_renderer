@@ -47,7 +47,8 @@ ErrorOr<DescriptorSetLayout> DescriptorSetLayout::create(
 
   VkDescriptorSetLayout descriptorSetLayout;
   CHECK_VKCMD(vkCreateDescriptorSetLayout(
-      logicalDevice.getVkDevice(), &layoutInfo, nullptr, &descriptorSetLayout));
+                  logicalDevice.getVkDevice(), &layoutInfo, nullptr, &descriptorSetLayout),
+              "Failed to create VkDescriptorSetLayout.");
   return DescriptorSetLayout(logicalDevice, descriptorSetLayout);
 }
 

@@ -23,7 +23,8 @@ ErrorOr<Shader> Shader::create(
 
   VkShaderModule shaderModule;
   CHECK_VKCMD(
-      vkCreateShaderModule(logicalDevice.getVkDevice(), &createInfo, nullptr, &shaderModule));
+      vkCreateShaderModule(logicalDevice.getVkDevice(), &createInfo, nullptr, &shaderModule),
+      "Failed to create VkShaderModule.");
   return Shader(shaderModule, logicalDevice, shaderStage);
 }
 

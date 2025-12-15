@@ -22,10 +22,9 @@ class LogicalDevice {
 public:
   LogicalDevice() = default;
 
-  static ErrorOr<LogicalDevice> create(
-      const PhysicalDevice& physicalDevice,
-      std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
-          make_unique<ThreadedResourceDestroyer>());
+  static LogicalDevice create(const PhysicalDevice& physicalDevice,
+                              std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
+                                  make_unique<ThreadedResourceDestroyer>());
 
   static ErrorOr<LogicalDevice> wrap(VkDevice device, const PhysicalDevice& physicalDevice,
                                      std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
@@ -39,12 +38,11 @@ public:
 
   void destroyResource(ResourceDestroyerJob&& destroyResource) const;
 
-  ErrorOr<VkSampler> createSampler(const SamplerParameters& params) const;
+  VkSampler createSampler(const SamplerParameters& params) const;
 
-  ErrorOr<VkImageView> createImageView(
-      VkImage image, VkImageViewType type, VkFormat format, VkImageAspectFlags aspect,
-      uint32_t baseMipLevel, uint32_t mipLevels, uint32_t baseArrayLayer,
-      uint32_t layerCount) const;
+  VkImageView createImageView(VkImage image, VkImageViewType type, VkFormat format,
+                              VkImageAspectFlags aspect, uint32_t baseMipLevel, uint32_t mipLevels,
+                              uint32_t baseArrayLayer, uint32_t layerCount) const;
 
   VkDevice getVkDevice() const;
 

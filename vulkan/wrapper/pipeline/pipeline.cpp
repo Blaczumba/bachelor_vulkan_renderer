@@ -9,15 +9,16 @@ Pipeline::Pipeline(const LogicalDevice& logicalDevice, VkPipeline pipeline,
                    VkPipelineBindPoint bindPoint, VkPipelineLayout layout)
   : _logicalDevice(&logicalDevice), _pipeline(pipeline), _bindPoint(bindPoint), _layout(layout) {}
 
-ErrorOr<Pipeline> Pipeline::create(
+Pipeline Pipeline::create(
     const LogicalDevice& logicalDevice, const VkGraphicsPipelineCreateInfo& createInfo) {
   VkPipeline pipeline;
   CHECK_VKCMD(vkCreateGraphicsPipelines(
-      logicalDevice.getVkDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline));
+                  logicalDevice.getVkDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline),
+              "Failed to create VkPipeline.");
   return Pipeline(logicalDevice, pipeline, VK_PIPELINE_BIND_POINT_GRAPHICS, createInfo.layout);
 }
 
-std::vector<ErrorOr<Pipeline>> Pipeline::create(
+std::vector<Pipeline> Pipeline::create(
     const LogicalDevice& logicalDevice, std::span<const VkGraphicsPipelineCreateInfo> createInfos) {
   lib::Buffer<VkPipeline> vkPipelines(createInfos.size());
   const VkResult result = vkCreateGraphicsPipelines(
@@ -33,7 +34,7 @@ std::vector<ErrorOr<Pipeline>> Pipeline::create(
   //       }
   //       return Error(result);
   //     });
-  return pipelines;
+  return {};
 }
 
 Pipeline::Pipeline(Pipeline&& other) noexcept

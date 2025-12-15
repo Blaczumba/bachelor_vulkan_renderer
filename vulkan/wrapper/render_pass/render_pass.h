@@ -5,7 +5,6 @@
 #include <span>
 #include <vector>
 
-#include "common/status/status.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/render_pass/attachment_layout.h"
 
@@ -44,7 +43,7 @@ public:
   RenderpassBuilder& withMultiView(
       std::vector<uint32_t>&& viewMask, std::vector<uint32_t>&& correlationMask);
 
-  ErrorOr<Renderpass> build(const LogicalDevice& logicalDevice);
+  Renderpass build(const LogicalDevice& logicalDevice);
 
 private:
   const AttachmentLayout& _attachmentLayout;
@@ -58,8 +57,6 @@ private:
 
   std::vector<VkSubpassDependency> _subpassDepencies;
   std::vector<Subpass> _subpasses;
-
-  Status _status;
 };
 
 class Renderpass {

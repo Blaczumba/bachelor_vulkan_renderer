@@ -16,7 +16,7 @@ public:
 
   PipelineLayout& operator=(PipelineLayout&& other) noexcept;
 
-  static ErrorOr<PipelineLayout> create(
+  static PipelineLayout create(
       const LogicalDevice& logicalDevice,
       std::span<const VkDescriptorSetLayout> descriptorSetLayouts = {},
       std::span<const VkPushConstantRange> pushConstantRanges = {},

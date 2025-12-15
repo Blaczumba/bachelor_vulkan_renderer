@@ -64,7 +64,7 @@ void LogicalDevice::destroyResource(ResourceDestroyerJob&& destroyResource) cons
   _resourceDestroyer->destroyResource(std::move(destroyResource));
 }
 
-ErrorOr<LogicalDevice> LogicalDevice::create(
+LogicalDevice LogicalDevice::create(
     const PhysicalDevice& physicalDevice, std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) {
   const QueueFamilyIndices& indices = physicalDevice.getQueueFamilyIndices();
   const std::set<uint32_t> uniqueQueueFamilies = {*indices.graphicsFamily, *indices.presentFamily,
@@ -117,7 +117,8 @@ ErrorOr<LogicalDevice> LogicalDevice::create(
 
   VkDevice logicalDevice;
   CHECK_VKCMD(
-      vkCreateDevice(physicalDevice.getVkPhysicalDevice(), &createInfo, nullptr, &logicalDevice));
+      vkCreateDevice(physicalDevice.getVkPhysicalDevice(), &createInfo, nullptr, &logicalDevice),
+      "Failed to create LogicalDevice!");
 
   return LogicalDevice(logicalDevice, physicalDevice, std::move(resourceDestroyer));
 }
@@ -131,7 +132,7 @@ ErrorOr<LogicalDevice> LogicalDevice::wrap(VkDevice device, const PhysicalDevice
   return LogicalDevice(device, physicalDevice, std::move(resourceDestroyer));
 }
 
-ErrorOr<VkImageView> LogicalDevice::createImageView(
+VkImageView LogicalDevice::createImageView(
     VkImage image, VkImageViewType type, VkFormat format, VkImageAspectFlags aspect,
     uint32_t baseMipLevel, uint32_t mipLevels, uint32_t baseArrayLayer, uint32_t layerCount) const {
   const VkImageViewCreateInfo viewInfo = {
@@ -147,11 +148,12 @@ ErrorOr<VkImageView> LogicalDevice::createImageView(
   };
 
   VkImageView view;
-  CHECK_VKCMD(vkCreateImageView(_device, &viewInfo, nullptr, &view));
+  CHECK_VKCMD(
+      vkCreateImageView(_device, &viewInfo, nullptr, &view), "Failed to create VkImageView.");
   return view;
 }
 
-ErrorOr<VkSampler> LogicalDevice::createSampler(const SamplerParameters& params) const {
+VkSampler LogicalDevice::createSampler(const SamplerParameters& params) const {
   const VkSamplerCreateInfo samplerInfo = {
     .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
     .magFilter = params.magFilter,
@@ -171,7 +173,8 @@ ErrorOr<VkSampler> LogicalDevice::createSampler(const SamplerParameters& params)
     .unnormalizedCoordinates = params.unnormalizedCoordinates};
 
   VkSampler sampler;
-  CHECK_VKCMD(vkCreateSampler(_device, &samplerInfo, nullptr, &sampler));
+  CHECK_VKCMD(
+      vkCreateSampler(_device, &samplerInfo, nullptr, &sampler), "Failed to create VkSampler.");
   return sampler;
 }
 

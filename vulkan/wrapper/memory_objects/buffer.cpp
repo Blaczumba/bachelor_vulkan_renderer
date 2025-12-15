@@ -65,93 +65,91 @@ struct BufferData {
 struct VertexBufferAllocator {
   const size_t size;
 
-  ErrorOr<BufferData> operator()(VmaWrapper& allocator) {
+  BufferData operator()(VmaWrapper& allocator) {
     VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    ASSIGN_OR_RETURN(const VmaWrapper::Buffer buffer,
-                     allocator.createVkBuffer(size, usage, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE));
+    const VmaWrapper::Buffer buffer =
+        allocator.createVkBuffer(size, usage, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
     return BufferData{buffer.buffer, buffer.allocation, usage};
   }
 
-  ErrorOr<BufferData> operator()(auto&&) {
-    return Error(EngineError::NOT_RECOGNIZED_TYPE);
+  BufferData operator()(auto&&) {
+    return {};
   }
 };
 
 struct IndexBufferAllocator {
   const size_t size;
 
-  ErrorOr<BufferData> operator()(VmaWrapper& allocator) {
+  BufferData operator()(VmaWrapper& allocator) {
     VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    ASSIGN_OR_RETURN(const VmaWrapper::Buffer buffer,
-                     allocator.createVkBuffer(size, usage, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE));
+    const VmaWrapper::Buffer buffer =
+        allocator.createVkBuffer(size, usage, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
     return BufferData{buffer.buffer, buffer.allocation, usage};
   }
 
-  ErrorOr<BufferData> operator()(auto&&) {
-    return Error(EngineError::NOT_RECOGNIZED_TYPE);
+  BufferData operator()(auto&&) {
+    return {};
   }
 };
 
 struct StagingBufferAllocator {
   const size_t size;
 
-  ErrorOr<BufferData> operator()(VmaWrapper& wrapper) {
+  BufferData operator()(VmaWrapper& wrapper) {
     VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    ASSIGN_OR_RETURN(const VmaWrapper::Buffer buffer,
-                     wrapper.createVkBuffer(size, usage, VMA_MEMORY_USAGE_CPU_ONLY,
-                                            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
-                                                | VMA_ALLOCATION_CREATE_MAPPED_BIT));
+    const VmaWrapper::Buffer buffer = wrapper.createVkBuffer(
+        size, usage, VMA_MEMORY_USAGE_CPU_ONLY,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
     return BufferData{buffer.buffer, buffer.allocation, usage, buffer.mappedData};
   }
 
-  ErrorOr<BufferData> operator()(auto&&) {
-    return Error(EngineError::NOT_RECOGNIZED_TYPE);
+  BufferData operator()(auto&&) {
+    return {};
   }
 };
 
 struct UniformBufferAllocator {
   const size_t size;
 
-  ErrorOr<BufferData> operator()(VmaWrapper& allocator) {
+  BufferData operator()(VmaWrapper& allocator) {
     VkBufferUsageFlags usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    ASSIGN_OR_RETURN(const VmaWrapper::Buffer buffer,
-                     allocator.createVkBuffer(size, usage, VMA_MEMORY_USAGE_CPU_ONLY,
-                                              VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
-                                                  | VMA_ALLOCATION_CREATE_MAPPED_BIT));
+    const VmaWrapper::Buffer buffer = allocator.createVkBuffer(
+        size, usage, VMA_MEMORY_USAGE_CPU_ONLY,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
     return BufferData{buffer.buffer, buffer.allocation, usage, buffer.mappedData};
   }
 
-  ErrorOr<BufferData> operator()(auto&&) {
-    return Error(EngineError::NOT_RECOGNIZED_TYPE);
+  BufferData operator()(auto&&) {
+    return {};
   }
 };
 
 }  // namespace
 
 ErrorOr<Buffer> Buffer::createVertexBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
-  ASSIGN_OR_RETURN(const BufferData bufferData,
-                   std::visit(VertexBufferAllocator{size}, logicalDevice.getMemoryAllocator()));
+  const BufferData bufferData =
+      std::visit(VertexBufferAllocator{size}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
                 bufferData.mappedMemory);
 }
 
 ErrorOr<Buffer> Buffer::createIndexBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
-  ASSIGN_OR_RETURN(const BufferData bufferData,
-                   std::visit(IndexBufferAllocator{size}, logicalDevice.getMemoryAllocator()));
+  const BufferData bufferData =
+      std::visit(IndexBufferAllocator{size}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
                 bufferData.mappedMemory);
 }
 
 ErrorOr<Buffer> Buffer::createStagingBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
-  ASSIGN_OR_RETURN(const BufferData bufferData,
-                   std::visit(StagingBufferAllocator{size}, logicalDevice.getMemoryAllocator()));
+  const BufferData bufferData =
+      std::visit(StagingBufferAllocator{size}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
                 bufferData.mappedMemory);
 }
 
 ErrorOr<Buffer> Buffer::createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
-  ASSIGN_OR_RETURN(const BufferData bufferData,
-                   std::visit(UniformBufferAllocator{size}, logicalDevice.getMemoryAllocator()));
+  const BufferData bufferData =
+      std::visit(UniformBufferAllocator{size}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
                 bufferData.mappedMemory);
 }
