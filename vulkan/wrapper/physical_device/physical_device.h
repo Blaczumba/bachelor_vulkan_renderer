@@ -22,15 +22,6 @@ struct SwapChainSupportDetails {
 };
 
 class PhysicalDevice {
-  VkPhysicalDevice _device;
-
-  const Instance& _instance;
-
-  VkPhysicalDeviceProperties _properties;
-  QueueFamilyIndices _queueFamilyIndices;
-
-  const std::unordered_set<std::string_view> _availableRequestedExtensions;
-
   PhysicalDevice(VkPhysicalDevice physicalDevice, const Instance& instance,
                  const QueueFamilyIndices& queueFamilyIndices);
 
@@ -58,4 +49,14 @@ public:
   const QueueFamilyIndices& getQueueFamilyIndices() const;
 
   const SwapChainSupportDetails getSwapchainSupportDetails(VkSurfaceKHR surface) const;
+
+private:
+  VkPhysicalDevice _device = VK_NULL_HANDLE;
+
+  const Instance& _instance;
+
+  VkPhysicalDeviceProperties _properties;
+  QueueFamilyIndices _queueFamilyIndices;
+
+  const std::unordered_set<std::string_view> _availableRequestedExtensions;
 };

@@ -24,6 +24,8 @@ public:
                             MemoryAllocator* memoryAllocator) = 0;
 };
 
+using ResourceDestroyerPtr = std::unique_ptr<ResourceDestroyer>;
+
 class ThreadedResourceDestroyer : public ResourceDestroyer {
 public:
   ThreadedResourceDestroyer() = default;

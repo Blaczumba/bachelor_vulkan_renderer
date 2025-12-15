@@ -30,6 +30,20 @@ Buffer& Buffer::operator=(Buffer&& buffer) noexcept {
   return *this;
 }
 
+namespace {
+
+struct BufferDeallocator {
+  const VkBuffer buffer;
+
+  void operator()(VmaWrapper& allocator, const VmaAllocation allocation) {
+    allocator.destroyVkBuffer(buffer, allocation);
+  }
+
+  void operator()(auto&&, auto&&) {}
+};
+
+}  // namespace
+
 Buffer::~Buffer() {
   if (_buffer != VK_NULL_HANDLE) {
     _logicalDevice->destroyResource(

@@ -9,10 +9,6 @@
 class LogicalDevice;
 
 class Shader {
-  VkShaderModule _shaderModule = VK_NULL_HANDLE;
-  VkShaderStageFlagBits _shaderStage;
-  const LogicalDevice* _logicalDevice = nullptr;
-
   Shader(VkShaderModule shaderModule, const LogicalDevice& logicalDevice,
          VkShaderStageFlagBits shaderStage);
 
@@ -36,4 +32,9 @@ public:
   VkPipelineShaderStageCreateInfo getVkPipelineStageCreateInfo() const;
 
   VkShaderStageFlagBits getVkShaderStageFlagBits() const;
+
+private:
+  VkShaderModule _shaderModule = VK_NULL_HANDLE;
+  VkShaderStageFlagBits _shaderStage;
+  const LogicalDevice* _logicalDevice = nullptr;
 };

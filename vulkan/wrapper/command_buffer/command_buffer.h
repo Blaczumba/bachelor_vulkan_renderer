@@ -13,9 +13,6 @@
 class CommandBuffer;
 
 class CommandPool : public std::enable_shared_from_this<const CommandPool> {
-  VkCommandPool _commandPool;
-  const LogicalDevice& _logicalDevice;
-
   CommandPool(const LogicalDevice& logicalDevice, VkCommandPool commandPool);
 
 public:
@@ -37,14 +34,13 @@ public:
   VkCommandPool getVkCommandPool() const;
 
   const LogicalDevice& getLogicalDevice() const;
+
+private:
+  VkCommandPool _commandPool;
+  const LogicalDevice& _logicalDevice;
 };
 
 class CommandBuffer {
-  VkCommandBuffer _commandBuffer;
-  std::shared_ptr<const CommandPool> _commandPool;
-
-  VkCommandBufferLevel _level;
-
   CommandBuffer(const std::shared_ptr<const CommandPool>& commandPool,
                 VkCommandBuffer commandBuffer, VkCommandBufferLevel level);
 
@@ -90,6 +86,12 @@ public:
   void resetCommandBuffer() const;
 
   VkCommandBuffer getVkCommandBuffer() const;
+
+private:
+  VkCommandBuffer _commandBuffer;
+  std::shared_ptr<const CommandPool> _commandPool;
+
+  VkCommandBufferLevel _level;
 };
 
 template <size_t COUNT>

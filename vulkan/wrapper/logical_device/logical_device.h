@@ -6,7 +6,6 @@
 #include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
-#include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 
 enum class QueueType : uint8_t {
@@ -17,17 +16,6 @@ enum class QueueType : uint8_t {
 };
 
 class LogicalDevice {
-  VkDevice _device = VK_NULL_HANDLE;
-
-  const PhysicalDevice* _physicalDevice = nullptr;
-  MemoryAllocatorPtr _memoryAllocator;
-  std::unique_ptr<ResourceDestroyer> _resourceDestroyer;
-
-  VkQueue _graphicsQueue = VK_NULL_HANDLE;
-  VkQueue _presentQueue = VK_NULL_HANDLE;
-  VkQueue _computeQueue = VK_NULL_HANDLE;
-  VkQueue _transferQueue = VK_NULL_HANDLE;
-
   LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice,
                 std::unique_ptr<ResourceDestroyer>&& resourceDestroyer);
 
@@ -73,4 +61,16 @@ public:
   VkQueue getComputeVkQueue() const;
 
   VkQueue getTransferVkQueue() const;
+
+private:
+  VkDevice _device = VK_NULL_HANDLE;
+
+  const PhysicalDevice* _physicalDevice = nullptr;
+  MemoryAllocatorPtr _memoryAllocator;
+  ResourceDestroyerPtr _resourceDestroyer;
+
+  VkQueue _graphicsQueue = VK_NULL_HANDLE;
+  VkQueue _presentQueue = VK_NULL_HANDLE;
+  VkQueue _computeQueue = VK_NULL_HANDLE;
+  VkQueue _transferQueue = VK_NULL_HANDLE;
 };

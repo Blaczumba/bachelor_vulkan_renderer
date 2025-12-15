@@ -10,8 +10,6 @@ class Swapchain {
   Swapchain(VkSwapchainKHR swapchain, const LogicalDevice& logicalDevice, VkFormat format,
             VkExtent2D extent, lib::Buffer<VkImage>&& images, lib::Buffer<VkImageView>&& views);
 
-  void tryDestroySwapchain();
-
 public:
   Swapchain() = default;
 
@@ -36,6 +34,8 @@ public:
   VkResult present(uint32_t imageIndex, VkSemaphore waitSemaphore) const;
 
 private:
+  void tryDestroySwapchain();
+
   VkSwapchainKHR _swapchain = VK_NULL_HANDLE;
   const LogicalDevice* _logicalDevice = nullptr;
 

@@ -7,10 +7,6 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class DescriptorSetLayout {
-  VkDescriptorSetLayout _descriptorSetLayout = VK_NULL_HANDLE;
-
-  const LogicalDevice* _logicalDevice;
-
   DescriptorSetLayout(const LogicalDevice& logicalDevice, VkDescriptorSetLayout layout);
 
 public:
@@ -28,4 +24,9 @@ public:
       VkDescriptorSetLayoutCreateFlags flags = 0);
 
   VkDescriptorSetLayout getVkDescriptorSetLayout() const;
+
+private:
+  VkDescriptorSetLayout _descriptorSetLayout = VK_NULL_HANDLE;
+
+  const LogicalDevice* _logicalDevice;
 };

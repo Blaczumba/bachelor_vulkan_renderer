@@ -8,10 +8,9 @@
 #include "vulkan/wrapper/memory_allocator/allocation.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
 #include "vulkan/wrapper/memory_objects/image.h"
+#include "vulkan/wrapper/logical_device/logical_device.h"
 
-class LogicalDevice;
-
-struct Texture {
+class Texture {
 public:
   Texture() = default;
 
@@ -45,7 +44,7 @@ private:
 
   VkImage _image = VK_NULL_HANDLE;
   std::vector<VkImageView> _views;
-  // Create separate Sampler class which is not owned by Texture.
+  //TODO: Create separate Sampler class which is not owned by Texture.
   VkSampler _sampler = VK_NULL_HANDLE;
   Allocation _allocation;
   VkImageLayout _layout;

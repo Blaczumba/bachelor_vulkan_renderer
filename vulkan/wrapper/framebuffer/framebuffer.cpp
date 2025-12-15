@@ -5,6 +5,7 @@
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
+#include "vulkan/wrapper/memory_objects/texture.h"
 
 namespace {
 

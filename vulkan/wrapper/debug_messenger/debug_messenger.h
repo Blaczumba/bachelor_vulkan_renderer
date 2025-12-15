@@ -7,10 +7,6 @@
 #include "vulkan/wrapper/instance/instance.h"
 
 class DebugMessenger {
-  VkDebugUtilsMessengerEXT _debugUtilsMessenger;
-
-  const Instance* _instance;
-
   DebugMessenger(const Instance& instance, VkDebugUtilsMessengerEXT debugUtilsMessenger);
 
 public:
@@ -24,4 +20,9 @@ public:
       const Instance& instance, PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
 
   ~DebugMessenger();
+
+private:
+  VkDebugUtilsMessengerEXT _debugUtilsMessenger;
+
+  const Instance* _instance;
 };

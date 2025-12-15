@@ -14,13 +14,6 @@
 #include "vulkan/wrapper/memory_objects/texture.h"
 
 class BindlessDescriptorSetWriter {
-  const DescriptorSet& _descriptorSet;
-
-  std::unordered_map<uint32_t, const Texture*> _texturesMap;  // TODO: Change to flat_unordered_map
-  std::vector<uint32_t> _missingTextures;
-  std::unordered_map<uint32_t, const Buffer*> _buffersMap;  // TODO: Change to flat_unordered_map
-  std::vector<uint32_t> _missingBuffers;
-
 public:
   BindlessDescriptorSetWriter(const DescriptorSet& descriptorSet);
 
@@ -31,4 +24,12 @@ public:
   BufferHandle storeBuffer(const Buffer& buffer);
 
   void removeBuffer(BufferHandle handle);
+
+private:
+  const DescriptorSet& _descriptorSet;
+
+  std::unordered_map<uint32_t, const Texture*> _texturesMap;  // TODO: Change to flat_unordered_map
+  std::vector<uint32_t> _missingTextures;
+  std::unordered_map<uint32_t, const Buffer*> _buffersMap;  // TODO: Change to flat_unordered_map
+  std::vector<uint32_t> _missingBuffers;
 };

@@ -23,6 +23,7 @@ Texture& Texture::operator=(Texture&& texture) noexcept {
   if (this == &texture) {
     return *this;
   }
+
   _allocation = texture._allocation;
   _image = std::exchange(texture._image, VK_NULL_HANDLE);
   _views = std::move(texture._views);
@@ -83,7 +84,6 @@ Texture::~Texture() {
         [image = _image, allocation = std::move(_allocation)](DestroyerContext context) {
           std::visit(ImageDeleter{image}, *context.memoryAllocator, allocation);
         });
-    // std::visit(ImageDeleter{_image}, _logicalDevice->getMemoryAllocator(), _allocation);
   }
 }
 

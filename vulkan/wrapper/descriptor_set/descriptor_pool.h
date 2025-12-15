@@ -13,12 +13,6 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class DescriptorPool : public std::enable_shared_from_this<const DescriptorPool> {
-  VkDescriptorPool _descriptorPool;
-  const uint32_t _maxNumSets;
-  mutable uint32_t _allocatedSets;
-
-  const LogicalDevice& _logicalDevice;
-
   DescriptorPool(
       VkDescriptorPool descriptorPool, const LogicalDevice& logicalDevice, uint32_t maxNumSets);
 
@@ -39,4 +33,11 @@ public:
   bool maxSetsReached() const;
 
   const LogicalDevice& getLogicalDevice() const;
+
+private:
+  VkDescriptorPool _descriptorPool;
+  const uint32_t _maxNumSets;
+  mutable uint32_t _allocatedSets;
+
+  const LogicalDevice& _logicalDevice;
 };

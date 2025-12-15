@@ -9,8 +9,6 @@
 #include "lib/buffer/buffer.h"
 
 class Instance {
-  VkInstance _instance = VK_NULL_HANDLE;
-
   Instance(VkInstance instance);
 
 public:
@@ -31,4 +29,7 @@ public:
   VkInstance getVkInstance() const;
 
   ErrorOr<lib::Buffer<VkPhysicalDevice>> getAvailablePhysicalDevices() const;
+
+private:
+  VkInstance _instance = VK_NULL_HANDLE;
 };

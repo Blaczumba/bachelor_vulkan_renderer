@@ -7,15 +7,9 @@
 #include "common/status/status.h"
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
+#include "vulkan/wrapper/memory_objects/texture.h"
 
 class Framebuffer {
-  VkFramebuffer _framebuffer = VK_NULL_HANDLE;
-
-  const Renderpass* _renderpass = nullptr;
-
-  VkViewport _viewport;
-  VkRect2D _scissor;
-
   Framebuffer(VkFramebuffer framebuffer, const Renderpass& renderpass, const VkViewport& viewport,
               const VkRect2D& scissor);
 
@@ -44,4 +38,12 @@ public:
   const Renderpass& getRenderpass() const;
 
   VkFramebuffer getVkFramebuffer() const;
+
+private:
+  VkFramebuffer _framebuffer = VK_NULL_HANDLE;
+
+  const Renderpass* _renderpass = nullptr;
+
+  VkViewport _viewport;
+  VkRect2D _scissor;
 };

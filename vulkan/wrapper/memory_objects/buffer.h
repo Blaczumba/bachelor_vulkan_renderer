@@ -9,7 +9,6 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-#include "buffer_deallocator.h"
 #include "common/status/status.h"
 #include "common/util/buffer_manip.h"
 #include "lib/buffer/buffer.h"
