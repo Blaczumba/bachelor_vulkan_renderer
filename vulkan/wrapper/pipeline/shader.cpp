@@ -13,9 +13,8 @@ Shader::Shader(VkShaderModule shaderModule, const LogicalDevice& logicalDevice,
                VkShaderStageFlagBits shaderStage)
   : _shaderModule(shaderModule), _logicalDevice(&logicalDevice), _shaderStage(shaderStage) {}
 
-ErrorOr<Shader> Shader::create(
-    const LogicalDevice& logicalDevice, std::span<const std::byte> shaderData,
-    VkShaderStageFlagBits shaderStage) {
+Shader Shader::create(const LogicalDevice& logicalDevice, std::span<const std::byte> shaderData,
+                      VkShaderStageFlagBits shaderStage) {
   const VkShaderModuleCreateInfo createInfo = {
     .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
     .codeSize = shaderData.size(),

@@ -5,7 +5,6 @@
 #include <span>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "vulkan/wrapper/framebuffer/framebuffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
@@ -16,18 +15,17 @@ class CommandPool : public std::enable_shared_from_this<const CommandPool> {
   CommandPool(const LogicalDevice& logicalDevice, VkCommandPool commandPool);
 
 public:
-  static ErrorOr<std::unique_ptr<CommandPool>> create(
+  static std::unique_ptr<CommandPool> create(
       const LogicalDevice& logicalDevice, VkCommandPoolCreateFlags flags = 0);
 
   ~CommandPool();
 
-  ErrorOr<CommandBuffer> createCommandBuffer(VkCommandBufferLevel level) const;
+  CommandBuffer createCommandBuffer(VkCommandBufferLevel level) const;
 
-  ErrorOr<std::vector<CommandBuffer>> createCommandBuffers(
-      VkCommandBufferLevel level, uint32_t count) const;
+  std::vector<CommandBuffer> createCommandBuffers(VkCommandBufferLevel level, uint32_t count) const;
 
   template <size_t COUNT>
-  ErrorOr<std::array<CommandBuffer, COUNT>> createCommandBuffers(VkCommandBufferLevel level) const;
+  std::array<CommandBuffer, COUNT> createCommandBuffers(VkCommandBufferLevel level) const;
 
   void reset() const;
 
@@ -47,16 +45,15 @@ class CommandBuffer {
 public:
   CommandBuffer();
 
-  static ErrorOr<CommandBuffer> create(
+  static CommandBuffer create(
       const std::shared_ptr<const CommandPool>& commandPool, VkCommandBufferLevel level);
 
   template <size_t COUNT>
-  static ErrorOr<std::array<CommandBuffer, COUNT>> create(
+  static std::array<CommandBuffer, COUNT> create(
       const std::shared_ptr<const CommandPool>& commandPool, VkCommandBufferLevel level);
 
-  static ErrorOr<std::vector<CommandBuffer>> create(
-      const std::shared_ptr<const CommandPool>& commandPool, VkCommandBufferLevel level,
-      uint32_t count);
+  static std::vector<CommandBuffer> create(const std::shared_ptr<const CommandPool>& commandPool,
+                                           VkCommandBufferLevel level, uint32_t count);
 
   CommandBuffer(CommandBuffer&&) noexcept;
 
@@ -77,11 +74,10 @@ public:
 
   VkResult end() const;
 
-  Status executeSecondaryCommandBuffers(
-      std::initializer_list<VkCommandBuffer> commandBuffers) const;
+  void executeSecondaryCommandBuffers(std::initializer_list<VkCommandBuffer> commandBuffers) const;
 
-  Status submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore,
-                const VkFence waitFence) const;
+  void submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore,
+              const VkFence waitFence) const;
 
   void resetCommandBuffer() const;
 
@@ -95,7 +91,7 @@ private:
 };
 
 template <size_t COUNT>
-ErrorOr<std::array<CommandBuffer, COUNT>> CommandPool::createCommandBuffers(
+std::array<CommandBuffer, COUNT> CommandPool::createCommandBuffers(
     VkCommandBufferLevel level) const {
   return CommandBuffer::create<COUNT>(shared_from_this(), level);
 }
@@ -117,7 +113,7 @@ VkResult createCommandBuffers(
 }  // namespace
 
 template <size_t COUNT>
-ErrorOr<std::array<CommandBuffer, COUNT>> CommandBuffer::create(
+std::array<CommandBuffer, COUNT> CommandBuffer::create(
     const std::shared_ptr<const CommandPool>& commandPool, VkCommandBufferLevel level) {
   VkCommandBuffer vkCommandBuffers[COUNT];
   CHECK_VKCMD(createCommandBuffers(commandPool->getLogicalDevice().getVkDevice(),

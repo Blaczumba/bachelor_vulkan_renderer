@@ -3,7 +3,6 @@
 #include <span>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "lib/buffer/buffer.h"
 
 class LogicalDevice;
@@ -15,9 +14,8 @@ class Shader {
 public:
   Shader() = default;
 
-  static ErrorOr<Shader> create(
-      const LogicalDevice& logicalDevice, std::span<const std::byte> shaderData,
-      VkShaderStageFlagBits shaderStage);
+  static Shader create(const LogicalDevice& logicalDevice, std::span<const std::byte> shaderData,
+                       VkShaderStageFlagBits shaderStage);
 
   ~Shader();
 

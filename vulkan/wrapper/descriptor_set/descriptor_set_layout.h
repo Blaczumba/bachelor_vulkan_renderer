@@ -3,7 +3,6 @@
 #include <span>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class DescriptorSetLayout {
@@ -18,7 +17,7 @@ public:
 
   ~DescriptorSetLayout();
 
-  static ErrorOr<DescriptorSetLayout> create(
+  static DescriptorSetLayout create(
       const LogicalDevice& logicalDevice, std::span<const VkDescriptorSetLayoutBinding> bindings,
       std::span<const VkDescriptorBindingFlags> bindingFlags = {},
       VkDescriptorSetLayoutCreateFlags flags = 0);

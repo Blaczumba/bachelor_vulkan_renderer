@@ -30,7 +30,7 @@ DescriptorSetLayout::~DescriptorSetLayout() {
   }
 }
 
-ErrorOr<DescriptorSetLayout> DescriptorSetLayout::create(
+DescriptorSetLayout DescriptorSetLayout::create(
     const LogicalDevice& logicalDevice, std::span<const VkDescriptorSetLayoutBinding> bindings,
     std::span<const VkDescriptorBindingFlags> bindFlags, VkDescriptorSetLayoutCreateFlags flags) {
   const VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlags = {

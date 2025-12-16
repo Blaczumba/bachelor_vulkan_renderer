@@ -341,7 +341,7 @@ Texture TextureBuilder::buildImage(
   return Texture(logicalDevice, image, allocation, _imageParameters, _imageLayout, sampler);
 }
 
-ErrorOr<Texture> TextureBuilder::buildImageSampler(
+Texture TextureBuilder::buildImageSampler(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const {
   Allocation allocation;
   const VkImage image = allocate(allocation, _imageParameters, logicalDevice.getMemoryAllocator());
@@ -352,7 +352,7 @@ ErrorOr<Texture> TextureBuilder::buildImageSampler(
   return Texture(logicalDevice, image, allocation, _imageParameters, _imageLayout, sampler);
 }
 
-ErrorOr<Texture> TextureBuilder::buildMipmapImage(
+Texture TextureBuilder::buildMipmapImage(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
     std::span<const VkBufferImageCopy> copyRegions) const {
   Allocation allocation;

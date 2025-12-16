@@ -1,5 +1,7 @@
 #include "geometry.h"
 
+#include "common/util/engine_exception.h"
+
 bool AABB::contains(const AABB& other) const {
   const glm::vec3 otherLowerCorner = other.lowerCorner;
   const glm::vec3 otherUpperCorner = other.upperCorner;
@@ -100,7 +102,7 @@ std::enable_if_t<std::is_unsigned<IndexType>::value, lib::Buffer<glm::vec3>> pro
 
 }  // namespace
 
-ErrorOr<lib::Buffer<glm::vec3>> createTangents(
+lib::Buffer<glm::vec3> createTangents(
     uint8_t indexSize, std::span<const std::byte> indicesBytes,
     std::span<const glm::vec3> positions, std::span<const glm::vec2> texCoords) {
   const size_t indicesCount = indicesBytes.size() / indexSize;
@@ -118,5 +120,5 @@ ErrorOr<lib::Buffer<glm::vec3>> createTangents(
           std::span(reinterpret_cast<const uint32_t*>(indicesBytes.data()), indicesCount),
           positions, texCoords);
   }
-  return Error(EngineError::NOT_RECOGNIZED_TYPE);
+  throw EngineException("Not recognized index type.");
 }

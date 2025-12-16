@@ -2,12 +2,13 @@
 
 #include <iterator>
 
+#include "common/util/engine_exception.h"
 #include "vulkan/wrapper/util/check.h"
 
 CommandPool::CommandPool(const LogicalDevice& logicalDevice, VkCommandPool commandPool)
   : _logicalDevice(logicalDevice), _commandPool(commandPool) {}
 
-ErrorOr<std::unique_ptr<CommandPool>> CommandPool::create(
+std::unique_ptr<CommandPool> CommandPool::create(
     const LogicalDevice& logicalDevice, VkCommandPoolCreateFlags flags) {
   const VkCommandPoolCreateInfo poolInfo = {
     .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -25,11 +26,12 @@ CommandPool::~CommandPool() {
     vkDestroyCommandPool(context.device, commandPool, context.allocationCallbacks);
   });
 }
-ErrorOr<CommandBuffer> CommandPool::createCommandBuffer(VkCommandBufferLevel level) const {
+
+CommandBuffer CommandPool::createCommandBuffer(VkCommandBufferLevel level) const {
   return CommandBuffer::create(shared_from_this(), level);
 }
 
-ErrorOr<std::vector<CommandBuffer>> CommandPool::createCommandBuffers(
+std::vector<CommandBuffer> CommandPool::createCommandBuffers(
     VkCommandBufferLevel level, uint32_t count) const {
   return CommandBuffer::create(shared_from_this(), level, count);
 }
@@ -76,7 +78,7 @@ CommandBuffer::~CommandBuffer() {
   }
 }
 
-ErrorOr<CommandBuffer> CommandBuffer::create(
+CommandBuffer CommandBuffer::create(
     const std::shared_ptr<const CommandPool>& commandPool, VkCommandBufferLevel level) {
   VkCommandBuffer commandBuffer;
   CHECK_VKCMD(createCommandBuffers(commandPool->getLogicalDevice().getVkDevice(),
@@ -85,7 +87,7 @@ ErrorOr<CommandBuffer> CommandBuffer::create(
   return CommandBuffer(commandPool, commandBuffer, level);
 }
 
-ErrorOr<std::vector<CommandBuffer>> CommandBuffer::create(
+std::vector<CommandBuffer> CommandBuffer::create(
     const std::shared_ptr<const CommandPool>& commandPool, VkCommandBufferLevel level,
     uint32_t count) {
   lib::Buffer<VkCommandBuffer> vkCommandBuffers(count);
@@ -169,20 +171,20 @@ VkResult CommandBuffer::end() const {
   return vkEndCommandBuffer(_commandBuffer);
 }
 
-Status CommandBuffer::executeSecondaryCommandBuffers(
+void CommandBuffer::executeSecondaryCommandBuffers(
     std::initializer_list<VkCommandBuffer> commandBuffers) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
-    return Error(EngineError::FLAG_NOT_SPECIFIED);
+    throw EngineException(
+        "Secondary command buffers can only be executed from the primary command buffer.");
   }
   vkCmdExecuteCommands(
       _commandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.begin());
-  return StatusOk();
 }
 
-Status CommandBuffer::submit(QueueType type, const VkSemaphore waitSemaphore,
-                             const VkSemaphore signalSemaphore, const VkFence waitFence) const {
+void CommandBuffer::submit(QueueType type, const VkSemaphore waitSemaphore,
+                           const VkSemaphore signalSemaphore, const VkFence waitFence) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
-    return Error(EngineError::FLAG_NOT_SPECIFIED);
+    throw EngineException("Secondary command buffers cannot be submitted directly to the queue.");
   }
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -212,7 +214,6 @@ Status CommandBuffer::submit(QueueType type, const VkSemaphore waitSemaphore,
 
   CHECK_VKCMD(vkQueueSubmit(logicalDevice.getVkQueue(type), 1, &submitInfo, waitFence),
               "Failed to vkQueueSubmit in CommandBuffer::submit.");
-  return StatusOk();
 }
 
 void CommandBuffer::resetCommandBuffer() const {

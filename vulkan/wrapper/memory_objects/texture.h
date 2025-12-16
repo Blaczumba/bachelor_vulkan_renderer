@@ -4,7 +4,6 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
@@ -119,10 +118,10 @@ public:
       const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
       const std::span<const VkBufferImageCopy> copyRegions) const;
 
-  ErrorOr<Texture> buildImageSampler(
+  Texture buildImageSampler(
       const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const;
 
-  ErrorOr<Texture> buildMipmapImage(
+  Texture buildMipmapImage(
       const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
       std::span<const VkBufferImageCopy> copyRegions) const;
 

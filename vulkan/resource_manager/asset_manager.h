@@ -13,7 +13,6 @@
 
 #include "common/file/file_loader.h"
 #include "common/model_loader/image_loader/image_loader.h"
-#include "common/status/status.h"
 #include "common/util/asset_manager.h"
 #include "common/util/buffer_manip.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
@@ -59,9 +58,9 @@ public:
       std::shared_ptr<Model>& modelPtr, const std::string& filePath,
       std::span<const std::byte> indices, uint8_t indexSize, std::span<const VertexType> data);
 
-  ErrorOr<std::reference_wrapper<const ImageData>> getImageData(const std::string& filePath);
+  const ImageData& getImageData(const std::string& filePath);
 
-  ErrorOr<std::reference_wrapper<const VertexData>> getVertexData(const std::string& filePath);
+  const VertexData& getVertexData(const std::string& filePath);
 
 private:
   void loadImageAsync(const std::string& filePath,
@@ -74,10 +73,10 @@ private:
   std::shared_ptr<FileLoader> _fileLoader;
 
   std::unordered_map<std::string, VertexData> _vertexDataResources;
-  std::unordered_map<std::string, std::future<ErrorOr<VertexData>>> _awaitingVertexDataResources;
+  std::unordered_map<std::string, std::future<VertexData>> _awaitingVertexDataResources;
 
   std::unordered_map<std::string, ImageData> _imageResources;
-  std::unordered_map<std::string, std::future<ErrorOr<ImageData>>> _awaitingImageResources;
+  std::unordered_map<std::string, std::future<ImageData>> _awaitingImageResources;
 };
 
 template <typename Model, typename... Type>
@@ -89,13 +88,9 @@ void AssetManager::loadVertexDataInterleavingAsync(
     return;
   }
 
-  auto future = std::async(
-      _launchPolicy,
-      [this, modelPtr, indices, indexSize, orders,
-       attributes...]() -> ErrorOr<VertexData> {  // TODO: boost::asio::post,
-                                                  // boost::asio::use_future
+  std::future<VertexData> future = std::async(
+      _launchPolicy, [this, modelPtr, indices, indexSize, orders, attributes...]() -> VertexData {
         VertexData vertexData;
-
         const AttributeDescription descs[] = {
           AttributeDescription{(void*)attributes.data(), sizeof(Type), attributes.size()}
           ...
@@ -104,7 +99,7 @@ void AssetManager::loadVertexDataInterleavingAsync(
         std::vector<BufferDescription> bufferDescriptions = analyzeConfig(orders, descs);
 
         for (BufferDescription& description : bufferDescriptions) {
-          auto vertexBuffer = Buffer::createStagingBuffer(*_logicalDevice, description.totalSize);
+          Buffer vertexBuffer = Buffer::createStagingBuffer(*_logicalDevice, description.totalSize);
           vertexBuffer.copyDataInterleaving(description.attributes);
           vertexData.buffers.emplace(std::move(description.name), std::move(vertexBuffer));
         }
@@ -130,17 +125,17 @@ void AssetManager::loadVertexDataAsync(
     return;
   }
 
-  auto future = std::async(
+  std::future<VertexData> future = std::async(
       _launchPolicy,
       [this, modelPtr, indices, indexSize,
-       vertices]() -> ErrorOr<VertexData> {  // TODO: boost::asio::post,
-                                             // boost::asio::use_future
-        auto vertexBuffer =
+       vertices]() -> VertexData {  // TODO: boost::asio::post,
+                                    // boost::asio::use_future
+        Buffer vertexBuffer =
             Buffer::createStagingBuffer(*_logicalDevice, vertices.size() * sizeof(Type));
-        RETURN_IF_ERROR(vertexBuffer.copyData(vertices));
+        vertexBuffer.copyData(vertices);
 
-        auto indexBuffer = Buffer::createStagingBuffer(*_logicalDevice, indices.size());
-        RETURN_IF_ERROR(indexBuffer.copyData(indices));
+        Buffer indexBuffer = Buffer::createStagingBuffer(*_logicalDevice, indices.size());
+        indexBuffer.copyData(indices);
         return VertexData{
           Buffer(), std::move(indexBuffer), getIndexType(indexSize), std::move(vertexBuffer)};
       });

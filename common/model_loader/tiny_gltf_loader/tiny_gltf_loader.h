@@ -4,6 +4,7 @@
   #include <android/asset_manager.h>
 #endif
 #include <filesystem>
+#include <format>
 #include <map>
 #include <memory>
 #include <span>
@@ -12,8 +13,8 @@
 #include <vector>
 
 #include "common/model_loader/model_loader.h"
-#include "common/status/status.h"
 #include "common/util/asset_manager.h"
+#include "common/util/engine_exception.h"
 #include "common/util/geometry.h"
 #include "common/util/primitives.h"
 #include "lib/buffer/shared_buffer.h"
@@ -30,7 +31,7 @@ struct SharedData {
 namespace {
 
 template <typename AssetManagerImpl>
-Status processNode(
+void processNode(
     common::AssetManager<AssetManagerImpl>& assetManager, std::shared_ptr<SharedData>& sharedData,
     const tinygltf::Node& node, const glm::mat4& parentTransform,
     std::vector<VertexData>& vertexDataList, const std::string& baseDir);
@@ -38,7 +39,7 @@ Status processNode(
 }  // namespace
 
 template <typename AssetManagerImpl>
-ErrorOr<std::vector<VertexData>> LoadGltfFromFile(
+std::vector<VertexData> LoadGltfFromFile(
     common::AssetManager<AssetManagerImpl>& assetManager, const std::string& filePath) {
   auto sharedData = std::make_shared<SharedData>();
   tinygltf::TinyGLTF loader;
@@ -48,7 +49,7 @@ ErrorOr<std::vector<VertexData>> LoadGltfFromFile(
   } else if (filePath.ends_with(".gltf")) {
     loader.LoadASCIIFromFile(&sharedData->model, nullptr, nullptr, filePath);
   } else {
-    return Error(EngineError::LOAD_FAILURE);
+    throw EngineException(std::format("Failed to load {}.", filePath));
   }
 
   const std::string baseDir = std::filesystem::path(filePath).parent_path().string();
@@ -56,15 +57,15 @@ ErrorOr<std::vector<VertexData>> LoadGltfFromFile(
   for (const tinygltf::Scene& scene : sharedData->model.scenes) {
     for (int nodeIndex : scene.nodes) {
       const tinygltf::Node& node = sharedData->model.nodes[nodeIndex];
-      RETURN_IF_ERROR(
-          processNode(assetManager, sharedData, node, glm::mat4(1.0f), vertexDataList, baseDir));
+
+      processNode(assetManager, sharedData, node, glm::mat4(1.0f), vertexDataList, baseDir);
     }
   }
   return vertexDataList;
 }
 
 template <typename AssetManagerImpl>
-ErrorOr<std::vector<VertexData>> LoadGltfFromString(
+std::vector<VertexData> LoadGltfFromString(
     common::AssetManager<AssetManagerImpl>& assetManager, const std::string& dataString,
     const std::string& baseDir) {
   auto sharedData = std::make_shared<SharedData>();
@@ -78,8 +79,7 @@ ErrorOr<std::vector<VertexData>> LoadGltfFromString(
   for (const tinygltf::Scene& scene : sharedData->model.scenes) {
     for (int nodeIndex : scene.nodes) {
       const tinygltf::Node& node = sharedData->model.nodes[nodeIndex];
-      RETURN_IF_ERROR(
-          processNode(assetManager, sharedData, node, glm::mat4(1.0f), vertexDataList, baseDir));
+      processNode(assetManager, sharedData, node, glm::mat4(1.0f), vertexDataList, baseDir);
     }
   }
   return vertexDataList;
@@ -116,6 +116,7 @@ std::span<const unsigned char> processAttribute(
   if (it == attributes.cend()) {
     return {};
   }
+
   const tinygltf::Accessor& accessor = model.accessors[it->second];
   const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
   const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
@@ -159,7 +160,7 @@ std::string getTextureUri(const tinygltf::Model& model, const tinygltf::Paramete
 }
 
 template <typename AssetManagerImpl>
-Status processNode(
+void processNode(
     common::AssetManager<AssetManagerImpl>& assetManager, std::shared_ptr<SharedData>& sharedData,
     const tinygltf::Node& node, const glm::mat4& parentTransform,
     std::vector<VertexData>& vertexDataList, const std::string& baseDir) {
@@ -167,10 +168,10 @@ Status processNode(
 
   if (node.mesh < 0) {
     for (int childIndex : node.children) {
-      RETURN_IF_ERROR(processNode(assetManager, sharedData, sharedData->model.nodes[childIndex],
-                                  currentTransform, vertexDataList, baseDir));
+      processNode(assetManager, sharedData, sharedData->model.nodes[childIndex], currentTransform,
+                  vertexDataList, baseDir);
     }
-    return StatusOk();
+    return;
   }
 
   for (const tinygltf::Primitive& primitive : sharedData->model.meshes[node.mesh].primitives) {
@@ -211,26 +212,16 @@ Status processNode(
     static int objectCounter = 0;
     std::string objectName = baseDir + std::to_string(objectCounter++);
 
-    ASSIGN_OR_RETURN(
-        lib::Buffer<glm::vec3> tangents,
-        createTangents(indexSize, indicesBytes,
-                       std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()),
-                                 positionsData.size()),
-                       std::span(reinterpret_cast<const glm::vec2*>(textureCoordsData.data()),
-                                 textureCoordsData.size())));
-
     static std::pair<std::string, std::string> orders[] = {
       {"PTNT", "0123"},
       {"P",    "0"   }
     };
 
-    ASSIGN_OR_RETURN(
-        sharedData->tangents.emplace_back(),
-        createTangents(indexSize, indicesBytes,
-                       std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()),
-                                 positionsData.size()),
-                       std::span(reinterpret_cast<const glm::vec2*>(textureCoordsData.data()),
-                                 textureCoordsData.size())));
+    sharedData->tangents.push_back(createTangents(
+        indexSize, indicesBytes,
+        std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()), positionsData.size()),
+        std::span(reinterpret_cast<const glm::vec2*>(textureCoordsData.data()),
+                  textureCoordsData.size())));
     assetManager.loadVertexDataInterleavingAsync(
         sharedData, objectName, indicesBytes, indexSize, orders,
         std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()), positionsData.size()),
@@ -250,10 +241,9 @@ Status processNode(
   }
 
   for (int childIndex : node.children) {
-    RETURN_IF_ERROR(processNode(assetManager, sharedData, sharedData->model.nodes[childIndex],
-                                currentTransform, vertexDataList, baseDir));
+    processNode(assetManager, sharedData, sharedData->model.nodes[childIndex], currentTransform,
+                vertexDataList, baseDir);
   }
-  return StatusOk();
 }
 
 }  // namespace

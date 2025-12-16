@@ -3,7 +3,6 @@
 #include <memory>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "vulkan/wrapper/instance/instance.h"
 
 class DebugMessenger {
@@ -16,7 +15,7 @@ public:
 
   DebugMessenger& operator=(DebugMessenger&& debugMessenger) noexcept;
 
-  static ErrorOr<DebugMessenger> create(
+  static DebugMessenger create(
       const Instance& instance, PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
 
   ~DebugMessenger();

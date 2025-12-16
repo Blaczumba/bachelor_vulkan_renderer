@@ -14,6 +14,10 @@ public:
     return std::runtime_error::what();
   }
 
+  VkResult getResult() const {
+    return _result;
+  }
+
 private:
   VkResult _result;
 };

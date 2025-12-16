@@ -5,7 +5,6 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
 
@@ -24,10 +23,10 @@ public:
 
   ~DescriptorSet() = default;
 
-  static ErrorOr<DescriptorSet> create(
+  static DescriptorSet create(
       const std::shared_ptr<const DescriptorPool>& descriptorPool, VkDescriptorSetLayout layout);
 
-  static ErrorOr<std::vector<DescriptorSet>> create(
+  static std::vector<DescriptorSet> create(
       const std::shared_ptr<const DescriptorPool>& descriptorPool, VkDescriptorSetLayout layout,
       uint32_t numSets);
 

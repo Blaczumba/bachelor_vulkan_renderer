@@ -4,7 +4,6 @@
 #include <unordered_map>
 
 #include "common/file/file_loader.h"
-#include "common/status/status.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 #include "vulkan/wrapper/pipeline/shader.h"
@@ -22,17 +21,17 @@ public:
 
   const Shader* getShader(std::string_view shaderPath) const;
 
-  ErrorOr<VkDescriptorSetLayout> getOrCreateBindlessLayout(const LogicalDevice& logicalDevice);
+  VkDescriptorSetLayout getOrCreateBindlessLayout(const LogicalDevice& logicalDevice);
 
-  ErrorOr<VkDescriptorSetLayout> getOrCreateCameraLayout(const LogicalDevice& logicalDevice);
+  VkDescriptorSetLayout getOrCreateCameraLayout(const LogicalDevice& logicalDevice);
 
-  ErrorOr<GraphicsPipelineBuilder> createPBRProgram(const Renderpass& renderpass);
+  GraphicsPipelineBuilder createPBRProgram(const Renderpass& renderpass);
 
-  ErrorOr<GraphicsPipelineBuilder> createPbrEnvMappingProgram(const Renderpass& renderpass);
+  GraphicsPipelineBuilder createPbrEnvMappingProgram(const Renderpass& renderpass);
 
-  ErrorOr<GraphicsPipelineBuilder> createSkyboxProgram(const Renderpass& renderpass);
+  GraphicsPipelineBuilder createSkyboxProgram(const Renderpass& renderpass);
 
-  ErrorOr<GraphicsPipelineBuilder> createShadowProgram(const Renderpass& renderpass);
+  GraphicsPipelineBuilder createShadowProgram(const Renderpass& renderpass);
 
 private:
   std::shared_ptr<FileLoader> _fileLoader;
@@ -41,11 +40,11 @@ private:
   std::unordered_map<DescriptorSetType, DescriptorSetLayout> _descriptorSetLayouts;
   std::unordered_map<std::string_view, PipelineLayout> _pipelineLayouts;
 
-  ErrorOr<std::reference_wrapper<const Shader>> addShader(
+  std::reference_wrapper<const Shader> addShader(
       const LogicalDevice& logicalDevice, std::string_view shaderFile,
       VkShaderStageFlagBits shaderStages);
 
-  ErrorOr<std::reference_wrapper<const PipelineLayout>> getOrCreatePipelineLayout(
+  std::reference_wrapper<const PipelineLayout> getOrCreatePipelineLayout(
       std::string_view id, const LogicalDevice& logicalDevice,
       std::span<const VkDescriptorSetLayout> descriptorSetLayouts = {},
       std::span<const VkPushConstantRange> pushConstantRanges = {},

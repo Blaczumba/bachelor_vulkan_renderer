@@ -7,7 +7,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "common/status/status.h"
 #include "descriptor_pool.h"
 #include "descriptor_set_layout.h"
 #include "lib/buffer/buffer.h"
@@ -33,7 +32,7 @@ DescriptorSet& DescriptorSet::operator=(DescriptorSet&& descriptorSet) noexcept 
   return *this;
 }
 
-ErrorOr<DescriptorSet> DescriptorSet::create(
+DescriptorSet DescriptorSet::create(
     const std::shared_ptr<const DescriptorPool>& descriptorPool, VkDescriptorSetLayout layout) {
   const VkDescriptorSetAllocateInfo allocInfo = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -49,7 +48,7 @@ ErrorOr<DescriptorSet> DescriptorSet::create(
   return DescriptorSet(descriptorSet, descriptorPool);
 }
 
-ErrorOr<std::vector<DescriptorSet>> DescriptorSet::create(
+std::vector<DescriptorSet> DescriptorSet::create(
     const std::shared_ptr<const DescriptorPool>& descriptorPool, VkDescriptorSetLayout layout,
     uint32_t numSets) {
   const lib::Buffer<VkDescriptorSetLayout> layouts(numSets, layout);

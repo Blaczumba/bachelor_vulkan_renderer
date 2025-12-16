@@ -1,5 +1,6 @@
 #include "debug_messenger.h"
 
+#include "common/util/engine_exception.h"
 #include "debug_messenger_utils.h"
 #include "vulkan/wrapper/instance/instance.h"
 #include "vulkan/wrapper/util/check.h"
@@ -24,7 +25,7 @@ DebugMessenger& DebugMessenger::operator=(DebugMessenger&& other) noexcept {
   return *this;
 }
 
-ErrorOr<DebugMessenger> DebugMessenger::create(
+DebugMessenger DebugMessenger::create(
     const Instance& instance, PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
   const VkDebugUtilsMessengerCreateInfoEXT createInfo =
       populateDebugMessengerCreateInfoUtility(debugCallback);
@@ -35,7 +36,7 @@ ErrorOr<DebugMessenger> DebugMessenger::create(
     CHECK_VKCMD(func(instance.getVkInstance(), &createInfo, nullptr, &debugUtilsMessenger),
                 "Failed to create VkDebugUtilsMessengerEXT.");
   } else {
-    return Error(VK_ERROR_EXTENSION_NOT_PRESENT);
+    throw EngineException("vkCreateDebugUtilsMessengerEXT was not found.");
   }
 
   return DebugMessenger(instance, debugUtilsMessenger);

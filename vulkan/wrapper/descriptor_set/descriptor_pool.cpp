@@ -1,6 +1,6 @@
 #include "descriptor_pool.h"
 
-#include "common/status/status.h"
+#include "common/util/engine_exception.h"
 #include "descriptor_set.h"
 #include "descriptor_set_layout.h"
 #include "lib/buffer/buffer.h"
@@ -18,7 +18,7 @@ DescriptorPool::~DescriptorPool() {
   });
 }
 
-ErrorOr<std::unique_ptr<DescriptorPool>> DescriptorPool::create(
+std::unique_ptr<DescriptorPool> DescriptorPool::create(
     const LogicalDevice& logicalDevice, uint32_t maxNumSets, VkDescriptorPoolCreateFlags flags) {
   static constexpr VkDescriptorPoolSize poolSizes[] = {
     {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1000},
@@ -45,21 +45,21 @@ VkDescriptorPool DescriptorPool::getVkDescriptorPool() const {
   return _descriptorPool;
 }
 
-ErrorOr<DescriptorSet> DescriptorPool::createDesriptorSet(VkDescriptorSetLayout layout) const {
+DescriptorSet DescriptorPool::createDesriptorSet(VkDescriptorSetLayout layout) const {
   ++_allocatedSets;
   if (_allocatedSets > _maxNumSets) {
     --_allocatedSets;
-    return Error(EngineError::RESOURCE_EXHAUSTED);
+    throw EngineException("Cannot allocate more descriptor sets from the descriptor set pool.");
   }
   return DescriptorSet::create(shared_from_this(), layout);
 }
 
-ErrorOr<std::vector<DescriptorSet>> DescriptorPool::createDesriptorSets(
+std::vector<DescriptorSet> DescriptorPool::createDesriptorSets(
     VkDescriptorSetLayout layout, uint32_t numSets) const {
   _allocatedSets += numSets;
   if (_allocatedSets > _maxNumSets) {
     _allocatedSets -= numSets;
-    return Error(EngineError::RESOURCE_EXHAUSTED);
+    throw EngineException("Cannot allocate more descriptor sets from the descriptor set pool.");
   }
   return DescriptorSet::create(shared_from_this(), layout, numSets);
 }
