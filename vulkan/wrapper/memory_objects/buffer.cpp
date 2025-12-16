@@ -190,11 +190,11 @@ void Buffer::copyBuffer(
 
 void Buffer::copyAndShrinkData(std::span<const std::byte> data, size_t dstIndexSize,
                                size_t srcIndexSize, VkDeviceSize offset) {
-  if (!_mappedMemory) {
+  if (!_mappedMemory) [[unlikely]] {
     throw EngineException("Cannot copy raw data to unmapped memory.");
   }
 
-  if (_size < dstIndexSize * data.size() / srcIndexSize + offset) {
+  if (_size < dstIndexSize * data.size() / srcIndexSize + offset) [[unlikely]] {
     throw EngineException(std::format(
         "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
         offset, dstIndexSize * data.size() / srcIndexSize, _size));

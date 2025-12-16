@@ -162,9 +162,10 @@ std::unique_ptr<PhysicalDevice> PhysicalDevice::create(
 
 ErrorOr<std::unique_ptr<PhysicalDevice>> PhysicalDevice::wrap(
     VkPhysicalDevice physicalDevice, const Instance& instance) {
-  if (physicalDevice == VK_NULL_HANDLE) {
+  if (physicalDevice == VK_NULL_HANDLE) [[unlikely]] {
     return Error(EngineError::NULLPTR_REFERENCE);
   }
+
   return std::unique_ptr<PhysicalDevice>(
       new PhysicalDevice(physicalDevice, instance, findQueueFamilyIncides(physicalDevice)));
 }

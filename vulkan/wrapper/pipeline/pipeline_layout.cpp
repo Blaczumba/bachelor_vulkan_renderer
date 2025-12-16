@@ -27,15 +27,6 @@ PipelineLayout PipelineLayout::create(
   return PipelineLayout(logicalDevice, layout);
 }
 
-ErrorOr<PipelineLayout> PipelineLayout::wrap(
-    const LogicalDevice& logicalDevice, VkPipelineLayout layout) {
-  if (layout == VK_NULL_HANDLE) {
-    return Error(EngineError::NULLPTR_REFERENCE);
-  }
-
-  return PipelineLayout(logicalDevice, layout);
-}
-
 PipelineLayout::PipelineLayout(PipelineLayout&& other) noexcept
   : _logicalDevice(other._logicalDevice), _layout(std::exchange(other._layout, VK_NULL_HANDLE)) {}
 

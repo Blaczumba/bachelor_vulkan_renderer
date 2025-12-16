@@ -47,10 +47,10 @@ RenderpassBuilder& RenderpassBuilder::withMultiView(
   return *this;
 }
 
-Status RenderpassBuilder::Subpass::addOutputAttachment(
+void RenderpassBuilder::Subpass::addOutputAttachment(
     const AttachmentLayout& layout, uint32_t attachmentBinding) {
   std::span<const AttachmentType> attachmentTypes = layout.getAttachmentsTypes();
-  if (attachmentTypes.size() <= attachmentBinding) {
+  if (attachmentTypes.size() <= attachmentBinding) [[unlikely]] {
     throw EngineException("Attachment binding exceeds the total number of attachments.");
   }
 
@@ -70,17 +70,15 @@ Status RenderpassBuilder::Subpass::addOutputAttachment(
     default:
       throw EngineException("Failed to recognize attachment type.");
   }
-  return StatusOk();
 }
 
-Status RenderpassBuilder::Subpass::addInputAttachment(
+void RenderpassBuilder::Subpass::addInputAttachment(
     const AttachmentLayout& layout, uint32_t attachmentBinding, VkImageLayout imageLayout) {
-  if (layout.getAttachmentsTypes().size() <= attachmentBinding) {
-    return Error(EngineError::INDEX_OUT_OF_RANGE);
+  if (layout.getAttachmentsTypes().size() <= attachmentBinding) [[unlikely]] {
+    throw EngineException("Input binding attachment index cannot exceed number of attachments.");
   }
 
   _inputAttachmentRefs.emplace_back(attachmentBinding, imageLayout);
-  return StatusOk();
 }
 
 VkSubpassDescription RenderpassBuilder::Subpass::getVkSubpassDescription() const {
@@ -137,7 +135,7 @@ Renderpass::Renderpass(Renderpass&& renderpass) noexcept
     _attachmentsLayout(std::move(renderpass._attachmentsLayout)) {}
 
 Renderpass& Renderpass::operator=(Renderpass&& renderpass) noexcept {
-  if (this == &renderpass) {
+  if (this == &renderpass) [[unlikely]] {
     return *this;
   }
 

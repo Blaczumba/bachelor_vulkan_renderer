@@ -104,9 +104,11 @@ std::vector<CommandBuffer> CommandBuffer::create(
   return commandBuffers;
 }
 
-Status CommandBuffer::beginRenderPass(const Framebuffer& framebuffer) const {
+void CommandBuffer::beginRenderPass(const Framebuffer& framebuffer) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
-    return Error(EngineError::FLAG_NOT_SPECIFIED);
+    throw EngineException(
+        "Cannot begin renderpass without VK_COMMAND_BUFFER_LEVEL_PRIMARY "
+        "specified.");
   }
   const Renderpass& renderpass = framebuffer.getRenderpass();
   std::span<const VkClearValue> clearValues = renderpass.getAttachmentsLayout().getVkClearValues();
@@ -122,31 +124,31 @@ Status CommandBuffer::beginRenderPass(const Framebuffer& framebuffer) const {
   vkCmdSetScissor(_commandBuffer, 0, 1, &framebuffer.getScissor());
   vkCmdBeginRenderPass(
       _commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-  return StatusOk();
 }
 
 void CommandBuffer::endRenderPass() const {
   vkCmdEndRenderPass(_commandBuffer);
 }
 
-Status CommandBuffer::beginAsPrimary(uint32_t subpassIndex) const {
+void CommandBuffer::beginAsPrimary(uint32_t subpassIndex) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
-    return Error(EngineError::FLAG_NOT_SPECIFIED);
+    throw EngineException("Cannot begin command buffer as primary without VK_COMMAND_BUFFER_LEVEL_PRIMARY specified.");
   }
 
   const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                               .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
   CHECK_VKCMD(vkBeginCommandBuffer(_commandBuffer, &beginInfo),
               "Failed to vkBeginCommandBuffer for primary command buffer.");
-  return StatusOk();
 }
 
-Status CommandBuffer::beginAsSecondary(
+void CommandBuffer::beginAsSecondary(
     const Framebuffer& framebuffer,
     const VkCommandBufferInheritanceViewportScissorInfoNV* scissorViewportInheritance,
     uint32_t subpassIndex) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_SECONDARY) [[unlikely]] {
-    return Error(EngineError::FLAG_NOT_SPECIFIED);
+    throw EngineException(
+        "Cannot begin command buffer as primary without VK_COMMAND_BUFFER_LEVEL_SECONDARY "
+        "specified.");
   }
 
   const VkCommandBufferInheritanceInfo inheritanceInfo = {
@@ -164,7 +166,6 @@ Status CommandBuffer::beginAsSecondary(
 
   CHECK_VKCMD(vkBeginCommandBuffer(_commandBuffer, &beginInfo),
               "Failed to vkBeginCommandBuffer for secondary command buffer.");
-  return StatusOk();
 }
 
 VkResult CommandBuffer::end() const {

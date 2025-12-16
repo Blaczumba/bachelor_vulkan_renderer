@@ -22,9 +22,9 @@ class RenderpassBuilder {
 
     ~Subpass() = default;
 
-    Status addOutputAttachment(const AttachmentLayout& layout, uint32_t attachmentBinding);
+    void addOutputAttachment(const AttachmentLayout& layout, uint32_t attachmentBinding);
 
-    Status addInputAttachment(
+    void addInputAttachment(
         const AttachmentLayout& layout, uint32_t attachmentBinding, VkImageLayout imageLayout);
 
     VkSubpassDescription getVkSubpassDescription() const;

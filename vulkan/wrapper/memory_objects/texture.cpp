@@ -21,7 +21,7 @@ Texture::Texture(Texture&& texture) noexcept
     _imageParameters(texture._imageParameters) {}
 
 Texture& Texture::operator=(Texture&& texture) noexcept {
-  if (this == &texture) {
+  if (this == &texture) [[unlikely]] {
     return *this;
   }
 
@@ -141,12 +141,12 @@ VkImageViewType getImageViewType(VkImageType type, uint32_t layerCount, VkImageC
 
 VkImageView Texture::addCreateVkImageView(
     uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount) {
-  if (baseMipLevel + levelCount > _imageParameters.mipLevels) {
+  if (baseMipLevel + levelCount > _imageParameters.mipLevels) [[unlikely]] {
     throw EngineException(
         "Base mip level + mip level count is greater than mip levels count of the image.");
   }
 
-  if (baseArrayLayer + layerCount > _imageParameters.layerCount) {
+  if (baseArrayLayer + layerCount > _imageParameters.layerCount) [[unlikely]] {
     throw EngineException(
         "Base array layer + layer count is greater than layer count of the image.");
   }

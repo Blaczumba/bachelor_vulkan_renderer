@@ -61,13 +61,13 @@ public:
 
   ~CommandBuffer();
 
-  Status beginRenderPass(const Framebuffer& framebuffer) const;
+  void beginRenderPass(const Framebuffer& framebuffer) const;
 
   void endRenderPass() const;
 
-  Status beginAsPrimary(uint32_t subpassIndex = 0) const;
+  void beginAsPrimary(uint32_t subpassIndex = 0) const;
 
-  Status beginAsSecondary(
+  void beginAsSecondary(
       const Framebuffer& framebuffer,
       const VkCommandBufferInheritanceViewportScissorInfoNV* scissorViewportInheritance = nullptr,
       uint32_t subpassIndex = 0) const;

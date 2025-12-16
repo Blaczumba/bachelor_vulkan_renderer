@@ -3,7 +3,6 @@
 #include <span>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class PipelineLayout {
@@ -21,8 +20,6 @@ public:
       std::span<const VkDescriptorSetLayout> descriptorSetLayouts = {},
       std::span<const VkPushConstantRange> pushConstantRanges = {},
       VkPipelineLayoutCreateFlags flags = 0);
-
-  static ErrorOr<PipelineLayout> wrap(const LogicalDevice& logicalDevice, VkPipelineLayout layout);
 
   ~PipelineLayout();
 
