@@ -6,10 +6,10 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class DescriptorSetLayout {
-  DescriptorSetLayout(const LogicalDevice& logicalDevice, VkDescriptorSetLayout layout);
+  DescriptorSetLayout(const LogicalDevice& logicalDevice, VkDescriptorSetLayout layout) noexcept;
 
 public:
-  DescriptorSetLayout() = default;
+  DescriptorSetLayout() noexcept = default;
 
   DescriptorSetLayout(DescriptorSetLayout&& layout) noexcept;
 

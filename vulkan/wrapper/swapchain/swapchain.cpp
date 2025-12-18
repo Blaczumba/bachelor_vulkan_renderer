@@ -11,7 +11,7 @@
 
 Swapchain::Swapchain(
     const VkSwapchainKHR swapchain, const LogicalDevice& logicalDevice, VkFormat surfaceFormat,
-    VkExtent2D extent, lib::Buffer<VkImage>&& images, lib::Buffer<VkImageView>&& views)
+    VkExtent2D extent, lib::Buffer<VkImage>&& images, lib::Buffer<VkImageView>&& views) noexcept
   : _swapchain(swapchain), _logicalDevice(&logicalDevice), _surfaceFormat(surfaceFormat),
     _extent(extent), _images(std::move(images)), _views(std::move(views)) {}
 

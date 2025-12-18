@@ -6,10 +6,10 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class PipelineLayout {
-  PipelineLayout(const LogicalDevice& logicalDevice, VkPipelineLayout layout);
+  PipelineLayout(const LogicalDevice& logicalDevice, VkPipelineLayout layout) noexcept;
 
 public:
-  PipelineLayout() = default;
+  PipelineLayout() noexcept = default;
 
   PipelineLayout(PipelineLayout&& other) noexcept;
 

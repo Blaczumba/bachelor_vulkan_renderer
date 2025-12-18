@@ -7,7 +7,8 @@
 
 class Swapchain {
   Swapchain(VkSwapchainKHR swapchain, const LogicalDevice& logicalDevice, VkFormat format,
-            VkExtent2D extent, lib::Buffer<VkImage>&& images, lib::Buffer<VkImageView>&& views);
+            VkExtent2D extent, lib::Buffer<VkImage>&& images,
+            lib::Buffer<VkImageView>&& views) noexcept;
 
 public:
   Swapchain() = default;

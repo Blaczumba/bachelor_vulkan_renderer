@@ -5,7 +5,7 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
 
-PipelineLayout::PipelineLayout(const LogicalDevice& logicalDevice, VkPipelineLayout layout)
+PipelineLayout::PipelineLayout(const LogicalDevice& logicalDevice, VkPipelineLayout layout) noexcept
   : _logicalDevice(&logicalDevice), _layout(layout) {}
 
 PipelineLayout PipelineLayout::create(

@@ -7,8 +7,8 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
 
-DescriptorPool::DescriptorPool(
-    VkDescriptorPool descriptorPool, const LogicalDevice& logicalDevice, uint32_t maxNumSets)
+DescriptorPool::DescriptorPool(VkDescriptorPool descriptorPool, const LogicalDevice& logicalDevice,
+                               uint32_t maxNumSets) noexcept
   : _descriptorPool(descriptorPool), _logicalDevice(logicalDevice), _maxNumSets(maxNumSets),
     _allocatedSets(0) {}
 

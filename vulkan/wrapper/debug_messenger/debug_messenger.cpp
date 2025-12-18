@@ -6,10 +6,8 @@
 #include "vulkan/wrapper/util/check.h"
 
 DebugMessenger::DebugMessenger(
-    const Instance& instance, VkDebugUtilsMessengerEXT debugUtilsMessenger)
+    const Instance& instance, VkDebugUtilsMessengerEXT debugUtilsMessenger) noexcept
   : _instance(&instance), _debugUtilsMessenger(debugUtilsMessenger) {}
-
-DebugMessenger::DebugMessenger() : _debugUtilsMessenger(VK_NULL_HANDLE), _instance(nullptr) {}
 
 DebugMessenger::DebugMessenger(DebugMessenger&& debugMessenger) noexcept
   : _debugUtilsMessenger(std::exchange(debugMessenger._debugUtilsMessenger, VK_NULL_HANDLE)),

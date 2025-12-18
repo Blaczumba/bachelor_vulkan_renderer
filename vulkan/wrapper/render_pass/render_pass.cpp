@@ -126,7 +126,7 @@ Renderpass RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
 }
 
 Renderpass::Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass,
-                       const AttachmentLayout& attachmentLayout)
+                       const AttachmentLayout& attachmentLayout) noexcept
   : _logicalDevice(&logicalDeivce), _renderpass(renderpass), _attachmentsLayout(attachmentLayout) {}
 
 Renderpass::Renderpass(Renderpass&& renderpass) noexcept

@@ -7,7 +7,7 @@
 #include "vulkan/wrapper/instance/instance.h"
 
 class Surface {
-  Surface(VkSurfaceKHR surface, const Instance& instance);
+  Surface(VkSurfaceKHR surface, const Instance& instance) noexcept;
 
 public:
   Surface() = default;

@@ -11,11 +11,11 @@
 class DescriptorPool;  // DescriptorPool is forward declared to avoid circular dependency
 
 class DescriptorSet {
-  DescriptorSet(
-      VkDescriptorSet descriptorSet, const std::shared_ptr<const DescriptorPool>& descriptorPool);
+  DescriptorSet(VkDescriptorSet descriptorSet,
+                const std::shared_ptr<const DescriptorPool>& descriptorPool) noexcept;
 
 public:
-  DescriptorSet() = default;
+  DescriptorSet() noexcept = default;
 
   DescriptorSet(DescriptorSet&& descriptorSet) noexcept;
 

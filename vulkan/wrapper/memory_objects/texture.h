@@ -11,7 +11,7 @@
 
 class Texture {
 public:
-  Texture() = default;
+  Texture() noexcept = default;
 
   Texture(Texture&& texture) noexcept;
 
@@ -39,7 +39,7 @@ public:
 private:
   Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
           const ImageParameters& imageParameters, VkImageLayout layout,
-          VkSampler sampler = VK_NULL_HANDLE);
+          VkSampler sampler = VK_NULL_HANDLE) noexcept;
 
   VkImage _image = VK_NULL_HANDLE;
   std::vector<VkImageView> _views;

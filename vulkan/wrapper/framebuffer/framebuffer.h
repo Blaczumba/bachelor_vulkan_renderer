@@ -11,10 +11,10 @@
 
 class Framebuffer {
   Framebuffer(VkFramebuffer framebuffer, const Renderpass& renderpass, const VkViewport& viewport,
-              const VkRect2D& scissor);
+              const VkRect2D& scissor) noexcept;
 
 public:
-  Framebuffer() = default;
+  Framebuffer() noexcept = default;
 
   static Framebuffer createFromSwapchain(
       VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent,

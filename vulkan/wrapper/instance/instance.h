@@ -9,10 +9,10 @@
 #include "lib/buffer/buffer.h"
 
 class Instance {
-  Instance(VkInstance instance);
+  Instance(VkInstance instance) noexcept;
 
 public:
-  Instance() = default;
+  Instance() noexcept = default;
 
   Instance(Instance&& other) noexcept;
 

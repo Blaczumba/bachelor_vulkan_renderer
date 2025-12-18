@@ -17,7 +17,7 @@
 
 class Buffer {
 public:
-  Buffer() = default;
+  Buffer() noexcept = default;
 
   Buffer(Buffer&& Buffer) noexcept;
 
@@ -74,7 +74,7 @@ private:
 
   Buffer(const LogicalDevice& logicalDevice, const Allocation allocation,
          const VkBuffer vertexBuffer, VkBufferUsageFlags usage, uint32_t size,
-         void* mappedData = nullptr);
+         void* mappedData = nullptr) noexcept;
 };
 
 template <typename T>

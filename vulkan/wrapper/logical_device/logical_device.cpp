@@ -12,7 +12,7 @@
 #include "vulkan/wrapper/util/check.h"
 
 LogicalDevice::LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice,
-                             std::unique_ptr<ResourceDestroyer>&& resourceDestroyer)
+                             std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) noexcept
   : _device(logicalDevice), _physicalDevice(&physicalDevice),
     _memoryAllocator(std::make_unique<MemoryAllocator>(
         std::in_place_type<VmaWrapper>, logicalDevice, physicalDevice.getVkPhysicalDevice(),

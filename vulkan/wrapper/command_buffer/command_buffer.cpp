@@ -5,7 +5,7 @@
 #include "common/util/engine_exception.h"
 #include "vulkan/wrapper/util/check.h"
 
-CommandPool::CommandPool(const LogicalDevice& logicalDevice, VkCommandPool commandPool)
+CommandPool::CommandPool(const LogicalDevice& logicalDevice, VkCommandPool commandPool) noexcept
   : _logicalDevice(logicalDevice), _commandPool(commandPool) {}
 
 std::unique_ptr<CommandPool> CommandPool::create(
@@ -48,10 +48,8 @@ const LogicalDevice& CommandPool::getLogicalDevice() const {
   return _logicalDevice;
 }
 
-CommandBuffer::CommandBuffer() : _commandBuffer(VK_NULL_HANDLE) {}
-
 CommandBuffer::CommandBuffer(const std::shared_ptr<const CommandPool>& commandPool,
-                             VkCommandBuffer commandBuffer, VkCommandBufferLevel level)
+                             VkCommandBuffer commandBuffer, VkCommandBufferLevel level) noexcept
   : _commandPool(commandPool), _commandBuffer(commandBuffer), _level(level) {}
 
 CommandBuffer::CommandBuffer(CommandBuffer&& other) noexcept
@@ -107,8 +105,7 @@ std::vector<CommandBuffer> CommandBuffer::create(
 void CommandBuffer::beginRenderPass(const Framebuffer& framebuffer) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
     throw EngineException(
-        "Cannot begin renderpass without VK_COMMAND_BUFFER_LEVEL_PRIMARY "
-        "specified.");
+        "Cannot begin renderpass without VK_COMMAND_BUFFER_LEVEL_PRIMARY " "specified.");
   }
   const Renderpass& renderpass = framebuffer.getRenderpass();
   std::span<const VkClearValue> clearValues = renderpass.getAttachmentsLayout().getVkClearValues();
@@ -132,7 +129,9 @@ void CommandBuffer::endRenderPass() const {
 
 void CommandBuffer::beginAsPrimary(uint32_t subpassIndex) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
-    throw EngineException("Cannot begin command buffer as primary without VK_COMMAND_BUFFER_LEVEL_PRIMARY specified.");
+    throw EngineException(
+        "Cannot begin command buffer as primary without VK_COMMAND_BUFFER_LEVEL_PRIMARY "
+        "specified.");
   }
 
   const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

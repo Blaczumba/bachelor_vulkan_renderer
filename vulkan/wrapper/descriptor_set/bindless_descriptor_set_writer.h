@@ -15,7 +15,7 @@
 
 class BindlessDescriptorSetWriter {
 public:
-  BindlessDescriptorSetWriter(const DescriptorSet& descriptorSet);
+  BindlessDescriptorSetWriter(const DescriptorSet& descriptorSet) noexcept;
 
   TextureHandle storeTexture(const Texture& texture);
 

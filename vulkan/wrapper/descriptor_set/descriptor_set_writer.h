@@ -14,7 +14,7 @@
 
 class DescriptorSetWriter {
 public:
-  DescriptorSetWriter() = default;
+  DescriptorSetWriter() noexcept = default;
 
   DescriptorSetWriter& storeTexture(const Texture& texture);
 

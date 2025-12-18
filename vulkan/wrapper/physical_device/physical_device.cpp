@@ -121,7 +121,7 @@ SwapChainSupportDetails querySwapchainSupportDetails(
 }  // namespace
 
 PhysicalDevice::PhysicalDevice(VkPhysicalDevice physicalDevice, const Instance& instance,
-                               const QueueFamilyIndices& queueFamilyIndices)
+                               const QueueFamilyIndices& queueFamilyIndices) noexcept
   : _device(physicalDevice), _instance(instance),
     _availableRequestedExtensions(checkDeviceExtensionSupport(physicalDevice)),
     _queueFamilyIndices(queueFamilyIndices) {

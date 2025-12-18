@@ -17,10 +17,10 @@ enum class QueueType : uint8_t {
 
 class LogicalDevice {
   LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice,
-                std::unique_ptr<ResourceDestroyer>&& resourceDestroyer);
+                std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) noexcept;
 
 public:
-  LogicalDevice() = default;
+  LogicalDevice() noexcept = default;
 
   static LogicalDevice create(const PhysicalDevice& physicalDevice,
                               std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::

@@ -14,8 +14,8 @@
 #include "vulkan/wrapper/pipeline/pipeline.h"
 #include "vulkan/wrapper/util/check.h"
 
-DescriptorSet::DescriptorSet(
-    VkDescriptorSet descriptorSet, const std::shared_ptr<const DescriptorPool>& descriptorPool)
+DescriptorSet::DescriptorSet(VkDescriptorSet descriptorSet,
+                             const std::shared_ptr<const DescriptorPool>& descriptorPool) noexcept
   : _descriptorSet(descriptorSet), _descriptorPool(descriptorPool) {}
 
 DescriptorSet::DescriptorSet(DescriptorSet&& descriptorSet) noexcept

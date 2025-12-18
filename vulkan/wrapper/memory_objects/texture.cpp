@@ -9,8 +9,9 @@
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/memory_objects/buffers.h"
 
-Texture::Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
-                 const ImageParameters& imageParameters, VkImageLayout layout, VkSampler sampler)
+Texture::Texture(
+    const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
+    const ImageParameters& imageParameters, VkImageLayout layout, VkSampler sampler) noexcept
   : _logicalDevice(&logicalDevice), _image(image), _allocation(allocation), _layout(layout),
     _sampler(sampler), _imageParameters(imageParameters) {}
 

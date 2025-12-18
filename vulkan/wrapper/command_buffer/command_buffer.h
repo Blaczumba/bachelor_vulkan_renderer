@@ -12,7 +12,7 @@
 class CommandBuffer;
 
 class CommandPool : public std::enable_shared_from_this<const CommandPool> {
-  CommandPool(const LogicalDevice& logicalDevice, VkCommandPool commandPool);
+  CommandPool(const LogicalDevice& logicalDevice, VkCommandPool commandPool) noexcept;
 
 public:
   static std::unique_ptr<CommandPool> create(
@@ -40,10 +40,10 @@ private:
 
 class CommandBuffer {
   CommandBuffer(const std::shared_ptr<const CommandPool>& commandPool,
-                VkCommandBuffer commandBuffer, VkCommandBufferLevel level);
+                VkCommandBuffer commandBuffer, VkCommandBufferLevel level) noexcept;
 
 public:
-  CommandBuffer();
+  CommandBuffer() noexcept = default;
 
   static CommandBuffer create(
       const std::shared_ptr<const CommandPool>& commandPool, VkCommandBufferLevel level);
@@ -84,7 +84,7 @@ public:
   VkCommandBuffer getVkCommandBuffer() const;
 
 private:
-  VkCommandBuffer _commandBuffer;
+  VkCommandBuffer _commandBuffer = VK_NULL_HANDLE;
   std::shared_ptr<const CommandPool> _commandPool;
 
   VkCommandBufferLevel _level;

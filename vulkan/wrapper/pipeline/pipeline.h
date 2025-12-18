@@ -5,10 +5,10 @@
 
 class Pipeline {
   Pipeline(const LogicalDevice& logicalDevice, VkPipeline pipeline, VkPipelineBindPoint bindPoint,
-           VkPipelineLayout layout);
+           VkPipelineLayout layout) noexcept;
 
 public:
-  Pipeline() = default;
+  Pipeline() noexcept = default;
 
   static Pipeline create(
       const LogicalDevice& logicalDevice, const VkGraphicsPipelineCreateInfo& createInfo);

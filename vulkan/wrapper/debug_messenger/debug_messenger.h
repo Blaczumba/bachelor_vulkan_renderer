@@ -6,10 +6,10 @@
 #include "vulkan/wrapper/instance/instance.h"
 
 class DebugMessenger {
-  DebugMessenger(const Instance& instance, VkDebugUtilsMessengerEXT debugUtilsMessenger);
+  DebugMessenger(const Instance& instance, VkDebugUtilsMessengerEXT debugUtilsMessenger) noexcept;
 
 public:
-  DebugMessenger();
+  DebugMessenger() noexcept = default;
 
   DebugMessenger(DebugMessenger&& debugMessenger) noexcept;
 
@@ -21,7 +21,7 @@ public:
   ~DebugMessenger();
 
 private:
-  VkDebugUtilsMessengerEXT _debugUtilsMessenger;
+  VkDebugUtilsMessengerEXT _debugUtilsMessenger = VK_NULL_HANDLE;
 
-  const Instance* _instance;
+  const Instance* _instance = nullptr;
 };

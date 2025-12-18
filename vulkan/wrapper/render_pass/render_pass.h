@@ -18,7 +18,7 @@ class RenderpassBuilder {
     std::vector<VkAttachmentReference> _colorAttachmentResolveRefs;
 
   public:
-    Subpass() = default;
+    Subpass() noexcept = default;
 
     ~Subpass() = default;
 
@@ -61,7 +61,7 @@ private:
 
 class Renderpass {
 public:
-  Renderpass() = default;
+  Renderpass() noexcept = default;
 
   Renderpass(Renderpass&& renderpass) noexcept;
 
@@ -77,7 +77,7 @@ public:
 
 private:
   Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass,
-             const AttachmentLayout& attachmentLayout);
+             const AttachmentLayout& attachmentLayout) noexcept;
 
   VkRenderPass _renderpass = VK_NULL_HANDLE;
 

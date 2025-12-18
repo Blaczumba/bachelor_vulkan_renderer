@@ -8,7 +8,7 @@
 #include "vulkan/wrapper/instance/extensions.h"
 #include "vulkan/wrapper/util/check.h"
 
-Instance::Instance(VkInstance instance) : _instance(instance) {}
+Instance::Instance(VkInstance instance) noexcept : _instance(instance) {}
 
 Instance::Instance(Instance&& instance) noexcept
   : _instance(std::exchange(instance._instance, VK_NULL_HANDLE)) {}

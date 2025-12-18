@@ -157,7 +157,7 @@ Framebuffer Framebuffer::createFromTextures(
 }
 
 Framebuffer::Framebuffer(VkFramebuffer framebuffer, const Renderpass& renderpass,
-                         const VkViewport& viewport, const VkRect2D& scissor)
+                         const VkViewport& viewport, const VkRect2D& scissor) noexcept
   : _framebuffer(framebuffer), _renderpass(&renderpass), _viewport(viewport), _scissor(scissor) {}
 
 Framebuffer::Framebuffer(Framebuffer&& framebuffer) noexcept

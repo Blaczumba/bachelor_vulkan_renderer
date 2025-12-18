@@ -10,7 +10,7 @@
 #include "vulkan/wrapper/util/check.h"
 
 Shader::Shader(VkShaderModule shaderModule, const LogicalDevice& logicalDevice,
-               VkShaderStageFlagBits shaderStage)
+               VkShaderStageFlagBits shaderStage) noexcept
   : _shaderModule(shaderModule), _logicalDevice(&logicalDevice), _shaderStage(shaderStage) {}
 
 Shader Shader::create(const LogicalDevice& logicalDevice, std::span<const std::byte> shaderData,

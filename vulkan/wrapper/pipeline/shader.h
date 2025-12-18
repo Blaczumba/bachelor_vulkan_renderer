@@ -9,10 +9,10 @@ class LogicalDevice;
 
 class Shader {
   Shader(VkShaderModule shaderModule, const LogicalDevice& logicalDevice,
-         VkShaderStageFlagBits shaderStage);
+         VkShaderStageFlagBits shaderStage) noexcept;
 
 public:
-  Shader() = default;
+  Shader() noexcept = default;
 
   static Shader create(const LogicalDevice& logicalDevice, std::span<const std::byte> shaderData,
                        VkShaderStageFlagBits shaderStage);

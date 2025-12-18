@@ -7,7 +7,7 @@
   #include "common/window/window_glfw.h"
 #endif
 
-Surface::Surface(VkSurfaceKHR surface, const Instance& instance)
+Surface::Surface(VkSurfaceKHR surface, const Instance& instance) noexcept
   : _surface(surface), _instance(&instance) {}
 
 Surface Surface::create(const Instance& instance, const Window& window) {

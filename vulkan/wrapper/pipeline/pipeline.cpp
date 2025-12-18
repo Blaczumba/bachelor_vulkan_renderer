@@ -6,7 +6,7 @@
 #include "vulkan/wrapper/util/check.h"
 
 Pipeline::Pipeline(const LogicalDevice& logicalDevice, VkPipeline pipeline,
-                   VkPipelineBindPoint bindPoint, VkPipelineLayout layout)
+                   VkPipelineBindPoint bindPoint, VkPipelineLayout layout) noexcept
   : _logicalDevice(&logicalDevice), _pipeline(pipeline), _bindPoint(bindPoint), _layout(layout) {}
 
 Pipeline Pipeline::create(

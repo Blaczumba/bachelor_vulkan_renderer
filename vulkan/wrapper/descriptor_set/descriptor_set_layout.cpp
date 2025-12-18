@@ -4,7 +4,7 @@
 #include "vulkan/wrapper/util/check.h"
 
 DescriptorSetLayout::DescriptorSetLayout(
-    const LogicalDevice& logicalDevice, VkDescriptorSetLayout layout)
+    const LogicalDevice& logicalDevice, VkDescriptorSetLayout layout) noexcept
   : _logicalDevice(&logicalDevice), _descriptorSetLayout(layout) {}
 
 DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout&& layout) noexcept
