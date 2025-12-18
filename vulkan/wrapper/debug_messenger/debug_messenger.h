@@ -3,25 +3,25 @@
 #include <memory>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "vulkan/wrapper/instance/instance.h"
 
 class DebugMessenger {
-  VkDebugUtilsMessengerEXT _debugUtilsMessenger;
-
-  const Instance* _instance;
-
-  DebugMessenger(const Instance& instance, VkDebugUtilsMessengerEXT debugUtilsMessenger);
+  DebugMessenger(const Instance& instance, VkDebugUtilsMessengerEXT debugUtilsMessenger) noexcept;
 
 public:
-  DebugMessenger();
+  DebugMessenger() noexcept = default;
 
   DebugMessenger(DebugMessenger&& debugMessenger) noexcept;
 
   DebugMessenger& operator=(DebugMessenger&& debugMessenger) noexcept;
 
-  static ErrorOr<DebugMessenger> create(
+  static DebugMessenger create(
       const Instance& instance, PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
 
   ~DebugMessenger();
+
+private:
+  VkDebugUtilsMessengerEXT _debugUtilsMessenger = VK_NULL_HANDLE;
+
+  const Instance* _instance = nullptr;
 };

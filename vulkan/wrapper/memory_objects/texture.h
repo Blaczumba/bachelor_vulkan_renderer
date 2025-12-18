@@ -4,16 +4,14 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
+#include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
 #include "vulkan/wrapper/memory_objects/image.h"
 
-class LogicalDevice;
-
-struct Texture {
+class Texture {
 public:
-  Texture() = default;
+  Texture() noexcept = default;
 
   Texture(Texture&& texture) noexcept;
 
@@ -21,7 +19,7 @@ public:
 
   ~Texture();
 
-  ErrorOr<VkImageView> addCreateVkImageView(
+  VkImageView addCreateVkImageView(
       uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
 
   void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
@@ -41,11 +39,11 @@ public:
 private:
   Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
           const ImageParameters& imageParameters, VkImageLayout layout,
-          VkSampler sampler = VK_NULL_HANDLE);
+          VkSampler sampler = VK_NULL_HANDLE) noexcept;
 
   VkImage _image = VK_NULL_HANDLE;
   std::vector<VkImageView> _views;
-  // Create separate Sampler class which is not owned by Texture.
+  // TODO: Create separate Sampler class which is not owned by Texture.
   VkSampler _sampler = VK_NULL_HANDLE;
   Allocation _allocation;
   VkImageLayout _layout;
@@ -114,17 +112,16 @@ public:
 
   TextureBuilder& withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates);
 
-  ErrorOr<Texture> buildAttachment(
-      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const;
+  Texture buildAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const;
 
-  ErrorOr<Texture> buildImage(
+  Texture buildImage(
       const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
       const std::span<const VkBufferImageCopy> copyRegions) const;
 
-  ErrorOr<Texture> buildImageSampler(
+  Texture buildImageSampler(
       const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const;
 
-  ErrorOr<Texture> buildMipmapImage(
+  Texture buildMipmapImage(
       const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
       std::span<const VkBufferImageCopy> copyRegions) const;
 

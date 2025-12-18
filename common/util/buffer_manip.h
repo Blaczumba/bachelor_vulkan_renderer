@@ -6,8 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "common/status/status.h"
-
 struct AttributeDescription {
   void* data;
   size_t size;
@@ -20,7 +18,7 @@ struct BufferDescription {
   size_t totalSize;
 };
 
-ErrorOr<std::vector<BufferDescription>> analyzeConfig(
+std::vector<BufferDescription> analyzeConfig(
     std::span<const std::pair<std::string, std::string>> orders,
     std::span<const AttributeDescription> descs);
 

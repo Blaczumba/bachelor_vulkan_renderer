@@ -9,12 +9,10 @@
 #include "lib/buffer/buffer.h"
 
 class Instance {
-  VkInstance _instance = VK_NULL_HANDLE;
-
-  Instance(VkInstance instance);
+  Instance(VkInstance instance) noexcept;
 
 public:
-  Instance() = default;
+  Instance() noexcept = default;
 
   Instance(Instance&& other) noexcept;
 
@@ -22,7 +20,7 @@ public:
 
   ~Instance();
 
-  static ErrorOr<Instance> create(
+  static Instance create(
       std::string_view engineName, std::span<const char* const> requiredExtensions,
       PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
 
@@ -30,5 +28,8 @@ public:
 
   VkInstance getVkInstance() const;
 
-  ErrorOr<lib::Buffer<VkPhysicalDevice>> getAvailablePhysicalDevices() const;
+  lib::Buffer<VkPhysicalDevice> getAvailablePhysicalDevices() const;
+
+private:
+  VkInstance _instance = VK_NULL_HANDLE;
 };

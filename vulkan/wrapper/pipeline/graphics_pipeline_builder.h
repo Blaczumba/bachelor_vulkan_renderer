@@ -5,7 +5,6 @@
 #include <map>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "vulkan/wrapper/pipeline/pipeline.h"
 #include "vulkan/wrapper/pipeline/pipeline_layout.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
@@ -37,9 +36,9 @@ public:
 
   ~GraphicsPipelineBuilder() = default;
 
-  ErrorOr<Pipeline> getVkGraphicsPipelineCreateInfo();
+  Pipeline getVkGraphicsPipelineCreateInfo();
 
-  static std::vector<ErrorOr<Pipeline>> getVkGraphicsPipelineCreateInfo(
+  static std::vector<Pipeline> getVkGraphicsPipelineCreateInfo(
       std::span<const GraphicsPipelineBuilder> builders);
 
   GraphicsPipelineBuilder& withRenderpass(const Renderpass& renderpass);

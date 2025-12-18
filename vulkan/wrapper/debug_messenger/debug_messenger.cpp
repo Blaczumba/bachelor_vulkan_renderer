@@ -1,14 +1,13 @@
 #include "debug_messenger.h"
 
+#include "common/util/engine_exception.h"
 #include "debug_messenger_utils.h"
 #include "vulkan/wrapper/instance/instance.h"
 #include "vulkan/wrapper/util/check.h"
 
 DebugMessenger::DebugMessenger(
-    const Instance& instance, VkDebugUtilsMessengerEXT debugUtilsMessenger)
+    const Instance& instance, VkDebugUtilsMessengerEXT debugUtilsMessenger) noexcept
   : _instance(&instance), _debugUtilsMessenger(debugUtilsMessenger) {}
-
-DebugMessenger::DebugMessenger() : _debugUtilsMessenger(VK_NULL_HANDLE), _instance(nullptr) {}
 
 DebugMessenger::DebugMessenger(DebugMessenger&& debugMessenger) noexcept
   : _debugUtilsMessenger(std::exchange(debugMessenger._debugUtilsMessenger, VK_NULL_HANDLE)),
@@ -24,7 +23,7 @@ DebugMessenger& DebugMessenger::operator=(DebugMessenger&& other) noexcept {
   return *this;
 }
 
-ErrorOr<DebugMessenger> DebugMessenger::create(
+DebugMessenger DebugMessenger::create(
     const Instance& instance, PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
   const VkDebugUtilsMessengerCreateInfoEXT createInfo =
       populateDebugMessengerCreateInfoUtility(debugCallback);
@@ -32,9 +31,10 @@ ErrorOr<DebugMessenger> DebugMessenger::create(
   if (auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
           instance.getVkInstance(), "vkCreateDebugUtilsMessengerEXT");
       func != nullptr) {
-    CHECK_VKCMD(func(instance.getVkInstance(), &createInfo, nullptr, &debugUtilsMessenger));
+    CHECK_VKCMD(func(instance.getVkInstance(), &createInfo, nullptr, &debugUtilsMessenger),
+                "Failed to create VkDebugUtilsMessengerEXT.");
   } else {
-    return Error(VK_ERROR_EXTENSION_NOT_PRESENT);
+    throw EngineException("vkCreateDebugUtilsMessengerEXT was not found.");
   }
 
   return DebugMessenger(instance, debugUtilsMessenger);

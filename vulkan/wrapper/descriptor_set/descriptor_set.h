@@ -5,22 +5,17 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
 
 class DescriptorPool;  // DescriptorPool is forward declared to avoid circular dependency
 
 class DescriptorSet {
-  VkDescriptorSet _descriptorSet = VK_NULL_HANDLE;
-
-  std::shared_ptr<const DescriptorPool> _descriptorPool;
-
-  DescriptorSet(
-      VkDescriptorSet descriptorSet, const std::shared_ptr<const DescriptorPool>& descriptorPool);
+  DescriptorSet(VkDescriptorSet descriptorSet,
+                const std::shared_ptr<const DescriptorPool>& descriptorPool) noexcept;
 
 public:
-  DescriptorSet() = default;
+  DescriptorSet() noexcept = default;
 
   DescriptorSet(DescriptorSet&& descriptorSet) noexcept;
 
@@ -28,14 +23,19 @@ public:
 
   ~DescriptorSet() = default;
 
-  static ErrorOr<DescriptorSet> create(
+  static DescriptorSet create(
       const std::shared_ptr<const DescriptorPool>& descriptorPool, VkDescriptorSetLayout layout);
 
-  static ErrorOr<std::vector<DescriptorSet>> create(
+  static std::vector<DescriptorSet> create(
       const std::shared_ptr<const DescriptorPool>& descriptorPool, VkDescriptorSetLayout layout,
       uint32_t numSets);
 
   VkDescriptorSet getVkDescriptorSet() const;
 
   const DescriptorPool& getDescriptorPool() const;
+
+private:
+  VkDescriptorSet _descriptorSet = VK_NULL_HANDLE;
+
+  std::shared_ptr<const DescriptorPool> _descriptorPool;
 };

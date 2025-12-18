@@ -2,15 +2,13 @@
 
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class Swapchain {
   Swapchain(VkSwapchainKHR swapchain, const LogicalDevice& logicalDevice, VkFormat format,
-            VkExtent2D extent, lib::Buffer<VkImage>&& images, lib::Buffer<VkImageView>&& views);
-
-  void tryDestroySwapchain();
+            VkExtent2D extent, lib::Buffer<VkImage>&& images,
+            lib::Buffer<VkImageView>&& views) noexcept;
 
 public:
   Swapchain() = default;
@@ -36,6 +34,8 @@ public:
   VkResult present(uint32_t imageIndex, VkSemaphore waitSemaphore) const;
 
 private:
+  void tryDestroySwapchain();
+
   VkSwapchainKHR _swapchain = VK_NULL_HANDLE;
   const LogicalDevice* _logicalDevice = nullptr;
 
@@ -61,8 +61,7 @@ public:
 
   SwapchainBuilder& withClipped(VkBool32 clipped);
 
-  ErrorOr<Swapchain> build(
-      const LogicalDevice& logicalDevice, VkSurfaceKHR surface, VkExtent2D extent);
+  Swapchain build(const LogicalDevice& logicalDevice, VkSurfaceKHR surface, VkExtent2D extent);
 
 private:
   VkSwapchainKHR _oldSwapchain = nullptr;

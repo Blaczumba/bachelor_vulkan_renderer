@@ -66,12 +66,12 @@ Status GraphicsPluginVulkan::createSwapchainContext(
       reinterpret_cast<XrSwapchainImageBaseHeader*>(context.images.data())));
 
   context.views = lib::Buffer<VkImageView>(imageCount);
-  for (size_t i = 0; i < imageCount; ++i) {
-    ASSIGN_OR_RETURN(context.views[i],
-                     _logicalDevice.createImageView(
-                         context.images[i].image, VK_IMAGE_VIEW_TYPE_2D,
-                         static_cast<VkFormat>(format), VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1));
-  }
+  std::transform(context.images.cbegin(), context.images.cend(), context.views.begin(),
+                 [logicalDevice = &_logicalDevice, format](const XrSwapchainImageVulkanKHR& image) {
+                   return logicalDevice->createImageView(
+                       image.image, VK_IMAGE_VIEW_TYPE_2D, static_cast<VkFormat>(format),
+                       VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+                 });
   context.format = static_cast<VkFormat>(format);
   context.width = width;
   context.height = height;
@@ -115,10 +115,12 @@ bool checkValidationLayerSupport() {
 ErrorOr<lib::Buffer<VkExtensionProperties>> GetAvailableInstanceExtensions(
     std::string_view layerName) {
   uint32_t count;
-  CHECK_VKCMD(vkEnumerateInstanceExtensionProperties(layerName.data(), &count, nullptr));
+  CHECK_VKCMD(vkEnumerateInstanceExtensionProperties(layerName.data(), &count, nullptr),
+              "Failed to vkEnumerateInstanceExtensionProperties.");
   lib::Buffer<VkExtensionProperties> available_extensions(count);
-  CHECK_VKCMD(vkEnumerateInstanceExtensionProperties(
-      layerName.data(), &count, available_extensions.data()));
+  CHECK_VKCMD(
+      vkEnumerateInstanceExtensionProperties(layerName.data(), &count, available_extensions.data()),
+      "Failed to vkEnumerateInstanceExtensionProperties.");
   return available_extensions;
 }
 
@@ -188,7 +190,7 @@ ErrorOr<Instance> createInstance(
   VkInstance vkInstance;
   CHECK_XRCMD(pfn_xr_create_vulkan_instance_khr(
       xrInstance, &vkInstanceCreateInfoKhr, &vkInstance, &instanceCreateResult));
-  CHECK_VKCMD(instanceCreateResult);
+  CHECK_VKCMD(instanceCreateResult, "Failed to get crete VkInstance.");
   return Instance::wrap(vkInstance);
 }
 
@@ -281,7 +283,7 @@ ErrorOr<LogicalDevice> createLogicalDevice(
   VkDevice logicalDevice;
   CHECK_XRCMD(pfnXrCreateVulkanDeviceKhr(
       xrInstance, &vulkan_device_create_info_khr, &logicalDevice, &vulkanDeviceCreateResult));
-  CHECK_VKCMD(vulkanDeviceCreateResult);
+  CHECK_VKCMD(vulkanDeviceCreateResult, "Failed to create VkDevice.");
   return LogicalDevice::wrap(logicalDevice, physicalDevice);
 }
 
@@ -293,7 +295,7 @@ Status GraphicsPluginVulkan::initialize(XrInstance xrInstance, XrSystemId system
   ASSIGN_OR_RETURN(_instance, createInstance("VR BejzakEngine", extensions, _debugCallback,
                                              xrInstance, systemId));
 #ifdef VALIDATION_LAYERS_ENABLED
-  ASSIGN_OR_RETURN(_debugMessenger, DebugMessenger::create(_instance, _debugCallback));
+  _debugMessenger = DebugMessenger::create(_instance, _debugCallback);
 #endif
   ASSIGN_OR_RETURN(_physicalDevice, createPhysicalDevice(xrInstance, systemId, _instance));
   ASSIGN_OR_RETURN(_logicalDevice, createLogicalDevice(xrInstance, systemId, *_physicalDevice));
@@ -305,8 +307,8 @@ Status GraphicsPluginVulkan::initialize(XrInstance xrInstance, XrSystemId system
     .device = _logicalDevice.getVkDevice(),
     .queueFamilyIndex = *_physicalDevice->getQueueFamilyIndices().graphicsFamily};
 
-  ASSIGN_OR_RETURN(_singleTimeCommandPool,
-                   CommandPool::create(_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT));
+  _singleTimeCommandPool =
+      CommandPool::create(_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
   return StatusOk();
 }
 

@@ -5,10 +5,10 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
 
-PipelineLayout::PipelineLayout(const LogicalDevice& logicalDevice, VkPipelineLayout layout)
+PipelineLayout::PipelineLayout(const LogicalDevice& logicalDevice, VkPipelineLayout layout) noexcept
   : _logicalDevice(&logicalDevice), _layout(layout) {}
 
-ErrorOr<PipelineLayout> PipelineLayout::create(
+PipelineLayout PipelineLayout::create(
     const LogicalDevice& logicalDevice, std::span<const VkDescriptorSetLayout> descriptorSetLayouts,
     std::span<const VkPushConstantRange> pushConstantRanges, VkPipelineLayoutCreateFlags flags) {
   const VkPipelineLayoutCreateInfo pipelineLayoutInfo{
@@ -22,16 +22,8 @@ ErrorOr<PipelineLayout> PipelineLayout::create(
 
   VkPipelineLayout layout;
   CHECK_VKCMD(
-      vkCreatePipelineLayout(logicalDevice.getVkDevice(), &pipelineLayoutInfo, nullptr, &layout));
-  return PipelineLayout(logicalDevice, layout);
-}
-
-ErrorOr<PipelineLayout> PipelineLayout::wrap(
-    const LogicalDevice& logicalDevice, VkPipelineLayout layout) {
-  if (layout == VK_NULL_HANDLE) {
-    return Error(EngineError::NULLPTR_REFERENCE);
-  }
-
+      vkCreatePipelineLayout(logicalDevice.getVkDevice(), &pipelineLayoutInfo, nullptr, &layout),
+      "Failed to create VkPipelineLayout.");
   return PipelineLayout(logicalDevice, layout);
 }
 

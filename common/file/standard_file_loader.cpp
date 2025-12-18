@@ -1,16 +1,17 @@
 #include "standard_file_loader.h"
 
+#include <format>
 #include <fstream>
 #include <string_view>
 
+#include "common/util/engine_exception.h"
 #include "lib/buffer/buffer.h"
 
-ErrorOr<lib::Buffer<std::byte>> StandardFileLoader::loadFileToBuffer(
-    std::string_view filePath) const {
+lib::Buffer<std::byte> StandardFileLoader::loadFileToBuffer(std::string_view filePath) const {
   std::ifstream file(filePath.data(), std::ios::ate | std::ios::binary);
 
   if (!file.is_open()) {
-    return Error(EngineError::LOAD_FAILURE);
+    throw EngineException(std::format("Failed to load {}", filePath));
   }
 
   const std::streampos fileSize = file.tellg();
@@ -23,11 +24,11 @@ ErrorOr<lib::Buffer<std::byte>> StandardFileLoader::loadFileToBuffer(
   return buffer;
 }
 
-ErrorOr<std::string> StandardFileLoader::loadFileToString(std::string_view filePath) const {
+std::string StandardFileLoader::loadFileToString(std::string_view filePath) const {
   std::ifstream file(filePath.data(), std::ios::ate | std::ios::binary);
 
   if (!file.is_open()) {
-    return Error(EngineError::LOAD_FAILURE);
+    throw EngineException(std::format("Failed to load {}", filePath));
   }
 
   const std::streampos fileSize = file.tellg();

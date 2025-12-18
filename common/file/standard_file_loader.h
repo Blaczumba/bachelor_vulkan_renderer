@@ -10,9 +10,9 @@
 
 class StandardFileLoader : public FileLoader {
 public:
-  ErrorOr<lib::Buffer<std::byte>> loadFileToBuffer(std::string_view filePath) const override;
+  lib::Buffer<std::byte> loadFileToBuffer(std::string_view filePath) const override;
 
-  ErrorOr<std::string> loadFileToString(std::string_view filePath) const override;
+  std::string loadFileToString(std::string_view filePath) const override;
 
   ~StandardFileLoader() override = default;
 };

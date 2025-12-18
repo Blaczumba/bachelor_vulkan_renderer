@@ -6,7 +6,6 @@
 #include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
-#include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 
 enum class QueueType : uint8_t {
@@ -17,27 +16,15 @@ enum class QueueType : uint8_t {
 };
 
 class LogicalDevice {
-  VkDevice _device = VK_NULL_HANDLE;
-
-  const PhysicalDevice* _physicalDevice = nullptr;
-  MemoryAllocatorPtr _memoryAllocator;
-  std::unique_ptr<ResourceDestroyer> _resourceDestroyer;
-
-  VkQueue _graphicsQueue = VK_NULL_HANDLE;
-  VkQueue _presentQueue = VK_NULL_HANDLE;
-  VkQueue _computeQueue = VK_NULL_HANDLE;
-  VkQueue _transferQueue = VK_NULL_HANDLE;
-
   LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice,
-                std::unique_ptr<ResourceDestroyer>&& resourceDestroyer);
+                std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) noexcept;
 
 public:
-  LogicalDevice() = default;
+  LogicalDevice() noexcept = default;
 
-  static ErrorOr<LogicalDevice> create(
-      const PhysicalDevice& physicalDevice,
-      std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
-          make_unique<ThreadedResourceDestroyer>());
+  static LogicalDevice create(const PhysicalDevice& physicalDevice,
+                              std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
+                                  make_unique<ThreadedResourceDestroyer>());
 
   static ErrorOr<LogicalDevice> wrap(VkDevice device, const PhysicalDevice& physicalDevice,
                                      std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
@@ -51,12 +38,11 @@ public:
 
   void destroyResource(ResourceDestroyerJob&& destroyResource) const;
 
-  ErrorOr<VkSampler> createSampler(const SamplerParameters& params) const;
+  VkSampler createSampler(const SamplerParameters& params) const;
 
-  ErrorOr<VkImageView> createImageView(
-      VkImage image, VkImageViewType type, VkFormat format, VkImageAspectFlags aspect,
-      uint32_t baseMipLevel, uint32_t mipLevels, uint32_t baseArrayLayer,
-      uint32_t layerCount) const;
+  VkImageView createImageView(VkImage image, VkImageViewType type, VkFormat format,
+                              VkImageAspectFlags aspect, uint32_t baseMipLevel, uint32_t mipLevels,
+                              uint32_t baseArrayLayer, uint32_t layerCount) const;
 
   VkDevice getVkDevice() const;
 
@@ -73,4 +59,16 @@ public:
   VkQueue getComputeVkQueue() const;
 
   VkQueue getTransferVkQueue() const;
+
+private:
+  VkDevice _device = VK_NULL_HANDLE;
+
+  const PhysicalDevice* _physicalDevice = nullptr;
+  MemoryAllocatorPtr _memoryAllocator;
+  ResourceDestroyerPtr _resourceDestroyer;
+
+  VkQueue _graphicsQueue = VK_NULL_HANDLE;
+  VkQueue _presentQueue = VK_NULL_HANDLE;
+  VkQueue _computeQueue = VK_NULL_HANDLE;
+  VkQueue _transferQueue = VK_NULL_HANDLE;
 };

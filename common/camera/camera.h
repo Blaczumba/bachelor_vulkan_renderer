@@ -45,5 +45,5 @@ private:
   float _mouseSensitivity;
 
   Projection _projection;
-  glm::mat4 _projectionMatrix{1.0f};
+  glm::mat4 _projectionMatrix;
 };

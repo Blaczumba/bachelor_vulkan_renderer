@@ -24,9 +24,11 @@ public:
                             MemoryAllocator* memoryAllocator) = 0;
 };
 
+using ResourceDestroyerPtr = std::unique_ptr<ResourceDestroyer>;
+
 class ThreadedResourceDestroyer : public ResourceDestroyer {
 public:
-  ThreadedResourceDestroyer() = default;
+  ThreadedResourceDestroyer() noexcept = default;
 
   ~ThreadedResourceDestroyer() override = default;
 
@@ -41,7 +43,7 @@ private:
 
 class ImmediateResourceDestroyer : public ResourceDestroyer {
 public:
-  ImmediateResourceDestroyer() = default;
+  ImmediateResourceDestroyer() noexcept = default;
 
   ~ImmediateResourceDestroyer() override = default;
 

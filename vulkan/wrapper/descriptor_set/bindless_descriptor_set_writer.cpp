@@ -21,7 +21,8 @@ uint32_t getNextHandle(uint32_t elementsCount, std::vector<uint32_t>& missingBin
 
 }  // namespace
 
-BindlessDescriptorSetWriter::BindlessDescriptorSetWriter(const DescriptorSet& descriptorSet)
+BindlessDescriptorSetWriter::BindlessDescriptorSetWriter(
+    const DescriptorSet& descriptorSet) noexcept
   : _descriptorSet(descriptorSet) {}
 
 TextureHandle BindlessDescriptorSetWriter::storeTexture(const Texture& texture) {

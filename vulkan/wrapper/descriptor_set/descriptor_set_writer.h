@@ -13,18 +13,8 @@
 #include "vulkan/wrapper/memory_objects/texture.h"
 
 class DescriptorSetWriter {
-  uint32_t _binding = 0;
-  uint32_t _arrayElement = 0;
-
-  std::vector<VkDescriptorImageInfo> _imageInfos;
-  std::vector<VkDescriptorBufferInfo> _bufferInfos;
-
-  std::vector<VkWriteDescriptorSet> _descriptorWrites;
-
-  std::vector<uint32_t> _dynamicBuffersBaseSizes;
-
 public:
-  DescriptorSetWriter() = default;
+  DescriptorSetWriter() noexcept = default;
 
   DescriptorSetWriter& storeTexture(const Texture& texture);
 
@@ -38,4 +28,15 @@ public:
 
   void getDynamicBufferSizesWithOffsets(
       uint32_t* data, std::initializer_list<uint32_t> offsets) const;
+
+private:
+  uint32_t _binding = 0;
+  uint32_t _arrayElement = 0;
+
+  std::vector<VkDescriptorImageInfo> _imageInfos;
+  std::vector<VkDescriptorBufferInfo> _bufferInfos;
+
+  std::vector<VkWriteDescriptorSet> _descriptorWrites;
+
+  std::vector<uint32_t> _dynamicBuffersBaseSizes;
 };

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vulkan/vulkan.hpp>
 
+#include "common/util/engine_exception.h"
 #include "lib/algorithm.h"
 #include "vulkan/wrapper/instance/extensions.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
@@ -120,17 +121,16 @@ SwapChainSupportDetails querySwapchainSupportDetails(
 }  // namespace
 
 PhysicalDevice::PhysicalDevice(VkPhysicalDevice physicalDevice, const Instance& instance,
-                               const QueueFamilyIndices& queueFamilyIndices)
+                               const QueueFamilyIndices& queueFamilyIndices) noexcept
   : _device(physicalDevice), _instance(instance),
     _availableRequestedExtensions(checkDeviceExtensionSupport(physicalDevice)),
     _queueFamilyIndices(queueFamilyIndices) {
   vkGetPhysicalDeviceProperties(_device, &_properties);
 }
 
-ErrorOr<std::unique_ptr<PhysicalDevice>> PhysicalDevice::create(
+std::unique_ptr<PhysicalDevice> PhysicalDevice::create(
     const Instance& instance, VkSurfaceKHR surface) {
-  ASSIGN_OR_RETURN(
-      const lib::Buffer<VkPhysicalDevice> devices, instance.getAvailablePhysicalDevices());
+  const lib::Buffer<VkPhysicalDevice> devices = instance.getAvailablePhysicalDevices();
   for (const auto device : devices) {
     const QueueFamilyIndices queueFamilyIndices = findQueueFamilyIncides(device, surface);
     const SwapChainSupportDetails swapchainSupportDetails =
@@ -157,14 +157,15 @@ ErrorOr<std::unique_ptr<PhysicalDevice>> PhysicalDevice::create(
           new PhysicalDevice(device, instance, queueFamilyIndices));
     }
   }
-  return Error(EngineError::NOT_FOUND);
+  throw EngineException("Failed to find suitable physical device.");
 }
 
 ErrorOr<std::unique_ptr<PhysicalDevice>> PhysicalDevice::wrap(
     VkPhysicalDevice physicalDevice, const Instance& instance) {
-  if (physicalDevice == VK_NULL_HANDLE) {
+  if (physicalDevice == VK_NULL_HANDLE) [[unlikely]] {
     return Error(EngineError::NULLPTR_REFERENCE);
   }
+
   return std::unique_ptr<PhysicalDevice>(
       new PhysicalDevice(physicalDevice, instance, findQueueFamilyIncides(physicalDevice)));
 }

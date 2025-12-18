@@ -5,7 +5,6 @@
 #include <span>
 #include <vector>
 
-#include "common/status/status.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/render_pass/attachment_layout.h"
 
@@ -19,13 +18,13 @@ class RenderpassBuilder {
     std::vector<VkAttachmentReference> _colorAttachmentResolveRefs;
 
   public:
-    Subpass() = default;
+    Subpass() noexcept = default;
 
     ~Subpass() = default;
 
-    Status addOutputAttachment(const AttachmentLayout& layout, uint32_t attachmentBinding);
+    void addOutputAttachment(const AttachmentLayout& layout, uint32_t attachmentBinding);
 
-    Status addInputAttachment(
+    void addInputAttachment(
         const AttachmentLayout& layout, uint32_t attachmentBinding, VkImageLayout imageLayout);
 
     VkSubpassDescription getVkSubpassDescription() const;
@@ -44,7 +43,7 @@ public:
   RenderpassBuilder& withMultiView(
       std::vector<uint32_t>&& viewMask, std::vector<uint32_t>&& correlationMask);
 
-  ErrorOr<Renderpass> build(const LogicalDevice& logicalDevice);
+  Renderpass build(const LogicalDevice& logicalDevice);
 
 private:
   const AttachmentLayout& _attachmentLayout;
@@ -58,13 +57,11 @@ private:
 
   std::vector<VkSubpassDependency> _subpassDepencies;
   std::vector<Subpass> _subpasses;
-
-  Status _status;
 };
 
 class Renderpass {
 public:
-  Renderpass() = default;
+  Renderpass() noexcept = default;
 
   Renderpass(Renderpass&& renderpass) noexcept;
 
@@ -80,7 +77,7 @@ public:
 
 private:
   Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass,
-             const AttachmentLayout& attachmentLayout);
+             const AttachmentLayout& attachmentLayout) noexcept;
 
   VkRenderPass _renderpass = VK_NULL_HANDLE;
 

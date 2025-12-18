@@ -3,11 +3,12 @@
 #include <string_view>
 #include <unordered_set>
 
+#include "common/util/engine_exception.h"
 #include "vulkan/wrapper/debug_messenger/debug_messenger_utils.h"
 #include "vulkan/wrapper/instance/extensions.h"
 #include "vulkan/wrapper/util/check.h"
 
-Instance::Instance(VkInstance instance) : _instance(instance) {}
+Instance::Instance(VkInstance instance) noexcept : _instance(instance) {}
 
 Instance::Instance(Instance&& instance) noexcept
   : _instance(std::exchange(instance._instance, VK_NULL_HANDLE)) {}
@@ -54,12 +55,12 @@ bool checkValidationLayerSupport() {
 
 }  // namespace
 
-ErrorOr<Instance> Instance::create(
+Instance Instance::create(
     std::string_view engineName, std::span<const char* const> requiredExtensions,
     PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
 #ifdef VALIDATION_LAYERS_ENABLED
   if (!checkValidationLayerSupport()) {
-    return Error(VK_ERROR_FEATURE_NOT_PRESENT);
+    throw EngineException("Validation layers not supported.");
   }
 #endif  // VALIDATION_LAYERS_ENABLED
 
@@ -92,7 +93,7 @@ ErrorOr<Instance> Instance::create(
     .ppEnabledExtensionNames = requiredExtensions.data()};
 
   VkInstance instance;
-  CHECK_VKCMD(vkCreateInstance(&createInfo, nullptr, &instance));
+  CHECK_VKCMD(vkCreateInstance(&createInfo, nullptr, &instance), "Failed to create VkInstance.");
   return Instance(instance);
 }
 
@@ -107,12 +108,12 @@ VkInstance Instance::getVkInstance() const {
   return _instance;
 }
 
-ErrorOr<lib::Buffer<VkPhysicalDevice>> Instance::getAvailablePhysicalDevices() const {
+lib::Buffer<VkPhysicalDevice> Instance::getAvailablePhysicalDevices() const {
   uint32_t deviceCount;
   vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
 
   if (deviceCount == 0) {
-    return Error(EngineError::NOT_FOUND);
+    throw EngineException("No physical devices found.");
   }
 
   lib::Buffer<VkPhysicalDevice> devices(deviceCount);

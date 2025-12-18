@@ -12,7 +12,7 @@
 PipelineManager::PipelineManager(const std::shared_ptr<FileLoader>& fileLoader)
   : _fileLoader(fileLoader) {}
 
-ErrorOr<std::reference_wrapper<const Shader>> PipelineManager::addShader(
+std::reference_wrapper<const Shader> PipelineManager::addShader(
     const LogicalDevice& logicalDevice, std::string_view shaderFile,
     VkShaderStageFlagBits shaderStages) {
   auto [it, inserted] = _shaders.try_emplace(shaderFile);
@@ -20,14 +20,12 @@ ErrorOr<std::reference_wrapper<const Shader>> PipelineManager::addShader(
     return it->second;
   }
 
-  ASSIGN_OR_RETURN(
-      const lib::Buffer<std::byte> shaderData,
-      _fileLoader->loadFileToBuffer((std::filesystem::path(SHADERS_PATH) / shaderFile).string()));
-  ASSIGN_OR_RETURN(it->second, Shader::create(logicalDevice, shaderData, shaderStages));
-  return it->second;
+  const lib::Buffer<std::byte> shaderData =
+      _fileLoader->loadFileToBuffer((std::filesystem::path(SHADERS_PATH) / shaderFile).string());
+  return it->second = Shader::create(logicalDevice, shaderData, shaderStages);
 }
 
-ErrorOr<VkDescriptorSetLayout> PipelineManager::getOrCreateBindlessLayout(
+VkDescriptorSetLayout PipelineManager::getOrCreateBindlessLayout(
     const LogicalDevice& logicalDevice) {
   static constexpr DescriptorSetType layoutType = DescriptorSetType::BINDLESS;
   if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
@@ -53,17 +51,15 @@ ErrorOr<VkDescriptorSetLayout> PipelineManager::getOrCreateBindlessLayout(
     VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT};
   static constexpr VkDescriptorBindingFlags bindingFlags[] = {flags, flags};
 
-  ASSIGN_OR_RETURN(
-      DescriptorSetLayout layout,
-      DescriptorSetLayout::create(logicalDevice, bindings, bindingFlags,
-                                  VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT));
+  DescriptorSetLayout layout = DescriptorSetLayout::create(
+      logicalDevice, bindings, bindingFlags,
+      VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT);
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
   _descriptorSetLayouts.emplace(layoutType, std::move(layout));
   return vkLayout;
 }
 
-ErrorOr<VkDescriptorSetLayout> PipelineManager::getOrCreateCameraLayout(
-    const LogicalDevice& logicalDevice) {
+VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevice& logicalDevice) {
   static constexpr DescriptorSetType layoutType = DescriptorSetType::CAMERA;
   if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
     return it->second.getVkDescriptorSetLayout();
@@ -76,14 +72,14 @@ ErrorOr<VkDescriptorSetLayout> PipelineManager::getOrCreateCameraLayout(
      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
      },
   };
-  ASSIGN_OR_RETURN(
-      DescriptorSetLayout layout, DescriptorSetLayout::create(logicalDevice, bindings));
+
+  DescriptorSetLayout layout = DescriptorSetLayout::create(logicalDevice, bindings);
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
   _descriptorSetLayouts.emplace(layoutType, std::move(layout));
   return vkLayout;
 }
 
-ErrorOr<std::reference_wrapper<const PipelineLayout>> PipelineManager::getOrCreatePipelineLayout(
+std::reference_wrapper<const PipelineLayout> PipelineManager::getOrCreatePipelineLayout(
     std::string_view id, const LogicalDevice& logicalDevice,
     std::span<const VkDescriptorSetLayout> descriptorSetLayouts,
     std::span<const VkPushConstantRange> pushConstantRanges, VkPipelineLayoutCreateFlags flags) {
@@ -93,12 +89,9 @@ ErrorOr<std::reference_wrapper<const PipelineLayout>> PipelineManager::getOrCrea
     return it->second;
   }
 
-  ASSIGN_OR_RETURN(
-      PipelineLayout layout,
-      PipelineLayout::create(logicalDevice, descriptorSetLayouts, pushConstantRanges, flags));
-
-  it->second = std::move(layout);
-  return it->second;
+  PipelineLayout layout =
+      PipelineLayout::create(logicalDevice, descriptorSetLayouts, pushConstantRanges, flags);
+  return it->second = std::move(layout);
 }
 
 namespace {
@@ -111,24 +104,22 @@ constexpr VkPushConstantRange getPushConstantRange(
 
 }  // namespace
 
-ErrorOr<GraphicsPipelineBuilder> PipelineManager::createPBRProgram(const Renderpass& renderpass) {
+GraphicsPipelineBuilder PipelineManager::createPBRProgram(const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
-  ASSIGN_OR_RETURN(const Shader& vertex,
-                   addShader(logicalDevice, "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
-  ASSIGN_OR_RETURN(const Shader& fragment,
-                   addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+  const Shader& vertex =
+      addShader(logicalDevice, "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+  const Shader& fragment =
+      addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
   static constexpr VkPushConstantRange pushConstantRanges[] = {
     getPushConstantRange<PushConstantsPBR>(
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)};
 
-  VkDescriptorSetLayout descriptorSetLayouts[2];
-  ASSIGN_OR_RETURN(descriptorSetLayouts[0], getOrCreateBindlessLayout(logicalDevice));
-  ASSIGN_OR_RETURN(descriptorSetLayouts[1], getOrCreateCameraLayout(logicalDevice));
+  VkDescriptorSetLayout descriptorSetLayouts[] = {
+    getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)};
 
-  ASSIGN_OR_RETURN(const PipelineLayout& pipelineLayout,
-                   getOrCreatePipelineLayout(
-                       "PbrBindlessCam", logicalDevice, descriptorSetLayouts, pushConstantRanges));
+  const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
+      "PbrBindlessCam", logicalDevice, descriptorSetLayouts, pushConstantRanges);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -143,7 +134,7 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createPBRProgram(const Renderp
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  return ErrorOr<GraphicsPipelineBuilder>(std::move(
+  return GraphicsPipelineBuilder(std::move(
       GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
           .withRenderpass(renderpass)
           .withPipelineLayout(pipelineLayout)
@@ -158,25 +149,21 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createPBRProgram(const Renderp
           .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
 }
 
-ErrorOr<GraphicsPipelineBuilder> PipelineManager::createPbrEnvMappingProgram(
-    const Renderpass& renderpass) {
+GraphicsPipelineBuilder PipelineManager::createPbrEnvMappingProgram(const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
-  ASSIGN_OR_RETURN(
-      const Shader& vertex,
-      addShader(logicalDevice, "pbr_env_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
-  ASSIGN_OR_RETURN(const Shader& fragment,
-                   addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+  const Shader& vertex =
+      addShader(logicalDevice, "pbr_env_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+  const Shader& fragment =
+      addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
   static constexpr VkPushConstantRange pushConstantRanges[] = {
     getPushConstantRange<PushConstantsPBR>(
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)};
 
-  VkDescriptorSetLayout descriptorSetLayouts[1];
-  ASSIGN_OR_RETURN(descriptorSetLayouts[0], getOrCreateBindlessLayout(logicalDevice));
+  VkDescriptorSetLayout descriptorSetLayouts[] = {getOrCreateBindlessLayout(logicalDevice)};
 
-  ASSIGN_OR_RETURN(const PipelineLayout& pipelineLayout,
-                   getOrCreatePipelineLayout(
-                       "PbrBindlessCam", logicalDevice, descriptorSetLayouts, pushConstantRanges));
+  const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
+      "PbrBindlessCam", logicalDevice, descriptorSetLayouts, pushConstantRanges);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -191,7 +178,7 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createPbrEnvMappingProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  return ErrorOr<GraphicsPipelineBuilder>(std::move(
+  return GraphicsPipelineBuilder(std::move(
       GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
           .withRenderpass(renderpass)
           .withPipelineLayout(pipelineLayout)
@@ -206,24 +193,20 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createPbrEnvMappingProgram(
           .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
 }
 
-ErrorOr<GraphicsPipelineBuilder> PipelineManager::createSkyboxProgram(
-    const Renderpass& renderpass) {
+GraphicsPipelineBuilder PipelineManager::createSkyboxProgram(const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
-  ASSIGN_OR_RETURN(const Shader& vertex,
-                   addShader(logicalDevice, "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
-  ASSIGN_OR_RETURN(const Shader& fragment,
-                   addShader(logicalDevice, "skybox.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+  const Shader& vertex = addShader(logicalDevice, "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+  const Shader& fragment =
+      addShader(logicalDevice, "skybox.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-  VkDescriptorSetLayout descriptorSetLayouts[1];
-  ASSIGN_OR_RETURN(descriptorSetLayouts[0], getOrCreateBindlessLayout(logicalDevice));
+  VkDescriptorSetLayout descriptorSetLayouts[] = {getOrCreateBindlessLayout(logicalDevice)};
 
   static constexpr VkPushConstantRange pushConstantRanges[] = {
     getPushConstantRange<PushConstantsSkybox>(
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)};
 
-  ASSIGN_OR_RETURN(
-      const PipelineLayout& pipelineLayout,
-      getOrCreatePipelineLayout("Skybox", logicalDevice, descriptorSetLayouts, pushConstantRanges));
+  const PipelineLayout& pipelineLayout =
+      getOrCreatePipelineLayout("Skybox", logicalDevice, descriptorSetLayouts, pushConstantRanges);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -238,7 +221,7 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createSkyboxProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  return ErrorOr<GraphicsPipelineBuilder>(std::move(
+  return GraphicsPipelineBuilder(std::move(
       GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
           .withRenderpass(renderpass)
           .withPipelineLayout(pipelineLayout)
@@ -253,19 +236,17 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createSkyboxProgram(
           .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
 }
 
-ErrorOr<GraphicsPipelineBuilder> PipelineManager::createShadowProgram(
-    const Renderpass& renderpass) {
+GraphicsPipelineBuilder PipelineManager::createShadowProgram(const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
-  ASSIGN_OR_RETURN(const Shader& vertex,
-                   addShader(logicalDevice, "shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
-  ASSIGN_OR_RETURN(const Shader& fragment,
-                   addShader(logicalDevice, "shadow.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+  const Shader& vertex = addShader(logicalDevice, "shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+  const Shader& fragment =
+      addShader(logicalDevice, "shadow.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
   static constexpr VkPushConstantRange pushConstantRanges[] = {
     getPushConstantRange<PushConstantsShadow>(VK_SHADER_STAGE_VERTEX_BIT)};
 
-  ASSIGN_OR_RETURN(const PipelineLayout& pipelineLayout,
-                   getOrCreatePipelineLayout("Shadow", logicalDevice, {}, pushConstantRanges));
+  const PipelineLayout& pipelineLayout =
+      getOrCreatePipelineLayout("Shadow", logicalDevice, {}, pushConstantRanges);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -278,7 +259,7 @@ ErrorOr<GraphicsPipelineBuilder> PipelineManager::createShadowProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  return ErrorOr<GraphicsPipelineBuilder>(std::move(
+  return GraphicsPipelineBuilder(std::move(
       GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
           .withRenderpass(renderpass)
           .withPipelineLayout(pipelineLayout)

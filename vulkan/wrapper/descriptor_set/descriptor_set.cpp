@@ -7,7 +7,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "common/status/status.h"
 #include "descriptor_pool.h"
 #include "descriptor_set_layout.h"
 #include "lib/buffer/buffer.h"
@@ -15,8 +14,8 @@
 #include "vulkan/wrapper/pipeline/pipeline.h"
 #include "vulkan/wrapper/util/check.h"
 
-DescriptorSet::DescriptorSet(
-    VkDescriptorSet descriptorSet, const std::shared_ptr<const DescriptorPool>& descriptorPool)
+DescriptorSet::DescriptorSet(VkDescriptorSet descriptorSet,
+                             const std::shared_ptr<const DescriptorPool>& descriptorPool) noexcept
   : _descriptorSet(descriptorSet), _descriptorPool(descriptorPool) {}
 
 DescriptorSet::DescriptorSet(DescriptorSet&& descriptorSet) noexcept
@@ -33,7 +32,7 @@ DescriptorSet& DescriptorSet::operator=(DescriptorSet&& descriptorSet) noexcept 
   return *this;
 }
 
-ErrorOr<DescriptorSet> DescriptorSet::create(
+DescriptorSet DescriptorSet::create(
     const std::shared_ptr<const DescriptorPool>& descriptorPool, VkDescriptorSetLayout layout) {
   const VkDescriptorSetAllocateInfo allocInfo = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -44,11 +43,12 @@ ErrorOr<DescriptorSet> DescriptorSet::create(
 
   VkDescriptorSet descriptorSet;
   CHECK_VKCMD(vkAllocateDescriptorSets(
-      descriptorPool->getLogicalDevice().getVkDevice(), &allocInfo, &descriptorSet));
+                  descriptorPool->getLogicalDevice().getVkDevice(), &allocInfo, &descriptorSet),
+              "Failed to create VkDescriptorSet.");
   return DescriptorSet(descriptorSet, descriptorPool);
 }
 
-ErrorOr<std::vector<DescriptorSet>> DescriptorSet::create(
+std::vector<DescriptorSet> DescriptorSet::create(
     const std::shared_ptr<const DescriptorPool>& descriptorPool, VkDescriptorSetLayout layout,
     uint32_t numSets) {
   const lib::Buffer<VkDescriptorSetLayout> layouts(numSets, layout);
@@ -60,8 +60,9 @@ ErrorOr<std::vector<DescriptorSet>> DescriptorSet::create(
   };
 
   lib::Buffer<VkDescriptorSet> descriptorSets(numSets);
-  CHECK_VKCMD(vkAllocateDescriptorSets(
-      descriptorPool->getLogicalDevice().getVkDevice(), &allocInfo, descriptorSets.data()));
+  CHECK_VKCMD(vkAllocateDescriptorSets(descriptorPool->getLogicalDevice().getVkDevice(), &allocInfo,
+                                       descriptorSets.data()),
+              "Failed to create VkDescriptorSet.");
 
   std::vector<DescriptorSet> descSets;
   descSets.reserve(descriptorSets.size());

@@ -4,7 +4,7 @@
 #include "vulkan/wrapper/util/check.h"
 
 DescriptorSetLayout::DescriptorSetLayout(
-    const LogicalDevice& logicalDevice, VkDescriptorSetLayout layout)
+    const LogicalDevice& logicalDevice, VkDescriptorSetLayout layout) noexcept
   : _logicalDevice(&logicalDevice), _descriptorSetLayout(layout) {}
 
 DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout&& layout) noexcept
@@ -30,7 +30,7 @@ DescriptorSetLayout::~DescriptorSetLayout() {
   }
 }
 
-ErrorOr<DescriptorSetLayout> DescriptorSetLayout::create(
+DescriptorSetLayout DescriptorSetLayout::create(
     const LogicalDevice& logicalDevice, std::span<const VkDescriptorSetLayoutBinding> bindings,
     std::span<const VkDescriptorBindingFlags> bindFlags, VkDescriptorSetLayoutCreateFlags flags) {
   const VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlags = {
@@ -47,7 +47,8 @@ ErrorOr<DescriptorSetLayout> DescriptorSetLayout::create(
 
   VkDescriptorSetLayout descriptorSetLayout;
   CHECK_VKCMD(vkCreateDescriptorSetLayout(
-      logicalDevice.getVkDevice(), &layoutInfo, nullptr, &descriptorSetLayout));
+                  logicalDevice.getVkDevice(), &layoutInfo, nullptr, &descriptorSetLayout),
+              "Failed to create VkDescriptorSetLayout.");
   return DescriptorSetLayout(logicalDevice, descriptorSetLayout);
 }
 

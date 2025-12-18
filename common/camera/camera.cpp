@@ -8,9 +8,8 @@ Camera::Camera(
   : _projection(projection), _position(position), _mouseXPos(0.0f), _mouseYPos(0.0f),
     _moveSpeed(moveSpeed), _mouseSensitivity(mouseSensitivity), _yaw(0.0f), _pitch(0.0f),
     _front{0.0f, 0.0f, -1.0f}, _up{0.0f, 1.0f, 0.0f},
-    _right(glm::normalize(glm::cross(_front, glm::vec3(0.0f, 1.0f, 0.0f)))) {
-  std::visit(UpdateProjectionVisitor{_projectionMatrix}, projection);
-}
+    _right(glm::normalize(glm::cross(_front, glm::vec3(0.0f, 1.0f, 0.0f)))),
+    _projectionMatrix(std::visit(CalculateProjectionVisitor{}, projection)) {}
 
 glm::mat4 Camera::getViewMatrix() const {
   return glm::lookAt(_position, _position + _front, _up);
@@ -26,7 +25,7 @@ Projection Camera::getProjection() const {
 
 void Camera::setProjection(const Projection& projection) {
   _projection = projection;
-  std::visit(UpdateProjectionVisitor{_projectionMatrix}, projection);
+  _projectionMatrix = std::visit(CalculateProjectionVisitor{}, projection);
 }
 
 glm::vec3 Camera::getPosition() const {

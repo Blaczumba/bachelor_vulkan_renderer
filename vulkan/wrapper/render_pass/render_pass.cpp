@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iterator>
 
+#include "common/util/engine_exception.h"
 #include "vulkan/wrapper/render_pass/attachment_layout.h"
 #include "vulkan/wrapper/util/check.h"
 
@@ -21,13 +22,12 @@ RenderpassBuilder& RenderpassBuilder::addSubpass(std::initializer_list<uint8_t> 
                                                  std::initializer_list<uint8_t> inputAttachments) {
   Subpass subpass;
   for (uint8_t index : outputAttachments) {
-    UPDATE_STATUS(_status, subpass.addOutputAttachment(_attachmentLayout, index));
+    subpass.addOutputAttachment(_attachmentLayout, index);
   }
 
   for (uint8_t index : inputAttachments) {
     // TODO set proper image layouts
-    UPDATE_STATUS(
-        _status, subpass.addInputAttachment(_attachmentLayout, index, VK_IMAGE_LAYOUT_GENERAL));
+    subpass.addInputAttachment(_attachmentLayout, index, VK_IMAGE_LAYOUT_GENERAL);
   }
 
   _subpasses.push_back(subpass);
@@ -47,11 +47,11 @@ RenderpassBuilder& RenderpassBuilder::withMultiView(
   return *this;
 }
 
-Status RenderpassBuilder::Subpass::addOutputAttachment(
+void RenderpassBuilder::Subpass::addOutputAttachment(
     const AttachmentLayout& layout, uint32_t attachmentBinding) {
   std::span<const AttachmentType> attachmentTypes = layout.getAttachmentsTypes();
-  if (attachmentTypes.size() <= attachmentBinding) {
-    return Error(EngineError::INDEX_OUT_OF_RANGE);
+  if (attachmentTypes.size() <= attachmentBinding) [[unlikely]] {
+    throw EngineException("Attachment binding exceeds the total number of attachments.");
   }
 
   switch (attachmentTypes[attachmentBinding]) {
@@ -68,19 +68,17 @@ Status RenderpassBuilder::Subpass::addOutputAttachment(
           attachmentBinding, layout.getVkSubpassLayouts()[attachmentBinding]);
       break;
     default:
-      return Error(EngineError::NOT_RECOGNIZED_TYPE);
+      throw EngineException("Failed to recognize attachment type.");
   }
-  return StatusOk();
 }
 
-Status RenderpassBuilder::Subpass::addInputAttachment(
+void RenderpassBuilder::Subpass::addInputAttachment(
     const AttachmentLayout& layout, uint32_t attachmentBinding, VkImageLayout imageLayout) {
-  if (layout.getAttachmentsTypes().size() <= attachmentBinding) {
-    return Error(EngineError::INDEX_OUT_OF_RANGE);
+  if (layout.getAttachmentsTypes().size() <= attachmentBinding) [[unlikely]] {
+    throw EngineException("Input binding attachment index cannot exceed number of attachments.");
   }
 
   _inputAttachmentRefs.emplace_back(attachmentBinding, imageLayout);
-  return StatusOk();
 }
 
 VkSubpassDescription RenderpassBuilder::Subpass::getVkSubpassDescription() const {
@@ -96,8 +94,7 @@ VkSubpassDescription RenderpassBuilder::Subpass::getVkSubpassDescription() const
         !_depthAttachmentRefs.empty() ? _depthAttachmentRefs.data() : nullptr};
 }
 
-ErrorOr<Renderpass> RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
-  RETURN_IF_ERROR(_status);
+Renderpass RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
   std::span<const VkAttachmentDescription> attachmentDescriptions =
       _attachmentLayout.getVkAttachmentDescriptions();
   lib::Buffer<VkSubpassDescription> subpassDescriptions(_subpasses.size());
@@ -123,12 +120,13 @@ ErrorOr<Renderpass> RenderpassBuilder::build(const LogicalDevice& logicalDevice)
 
   VkRenderPass renderpass;
   CHECK_VKCMD(
-      vkCreateRenderPass(logicalDevice.getVkDevice(), &renderPassInfo, nullptr, &renderpass));
+      vkCreateRenderPass(logicalDevice.getVkDevice(), &renderPassInfo, nullptr, &renderpass),
+      "Failed to create VkRenderPass.");
   return Renderpass(logicalDevice, renderpass, _attachmentLayout);
 }
 
 Renderpass::Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass,
-                       const AttachmentLayout& attachmentLayout)
+                       const AttachmentLayout& attachmentLayout) noexcept
   : _logicalDevice(&logicalDeivce), _renderpass(renderpass), _attachmentsLayout(attachmentLayout) {}
 
 Renderpass::Renderpass(Renderpass&& renderpass) noexcept
@@ -137,7 +135,7 @@ Renderpass::Renderpass(Renderpass&& renderpass) noexcept
     _attachmentsLayout(std::move(renderpass._attachmentsLayout)) {}
 
 Renderpass& Renderpass::operator=(Renderpass&& renderpass) noexcept {
-  if (this == &renderpass) {
+  if (this == &renderpass) [[unlikely]] {
     return *this;
   }
 
