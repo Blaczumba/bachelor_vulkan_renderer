@@ -67,8 +67,7 @@ protected:
     std::array<VkFence, MAX_FRAMES_IN_FLIGHT> fences;
     std::array<std::shared_ptr<CommandPool>, MAX_THREADS_IN_POOL + 1> commandPools;
     std::array<CommandBuffer, MAX_FRAMES_IN_FLIGHT> primaryCommandBuffer;
-    std::array<std::array<CommandBuffer, MAX_FRAMES_IN_FLIGHT>, MAX_THREADS_IN_POOL>
-        commandBuffers;
+    std::array<std::array<CommandBuffer, MAX_FRAMES_IN_FLIGHT>, MAX_THREADS_IN_POOL> commandBuffers;
   };
 
   std::unordered_map<XrSwapchain, SwapchainContext> _swapchainImageContexts;

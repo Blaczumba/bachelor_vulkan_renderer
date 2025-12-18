@@ -1,5 +1,7 @@
 #include "attachment_layout.h"
 
+#include <algorithm>
+
 AttachmentLayout::AttachmentLayout(VkSampleCountFlagBits numMsaaSamples)
   : _numMsaaSamples(numMsaaSamples) {}
 

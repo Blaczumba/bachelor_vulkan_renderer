@@ -53,11 +53,6 @@ public:
       uint8_t indexSize, std::span<const std::pair<std::string, std::string>> orders,
       std::span<const Type>... attributes);
 
-  template <typename VertexType, typename Model>
-  void loadVertexDataAsync(
-      std::shared_ptr<Model>& modelPtr, const std::string& filePath,
-      std::span<const std::byte> indices, uint8_t indexSize, std::span<const VertexType> data);
-
   const ImageData& getImageData(const std::string& filePath);
 
   const VertexData& getVertexData(const std::string& filePath);
@@ -113,31 +108,6 @@ void AssetManager::loadVertexDataInterleavingAsync(
         vertexData.indexType = getIndexType(shrunkIndexSize);
 
         return vertexData;
-      });
-  _awaitingVertexDataResources.emplace(name, std::move(future));
-}
-
-template <typename Type, typename Model>
-void AssetManager::loadVertexDataAsync(
-    std::shared_ptr<Model>& modelPtr, const std::string& name, std::span<const std::byte> indices,
-    uint8_t indexSize, std::span<const Type> vertices) {
-  if (_awaitingVertexDataResources.contains(name)) {
-    return;
-  }
-
-  std::future<VertexData> future = std::async(
-      _launchPolicy,
-      [this, modelPtr, indices, indexSize,
-       vertices]() -> VertexData {  // TODO: boost::asio::post,
-                                    // boost::asio::use_future
-        Buffer vertexBuffer =
-            Buffer::createStagingBuffer(*_logicalDevice, vertices.size() * sizeof(Type));
-        vertexBuffer.copyData(vertices);
-
-        Buffer indexBuffer = Buffer::createStagingBuffer(*_logicalDevice, indices.size());
-        indexBuffer.copyData(indices);
-        return VertexData{
-          Buffer(), std::move(indexBuffer), getIndexType(indexSize), std::move(vertexBuffer)};
       });
   _awaitingVertexDataResources.emplace(name, std::move(future));
 }

@@ -1,6 +1,7 @@
 #include "android_file_loader.h"
 
 #include <android/asset_manager.h>
+#include <format>
 
 #include "common/util/engine_exception.h"
 #include "lib/buffer/buffer.h"
