@@ -5,7 +5,6 @@
 #include <string_view>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "lib/buffer/buffer.h"
 
 class Instance {
@@ -24,7 +23,7 @@ public:
       std::string_view engineName, std::span<const char* const> requiredExtensions,
       PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
 
-  static ErrorOr<Instance> wrap(VkInstance instance);
+  static Instance wrap(VkInstance instance);
 
   VkInstance getVkInstance() const;
 

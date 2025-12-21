@@ -18,7 +18,8 @@ ErrorOr<std::unique_ptr<System>> System::create(const Instance& instance) {
   };
 
   XrSystemId systemId;
-  CHECK_XRCMD(xrGetSystem(instance.getXrInstance(), &systemInfo, &systemId));
+  CHECK_XRCMD(xrGetSystem(instance.getXrInstance(), &systemInfo, &systemId),
+              "Failed to create XrSystemId.");
   return std::unique_ptr<System>(new System(systemId, instance));
 }
 

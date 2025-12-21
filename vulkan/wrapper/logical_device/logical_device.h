@@ -2,7 +2,6 @@
 
 #include <variant>
 
-#include "common/status/status.h"
 #include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
@@ -26,9 +25,9 @@ public:
                               std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
                                   make_unique<ThreadedResourceDestroyer>());
 
-  static ErrorOr<LogicalDevice> wrap(VkDevice device, const PhysicalDevice& physicalDevice,
-                                     std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
-                                         make_unique<ThreadedResourceDestroyer>());
+  static LogicalDevice wrap(VkDevice device, const PhysicalDevice& physicalDevice,
+                            std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
+                                make_unique<ThreadedResourceDestroyer>());
 
   LogicalDevice(LogicalDevice&& logicalDevice) noexcept;
 

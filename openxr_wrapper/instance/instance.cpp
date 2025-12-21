@@ -39,7 +39,7 @@ ErrorOr<std::unique_ptr<Instance>> Instance::create(
   std::strcpy(create_info.applicationInfo.applicationName, engineName.data());
 
   XrInstance instance;
-  CHECK_XRCMD(xrCreateInstance(&create_info, &instance));
+  CHECK_XRCMD(xrCreateInstance(&create_info, &instance), "Failed to create XrInstance.");
   return std::unique_ptr<Instance>(new Instance(instance));
 }
 

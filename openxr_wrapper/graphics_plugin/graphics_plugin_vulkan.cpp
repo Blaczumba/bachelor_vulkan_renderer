@@ -4,11 +4,13 @@
 #include <array>
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
+#include <optional>
 #include <span>
 #include <unordered_set>
 #include <vulkan/vulkan.h>
 
 #include "common/status/status.h"
+#include "common/util/engine_exception.h"
 #include "lib/buffer/buffer.h"
 #include "openxr_wrapper/util/check.h"
 #include "vulkan/wrapper/command_buffer/command_buffer.h"
@@ -40,7 +42,7 @@ const XrBaseInStructure* GraphicsPluginVulkan::getGraphicsBinding() const {
   return reinterpret_cast<const XrBaseInStructure*>(&_graphicsBinding);
 }
 
-ErrorOr<int64_t> GraphicsPluginVulkan::selectSwapchainFormat(
+std::optional<int64_t> GraphicsPluginVulkan::selectSwapchainFormat(
     std::span<const int64_t> runtimeFormats) const {
   static constexpr VkFormat preferredFromats[] = {
     VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_B8G8R8A8_UNORM,
@@ -51,19 +53,21 @@ ErrorOr<int64_t> GraphicsPluginVulkan::selectSwapchainFormat(
       it != std::cend(preferredFromats)) {
     return *it;
   }
-  return Error(EngineError::NOT_FOUND);
+  return std::nullopt;
 }
 
-Status GraphicsPluginVulkan::createSwapchainContext(
+void GraphicsPluginVulkan::createSwapchainContext(
     XrSwapchain swapchain, int64_t format, uint32_t width, uint32_t height) {
   SwapchainContext& context = _swapchainImageContexts[swapchain];
   uint32_t imageCount;
-  CHECK_XRCMD(xrEnumerateSwapchainImages(swapchain, 0, &imageCount, nullptr));
+  CHECK_XRCMD(xrEnumerateSwapchainImages(swapchain, 0, &imageCount, nullptr),
+              "Failed to xrEnumerateSwapchainImages.");
   context.images = lib::Buffer<XrSwapchainImageVulkanKHR>(
       imageCount, {.type = XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR});
   CHECK_XRCMD(xrEnumerateSwapchainImages(
-      swapchain, imageCount, &imageCount,
-      reinterpret_cast<XrSwapchainImageBaseHeader*>(context.images.data())));
+                  swapchain, imageCount, &imageCount,
+                  reinterpret_cast<XrSwapchainImageBaseHeader*>(context.images.data())),
+              "Failed to xrEnumerateSwapchainImages.");
 
   context.views = lib::Buffer<VkImageView>(imageCount);
   std::transform(context.images.cbegin(), context.images.cend(), context.views.begin(),
@@ -75,16 +79,14 @@ Status GraphicsPluginVulkan::createSwapchainContext(
   context.format = static_cast<VkFormat>(format);
   context.width = width;
   context.height = height;
-  return StatusOk();
 }
 
-ErrorOr<XrSwapchainImageBaseHeader*> GraphicsPluginVulkan::getSwapchainImages(
-    XrSwapchain swapchain) {
+XrSwapchainImageBaseHeader* GraphicsPluginVulkan::getSwapchainImages(XrSwapchain swapchain) {
   if (auto it = _swapchainImageContexts.find(swapchain); it != _swapchainImageContexts.cend())
       [[likely]] {
     return reinterpret_cast<XrSwapchainImageBaseHeader*>(it->second.images.data());
   }
-  return Error(EngineError::NOT_FOUND);
+  return nullptr;
 }
 
 namespace {
@@ -124,13 +126,13 @@ ErrorOr<lib::Buffer<VkExtensionProperties>> GetAvailableInstanceExtensions(
   return available_extensions;
 }
 
-ErrorOr<Instance> createInstance(
+Instance createInstance(
     std::string_view engineName, std::span<const char* const> requiredExtensions,
     PFN_vkDebugUtilsMessengerCallbackEXT debugCallback, XrInstance xrInstance,
     XrSystemId systemId) {
 #ifdef VALIDATION_LAYERS_ENABLED
-  if (!checkValidationLayerSupport()) {
-    return Error(VK_ERROR_FEATURE_NOT_PRESENT);
+  if (!checkValidationLayerSupport()) [[unlikely]] {
+    throw EngineException("Validation layers not supported.");
   }
 #endif  // VALIDATION_LAYERS_ENABLED
 
@@ -138,19 +140,23 @@ ErrorOr<Instance> createInstance(
     .type = XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN2_KHR};
   PFN_xrGetVulkanGraphicsRequirements2KHR pfn_get_vulkan_graphics_requirements_khr = nullptr;
   CHECK_XRCMD(xrGetInstanceProcAddr(
-      xrInstance, "xrGetVulkanGraphicsRequirements2KHR",
-      reinterpret_cast<PFN_xrVoidFunction*>(&pfn_get_vulkan_graphics_requirements_khr)));
-  if (pfn_get_vulkan_graphics_requirements_khr == nullptr) {
-    return Error(EngineError::NOT_FOUND);
+                  xrInstance, "xrGetVulkanGraphicsRequirements2KHR",
+                  reinterpret_cast<PFN_xrVoidFunction*>(&pfn_get_vulkan_graphics_requirements_khr)),
+              "Failed to xrGetVulkanGraphicsRequirements2KHR.");
+  if (pfn_get_vulkan_graphics_requirements_khr == nullptr) [[unlikely]] {
+    throw EngineException(
+        "Failed to find xrGetVulkanGraphicsRequirements2KHR with xrGetInstanceProcAddr.");
   }
   CHECK_XRCMD(
-      pfn_get_vulkan_graphics_requirements_khr(xrInstance, systemId, &graphics_requirements));
+      pfn_get_vulkan_graphics_requirements_khr(xrInstance, systemId, &graphics_requirements),
+      "Failed to pfn_get_vulkan_graphics_requirements_khr.");
   PFN_xrCreateVulkanInstanceKHR pfn_xr_create_vulkan_instance_khr = nullptr;
   CHECK_XRCMD(xrGetInstanceProcAddr(
-      xrInstance, "xrCreateVulkanInstanceKHR",
-      reinterpret_cast<PFN_xrVoidFunction*>(&pfn_xr_create_vulkan_instance_khr)));
-  if (pfn_xr_create_vulkan_instance_khr == nullptr) {
-    return Error(EngineError::NOT_FOUND);
+                  xrInstance, "xrCreateVulkanInstanceKHR",
+                  reinterpret_cast<PFN_xrVoidFunction*>(&pfn_xr_create_vulkan_instance_khr)),
+              "Failed to xrGetInstanceProcAddr.");
+  if (pfn_xr_create_vulkan_instance_khr == nullptr) [[unlikely]] {
+    throw EngineException("Failed to find xrCreateVulkanInstanceKHR with xrGetInstanceProcAddr.");
   }
   const VkApplicationInfo appInfo = {
     .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -189,20 +195,23 @@ ErrorOr<Instance> createInstance(
   VkResult instanceCreateResult;
   VkInstance vkInstance;
   CHECK_XRCMD(pfn_xr_create_vulkan_instance_khr(
-      xrInstance, &vkInstanceCreateInfoKhr, &vkInstance, &instanceCreateResult));
-  CHECK_VKCMD(instanceCreateResult, "Failed to get crete VkInstance.");
+                  xrInstance, &vkInstanceCreateInfoKhr, &vkInstance, &instanceCreateResult),
+              "Failed to xrCreateVulkanInstanceKHR.");
+  CHECK_VKCMD(instanceCreateResult, "Failed to crete VkInstance.");
   return Instance::wrap(vkInstance);
 }
 
-ErrorOr<std::unique_ptr<PhysicalDevice>> createPhysicalDevice(
+std::unique_ptr<PhysicalDevice> createPhysicalDevice(
     XrInstance xrInstance, XrSystemId systemId, Instance& instance) {
   PFN_xrGetVulkanGraphicsDevice2KHR pfn_get_vulkan_graphics_device_khr = nullptr;
   CHECK_XRCMD(xrGetInstanceProcAddr(
-      xrInstance, "xrGetVulkanGraphicsDevice2KHR",
-      reinterpret_cast<PFN_xrVoidFunction*>(&pfn_get_vulkan_graphics_device_khr)));
+                  xrInstance, "xrGetVulkanGraphicsDevice2KHR",
+                  reinterpret_cast<PFN_xrVoidFunction*>(&pfn_get_vulkan_graphics_device_khr)),
+              "Failed to xrGetInstanceProcAddr.");
 
-  if (pfn_get_vulkan_graphics_device_khr == nullptr) {
-    return Error(EngineError::NOT_FOUND);
+  if (pfn_get_vulkan_graphics_device_khr == nullptr) [[unlikely]] {
+    throw EngineException(
+        "Failed to find xrGetVulkanGraphicsDevice2KHR with xrGetInstanceProcAddr.");
   }
 
   const XrVulkanGraphicsDeviceGetInfoKHR vulkan_graphics_device_get_info_khr = {
@@ -212,11 +221,12 @@ ErrorOr<std::unique_ptr<PhysicalDevice>> createPhysicalDevice(
 
   VkPhysicalDevice physicalDevice;
   CHECK_XRCMD(pfn_get_vulkan_graphics_device_khr(
-      xrInstance, &vulkan_graphics_device_get_info_khr, &physicalDevice));
+                  xrInstance, &vulkan_graphics_device_get_info_khr, &physicalDevice),
+              "Failed to xrGetVulkanGraphicsDevice2KHR.");
   return PhysicalDevice::wrap(physicalDevice, instance);
 }
 
-ErrorOr<LogicalDevice> createLogicalDevice(
+LogicalDevice createLogicalDevice(
     XrInstance xrInstance, XrSystemId systemId, const PhysicalDevice& physicalDevice) {
   const QueueFamilyIndices& indices = physicalDevice.getQueueFamilyIndices();
   const std::set<uint32_t> uniqueQueueFamilies = {*indices.graphicsFamily, *indices.presentFamily,
@@ -272,33 +282,34 @@ ErrorOr<LogicalDevice> createLogicalDevice(
     .vulkanCreateInfo = &deviceCreateInfo};
 
   PFN_xrCreateVulkanDeviceKHR pfnXrCreateVulkanDeviceKhr = nullptr;
-  CHECK_XRCMD(xrGetInstanceProcAddr(
-      xrInstance, "xrCreateVulkanDeviceKHR",
-      reinterpret_cast<PFN_xrVoidFunction*>(&pfnXrCreateVulkanDeviceKhr)));
-  if (pfnXrCreateVulkanDeviceKhr == nullptr) {
-    return Error(EngineError::NOT_FOUND);
+  CHECK_XRCMD(
+      xrGetInstanceProcAddr(xrInstance, "xrCreateVulkanDeviceKHR",
+                            reinterpret_cast<PFN_xrVoidFunction*>(&pfnXrCreateVulkanDeviceKhr)),
+      "Failed to xrGetInstanceProcAddr.");
+  if (pfnXrCreateVulkanDeviceKhr == nullptr) [[unlikely]] {
+    throw EngineException("Failed to find xrCreateVulkanDeviceKHR with xrGetInstanceProcAddr.");
   }
 
   VkResult vulkanDeviceCreateResult = VK_SUCCESS;
   VkDevice logicalDevice;
-  CHECK_XRCMD(pfnXrCreateVulkanDeviceKhr(
-      xrInstance, &vulkan_device_create_info_khr, &logicalDevice, &vulkanDeviceCreateResult));
+  CHECK_XRCMD(pfnXrCreateVulkanDeviceKhr(xrInstance, &vulkan_device_create_info_khr, &logicalDevice,
+                                         &vulkanDeviceCreateResult),
+              "Failed to xrCreateVulkanDeviceKHR.");
   CHECK_VKCMD(vulkanDeviceCreateResult, "Failed to create VkDevice.");
   return LogicalDevice::wrap(logicalDevice, physicalDevice);
 }
 
 }  // namespace
 
-Status GraphicsPluginVulkan::initialize(XrInstance xrInstance, XrSystemId systemId) {
+void GraphicsPluginVulkan::initialize(XrInstance xrInstance, XrSystemId systemId) {
   static constexpr const char* extensions[] = {
     VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME};
-  ASSIGN_OR_RETURN(_instance, createInstance("VR BejzakEngine", extensions, _debugCallback,
-                                             xrInstance, systemId));
+  _instance = createInstance("VR BejzakEngine", extensions, _debugCallback, xrInstance, systemId);
 #ifdef VALIDATION_LAYERS_ENABLED
   _debugMessenger = DebugMessenger::create(_instance, _debugCallback);
 #endif
-  ASSIGN_OR_RETURN(_physicalDevice, createPhysicalDevice(xrInstance, systemId, _instance));
-  ASSIGN_OR_RETURN(_logicalDevice, createLogicalDevice(xrInstance, systemId, *_physicalDevice));
+  _physicalDevice = createPhysicalDevice(xrInstance, systemId, _instance);
+  _logicalDevice = createLogicalDevice(xrInstance, systemId, *_physicalDevice);
 
   _graphicsBinding = XrGraphicsBindingVulkanKHR{
     .type = XR_TYPE_GRAPHICS_BINDING_VULKAN2_KHR,
@@ -309,16 +320,11 @@ Status GraphicsPluginVulkan::initialize(XrInstance xrInstance, XrSystemId system
 
   _singleTimeCommandPool =
       CommandPool::create(_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-  return StatusOk();
 }
 
-Status GraphicsPluginVulkan::createResources() {
-  return StatusOk();
-}
+void GraphicsPluginVulkan::createResources() {}
 
-Status GraphicsPluginVulkan::draw(
-    const XrCompositionLayerProjectionView& projectionLayerView, uint32_t swapchain_image_index) {
-  return StatusOk();
-}
+void GraphicsPluginVulkan::draw(
+    const XrCompositionLayerProjectionView& projectionLayerView, uint32_t swapchain_image_index) {}
 
 }  // namespace xrw

@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
+#include "common/util/engine_exception.h"
 #include "extensions_connector.h"
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/instance/extensions.h"
@@ -123,10 +124,10 @@ LogicalDevice LogicalDevice::create(
   return LogicalDevice(logicalDevice, physicalDevice, std::move(resourceDestroyer));
 }
 
-ErrorOr<LogicalDevice> LogicalDevice::wrap(VkDevice device, const PhysicalDevice& physicalDevice,
-                                           std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) {
+LogicalDevice LogicalDevice::wrap(VkDevice device, const PhysicalDevice& physicalDevice,
+                                  std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) {
   if (device == VK_NULL_HANDLE) {
-    return Error(EngineError::NULLPTR_REFERENCE);
+    throw EngineException("Cannot wrap VK_NULL_HANDLE around LogicalDevice.");
   }
 
   return LogicalDevice(device, physicalDevice, std::move(resourceDestroyer));

@@ -17,7 +17,8 @@ ErrorOr<std::unique_ptr<Space>> Space::create(XrSession session, XrReferenceSpac
                              .orientation = {0.0f, 0.0f, 0.0f, 1.0f}, .position = {0.0f, 0.0f, 0.0f}}
   };
   XrSpace space;
-  CHECK_XRCMD(xrCreateReferenceSpace(session, &referenceSpaceCreateInfo, &space));
+  CHECK_XRCMD(xrCreateReferenceSpace(session, &referenceSpaceCreateInfo, &space),
+              "Failed to create XrSpace.");
   return std::unique_ptr<Space>(new Space(space));
 }
 

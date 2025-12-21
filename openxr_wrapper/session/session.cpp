@@ -16,7 +16,8 @@ ErrorOr<std::unique_ptr<Session>> Session::create(
     .systemId = system.getXrSystemId()};
 
   XrSession session;
-  CHECK_XRCMD(xrCreateSession(system.getInstance().getXrInstance(), &create_info, &session));
+  CHECK_XRCMD(xrCreateSession(system.getInstance().getXrInstance(), &create_info, &session),
+              "Failed to create XrSession.");
   return std::unique_ptr<Session>(new Session(session, system));
 }
 
