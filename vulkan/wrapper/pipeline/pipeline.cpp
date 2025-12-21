@@ -21,20 +21,20 @@ Pipeline Pipeline::create(
 std::vector<Pipeline> Pipeline::create(
     const LogicalDevice& logicalDevice, std::span<const VkGraphicsPipelineCreateInfo> createInfos) {
   lib::Buffer<VkPipeline> vkPipelines(createInfos.size());
-  //  const VkResult result = vkCreateGraphicsPipelines(
-  //      logicalDevice.getVkDevice(), VK_NULL_HANDLE, static_cast<uint32_t>(createInfos.size()),
-  //      createInfos.data(), nullptr, vkPipelines.data());
-  //  std::vector<ErrorOr<Pipeline>> pipelines;
-  //  pipelines.reserve(vkPipelines.size());
-  // std::transform(
-  //     vkPipelines.cbegin(), vkPipelines.cend(), std::back_inserter(pipelines),
-  //     [result, &logicalDevice](VkPipeline pipeline) -> ErrorOr<Pipeline> {
-  //       if (pipeline != VK_NULL_HANDLE) [[likely]] {
-  //         return Pipeline(logicalDevice, pipeline, VK_PIPELINE_BIND_POINT_GRAPHICS);
-  //       }
-  //       return Error(result);
-  //     });
-  return {};
+  vkCreateGraphicsPipelines(
+      logicalDevice.getVkDevice(), VK_NULL_HANDLE, static_cast<uint32_t>(createInfos.size()),
+      createInfos.data(), nullptr, vkPipelines.data());
+  std::vector<Pipeline> pipelines;
+  pipelines.reserve(vkPipelines.size());
+  std::transform(
+      vkPipelines.cbegin(), vkPipelines.cend(), createInfos.cbegin(), std::back_inserter(pipelines),
+      [&logicalDevice](VkPipeline vkPipeline, const VkGraphicsPipelineCreateInfo& createInfo) {
+        return vkPipeline != VK_NULL_HANDLE ?
+                   Pipeline(logicalDevice, vkPipeline, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            createInfo.layout) :
+                   Pipeline{};
+      });
+  return pipelines;
 }
 
 Pipeline::Pipeline(Pipeline&& other) noexcept
@@ -73,4 +73,8 @@ VkPipelineBindPoint Pipeline::getVkPipelineBindPoint() const {
 
 VkPipelineLayout Pipeline::getVkPipelineLayout() const {
   return _layout;
+}
+
+bool Pipeline::isValid() const {
+  return _pipeline != VK_NULL_HANDLE;
 }
