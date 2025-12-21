@@ -21,4 +21,4 @@ private:
 };
 
 #define CHECK_VKCMD(cmd, message) \
-    if (VkResult result = cmd; result != VK_SUCCESS) [[unlikely]] throw VkException(message, VK_SUCCESS);
+    if (VkResult result = cmd; result != VK_SUCCESS) [[unlikely]] throw VkException(message, result);

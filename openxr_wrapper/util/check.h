@@ -13,6 +13,8 @@ public:
     return std::runtime_error::what();
   }
 
+  XrResult getXrResult() const { return _result; }
+
 private:
   XrResult _result;
 };

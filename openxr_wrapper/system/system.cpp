@@ -3,7 +3,6 @@
 #include <memory>
 #include <openxr/openxr.h>
 
-#include "common/status/status.h"
 #include "openxr_wrapper/util/check.h"
 
 namespace xrw {
