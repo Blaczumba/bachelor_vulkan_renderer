@@ -4,7 +4,6 @@
 #include <openxr/openxr.h>
 #include <vector>
 
-#include "common/status/status.h"
 #include "lib/buffer/buffer.h"
 #include "openxr_wrapper/graphics_plugin/graphics_plugin.h"
 #include "openxr_wrapper/session/session.h"
@@ -48,7 +47,7 @@ public:
 
   SwapchainBuilder& withUsage(XrSwapchainUsageFlags usage);
 
-  ErrorOr<std::vector<Swapchain>> build(const Session& session, GraphicsPlugin& graphicsPlugin);
+  std::vector<Swapchain> build(const Session& session, GraphicsPlugin& graphicsPlugin);
 
 private:
   uint32_t _arraySize = 1;

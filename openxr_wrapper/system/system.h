@@ -3,7 +3,6 @@
 #include <memory>
 #include <openxr/openxr.h>
 
-#include "common/status/status.h"
 #include "openxr_wrapper/instance/instance.h"
 
 namespace xrw {
@@ -18,7 +17,7 @@ class System {
 public:
   ~System() = default;
 
-  static ErrorOr<std::unique_ptr<System>> create(const Instance& instance);
+  static std::unique_ptr<System> create(const Instance& instance);
 
   XrSystemId getXrSystemId() const;
 

@@ -1,6 +1,5 @@
 #include "swapchain.h"
 
-#include "common/status/status.h"
 #include "common/util/engine_exception.h"
 #include "lib/buffer/buffer.h"
 #include "openxr_wrapper/graphics_plugin/graphics_plugin.h"
@@ -57,7 +56,7 @@ SwapchainBuilder& SwapchainBuilder::withUsage(XrSwapchainUsageFlags usage) {
   return *this;
 }
 
-ErrorOr<std::vector<Swapchain>> SwapchainBuilder::build(
+std::vector<Swapchain> SwapchainBuilder::build(
     const Session& session, GraphicsPlugin& graphicsPlugin) {
   uint32_t formatCount = 0;
   CHECK_XRCMD(xrEnumerateSwapchainFormats(session.getXrSession(), 0, &formatCount, nullptr),

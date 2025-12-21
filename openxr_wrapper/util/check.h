@@ -18,4 +18,4 @@ private:
 };
 
 #define CHECK_XRCMD(cmd, message) \
-    if (XrResult result = cmd; result != XR_SUCCESS) throw XrException(message, result)
+    if (XrResult result = cmd; result != XR_SUCCESS) [[unlikely]] throw XrException(message, result)

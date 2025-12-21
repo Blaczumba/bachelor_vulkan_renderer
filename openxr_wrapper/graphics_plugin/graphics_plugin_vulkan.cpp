@@ -9,7 +9,6 @@
 #include <unordered_set>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "common/util/engine_exception.h"
 #include "lib/buffer/buffer.h"
 #include "openxr_wrapper/util/check.h"
@@ -114,8 +113,7 @@ bool checkValidationLayerSupport() {
   return true;
 }
 
-ErrorOr<lib::Buffer<VkExtensionProperties>> GetAvailableInstanceExtensions(
-    std::string_view layerName) {
+lib::Buffer<VkExtensionProperties> GetAvailableInstanceExtensions(std::string_view layerName) {
   uint32_t count;
   CHECK_VKCMD(vkEnumerateInstanceExtensionProperties(layerName.data(), &count, nullptr),
               "Failed to vkEnumerateInstanceExtensionProperties.");
