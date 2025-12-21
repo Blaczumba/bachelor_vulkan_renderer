@@ -3,8 +3,6 @@
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
-
 class VkException : public std::runtime_error {
 public:
   VkException(std::string_view msg, VkResult result)
@@ -23,4 +21,4 @@ private:
 };
 
 #define CHECK_VKCMD(cmd, message) \
-    if (VkResult result = cmd; result != VK_SUCCESS) [[unlikely]] throw VkException(message, VK_SUCCESS);
+    if (VkResult result = cmd; result != VK_SUCCESS) [[unlikely]] throw VkException(message, result);

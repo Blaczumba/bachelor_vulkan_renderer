@@ -3,7 +3,6 @@
 #include <memory>
 #include <openxr/openxr.h>
 
-#include "common/status/status.h"
 #include "openxr_wrapper/platform/platform.h"
 #include "openxr_wrapper/system/system.h"
 
@@ -19,8 +18,7 @@ class Session {
 public:
   ~Session() = default;
 
-  static ErrorOr<std::unique_ptr<Session>> create(
-      const System& system, GraphicsPlugin& graphicsPlugin);
+  static std::unique_ptr<Session> create(const System& system, GraphicsPlugin& graphicsPlugin);
 
   XrSession getXrSession() const;
 

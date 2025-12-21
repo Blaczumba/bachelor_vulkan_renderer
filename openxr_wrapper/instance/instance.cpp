@@ -1,7 +1,5 @@
 #include "instance.h"
 
-#include <algorithm>
-
 #include "lib/buffer/buffer.h"
 #include "openxr_wrapper/platform/platform.h"
 #include "openxr_wrapper/util/check.h"
@@ -26,7 +24,7 @@ lib::Buffer<const char*> mergeExtensions(
 
 }  // namespace
 
-ErrorOr<std::unique_ptr<Instance>> Instance::create(
+std::unique_ptr<Instance> Instance::create(
     std::string_view engineName, const Platform& platform, const GraphicsPlugin& graphicsPlugin) {
   lib::Buffer<const char*> mergedExtensions = mergeExtensions(
       platform.getInstanceExtensions(), graphicsPlugin.getOpenXrInstanceExtensions());
@@ -39,7 +37,7 @@ ErrorOr<std::unique_ptr<Instance>> Instance::create(
   std::strcpy(create_info.applicationInfo.applicationName, engineName.data());
 
   XrInstance instance;
-  CHECK_XRCMD(xrCreateInstance(&create_info, &instance));
+  CHECK_XRCMD(xrCreateInstance(&create_info, &instance), "Failed to create XrInstance.");
   return std::unique_ptr<Instance>(new Instance(instance));
 }
 

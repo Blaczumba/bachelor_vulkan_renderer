@@ -12,7 +12,7 @@ AndroidPlatform::AndroidPlatform(const AndroidData& data) {
 
   if (XR_SUCCEEDED(xrGetInstanceProcAddr(
           XR_NULL_HANDLE, "xrInitializeLoaderKHR",
-          reinterpret_cast<PFN_xrVoidFunction*>(&initialize_loader)))) {
+          reinterpret_cast<PFN_xrVoidFunction*>(&initialize_loader)))) [[likely]] {
     XrLoaderInitInfoAndroidKHR loader_init_info_android;
     loader_init_info_android.type = XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR;
     loader_init_info_android.next = nullptr;

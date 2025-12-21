@@ -4,11 +4,11 @@
 #include <openxr/openxr.h>
 #include <vulkan/vulkan.h>  // Vulkan needs to be included before openxr_platform.h
 #include <openxr/openxr_platform.h>
+#include <optional>
 #include <span>
 #include <unordered_map>
 #include <vector>
 
-#include "common/status/status.h"
 #include "graphics_plugin.h"
 #include "vulkan/wrapper/command_buffer/command_buffer.h"
 #include "vulkan/wrapper/debug_messenger/debug_messenger.h"
@@ -30,19 +30,20 @@ public:
 
   const XrBaseInStructure* getGraphicsBinding() const override;
 
-  ErrorOr<int64_t> selectSwapchainFormat(std::span<const int64_t> runtimeFormats) const override;
+  std::optional<int64_t> selectSwapchainFormat(
+      std::span<const int64_t> runtimeFormats) const override;
 
-  Status createSwapchainContext(
+  void createSwapchainContext(
       XrSwapchain swapchain, int64_t format, uint32_t width, uint32_t height) override;
 
-  ErrorOr<XrSwapchainImageBaseHeader*> getSwapchainImages(XrSwapchain swapchain) override;
+  XrSwapchainImageBaseHeader* getSwapchainImages(XrSwapchain swapchain) override;
 
-  Status initialize(XrInstance xrInstance, XrSystemId systemId) override;
+  void initialize(XrInstance xrInstance, XrSystemId systemId) override;
 
-  Status createResources() override;
+  void createResources() override;
 
-  Status draw(const XrCompositionLayerProjectionView& projectionLayerView,
-              uint32_t swapchain_image_index) override;
+  void draw(const XrCompositionLayerProjectionView& projectionLayerView,
+            uint32_t swapchain_image_index) override;
 
 protected:
   XrGraphicsBindingVulkanKHR _graphicsBinding;
@@ -71,7 +72,6 @@ protected:
   };
 
   std::unordered_map<XrSwapchain, SwapchainContext> _swapchainImageContexts;
-
   std::unique_ptr<CommandPool> _singleTimeCommandPool;
 };
 

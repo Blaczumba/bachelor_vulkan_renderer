@@ -97,10 +97,11 @@ Instance Instance::create(
   return Instance(instance);
 }
 
-ErrorOr<Instance> Instance::wrap(VkInstance instance) {
+Instance Instance::wrap(VkInstance instance) {
   if (instance == VK_NULL_HANDLE) {
-    return Error(EngineError::NULLPTR_REFERENCE);
+    throw EngineException("Cannot wrap VK_NULL_HANDLE around Instance.");
   }
+
   return Instance(instance);
 }
 

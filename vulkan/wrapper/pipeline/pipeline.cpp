@@ -21,11 +21,11 @@ Pipeline Pipeline::create(
 std::vector<Pipeline> Pipeline::create(
     const LogicalDevice& logicalDevice, std::span<const VkGraphicsPipelineCreateInfo> createInfos) {
   lib::Buffer<VkPipeline> vkPipelines(createInfos.size());
-  const VkResult result = vkCreateGraphicsPipelines(
-      logicalDevice.getVkDevice(), VK_NULL_HANDLE, static_cast<uint32_t>(createInfos.size()),
-      createInfos.data(), nullptr, vkPipelines.data());
-  std::vector<ErrorOr<Pipeline>> pipelines;
-  pipelines.reserve(vkPipelines.size());
+  //  const VkResult result = vkCreateGraphicsPipelines(
+  //      logicalDevice.getVkDevice(), VK_NULL_HANDLE, static_cast<uint32_t>(createInfos.size()),
+  //      createInfos.data(), nullptr, vkPipelines.data());
+  //  std::vector<ErrorOr<Pipeline>> pipelines;
+  //  pipelines.reserve(vkPipelines.size());
   // std::transform(
   //     vkPipelines.cbegin(), vkPipelines.cend(), std::back_inserter(pipelines),
   //     [result, &logicalDevice](VkPipeline pipeline) -> ErrorOr<Pipeline> {

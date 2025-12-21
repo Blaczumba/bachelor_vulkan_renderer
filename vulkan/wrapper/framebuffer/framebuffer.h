@@ -4,7 +4,6 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-#include "common/status/status.h"
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"

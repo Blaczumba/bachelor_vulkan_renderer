@@ -3,15 +3,13 @@
 #include <memory>
 #include <openxr/openxr.h>
 
-#include "common/status/status.h"
-
 namespace xrw {
 
 class Space {
   Space(XrSpace space);
 
 public:
-  static ErrorOr<std::unique_ptr<Space>> create(XrSession session, XrReferenceSpaceType type);
+  static std::unique_ptr<Space> create(XrSession session, XrReferenceSpaceType type);
 
   ~Space();
 

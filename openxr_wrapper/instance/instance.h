@@ -5,7 +5,6 @@
 #include <span>
 #include <string_view>
 
-#include "common/status/status.h"
 #include "openxr_wrapper/graphics_plugin/graphics_plugin.h"
 #include "openxr_wrapper/platform/platform.h"
 
@@ -19,7 +18,7 @@ class Instance {
 public:
   ~Instance();
 
-  static ErrorOr<std::unique_ptr<Instance>> create(
+  static std::unique_ptr<Instance> create(
       std::string_view engineName, const Platform& platform, const GraphicsPlugin& graphicsPlugin);
 
   XrInstance getXrInstance() const;

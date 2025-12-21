@@ -160,10 +160,10 @@ std::unique_ptr<PhysicalDevice> PhysicalDevice::create(
   throw EngineException("Failed to find suitable physical device.");
 }
 
-ErrorOr<std::unique_ptr<PhysicalDevice>> PhysicalDevice::wrap(
+std::unique_ptr<PhysicalDevice> PhysicalDevice::wrap(
     VkPhysicalDevice physicalDevice, const Instance& instance) {
   if (physicalDevice == VK_NULL_HANDLE) [[unlikely]] {
-    return Error(EngineError::NULLPTR_REFERENCE);
+    throw EngineException("Cannot wrap VK_NULL_HANDLE around PhysicalDevice.");
   }
 
   return std::unique_ptr<PhysicalDevice>(
