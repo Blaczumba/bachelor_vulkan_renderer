@@ -24,7 +24,7 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder(
     std::span<const VkDynamicState> dynamicStates, VkPipelineDynamicStateCreateFlags flags)
   : GraphicsPipelineBuilder(lib::Buffer<VkDynamicState>(dynamicStates), flags) {}
 
-Pipeline GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo() {
+Pipeline GraphicsPipelineBuilder::createPipeline() {
   if (_renderpass == nullptr || _pipelineLayout == nullptr) {
     throw EngineException(
         "Cannot create graphics pipeline without renderpass or pipeline layout specified.");
@@ -48,17 +48,24 @@ Pipeline GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo() {
   return Pipeline::create(_renderpass->getLogicalDevice(), createInfo);
 }
 
-std::vector<Pipeline> GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo(
+std::vector<Pipeline> GraphicsPipelineBuilder::createPipelines(
     std::span<const GraphicsPipelineBuilder> builders) {
+  if (builders.empty()) [[unlikely]] {
+    return {};
+  }
+
+  // TODO: Validate that all builders use the same logical device.
+
   std::vector<VkGraphicsPipelineCreateInfo> createInfos;
   createInfos.reserve(builders.size());
 
   for (const GraphicsPipelineBuilder& builder : builders) {
-    if (builder._renderpass == nullptr || builder._pipelineLayout == nullptr) {
-      continue;  // TODO: handle it better
+    if (builder._renderpass == nullptr || builder._pipelineLayout == nullptr) [[unlikely]] {
+      throw EngineException(
+          "Cannot create graphics pipeline without renderpass or pipeline layout specified.");
     }
 
-    createInfos.emplace_back(VkGraphicsPipelineCreateInfo{
+    createInfos.push_back(VkGraphicsPipelineCreateInfo{
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
       .stageCount = static_cast<uint32_t>(builder._shaderStages.size()),
       .pStages = builder._shaderStages.data(),
@@ -73,10 +80,6 @@ std::vector<Pipeline> GraphicsPipelineBuilder::getVkGraphicsPipelineCreateInfo(
       .pDynamicState = &builder._dynamicState,
       .layout = builder._pipelineLayout->getVkPipelineLayout(),
       .renderPass = builder._renderpass->getVkRenderPass()});
-  }
-
-  if (!builders.empty()) {
-    return {};
   }
 
   return Pipeline::create(builders[0]._renderpass->getLogicalDevice(), createInfos);

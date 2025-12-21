@@ -36,10 +36,9 @@ public:
 
   ~GraphicsPipelineBuilder() = default;
 
-  Pipeline getVkGraphicsPipelineCreateInfo();
+  Pipeline createPipeline();
 
-  static std::vector<Pipeline> getVkGraphicsPipelineCreateInfo(
-      std::span<const GraphicsPipelineBuilder> builders);
+  static std::vector<Pipeline> createPipelines(std::span<const GraphicsPipelineBuilder> builders);
 
   GraphicsPipelineBuilder& withRenderpass(const Renderpass& renderpass);
 

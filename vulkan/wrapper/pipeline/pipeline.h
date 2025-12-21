@@ -30,6 +30,8 @@ public:
 
   VkPipelineLayout getVkPipelineLayout() const;
 
+  bool isValid() const;
+
 private:
   VkPipeline _pipeline = VK_NULL_HANDLE;
   VkPipelineBindPoint _bindPoint;
