@@ -64,6 +64,7 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevi
   if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
     return it->second.getVkDescriptorSetLayout();
   }
+
   static constexpr VkDescriptorSetLayoutBinding bindings[] = {
     {
      .binding = 0,
@@ -80,17 +81,15 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevi
 }
 
 std::reference_wrapper<const PipelineLayout> PipelineManager::getOrCreatePipelineLayout(
-    std::string_view id, const LogicalDevice& logicalDevice,
-    std::span<const VkDescriptorSetLayout> descriptorSetLayouts,
-    std::span<const VkPushConstantRange> pushConstantRanges, VkPipelineLayoutCreateFlags flags) {
-  auto [it, inserted] = _pipelineLayouts.try_emplace(id);
+    const PipelineLayoutKey& key, const LogicalDevice& logicalDevice) {
+  auto [it, inserted] = _pipelineLayouts.try_emplace(key);
 
   if (!inserted) {
     return it->second;
   }
 
-  PipelineLayout layout =
-      PipelineLayout::create(logicalDevice, descriptorSetLayouts, pushConstantRanges, flags);
+  PipelineLayout layout = PipelineLayout::create(
+      logicalDevice, key.descriptorSetLayouts, key.pushConstants, key.createFlags);
   return it->second = std::move(layout);
 }
 
@@ -119,7 +118,7 @@ GraphicsPipelineBuilder PipelineManager::createPBRProgram(const Renderpass& rend
     getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)};
 
   const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
-      "PbrBindlessCam", logicalDevice, descriptorSetLayouts, pushConstantRanges);
+      PipelineLayoutKey{descriptorSetLayouts, pushConstantRanges}, logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -163,7 +162,7 @@ GraphicsPipelineBuilder PipelineManager::createPbrEnvMappingProgram(const Render
   VkDescriptorSetLayout descriptorSetLayouts[] = {getOrCreateBindlessLayout(logicalDevice)};
 
   const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
-      "PbrBindlessCam", logicalDevice, descriptorSetLayouts, pushConstantRanges);
+      PipelineLayoutKey{descriptorSetLayouts, pushConstantRanges}, logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -205,8 +204,8 @@ GraphicsPipelineBuilder PipelineManager::createSkyboxProgram(const Renderpass& r
     getPushConstantRange<PushConstantsSkybox>(
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)};
 
-  const PipelineLayout& pipelineLayout =
-      getOrCreatePipelineLayout("Skybox", logicalDevice, descriptorSetLayouts, pushConstantRanges);
+  const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
+      PipelineLayoutKey{descriptorSetLayouts, pushConstantRanges}, logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -245,8 +244,8 @@ GraphicsPipelineBuilder PipelineManager::createShadowProgram(const Renderpass& r
   static constexpr VkPushConstantRange pushConstantRanges[] = {
     getPushConstantRange<PushConstantsShadow>(VK_SHADER_STAGE_VERTEX_BIT)};
 
-  const PipelineLayout& pipelineLayout =
-      getOrCreatePipelineLayout("Shadow", logicalDevice, {}, pushConstantRanges);
+  const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
+      PipelineLayoutKey{{}, pushConstantRanges}, logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
