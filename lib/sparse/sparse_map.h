@@ -30,7 +30,7 @@ public:
 
   bool insert(IndexType index, Type&& value);
 
-  void insertUnsafe(IndexType index, Type&& value);
+  Type& insertUnsafe(IndexType index, Type&& value);
 
   bool erase(IndexType index);
 
@@ -87,11 +87,10 @@ bool SparseMap<Type, N>::insert(IndexType index, Type&& value) {
 }
 
 template <typename Type, size_t N>
-void SparseMap<Type, N>::insertUnsafe(IndexType index, Type&& value) {
+Type& SparseMap<Type, N>::insertUnsafe(IndexType index, Type&& value) {
   _sparse[index] = _size;
   _dense[_size] = index;
-  _values[_size] = std::move(value);
-  ++_size;
+  return _values[_size++] = std::move(value);
 }
 
 template <typename Type, size_t N>

@@ -1,9 +1,9 @@
 #pragma once
 
+#include <functional>
 #include <span>
 #include <vector>
 #include <vulkan/vulkan.h>
-#include <functional>
 
 template <class T>
 inline void hashCombine(const T& v, size_t& seed) {
@@ -55,7 +55,8 @@ struct PipelineLayoutKey {
                == 0
            && memcmp(pushConstants.data(), other.pushConstants.data(),
                      pushConstants.size() * sizeof(VkPushConstantRange))
-                  == 0 && createFlags == other.createFlags;
+                  == 0
+           && createFlags == other.createFlags;
   }
 };
 

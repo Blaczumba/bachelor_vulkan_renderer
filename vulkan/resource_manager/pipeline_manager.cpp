@@ -85,12 +85,26 @@ std::reference_wrapper<const PipelineLayout> PipelineManager::getOrCreatePipelin
   auto [it, inserted] = _pipelineLayouts.try_emplace(key);
 
   if (!inserted) {
-    return it->second;
+    return it->second.pipelineLayouts->getValue(it->second.index);
   }
 
-  PipelineLayout layout = PipelineLayout::create(
-      logicalDevice, key.descriptorSetLayouts, key.pushConstants, key.createFlags);
-  return it->second = std::move(layout);
+  for (uint16_t i = 0; i < _pipelineLayoutPools.size(); i++) {
+    if (std::shared_ptr<PipelineLayoutMap> ptr = _pipelineLayoutPools[i].lock();
+        ptr != nullptr && ptr->size() < MAX_PIPELINE_LAYOUTS_PER_POOL) {
+      for (PipelineLayoutMapIndex j = 0; j < MAX_PIPELINE_LAYOUTS_PER_POOL; j++) {
+        if (!ptr->exists(j)) {
+          return ptr->insertUnsafe(j, PipelineLayout::create(logicalDevice, key.descriptorSetLayouts,
+                                                      key.pushConstants, key.createFlags));
+        }
+      }
+    }
+  }
+
+  it->second = PipelineLayoutID{std::make_shared<PipelineLayoutMap>(), 0};
+  _pipelineLayoutPools.push_back(it->second.pipelineLayouts);
+  return it->second.pipelineLayouts->insertUnsafe(
+             0, PipelineLayout::create(logicalDevice, key.descriptorSetLayouts, key.pushConstants,
+                                       key.createFlags));
 }
 
 namespace {
@@ -115,7 +129,8 @@ GraphicsPipelineBuilder PipelineManager::createPBRProgram(const Renderpass& rend
         {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
         {getPushConstantRange<PushConstantsPBR>(
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
-  }, logicalDevice);
+  },
+      logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -155,8 +170,8 @@ GraphicsPipelineBuilder PipelineManager::createPbrEnvMappingProgram(const Render
   const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
       PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
                         {getPushConstantRange<PushConstantsPBR>(
-                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
-      }, logicalDevice);
+                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
+      logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -195,8 +210,8 @@ GraphicsPipelineBuilder PipelineManager::createSkyboxProgram(const Renderpass& r
   const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
       PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
                         {getPushConstantRange<PushConstantsSkybox>(
-                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
-      }, logicalDevice);
+                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
+      logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -234,9 +249,8 @@ GraphicsPipelineBuilder PipelineManager::createShadowProgram(const Renderpass& r
 
   const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-      {},
-      {getPushConstantRange<PushConstantsShadow>(VK_SHADER_STAGE_VERTEX_BIT)}
-      }, logicalDevice);
+        {}, {getPushConstantRange<PushConstantsShadow>(VK_SHADER_STAGE_VERTEX_BIT)}},
+      logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
