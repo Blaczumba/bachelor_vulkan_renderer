@@ -81,7 +81,7 @@ public:
     }
   }
 
-  template <typename... Components>
+  /*template <typename... Components>
   void updateComponents(
       std::function<void(Components&...)> callback, const std::vector<Entity>& entities) {
     const Signature signature = getSignature<Components...>();
@@ -96,5 +96,5 @@ public:
         callback(std::get<std::vector<Components>&>(components)[entity]...);
       }
     }
-  }
+  }*/
 };
