@@ -70,7 +70,7 @@ typename SparseMap<Type, N>::IndexType SparseMap<Type, N>::size() const {
 
 template <typename Type, size_t N>
 bool SparseMap<Type, N>::exists(IndexType index) const {
-  return index < N && _sparse[index] < _size && _dense[_sparse[index]] == index;
+  return _sparse[index] < _size && _dense[_sparse[index]] == index;
 }
 
 template <typename Type, size_t N>

@@ -83,28 +83,37 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevi
 std::reference_wrapper<const PipelineLayout> PipelineManager::getOrCreatePipelineLayout(
     const PipelineLayoutKey& key, const LogicalDevice& logicalDevice) {
   auto [it, inserted] = _pipelineLayouts.try_emplace(key);
+  PipelineLayoutID& layoutID = it->second;
 
   if (!inserted) {
-    return it->second.pipelineLayouts->getValue(it->second.index);
+    return layoutID.pipelineLayouts->getValue(layoutID.index);
   }
 
-  for (uint16_t i = 0; i < _pipelineLayoutPools.size(); i++) {
-    if (std::shared_ptr<PipelineLayoutMap> ptr = _pipelineLayoutPools[i].lock();
-        ptr != nullptr && ptr->size() < MAX_PIPELINE_LAYOUTS_PER_POOL) {
+  if (!_freePipelineLayoutPools.empty()) {
+    if (std::shared_ptr<PipelineLayoutMap> ptr = _freePipelineLayoutPools.back().lock();
+        ptr != nullptr) {
       for (PipelineLayoutMapIndex j = 0; j < MAX_PIPELINE_LAYOUTS_PER_POOL; j++) {
-        if (!ptr->exists(j)) {
-          return ptr->insertUnsafe(j, PipelineLayout::create(logicalDevice, key.descriptorSetLayouts,
-                                                      key.pushConstants, key.createFlags));
+        if (ptr->exists(j)) {
+          continue;
         }
+
+        if (ptr->size() == MAX_PIPELINE_LAYOUTS_PER_POOL - 1) {
+          _freePipelineLayoutPools.pop_back();
+        }
+
+        layoutID = PipelineLayoutID{std::move(ptr), j};
+        return layoutID.pipelineLayouts->insertUnsafe(
+            j, PipelineLayout::create(
+                   logicalDevice, key.descriptorSetLayouts, key.pushConstants, key.createFlags));
       }
     }
   }
 
-  it->second = PipelineLayoutID{std::make_shared<PipelineLayoutMap>(), 0};
-  _pipelineLayoutPools.push_back(it->second.pipelineLayouts);
-  return it->second.pipelineLayouts->insertUnsafe(
-             0, PipelineLayout::create(logicalDevice, key.descriptorSetLayouts, key.pushConstants,
-                                       key.createFlags));
+  layoutID = PipelineLayoutID{std::make_shared<PipelineLayoutMap>(), 0};
+  _freePipelineLayoutPools.push_back(layoutID.pipelineLayouts);
+  return layoutID.pipelineLayouts->insertUnsafe(
+      0, PipelineLayout::create(
+             logicalDevice, key.descriptorSetLayouts, key.pushConstants, key.createFlags));
 }
 
 namespace {

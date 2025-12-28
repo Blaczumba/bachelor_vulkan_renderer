@@ -27,7 +27,8 @@ std::vector<Pipeline> Pipeline::create(
   std::vector<Pipeline> pipelines;
   pipelines.reserve(vkPipelines.size());
   std::transform(
-      vkPipelines.cbegin(), vkPipelines.cend(), std::cbegin(createInfos), std::back_inserter(pipelines),
+      vkPipelines.cbegin(), vkPipelines.cend(), std::cbegin(createInfos),
+      std::back_inserter(pipelines),
       [&logicalDevice](VkPipeline vkPipeline, const VkGraphicsPipelineCreateInfo& createInfo) {
         return vkPipeline != VK_NULL_HANDLE ?
                    Pipeline(logicalDevice, vkPipeline, VK_PIPELINE_BIND_POINT_GRAPHICS,

@@ -53,7 +53,7 @@ private:
   std::unordered_map<DescriptorSetType, DescriptorSetLayout> _descriptorSetLayouts;
 
   std::unordered_map<PipelineLayoutKey, PipelineLayoutID, PipelineLayoutHasher> _pipelineLayouts;
-  std::vector<std::weak_ptr<PipelineLayoutMap>> _pipelineLayoutPools;
+  std::vector<std::weak_ptr<PipelineLayoutMap>> _freePipelineLayoutPools;
 
   std::reference_wrapper<const Shader> addShader(
       const LogicalDevice& logicalDevice, std::string_view shaderFile,
