@@ -110,15 +110,12 @@ GraphicsPipelineBuilder PipelineManager::createPBRProgram(const Renderpass& rend
   const Shader& fragment =
       addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-  static constexpr VkPushConstantRange pushConstantRanges[] = {
-    getPushConstantRange<PushConstantsPBR>(
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)};
-
-  VkDescriptorSetLayout descriptorSetLayouts[] = {
-    getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)};
-
   const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
-      PipelineLayoutKey{descriptorSetLayouts, pushConstantRanges}, logicalDevice);
+      PipelineLayoutKey{
+        {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
+        {getPushConstantRange<PushConstantsPBR>(
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
+  }, logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -155,14 +152,11 @@ GraphicsPipelineBuilder PipelineManager::createPbrEnvMappingProgram(const Render
   const Shader& fragment =
       addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-  static constexpr VkPushConstantRange pushConstantRanges[] = {
-    getPushConstantRange<PushConstantsPBR>(
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)};
-
-  VkDescriptorSetLayout descriptorSetLayouts[] = {getOrCreateBindlessLayout(logicalDevice)};
-
   const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
-      PipelineLayoutKey{descriptorSetLayouts, pushConstantRanges}, logicalDevice);
+      PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
+                        {getPushConstantRange<PushConstantsPBR>(
+                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
+      }, logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -198,14 +192,11 @@ GraphicsPipelineBuilder PipelineManager::createSkyboxProgram(const Renderpass& r
   const Shader& fragment =
       addShader(logicalDevice, "skybox.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-  VkDescriptorSetLayout descriptorSetLayouts[] = {getOrCreateBindlessLayout(logicalDevice)};
-
-  static constexpr VkPushConstantRange pushConstantRanges[] = {
-    getPushConstantRange<PushConstantsSkybox>(
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)};
-
   const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
-      PipelineLayoutKey{descriptorSetLayouts, pushConstantRanges}, logicalDevice);
+      PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
+                        {getPushConstantRange<PushConstantsSkybox>(
+                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
+      }, logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
@@ -241,11 +232,11 @@ GraphicsPipelineBuilder PipelineManager::createShadowProgram(const Renderpass& r
   const Shader& fragment =
       addShader(logicalDevice, "shadow.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-  static constexpr VkPushConstantRange pushConstantRanges[] = {
-    getPushConstantRange<PushConstantsShadow>(VK_SHADER_STAGE_VERTEX_BIT)};
-
   const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
-      PipelineLayoutKey{{}, pushConstantRanges}, logicalDevice);
+      PipelineLayoutKey{
+      {},
+      {getPushConstantRange<PushConstantsShadow>(VK_SHADER_STAGE_VERTEX_BIT)}
+      }, logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),

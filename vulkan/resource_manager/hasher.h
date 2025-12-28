@@ -40,9 +40,9 @@ struct DescriptorSetLayoutHasher {
 };
 
 struct PipelineLayoutKey {
-  std::span<const VkDescriptorSetLayout> descriptorSetLayouts;
-  std::span<const VkPushConstantRange> pushConstants;
-  VkPipelineLayoutCreateFlags createFlags = 0;
+  const std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
+  const std::vector<VkPushConstantRange> pushConstants;
+  const VkPipelineLayoutCreateFlags createFlags = 0;
 
   bool operator==(const PipelineLayoutKey& other) const {
     if (descriptorSetLayouts.size() != other.descriptorSetLayouts.size()
