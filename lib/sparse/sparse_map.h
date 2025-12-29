@@ -99,11 +99,7 @@ bool SparseMap<Type, N>::erase(IndexType index) {
     return false;
   }
 
-  const IndexType denseIndex = _sparse[index];
-  const IndexType lastIndex = _dense[--_size];
-  _dense[denseIndex] = lastIndex;
-  _values[denseIndex] = std::move(_values[lastIndex]);
-  _sparse[lastIndex] = denseIndex;
+  eraseUnsafe(index);
   return true;
 }
 
@@ -112,7 +108,7 @@ void SparseMap<Type, N>::eraseUnsafe(IndexType index) {
   const IndexType denseIndex = _sparse[index];
   const IndexType lastIndex = _dense[--_size];
   _dense[denseIndex] = lastIndex;
-  _values[denseIndex] = std::move(_values[lastIndex]);
+  _values[denseIndex] = _size != denseIndex ? std::move(_values[lastIndex]) : Type{};
   _sparse[lastIndex] = denseIndex;
 }
 

@@ -33,10 +33,12 @@ public:
   bool isValid() const;
 
 private:
+  void destroy();
+
   VkPipeline _pipeline = VK_NULL_HANDLE;
   VkPipelineBindPoint _bindPoint;
 
   VkPipelineLayout _layout = VK_NULL_HANDLE;
 
-  const LogicalDevice* _logicalDevice;
+  const LogicalDevice* _logicalDevice = nullptr;
 };

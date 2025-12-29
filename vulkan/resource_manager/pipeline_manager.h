@@ -51,6 +51,8 @@ public:
 
   Pipeline* getPipeline(PipelineMapIndex index);
 
+  bool removePipeline(PipelineMapIndex index);
+
   PipelineMapIndex createPBRProgram(const Renderpass& renderpass);
 
   PipelineMapIndex createPbrEnvMappingProgram(const Renderpass& renderpass);

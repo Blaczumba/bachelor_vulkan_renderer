@@ -28,24 +28,31 @@ PipelineLayout PipelineLayout::create(
 }
 
 PipelineLayout::PipelineLayout(PipelineLayout&& other) noexcept
-  : _logicalDevice(other._logicalDevice), _layout(std::exchange(other._layout, VK_NULL_HANDLE)) {}
+  : _logicalDevice(std::exchange(other._logicalDevice, nullptr)),
+    _layout(std::exchange(other._layout, VK_NULL_HANDLE)) {}
+
+void PipelineLayout::destroy() {
+  if (_layout != VK_NULL_HANDLE) {
+    _logicalDevice->destroyResource([layout = _layout](DestroyerContext context) {
+      vkDestroyPipelineLayout(context.device, layout, context.allocationCallbacks);
+    });
+  }
+}
 
 PipelineLayout& PipelineLayout::operator=(PipelineLayout&& other) noexcept {
   if (this == &other) {
     return *this;
   }
 
-  _logicalDevice = other._logicalDevice;
+  destroy();
+
+  _logicalDevice = std::exchange(other._logicalDevice, nullptr);
   _layout = std::exchange(other._layout, VK_NULL_HANDLE);
   return *this;
 }
 
-PipelineLayout ::~PipelineLayout() {
-  if (_layout != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource([layout = _layout](DestroyerContext context) {
-      vkDestroyPipelineLayout(context.device, layout, context.allocationCallbacks);
-    });
-  }
+PipelineLayout::~PipelineLayout() {
+  destroy();
 }
 
 VkPipelineLayout PipelineLayout::getVkPipelineLayout() const {
