@@ -2,6 +2,7 @@
 
 #include <array>
 #include <filesystem>
+#include <numeric>
 #include <string_view>
 #include <vulkan/vulkan.h>
 
@@ -10,7 +11,10 @@
 #include "vulkan/wrapper/pipeline/input_description.h"
 
 PipelineManager::PipelineManager(const std::shared_ptr<FileLoader>& fileLoader)
-  : _fileLoader(fileLoader) {}
+  : _fileLoader(fileLoader), _freePipelineLayoutIndices(MAX_PIPELINE_LAYOUTS), _freePipelineIndices(MAX_PIPELINES) {
+  std::iota(_freePipelineLayoutIndices.rbegin(), _freePipelineLayoutIndices.rend(), 0);
+  std::iota(_freePipelineIndices.rbegin(), _freePipelineIndices.rend(), 0);
+}
 
 std::reference_wrapper<const Shader> PipelineManager::addShader(
     const LogicalDevice& logicalDevice, std::string_view shaderFile,
@@ -82,38 +86,42 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevi
 
 std::reference_wrapper<const PipelineLayout> PipelineManager::getOrCreatePipelineLayout(
     const PipelineLayoutKey& key, const LogicalDevice& logicalDevice) {
-  auto [it, inserted] = _pipelineLayouts.try_emplace(key);
-  PipelineLayoutID& layoutID = it->second;
+  auto [it, inserted] = _pipelineLayoutIndices.try_emplace(key);
 
   if (!inserted) {
-    return layoutID.pipelineLayouts->getValue(layoutID.index);
+    PipelineLayoutID& layoutID = _pipelineLayouts.getValue(it->second);
+    layoutID.refCount++;
+    return layoutID.layout;
   }
 
-  if (!_freePipelineLayoutPools.empty()) {
-    if (std::shared_ptr<PipelineLayoutMap> ptr = _freePipelineLayoutPools.back().lock();
-        ptr != nullptr) {
-      for (PipelineLayoutMapIndex j = 0; j < MAX_PIPELINE_LAYOUTS_PER_POOL; j++) {
-        if (ptr->exists(j)) {
-          continue;
-        }
+  const PipelineLayoutMapIndex index = _freePipelineLayoutIndices.back();
+  _freePipelineLayoutIndices.pop_back();
+  it->second = index;
+  _pipelineLayoutKeys.emplace(index, key);
+  return _pipelineLayouts
+      .insertUnsafe(
+          index, PipelineLayoutID{PipelineLayout::create(logicalDevice, key.descriptorSetLayouts,
+                                                         key.pushConstants, key.createFlags),
+                                  1})
+      .layout;
+}
 
-        if (ptr->size() == MAX_PIPELINE_LAYOUTS_PER_POOL - 1) {
-          _freePipelineLayoutPools.pop_back();
-        }
-
-        layoutID = PipelineLayoutID{std::move(ptr), j};
-        return layoutID.pipelineLayouts->insertUnsafe(
-            j, PipelineLayout::create(
-                   logicalDevice, key.descriptorSetLayouts, key.pushConstants, key.createFlags));
-      }
-    }
+bool PipelineManager::removePipelineLayout(PipelineLayoutMapIndex index) {
+  if (!_pipelineLayouts.exists(index)) {
+    return false;
   }
 
-  layoutID = PipelineLayoutID{std::make_shared<PipelineLayoutMap>(), 0};
-  _freePipelineLayoutPools.push_back(layoutID.pipelineLayouts);
-  return layoutID.pipelineLayouts->insertUnsafe(
-      0, PipelineLayout::create(
-             logicalDevice, key.descriptorSetLayouts, key.pushConstants, key.createFlags));
+  PipelineLayoutID& layoutID = _pipelineLayouts.getValue(index);
+  if (--layoutID.refCount > 0) {
+    return false;
+  }
+
+  _pipelineLayouts.eraseUnsafe(index);
+  _freePipelineLayoutIndices.push_back(index);
+  auto it = _pipelineLayoutKeys.find(index);
+  _pipelineLayoutIndices.erase(it->second);
+  _pipelineLayoutKeys.erase(it);
+  return true;
 }
 
 namespace {

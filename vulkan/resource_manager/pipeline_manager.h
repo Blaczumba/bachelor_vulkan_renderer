@@ -37,23 +37,40 @@ public:
   GraphicsPipelineBuilder createShadowProgram(const Renderpass& renderpass);
 
 private:
-  static constexpr uint8_t MAX_PIPELINE_LAYOUTS_PER_POOL = 7;  // 7 PipelineLayouts fit in 128
-                                                               // bytes.
-  using PipelineLayoutMap = lib::SparseMap<PipelineLayout, MAX_PIPELINE_LAYOUTS_PER_POOL>;
-  using PipelineLayoutMapIndex = typename PipelineLayoutMap::IndexType;
+  static constexpr uint8_t MAX_PIPELINE_LAYOUTS = 32;
 
   struct PipelineLayoutID {
-    std::shared_ptr<PipelineLayoutMap> pipelineLayouts;
-    PipelineLayoutMapIndex index;
+    PipelineLayout layout;
+    size_t refCount;
   };
+
+  using PipelineLayoutMap = lib::SparseMap<PipelineLayoutID, MAX_PIPELINE_LAYOUTS>;
+  using PipelineLayoutMapIndex = typename PipelineLayoutMap::IndexType;
+
+  PipelineLayoutMap _pipelineLayouts;
+  std::vector<PipelineLayoutMapIndex> _freePipelineLayoutIndices;
+
+  std::unordered_map<PipelineLayoutKey, PipelineLayoutMapIndex, PipelineLayoutHasher>
+      _pipelineLayoutIndices;
+  std::unordered_map<PipelineLayoutMapIndex, PipelineLayoutKey> _pipelineLayoutKeys;
+
+  static constexpr size_t MAX_PIPELINES = 32;
+
+  struct PipelineResource {
+    Pipeline pipeline;
+    PipelineLayoutMapIndex layoutIndex;
+  };
+
+  using PipelineMap = lib::SparseMap<PipelineResource, MAX_PIPELINES>;
+  using PipelineMapIndex = typename PipelineMap::IndexType;
+
+  PipelineMap _pipelines;
+  std::vector<PipelineMapIndex> _freePipelineIndices;
 
   std::shared_ptr<FileLoader> _fileLoader;
 
   std::unordered_map<std::string_view, Shader> _shaders;
   std::unordered_map<DescriptorSetType, DescriptorSetLayout> _descriptorSetLayouts;
-
-  std::unordered_map<PipelineLayoutKey, PipelineLayoutID, PipelineLayoutHasher> _pipelineLayouts;
-  std::vector<std::weak_ptr<PipelineLayoutMap>> _freePipelineLayoutPools;
 
   std::reference_wrapper<const Shader> addShader(
       const LogicalDevice& logicalDevice, std::string_view shaderFile,
@@ -61,4 +78,6 @@ private:
 
   std::reference_wrapper<const PipelineLayout> getOrCreatePipelineLayout(
       const PipelineLayoutKey& key, const LogicalDevice& logicalDevice);
+
+  bool removePipelineLayout(PipelineLayoutMapIndex index);
 };
