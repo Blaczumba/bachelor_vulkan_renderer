@@ -17,26 +17,6 @@ enum class DescriptorSetType : uint8_t {
 };
 
 class PipelineManager {
-public:
-  PipelineManager(const std::shared_ptr<FileLoader>& fileLoader);
-
-  ~PipelineManager() = default;
-
-  const Shader* getShader(std::string_view shaderPath) const;
-
-  VkDescriptorSetLayout getOrCreateBindlessLayout(const LogicalDevice& logicalDevice);
-
-  VkDescriptorSetLayout getOrCreateCameraLayout(const LogicalDevice& logicalDevice);
-
-  GraphicsPipelineBuilder createPBRProgram(const Renderpass& renderpass);
-
-  GraphicsPipelineBuilder createPbrEnvMappingProgram(const Renderpass& renderpass);
-
-  GraphicsPipelineBuilder createSkyboxProgram(const Renderpass& renderpass);
-
-  GraphicsPipelineBuilder createShadowProgram(const Renderpass& renderpass);
-
-private:
   static constexpr uint8_t MAX_PIPELINE_LAYOUTS = 32;
 
   struct PipelineLayoutID {
@@ -47,13 +27,6 @@ private:
   using PipelineLayoutMap = lib::SparseMap<PipelineLayoutID, MAX_PIPELINE_LAYOUTS>;
   using PipelineLayoutMapIndex = typename PipelineLayoutMap::IndexType;
 
-  PipelineLayoutMap _pipelineLayouts;
-  std::vector<PipelineLayoutMapIndex> _freePipelineLayoutIndices;
-
-  std::unordered_map<PipelineLayoutKey, PipelineLayoutMapIndex, PipelineLayoutHasher>
-      _pipelineLayoutIndices;
-  std::unordered_map<PipelineLayoutMapIndex, PipelineLayoutKey> _pipelineLayoutKeys;
-
   static constexpr size_t MAX_PIPELINES = 32;
 
   struct PipelineResource {
@@ -62,7 +35,37 @@ private:
   };
 
   using PipelineMap = lib::SparseMap<PipelineResource, MAX_PIPELINES>;
+
+public:
   using PipelineMapIndex = typename PipelineMap::IndexType;
+
+  PipelineManager(const std::shared_ptr<FileLoader>& fileLoader);
+
+  ~PipelineManager() = default;
+
+  const Shader* getShader(std::string_view shaderPath) const;
+
+  VkDescriptorSetLayout getOrCreateBindlessLayout(const LogicalDevice& logicalDevice);
+
+  VkDescriptorSetLayout getOrCreateCameraLayout(const LogicalDevice& logicalDevice);
+
+  Pipeline* getPipeline(PipelineMapIndex index);
+
+  PipelineMapIndex createPBRProgram(const Renderpass& renderpass);
+
+  PipelineMapIndex createPbrEnvMappingProgram(const Renderpass& renderpass);
+
+  PipelineMapIndex createSkyboxProgram(const Renderpass& renderpass);
+
+  PipelineMapIndex createShadowProgram(const Renderpass& renderpass);
+
+private:
+  PipelineLayoutMap _pipelineLayouts;
+  std::vector<PipelineLayoutMapIndex> _freePipelineLayoutIndices;
+
+  std::unordered_map<PipelineLayoutKey, PipelineLayoutMapIndex, PipelineLayoutHasher>
+      _pipelineLayoutIndices;
+  std::unordered_map<PipelineLayoutMapIndex, PipelineLayoutKey> _pipelineLayoutKeys;
 
   PipelineMap _pipelines;
   std::vector<PipelineMapIndex> _freePipelineIndices;

@@ -127,6 +127,14 @@ bool PipelineManager::removePipelineLayout(PipelineLayoutMapIndex index) {
   return true;
 }
 
+Pipeline* PipelineManager::getPipeline(PipelineMapIndex index) {
+  if (!_pipelines.exists(index)) {
+    return nullptr;
+  }
+
+  return &_pipelines.getValue(index).pipeline;
+}
+
 namespace {
 
 template <typename T>
@@ -137,7 +145,7 @@ constexpr VkPushConstantRange getPushConstantRange(
 
 }  // namespace
 
-GraphicsPipelineBuilder PipelineManager::createPBRProgram(const Renderpass& renderpass) {
+PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice, "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -165,22 +173,29 @@ GraphicsPipelineBuilder PipelineManager::createPBRProgram(const Renderpass& rend
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  return GraphicsPipelineBuilder(std::move(
-      GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
-          .withRenderpass(renderpass)
-          .withPipelineLayout(*pipelineLayout)
-          .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-          .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
-          .withShaderStageCreateInfo(shaderStages)
-          .withViewportStateCreateInfo()
-          .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
-          .withMultisampleStateCreateInfo(
-              renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
-          .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
-          .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
+  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
+  _freePipelineIndices.pop_back();
+  _pipelines.insertUnsafe(
+      pipelineIndex,
+      PipelineResource{
+        GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+            .withRenderpass(renderpass)
+            .withPipelineLayout(*pipelineLayout)
+            .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+            .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
+            .withShaderStageCreateInfo(shaderStages)
+            .withViewportStateCreateInfo()
+            .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
+            .withMultisampleStateCreateInfo(
+                renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
+            .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
+            .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
+            .createPipeline(), pipelineLayoutIndex});
+  return pipelineIndex;
 }
 
-GraphicsPipelineBuilder PipelineManager::createPbrEnvMappingProgram(const Renderpass& renderpass) {
+PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
+    const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice, "pbr_env_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -206,22 +221,29 @@ GraphicsPipelineBuilder PipelineManager::createPbrEnvMappingProgram(const Render
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  return GraphicsPipelineBuilder(std::move(
-      GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
-          .withRenderpass(renderpass)
-          .withPipelineLayout(*pipelineLayout)
-          .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-          .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
-          .withShaderStageCreateInfo(shaderStages)
-          .withViewportStateCreateInfo()
-          .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT)
-          .withMultisampleStateCreateInfo(
-              renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
-          .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
-          .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
+  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
+  _freePipelineIndices.pop_back();
+  _pipelines.insertUnsafe(
+      pipelineIndex,
+      PipelineResource{
+    GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+        .withRenderpass(renderpass)
+        .withPipelineLayout(*pipelineLayout)
+        .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+        .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
+        .withShaderStageCreateInfo(shaderStages)
+        .withViewportStateCreateInfo()
+        .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT)
+        .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
+        .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
+        .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
+            .createPipeline(),
+        pipelineLayoutIndex});
+  return pipelineIndex;
 }
 
-GraphicsPipelineBuilder PipelineManager::createSkyboxProgram(const Renderpass& renderpass) {
+PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
+    const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex = addShader(logicalDevice, "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
@@ -246,22 +268,29 @@ GraphicsPipelineBuilder PipelineManager::createSkyboxProgram(const Renderpass& r
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  return GraphicsPipelineBuilder(std::move(
-      GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
-          .withRenderpass(renderpass)
-          .withPipelineLayout(*pipelineLayout)
-          .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-          .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
-          .withShaderStageCreateInfo(shaderStages)
-          .withViewportStateCreateInfo()
-          .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT)
-          .withMultisampleStateCreateInfo(
-              renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
-          .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
-          .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
+  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
+  _freePipelineIndices.pop_back();
+  _pipelines.insertUnsafe(
+      pipelineIndex,
+      PipelineResource{
+    GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+        .withRenderpass(renderpass)
+        .withPipelineLayout(*pipelineLayout)
+        .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+        .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
+        .withShaderStageCreateInfo(shaderStages)
+        .withViewportStateCreateInfo()
+        .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT)
+        .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
+        .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
+            .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
+            .createPipeline(),
+        pipelineLayoutIndex});
+  return pipelineIndex;
 }
 
-GraphicsPipelineBuilder PipelineManager::createShadowProgram(const Renderpass& renderpass) {
+PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
+    const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex = addShader(logicalDevice, "shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
@@ -283,17 +312,25 @@ GraphicsPipelineBuilder PipelineManager::createShadowProgram(const Renderpass& r
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  return GraphicsPipelineBuilder(std::move(
-      GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
-          .withRenderpass(renderpass)
-          .withPipelineLayout(*pipelineLayout)
-          .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-          .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
-          .withShaderStageCreateInfo(shaderStages)
-          .withViewportStateCreateInfo()
-          .withRasterizationStateCreateInfo(
-              VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, std::pair{0.7f, 2.0f})
-          .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples())
-          .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
-          .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)));
+
+  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
+  _freePipelineIndices.pop_back();
+  _pipelines.insertUnsafe(
+      pipelineIndex,
+      PipelineResource{
+    GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+        .withRenderpass(renderpass)
+        .withPipelineLayout(*pipelineLayout)
+        .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+        .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
+        .withShaderStageCreateInfo(shaderStages)
+        .withViewportStateCreateInfo()
+        .withRasterizationStateCreateInfo(
+            VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, std::pair{0.7f, 2.0f})
+        .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples())
+        .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
+        .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
+            .createPipeline(),
+        pipelineLayoutIndex});
+  return pipelineIndex;
 }
