@@ -84,26 +84,29 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevi
   return vkLayout;
 }
 
-std::reference_wrapper<const PipelineLayout> PipelineManager::getOrCreatePipelineLayout(
+std::pair<PipelineLayout*, PipelineManager::PipelineLayoutMapIndex> PipelineManager::
+    getOrCreatePipelineLayout(
     const PipelineLayoutKey& key, const LogicalDevice& logicalDevice) {
   auto [it, inserted] = _pipelineLayoutIndices.try_emplace(key);
 
   if (!inserted) {
     PipelineLayoutID& layoutID = _pipelineLayouts.getValue(it->second);
     layoutID.refCount++;
-    return layoutID.layout;
+    return {&layoutID.layout, it->second};
   }
 
   const PipelineLayoutMapIndex index = _freePipelineLayoutIndices.back();
   _freePipelineLayoutIndices.pop_back();
   it->second = index;
   _pipelineLayoutKeys.emplace(index, key);
-  return _pipelineLayouts
-      .insertUnsafe(
-          index, PipelineLayoutID{PipelineLayout::create(logicalDevice, key.descriptorSetLayouts,
-                                                         key.pushConstants, key.createFlags),
-                                  1})
-      .layout;
+  return {
+    &_pipelineLayouts
+         .insertUnsafe(
+             index, PipelineLayoutID{PipelineLayout::create(logicalDevice, key.descriptorSetLayouts,
+                                                            key.pushConstants, key.createFlags),
+                                     1})
+         .layout,
+  index};
 }
 
 bool PipelineManager::removePipelineLayout(PipelineLayoutMapIndex index) {
@@ -141,7 +144,7 @@ GraphicsPipelineBuilder PipelineManager::createPBRProgram(const Renderpass& rend
   const Shader& fragment =
       addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-  const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
+  const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
         {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
         {getPushConstantRange<PushConstantsPBR>(
@@ -165,7 +168,7 @@ GraphicsPipelineBuilder PipelineManager::createPBRProgram(const Renderpass& rend
   return GraphicsPipelineBuilder(std::move(
       GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
           .withRenderpass(renderpass)
-          .withPipelineLayout(pipelineLayout)
+          .withPipelineLayout(*pipelineLayout)
           .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
           .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
           .withShaderStageCreateInfo(shaderStages)
@@ -184,7 +187,7 @@ GraphicsPipelineBuilder PipelineManager::createPbrEnvMappingProgram(const Render
   const Shader& fragment =
       addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-  const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
+  const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
                         {getPushConstantRange<PushConstantsPBR>(
                             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
@@ -206,7 +209,7 @@ GraphicsPipelineBuilder PipelineManager::createPbrEnvMappingProgram(const Render
   return GraphicsPipelineBuilder(std::move(
       GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
           .withRenderpass(renderpass)
-          .withPipelineLayout(pipelineLayout)
+          .withPipelineLayout(*pipelineLayout)
           .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
           .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
           .withShaderStageCreateInfo(shaderStages)
@@ -224,7 +227,7 @@ GraphicsPipelineBuilder PipelineManager::createSkyboxProgram(const Renderpass& r
   const Shader& fragment =
       addShader(logicalDevice, "skybox.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-  const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
+  const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
                         {getPushConstantRange<PushConstantsSkybox>(
                             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
@@ -246,7 +249,7 @@ GraphicsPipelineBuilder PipelineManager::createSkyboxProgram(const Renderpass& r
   return GraphicsPipelineBuilder(std::move(
       GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
           .withRenderpass(renderpass)
-          .withPipelineLayout(pipelineLayout)
+          .withPipelineLayout(*pipelineLayout)
           .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
           .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
           .withShaderStageCreateInfo(shaderStages)
@@ -264,7 +267,7 @@ GraphicsPipelineBuilder PipelineManager::createShadowProgram(const Renderpass& r
   const Shader& fragment =
       addShader(logicalDevice, "shadow.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-  const PipelineLayout& pipelineLayout = getOrCreatePipelineLayout(
+  const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
         {}, {getPushConstantRange<PushConstantsShadow>(VK_SHADER_STAGE_VERTEX_BIT)}},
       logicalDevice);
@@ -283,7 +286,7 @@ GraphicsPipelineBuilder PipelineManager::createShadowProgram(const Renderpass& r
   return GraphicsPipelineBuilder(std::move(
       GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
           .withRenderpass(renderpass)
-          .withPipelineLayout(pipelineLayout)
+          .withPipelineLayout(*pipelineLayout)
           .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
           .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
           .withShaderStageCreateInfo(shaderStages)

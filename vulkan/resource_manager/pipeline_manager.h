@@ -76,7 +76,7 @@ private:
       const LogicalDevice& logicalDevice, std::string_view shaderFile,
       VkShaderStageFlagBits shaderStages);
 
-  std::reference_wrapper<const PipelineLayout> getOrCreatePipelineLayout(
+  std::pair<PipelineLayout*, PipelineLayoutMapIndex> getOrCreatePipelineLayout(
       const PipelineLayoutKey& key, const LogicalDevice& logicalDevice);
 
   bool removePipelineLayout(PipelineLayoutMapIndex index);
