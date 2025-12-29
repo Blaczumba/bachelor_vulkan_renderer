@@ -165,10 +165,22 @@ Framebuffer::Framebuffer(Framebuffer&& framebuffer) noexcept
     _renderpass(std::exchange(framebuffer._renderpass, nullptr)), _viewport(framebuffer._viewport),
     _scissor(framebuffer._scissor) {}
 
+void Framebuffer::destroy() {
+  if (_framebuffer != VK_NULL_HANDLE) {
+    _renderpass->getLogicalDevice().destroyResource(
+        [framebuffer = _framebuffer](DestroyerContext context) {
+          vkDestroyFramebuffer(context.device, framebuffer, context.allocationCallbacks);
+        });
+  }
+}
+
 Framebuffer& Framebuffer::operator=(Framebuffer&& framebuffer) noexcept {
   if (this == &framebuffer) {
     return *this;
   }
+
+  destroy();
+
   _framebuffer = std::exchange(framebuffer._framebuffer, VK_NULL_HANDLE);
   _renderpass = std::exchange(framebuffer._renderpass, nullptr);
   _viewport = framebuffer._viewport;
@@ -177,12 +189,7 @@ Framebuffer& Framebuffer::operator=(Framebuffer&& framebuffer) noexcept {
 }
 
 Framebuffer::~Framebuffer() {
-  if (_framebuffer != VK_NULL_HANDLE) {
-    _renderpass->getLogicalDevice().destroyResource(
-        [framebuffer = _framebuffer](DestroyerContext context) {
-          vkDestroyFramebuffer(context.device, framebuffer, context.allocationCallbacks);
-        });
-  }
+  destroy();
 }
 
 VkExtent2D Framebuffer::getVkExtent() const {

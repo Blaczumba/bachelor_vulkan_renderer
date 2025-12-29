@@ -134,10 +134,20 @@ Renderpass::Renderpass(Renderpass&& renderpass) noexcept
     _logicalDevice(std::exchange(renderpass._logicalDevice, nullptr)),
     _attachmentsLayout(std::move(renderpass._attachmentsLayout)) {}
 
+void Renderpass::destroy() {
+  if (_renderpass != VK_NULL_HANDLE) {
+    _logicalDevice->destroyResource([renderpass = _renderpass](DestroyerContext context) {
+      vkDestroyRenderPass(context.device, renderpass, context.allocationCallbacks);
+    });
+  }
+}
+
 Renderpass& Renderpass::operator=(Renderpass&& renderpass) noexcept {
   if (this == &renderpass) [[unlikely]] {
     return *this;
   }
+
+  destroy();
 
   _renderpass = std::exchange(renderpass._renderpass, VK_NULL_HANDLE);
   _logicalDevice = std::exchange(renderpass._logicalDevice, nullptr);
@@ -146,11 +156,7 @@ Renderpass& Renderpass::operator=(Renderpass&& renderpass) noexcept {
 }
 
 Renderpass::~Renderpass() {
-  if (_renderpass != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource([renderpass = _renderpass](DestroyerContext context) {
-      vkDestroyRenderPass(context.device, renderpass, context.allocationCallbacks);
-    });
-  }
+  destroy();
 }
 
 VkRenderPass Renderpass::getVkRenderPass() const {

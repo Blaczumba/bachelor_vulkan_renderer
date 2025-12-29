@@ -15,20 +15,22 @@ Buffer::Buffer(
 
 Buffer::Buffer(Buffer&& buffer) noexcept
   : _buffer(std::exchange(buffer._buffer, VK_NULL_HANDLE)), _allocation(buffer._allocation),
-    _logicalDevice(buffer._logicalDevice), _usage(buffer._usage), _size(buffer._size),
+    _logicalDevice(std::exchange(buffer._logicalDevice, nullptr)), _usage(buffer._usage), _size(buffer._size),
     _mappedMemory(std::exchange(buffer._mappedMemory, nullptr)) {}
 
 Buffer& Buffer::operator=(Buffer&& buffer) noexcept {
   if (this == &buffer) {
     return *this;
   }
-  // TODO what if _vertexBuffer != VK_NULL_HANDLE
+
+  destroy();
+  
   _buffer = std::exchange(buffer._buffer, VK_NULL_HANDLE);
   _allocation = buffer._allocation;
   _size = buffer._size;
   _usage = buffer._usage;
   _mappedMemory = std::exchange(buffer._mappedMemory, nullptr);
-  _logicalDevice = buffer._logicalDevice;
+  _logicalDevice = std::exchange(buffer._logicalDevice, nullptr);
   return *this;
 }
 
@@ -46,13 +48,17 @@ struct BufferDeallocator {
 
 }  // namespace
 
-Buffer::~Buffer() {
+void Buffer::destroy() {
   if (_buffer != VK_NULL_HANDLE) {
     _logicalDevice->destroyResource(
         [buffer = _buffer, allocation = _allocation](DestroyerContext context) {
           std::visit(BufferDeallocator{buffer}, *context.memoryAllocator, allocation);
         });
   }
+}
+
+Buffer::~Buffer() {
+  destroy();
 }
 
 namespace {

@@ -34,7 +34,7 @@ public:
   VkResult present(uint32_t imageIndex, VkSemaphore waitSemaphore) const;
 
 private:
-  void tryDestroySwapchain();
+  void destroy();
 
   VkSwapchainKHR _swapchain = VK_NULL_HANDLE;
   const LogicalDevice* _logicalDevice = nullptr;

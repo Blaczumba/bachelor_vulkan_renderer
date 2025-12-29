@@ -25,6 +25,8 @@ public:
   VkDescriptorSetLayout getVkDescriptorSetLayout() const;
 
 private:
+  void destroy();
+
   VkDescriptorSetLayout _descriptorSetLayout = VK_NULL_HANDLE;
 
   const LogicalDevice* _logicalDevice;
