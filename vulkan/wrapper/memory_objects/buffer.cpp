@@ -15,8 +15,8 @@ Buffer::Buffer(
 
 Buffer::Buffer(Buffer&& buffer) noexcept
   : _buffer(std::exchange(buffer._buffer, VK_NULL_HANDLE)), _allocation(buffer._allocation),
-    _logicalDevice(std::exchange(buffer._logicalDevice, nullptr)), _usage(buffer._usage), _size(buffer._size),
-    _mappedMemory(std::exchange(buffer._mappedMemory, nullptr)) {}
+    _logicalDevice(std::exchange(buffer._logicalDevice, nullptr)), _usage(buffer._usage),
+    _size(buffer._size), _mappedMemory(std::exchange(buffer._mappedMemory, nullptr)) {}
 
 Buffer& Buffer::operator=(Buffer&& buffer) noexcept {
   if (this == &buffer) {
@@ -24,7 +24,7 @@ Buffer& Buffer::operator=(Buffer&& buffer) noexcept {
   }
 
   destroy();
-  
+
   _buffer = std::exchange(buffer._buffer, VK_NULL_HANDLE);
   _allocation = buffer._allocation;
   _size = buffer._size;

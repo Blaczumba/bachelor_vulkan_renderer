@@ -5,7 +5,7 @@
 
 #include "common/util/engine_exception.h"
 
-// We need to pass the dynamic state in the constructor because some other states depend on it
+// We need to pass the dynamic state in the constructor because some other states depend on it.
 GraphicsPipelineBuilder::GraphicsPipelineBuilder(
     lib::Buffer<VkDynamicState>&& dynamicStates, VkPipelineDynamicStateCreateFlags flags)
   : _dynamicStates(std::move(dynamicStates)) {
@@ -24,10 +24,11 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder(
     std::span<const VkDynamicState> dynamicStates, VkPipelineDynamicStateCreateFlags flags)
   : GraphicsPipelineBuilder(lib::Buffer<VkDynamicState>(dynamicStates), flags) {}
 
-Pipeline GraphicsPipelineBuilder::createPipeline() {
-  if (_renderpass == nullptr || _pipelineLayout == nullptr) {
+Pipeline GraphicsPipelineBuilder::createPipeline(const Renderpass& renderpass, const PipelineLayout& pipelineLayout) {
+  if (&renderpass.getLogicalDevice() != &pipelineLayout.getLogicalDevice()) [[unlikely]] {
     throw EngineException(
-        "Cannot create graphics pipeline without renderpass or pipeline layout specified.");
+        "Cannot create graphics pipeline with renderpass and pipeline layout from different "
+        "logical devices.");
   }
 
   const VkGraphicsPipelineCreateInfo createInfo{
@@ -43,57 +44,62 @@ Pipeline GraphicsPipelineBuilder::createPipeline() {
     .pDepthStencilState = &_depthStencilState,
     .pColorBlendState = &_colorBlendState,
     .pDynamicState = &_dynamicState,
-    .layout = _pipelineLayout->getVkPipelineLayout(),
-    .renderPass = _renderpass->getVkRenderPass()};
-  return Pipeline::create(_renderpass->getLogicalDevice(), createInfo);
+    .layout = pipelineLayout.getVkPipelineLayout(),
+    .renderPass = renderpass.getVkRenderPass()};
+  return Pipeline::create(renderpass.getLogicalDevice(), createInfo);
 }
 
 std::vector<Pipeline> GraphicsPipelineBuilder::createPipelines(
-    std::span<const GraphicsPipelineBuilder> builders) {
+    std::span<const Renderpass> renderpasses, std::span<const GraphicsPipelineBuilder> builders,
+    std::span<const PipelineLayout> pipelineLayouts) {
   if (builders.empty()) [[unlikely]] {
     return {};
   }
 
-  // TODO: Validate that all builders use the same logical device.
+  if (builders.size() != pipelineLayouts.size()) [[unlikely]] {
+    throw EngineException(
+        "Cannot create graphics pipelines: number of builders does not match number of pipeline "
+        "layouts.");
+  }
+
+  if (builders.size() != renderpasses.size()) [[unlikely]] {
+    throw EngineException(
+        "Cannot create graphics pipelines: number of builders does not match number of "
+        "renderpasses.");
+  }
+
+  if (std::all_of(renderpasses.cbegin(), renderpasses.cend(),
+                  [&firstDevice = renderpasses[0].getLogicalDevice()](const Renderpass& rp) {
+                    return &rp.getLogicalDevice() == &firstDevice;
+                  })
+      == false) [[unlikely]] {
+    throw EngineException(
+        "Cannot create graphics pipelines: not all renderpasses belong to the same logical "
+        "device.");
+  }
 
   std::vector<VkGraphicsPipelineCreateInfo> createInfos;
   createInfos.reserve(builders.size());
 
-  for (const GraphicsPipelineBuilder& builder : builders) {
-    if (builder._renderpass == nullptr || builder._pipelineLayout == nullptr) [[unlikely]] {
-      throw EngineException(
-          "Cannot create graphics pipeline without renderpass or pipeline layout specified.");
-    }
-
+  for (size_t i = 0; i < builders.size(); i++) {
     createInfos.push_back(VkGraphicsPipelineCreateInfo{
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-      .stageCount = static_cast<uint32_t>(builder._shaderStages.size()),
-      .pStages = builder._shaderStages.data(),
-      .pVertexInputState = &builder._vertexInputState,
-      .pInputAssemblyState = &builder._inputAssemblyState,
-      .pTessellationState = &builder._tessellationState,
-      .pViewportState = &builder._viewportState,
-      .pRasterizationState = &builder._rasterizationState,
-      .pMultisampleState = &builder._multisampleState,
-      .pDepthStencilState = &builder._depthStencilState,
-      .pColorBlendState = &builder._colorBlendState,
-      .pDynamicState = &builder._dynamicState,
-      .layout = builder._pipelineLayout->getVkPipelineLayout(),
-      .renderPass = builder._renderpass->getVkRenderPass()});
+      .stageCount = static_cast<uint32_t>(builders[i]._shaderStages.size()),
+      .pStages = builders[i]._shaderStages.data(),
+      .pVertexInputState = &builders[i]._vertexInputState,
+      .pInputAssemblyState = &builders[i]._inputAssemblyState,
+      .pTessellationState = &builders[i]._tessellationState,
+      .pViewportState = &builders[i]._viewportState,
+      .pRasterizationState = &builders[i]._rasterizationState,
+      .pMultisampleState = &builders[i]._multisampleState,
+      .pDepthStencilState = &builders[i]._depthStencilState,
+      .pColorBlendState = &builders[i]._colorBlendState,
+      .pDynamicState = &builders[i]._dynamicState,
+      .layout = pipelineLayouts[i].getVkPipelineLayout(),
+      .renderPass = renderpasses[i].getVkRenderPass()});
   }
 
-  return Pipeline::create(builders[0]._renderpass->getLogicalDevice(), createInfos);
-}
-
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::withRenderpass(const Renderpass& renderpass) {
-  _renderpass = &renderpass;
-  return *this;
-}
-
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::withPipelineLayout(
-    const PipelineLayout& pipelineLayout) {
-  _pipelineLayout = &pipelineLayout;
-  return *this;
+  return Pipeline::create(renderpasses[0].getLogicalDevice(), createInfos);
 }
 
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withShaderStageCreateInfo(

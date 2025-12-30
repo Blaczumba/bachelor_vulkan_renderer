@@ -190,8 +190,6 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Render
       pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
-            .withRenderpass(renderpass)
-            .withPipelineLayout(*pipelineLayout)
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
             .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
             .withShaderStageCreateInfo(shaderStages)
@@ -201,7 +199,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Render
                 renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
-            .createPipeline(),
+            .createPipeline(renderpass, *pipelineLayout),
         pipelineLayoutIndex});
   return pipelineIndex;
 }
@@ -239,8 +237,6 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
       pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
-            .withRenderpass(renderpass)
-            .withPipelineLayout(*pipelineLayout)
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
             .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
             .withShaderStageCreateInfo(shaderStages)
@@ -250,7 +246,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
                 renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
-            .createPipeline(),
+            .createPipeline(renderpass, *pipelineLayout),
         pipelineLayoutIndex});
   return pipelineIndex;
 }
@@ -287,8 +283,6 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
       pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
-            .withRenderpass(renderpass)
-            .withPipelineLayout(*pipelineLayout)
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
             .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
             .withShaderStageCreateInfo(shaderStages)
@@ -298,7 +292,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
                 renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
-            .createPipeline(),
+            .createPipeline(renderpass, *pipelineLayout),
         pipelineLayoutIndex});
   return pipelineIndex;
 }
@@ -332,8 +326,6 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
       pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
-            .withRenderpass(renderpass)
-            .withPipelineLayout(*pipelineLayout)
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
             .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
             .withShaderStageCreateInfo(shaderStages)
@@ -343,7 +335,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
             .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples())
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
-            .createPipeline(),
+            .createPipeline(renderpass, *pipelineLayout),
         pipelineLayoutIndex});
   return pipelineIndex;
 }
