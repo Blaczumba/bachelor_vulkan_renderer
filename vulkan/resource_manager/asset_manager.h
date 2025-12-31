@@ -21,8 +21,6 @@
 #include "vulkan/wrapper/util/index_buffer_util.h"
 
 class AssetManager : public common::AssetManager<AssetManager> {
-  static constexpr size_t MAX_VERTEX_DATA_RESOURCES = 256;
-
 public:
   AssetManager() = default;
 
@@ -48,24 +46,21 @@ public:
     VkIndexType indexType;
   };
 
-  using VertexResourceMap = lib::SparseMap<VertexData, MAX_VERTEX_DATA_RESOURCES>;
-  using VertexResourceMapIndex = typename VertexResourceMap::IndexType;
-
-  void loadImageAsync(const std::string& filePath);
+  size_t loadImageAsync(const std::string& filePath);
 
   template <typename Model, typename... Type>
   size_t loadVertexDataInterleavingAsync(
-      std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices,
-      uint8_t indexSize, std::span<const std::pair<std::string, std::string>> orders,
+      std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
+      std::span<const std::pair<std::string, std::string>> orders,
       std::span<const Type>... attributes);
 
-  const ImageData& getImageData(const std::string& filePath);
+  const ImageData& getImageData(size_t index);
 
-  const VertexData& getVertexData(VertexResourceMapIndex index);
+  const VertexData& getVertexData(size_t index);
 
 private:
-  void loadImageAsync(const std::string& filePath,
-                      std::function<ImageResource(std::span<const std::byte>)>&& loadingFunction);
+  size_t loadImageAsync(const std::string& filePath,
+                        std::function<ImageResource(std::span<const std::byte>)>&& loadingFunction);
 
   std::launch _launchPolicy;
 
@@ -73,18 +68,29 @@ private:
 
   std::shared_ptr<FileLoader> _fileLoader;
 
-  std::unordered_map<std::string, ImageData> _imageResources;
-  std::unordered_map<std::string, std::future<ImageData>> _awaitingImageResources;
+  static constexpr size_t MAX_IMAGE_DATA_RESOURCES = 256;
+  using ImageResourceMap = lib::SparseMap<ImageData, MAX_IMAGE_DATA_RESOURCES>;
+  using ImageResourceMapIndex = typename ImageResourceMap::IndexType;
 
-  std::vector<VertexResourceMapIndex> _freeVertexDataIndices; // TODO: Change to inplace vector.
-  std::unordered_map<VertexResourceMapIndex, std::future<VertexData>> _awaitingVertexDataResources; // TODO: Change to flat unordered map.
+  std::vector<ImageResourceMapIndex> _freeImageDataIndices;  // TODO: Change to inplace vector.
+  std::unordered_map<ImageResourceMapIndex, std::future<ImageData>>
+      _awaitingImageDataResources;  // TODO: Change to flat unordered map.
+  ImageResourceMap _imageDataResources;
+
+  static constexpr size_t MAX_VERTEX_DATA_RESOURCES = 256;
+  using VertexResourceMap = lib::SparseMap<VertexData, MAX_VERTEX_DATA_RESOURCES>;
+  using VertexResourceMapIndex = typename VertexResourceMap::IndexType;
+
+  std::vector<VertexResourceMapIndex> _freeVertexDataIndices;  // TODO: Change to inplace vector.
+  std::unordered_map<VertexResourceMapIndex, std::future<VertexData>>
+      _awaitingVertexDataResources;  // TODO: Change to flat unordered map.
   VertexResourceMap _vertexDataResources;
 };
 
 template <typename Model, typename... Type>
 size_t AssetManager::loadVertexDataInterleavingAsync(
-    std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices,
-    uint8_t indexSize, std::span<const std::pair<std::string, std::string>> orders,
+    std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
+    std::span<const std::pair<std::string, std::string>> orders,
     std::span<const Type>... attributes) {
   const VertexResourceMapIndex index = _freeVertexDataIndices.back();
   _freeVertexDataIndices.pop_back();
@@ -117,7 +123,7 @@ size_t AssetManager::loadVertexDataInterleavingAsync(
             vertexData.indexType = getIndexType(shrunkIndexSize);
 
             return vertexData;
-          })
-  );
+          }));
+
   return index;
 }

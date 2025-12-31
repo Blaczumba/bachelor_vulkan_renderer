@@ -10,8 +10,8 @@ namespace common {
 template <typename AssetManagerImpl>
 class AssetManager {
 public:
-  void loadImageAsync(const std::string& filePath) {
-    static_cast<AssetManagerImpl*>(this)->loadImageAsync(filePath);
+  size_t loadImageAsync(const std::string& filePath) {
+    return static_cast<AssetManagerImpl*>(this)->loadImageAsync(filePath);
   }
 
   template <typename Model, typename... Type>

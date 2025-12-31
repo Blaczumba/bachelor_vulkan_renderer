@@ -24,7 +24,8 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder(
     std::span<const VkDynamicState> dynamicStates, VkPipelineDynamicStateCreateFlags flags)
   : GraphicsPipelineBuilder(lib::Buffer<VkDynamicState>(dynamicStates), flags) {}
 
-Pipeline GraphicsPipelineBuilder::createPipeline(const Renderpass& renderpass, const PipelineLayout& pipelineLayout) {
+Pipeline GraphicsPipelineBuilder::createPipeline(
+    const Renderpass& renderpass, const PipelineLayout& pipelineLayout) {
   if (&renderpass.getLogicalDevice() != &pipelineLayout.getLogicalDevice()) [[unlikely]] {
     throw EngineException(
         "Cannot create graphics pipeline with renderpass and pipeline layout from different "

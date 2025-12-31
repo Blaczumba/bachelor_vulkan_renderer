@@ -22,15 +22,20 @@ std::enable_if_t<std::is_unsigned<IndexT>::value, lib::Buffer<std::byte>> proces
   return indices;
 }
 
+struct ImageID {
+  size_t ID;
+  std::string path;
+};
+
 struct VertexData {
   lib::Buffer<glm::vec3> positions;
   uint8_t indexSize;
 
   glm::mat4 model;
 
-  std::string diffuseTexture;
-  std::string normalTexture;
-  std::string metallicRoughnessTexture;
+  ImageID diffuseTexture;
+  ImageID normalTexture;
+  ImageID metallicRoughnessTexture;
 
   size_t vertexResourceID;
 };

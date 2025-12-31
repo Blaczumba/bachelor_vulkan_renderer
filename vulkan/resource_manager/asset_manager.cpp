@@ -6,7 +6,9 @@ using VertexData = AssetManager::VertexData;
 AssetManager::AssetManager(const LogicalDevice& logicalDevice,
                            const std::shared_ptr<FileLoader>& fileLoader, std::launch launchPolicy)
   : _logicalDevice(&logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy),
+    _freeImageDataIndices(MAX_IMAGE_DATA_RESOURCES),
     _freeVertexDataIndices(MAX_VERTEX_DATA_RESOURCES) {
+  std::iota(_freeImageDataIndices.rbegin(), _freeImageDataIndices.rend(), 0);
   std::iota(_freeVertexDataIndices.rbegin(), _freeVertexDataIndices.rend(), 0);
 }
 
@@ -19,58 +21,61 @@ AssetManager& AssetManager::operator=(AssetManager&& assetManager) noexcept {
   _fileLoader = std::move(assetManager._fileLoader);
   // _vertexDataResources = std::move(assetManager._vertexDataResources); // TODO:
   _awaitingVertexDataResources = std::move(assetManager._awaitingVertexDataResources);
-  _imageResources = std::move(assetManager._imageResources);
-  _awaitingImageResources = std::move(assetManager._awaitingImageResources);
+  // _imageResources = std::move(assetManager._imageResources);
+  _awaitingImageDataResources = std::move(assetManager._awaitingImageDataResources);
   _freeVertexDataIndices = std::move(assetManager._freeVertexDataIndices);
+  _freeImageDataIndices = std::move(assetManager._freeImageDataIndices);
   return *this;
 }
 
-void AssetManager::loadImageAsync(
+size_t AssetManager::loadImageAsync(
     const std::string& filePath,
     std::function<ImageResource(std::span<const std::byte>)>&& loadingFunction) {
-  if (_awaitingImageResources.contains(filePath)) {
-    return;
-  }
+  const ImageResourceMapIndex index = _freeImageDataIndices.back();
+  _freeImageDataIndices.pop_back();
+  _awaitingImageDataResources.emplace(
+      index,
+      std::async(
+          _launchPolicy,
+          [this, filePath, loadingFunction = std::move(loadingFunction)]() -> ImageData {
+            ImageResource resource = loadingFunction(_fileLoader->loadFileToBuffer(filePath));
 
-  std::future<ImageData> future = std::async(
-      _launchPolicy, [this, filePath, loadingFunction = std::move(loadingFunction)]() -> ImageData {
-        ImageResource resource = loadingFunction(_fileLoader->loadFileToBuffer(filePath));
+            Buffer stagingBuffer = Buffer::createStagingBuffer(*_logicalDevice, resource.size);
+            stagingBuffer.copyData(
+                std::span(static_cast<const std::byte*>(resource.data), resource.size));
+            ImageLoader::deallocateResources(resource);
+            return ImageData(
+                std::move(stagingBuffer), resource.width, resource.height, resource.mipLevels,
+                resource.layerCount, std::move(resource.subresources));
+          }));
 
-        Buffer stagingBuffer = Buffer::createStagingBuffer(*_logicalDevice, resource.size);
-        stagingBuffer.copyData(
-            std::span(static_cast<const std::byte*>(resource.data), resource.size));
-        ImageLoader::deallocateResources(resource);
-        return ImageData(std::move(stagingBuffer), resource.width, resource.height,
-                         resource.mipLevels, resource.layerCount, std::move(resource.subresources));
-      });
-  _awaitingImageResources.emplace(filePath, std::move(future));
+  return index;
 }
 
-void AssetManager::loadImageAsync(const std::string& filePath) {
+size_t AssetManager::loadImageAsync(const std::string& filePath) {
   if (filePath.ends_with(".ktx") || filePath.ends_with(".ktx2")) {
-    loadImageAsync(filePath, ImageLoader::loadImageKtx);
+    return loadImageAsync(filePath, ImageLoader::loadImageKtx);
   } else {
-    loadImageAsync(filePath, ImageLoader::loadImageStbi);
+    return loadImageAsync(filePath, ImageLoader::loadImageStbi);
   }
 }
 
-const ImageData& AssetManager::getImageData(const std::string& filePath) {
-  auto imageIt = _imageResources.find(filePath);
-  if (imageIt != _imageResources.cend()) {
-    return imageIt->second;
+const ImageData& AssetManager::getImageData(size_t index) {
+  if (_imageDataResources.exists(index)) [[likely]] {
+    return _imageDataResources.getValue(index);
   }
 
-  auto it = _awaitingImageResources.find(filePath);
-  if (it != _awaitingImageResources.cend()) {
-    auto ptr = _imageResources.emplace(filePath, it->second.get());
-    _awaitingImageResources.erase(it);
-    return ptr.first->second;
+  auto it = _awaitingImageDataResources.find(index);
+  if (it == _awaitingImageDataResources.cend()) [[unlikely]] {
+    throw EngineException(std::format("Failed to find index {} in AssetManager.", index));
   }
 
-  throw EngineException(std::format("Failed to find {} in AssetManager.", filePath));
+  const ImageData& ptr = _imageDataResources.insertUnsafe(index, it->second.get());
+  _awaitingImageDataResources.erase(it);
+  return ptr;
 }
 
-const VertexData& AssetManager::getVertexData(VertexResourceMapIndex index) {
+const VertexData& AssetManager::getVertexData(size_t index) {
   if (_vertexDataResources.exists(index)) [[likely]] {
     return _vertexDataResources.getValue(index);
   }
