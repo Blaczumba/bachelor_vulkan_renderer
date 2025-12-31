@@ -60,7 +60,7 @@ public:
 
 private:
   size_t loadImageAsync(const std::string& filePath,
-                        std::function<ImageResource(std::span<const std::byte>)>&& loadingFunction);
+                        std::move_only_function<ImageResource(std::span<const std::byte>)> loadingFunction);
 
   std::launch _launchPolicy;
 

@@ -30,14 +30,14 @@ AssetManager& AssetManager::operator=(AssetManager&& assetManager) noexcept {
 
 size_t AssetManager::loadImageAsync(
     const std::string& filePath,
-    std::function<ImageResource(std::span<const std::byte>)>&& loadingFunction) {
+    std::move_only_function<ImageResource(std::span<const std::byte>)> loadingFunction) {
   const ImageResourceMapIndex index = _freeImageDataIndices.back();
   _freeImageDataIndices.pop_back();
   _awaitingImageDataResources.emplace(
       index,
       std::async(
           _launchPolicy,
-          [this, filePath, loadingFunction = std::move(loadingFunction)]() -> ImageData {
+          [this, filePath, loadingFunction = std::move(loadingFunction)]() mutable -> ImageData {
             ImageResource resource = loadingFunction(_fileLoader->loadFileToBuffer(filePath));
 
             Buffer stagingBuffer = Buffer::createStagingBuffer(*_logicalDevice, resource.size);

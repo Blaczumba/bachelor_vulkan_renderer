@@ -12,13 +12,13 @@ struct DestroyerContext {
   MemoryAllocator* memoryAllocator = nullptr;
 };
 
-using ResourceDestroyerJob = std::function<void(DestroyerContext)>;
+using ResourceDestroyerJob = std::move_only_function<void(DestroyerContext)>;
 
 class ResourceDestroyer {
 public:
   virtual ~ResourceDestroyer() = default;
 
-  virtual void destroyResource(ResourceDestroyerJob&& destroyResource) = 0;
+  virtual void destroyResource(ResourceDestroyerJob destroyResource) = 0;
 
   virtual void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks,
                             MemoryAllocator* memoryAllocator) = 0;
@@ -32,7 +32,7 @@ public:
 
   ~ThreadedResourceDestroyer() override = default;
 
-  void destroyResource(ResourceDestroyerJob&& destroyResource) override;
+  void destroyResource(ResourceDestroyerJob destroyResource) override;
 
   void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks,
                     MemoryAllocator* memoryAllocator) override;
@@ -47,7 +47,7 @@ public:
 
   ~ImmediateResourceDestroyer() override = default;
 
-  void destroyResource(ResourceDestroyerJob&& destroyResource) override;
+  void destroyResource(ResourceDestroyerJob destroyResource) override;
 
   void setupContext(VkDevice device, VkAllocationCallbacks* allocationCallbacks,
                     MemoryAllocator* memoryAllocator) override;
