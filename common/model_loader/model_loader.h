@@ -32,7 +32,7 @@ struct VertexData {
   std::string normalTexture;
   std::string metallicRoughnessTexture;
 
-  std::string vertexResource;
+  size_t vertexResourceID;
 };
 
 class ModelLoader {

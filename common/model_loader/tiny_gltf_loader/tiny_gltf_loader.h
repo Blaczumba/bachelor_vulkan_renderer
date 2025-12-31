@@ -208,10 +208,6 @@ void processNode(
       continue;
     }
 
-    // TODO: refactor
-    static int objectCounter = 0;
-    std::string objectName = baseDir + std::to_string(objectCounter++);
-
     static std::pair<std::string, std::string> orders[] = {
       {"PTNT", "0123"},
       {"P",    "0"   }
@@ -222,8 +218,8 @@ void processNode(
         std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()), positionsData.size()),
         std::span(reinterpret_cast<const glm::vec2*>(textureCoordsData.data()),
                   textureCoordsData.size())));
-    assetManager.loadVertexDataInterleavingAsync(
-        sharedData, objectName, indicesBytes, indexSize, orders,
+    const size_t vertexResourceID = assetManager.loadVertexDataInterleavingAsync(
+        sharedData, indicesBytes, indexSize, orders,
         std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()), positionsData.size()),
         std::span(
             reinterpret_cast<const glm::vec2*>(textureCoordsData.data()), textureCoordsData.size()),
@@ -237,7 +233,7 @@ void processNode(
 
     vertexDataList.emplace_back(
         std::move(positions), indexSize, currentTransform, std::move(diffuseTexture),
-        std::move(normalTexture), std::move(metallicRoughnessTexture), std::move(objectName));
+        std::move(normalTexture), std::move(metallicRoughnessTexture), vertexResourceID);
   }
 
   for (int childIndex : node.children) {

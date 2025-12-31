@@ -15,11 +15,14 @@
 #include "common/model_loader/image_loader/image_loader.h"
 #include "common/util/asset_manager.h"
 #include "common/util/buffer_manip.h"
+#include "lib/sparse/sparse_map.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/util/index_buffer_util.h"
 
 class AssetManager : public common::AssetManager<AssetManager> {
+  static constexpr size_t MAX_VERTEX_DATA_RESOURCES = 256;
+
 public:
   AssetManager() = default;
 
@@ -45,17 +48,20 @@ public:
     VkIndexType indexType;
   };
 
+  using VertexResourceMap = lib::SparseMap<VertexData, MAX_VERTEX_DATA_RESOURCES>;
+  using VertexResourceMapIndex = typename VertexResourceMap::IndexType;
+
   void loadImageAsync(const std::string& filePath);
 
   template <typename Model, typename... Type>
-  void loadVertexDataInterleavingAsync(
-      std::shared_ptr<Model>& modelPtr, const std::string& name, std::span<const std::byte> indices,
+  size_t loadVertexDataInterleavingAsync(
+      std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices,
       uint8_t indexSize, std::span<const std::pair<std::string, std::string>> orders,
       std::span<const Type>... attributes);
 
   const ImageData& getImageData(const std::string& filePath);
 
-  const VertexData& getVertexData(const std::string& filePath);
+  const VertexData& getVertexData(VertexResourceMapIndex index);
 
 private:
   void loadImageAsync(const std::string& filePath,
@@ -67,47 +73,51 @@ private:
 
   std::shared_ptr<FileLoader> _fileLoader;
 
-  std::unordered_map<std::string, VertexData> _vertexDataResources;
-  std::unordered_map<std::string, std::future<VertexData>> _awaitingVertexDataResources;
-
   std::unordered_map<std::string, ImageData> _imageResources;
   std::unordered_map<std::string, std::future<ImageData>> _awaitingImageResources;
+
+  std::vector<VertexResourceMapIndex> _freeVertexDataIndices; // TODO: Change to inplace vector.
+  std::unordered_map<VertexResourceMapIndex, std::future<VertexData>> _awaitingVertexDataResources; // TODO: Change to flat unordered map.
+  VertexResourceMap _vertexDataResources;
 };
 
 template <typename Model, typename... Type>
-void AssetManager::loadVertexDataInterleavingAsync(
-    std::shared_ptr<Model>& modelPtr, const std::string& name, std::span<const std::byte> indices,
+size_t AssetManager::loadVertexDataInterleavingAsync(
+    std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices,
     uint8_t indexSize, std::span<const std::pair<std::string, std::string>> orders,
     std::span<const Type>... attributes) {
-  if (_awaitingVertexDataResources.contains(name)) {
-    return;
-  }
+  const VertexResourceMapIndex index = _freeVertexDataIndices.back();
+  _freeVertexDataIndices.pop_back();
+  _awaitingVertexDataResources.emplace(
+      index,
+      std::async(
+          _launchPolicy,
+          [this, modelPtr, indices, indexSize, orders, attributes...]() -> VertexData {
+            VertexData vertexData;
+            const AttributeDescription descs[] = {
+              AttributeDescription{(void*)attributes.data(), sizeof(Type), attributes.size()}
+              ...
+            };
 
-  std::future<VertexData> future = std::async(
-      _launchPolicy, [this, modelPtr, indices, indexSize, orders, attributes...]() -> VertexData {
-        VertexData vertexData;
-        const AttributeDescription descs[] = {
-          AttributeDescription{(void*)attributes.data(), sizeof(Type), attributes.size()}
-          ...
-        };
+            std::vector<BufferDescription> bufferDescriptions = analyzeConfig(orders, descs);
 
-        std::vector<BufferDescription> bufferDescriptions = analyzeConfig(orders, descs);
+            for (BufferDescription& description : bufferDescriptions) {
+              Buffer vertexBuffer =
+                  Buffer::createStagingBuffer(*_logicalDevice, description.totalSize);
+              vertexBuffer.copyDataInterleaving(description.attributes);
+              vertexData.buffers.emplace(std::move(description.name), std::move(vertexBuffer));
+            }
 
-        for (BufferDescription& description : bufferDescriptions) {
-          Buffer vertexBuffer = Buffer::createStagingBuffer(*_logicalDevice, description.totalSize);
-          vertexBuffer.copyDataInterleaving(description.attributes);
-          vertexData.buffers.emplace(std::move(description.name), std::move(vertexBuffer));
-        }
+            const size_t shrunkIndexSize = getShrunkIndexSize(indices, indexSize);
+            vertexData.indexBuffer = Buffer::createStagingBuffer(
+                *_logicalDevice, indices.size() / indexSize * shrunkIndexSize);
 
-        const size_t shrunkIndexSize = getShrunkIndexSize(indices, indexSize);
-        vertexData.indexBuffer = Buffer::createStagingBuffer(
-            *_logicalDevice, indices.size() / indexSize * shrunkIndexSize);
+            vertexData.indexBuffer.copyAndShrinkData(indices, shrunkIndexSize, indexSize);
 
-        vertexData.indexBuffer.copyAndShrinkData(indices, shrunkIndexSize, indexSize);
+            vertexData.indexType = getIndexType(shrunkIndexSize);
 
-        vertexData.indexType = getIndexType(shrunkIndexSize);
-
-        return vertexData;
-      });
-  _awaitingVertexDataResources.emplace(name, std::move(future));
+            return vertexData;
+          })
+  );
+  return index;
 }

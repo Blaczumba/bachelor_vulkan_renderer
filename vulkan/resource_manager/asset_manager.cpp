@@ -5,7 +5,10 @@ using VertexData = AssetManager::VertexData;
 
 AssetManager::AssetManager(const LogicalDevice& logicalDevice,
                            const std::shared_ptr<FileLoader>& fileLoader, std::launch launchPolicy)
-  : _logicalDevice(&logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy) {}
+  : _logicalDevice(&logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy),
+    _freeVertexDataIndices(MAX_VERTEX_DATA_RESOURCES) {
+  std::iota(_freeVertexDataIndices.rbegin(), _freeVertexDataIndices.rend(), 0);
+}
 
 AssetManager& AssetManager::operator=(AssetManager&& assetManager) noexcept {
   if (this == &assetManager) {
@@ -14,10 +17,11 @@ AssetManager& AssetManager::operator=(AssetManager&& assetManager) noexcept {
 
   _logicalDevice = std::exchange(assetManager._logicalDevice, nullptr);
   _fileLoader = std::move(assetManager._fileLoader);
-  _vertexDataResources = std::move(assetManager._vertexDataResources);
+  // _vertexDataResources = std::move(assetManager._vertexDataResources); // TODO:
   _awaitingVertexDataResources = std::move(assetManager._awaitingVertexDataResources);
   _imageResources = std::move(assetManager._imageResources);
   _awaitingImageResources = std::move(assetManager._awaitingImageResources);
+  _freeVertexDataIndices = std::move(assetManager._freeVertexDataIndices);
   return *this;
 }
 
@@ -66,18 +70,17 @@ const ImageData& AssetManager::getImageData(const std::string& filePath) {
   throw EngineException(std::format("Failed to find {} in AssetManager.", filePath));
 }
 
-const VertexData& AssetManager::getVertexData(const std::string& filePath) {
-  auto vertexIt = _vertexDataResources.find(filePath);
-  if (vertexIt != _vertexDataResources.cend()) {
-    return vertexIt->second;
+const VertexData& AssetManager::getVertexData(VertexResourceMapIndex index) {
+  if (_vertexDataResources.exists(index)) [[likely]] {
+    return _vertexDataResources.getValue(index);
   }
 
-  auto it = _awaitingVertexDataResources.find(filePath);
-  if (it != _awaitingVertexDataResources.cend()) {
-    auto ptr = _vertexDataResources.emplace(filePath, it->second.get());
-    _awaitingVertexDataResources.erase(it);
-    return ptr.first->second;
+  auto it = _awaitingVertexDataResources.find(index);
+  if (it == _awaitingVertexDataResources.cend()) [[unlikely]] {
+    throw EngineException(std::format("Failed to find index {} in AssetManager.", index));
   }
 
-  throw EngineException(std::format("Failed to find {} in AssetManager.", filePath));
+  const VertexData& ptr = _vertexDataResources.insertUnsafe(index, it->second.get());
+  _awaitingVertexDataResources.erase(it);
+  return ptr;
 }
