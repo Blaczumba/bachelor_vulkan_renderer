@@ -4,28 +4,18 @@ using ImageData = AssetManager::ImageData;
 using VertexData = AssetManager::VertexData;
 
 AssetManager::AssetManager(const LogicalDevice& logicalDevice,
-                           const std::shared_ptr<FileLoader>& fileLoader, std::launch launchPolicy)
-  : _logicalDevice(&logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy),
+                           const FileLoader& fileLoader, std::launch launchPolicy)
+  : _logicalDevice(logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy),
     _freeImageDataIndices(MAX_IMAGE_DATA_RESOURCES),
     _freeVertexDataIndices(MAX_VERTEX_DATA_RESOURCES) {
   std::iota(_freeImageDataIndices.rbegin(), _freeImageDataIndices.rend(), 0);
   std::iota(_freeVertexDataIndices.rbegin(), _freeVertexDataIndices.rend(), 0);
 }
 
-AssetManager& AssetManager::operator=(AssetManager&& assetManager) noexcept {
-  if (this == &assetManager) {
-    return *this;
-  }
-
-  _logicalDevice = std::exchange(assetManager._logicalDevice, nullptr);
-  _fileLoader = std::move(assetManager._fileLoader);
-  // _vertexDataResources = std::move(assetManager._vertexDataResources); // TODO:
-  _awaitingVertexDataResources = std::move(assetManager._awaitingVertexDataResources);
-  // _imageResources = std::move(assetManager._imageResources);
-  _awaitingImageDataResources = std::move(assetManager._awaitingImageDataResources);
-  _freeVertexDataIndices = std::move(assetManager._freeVertexDataIndices);
-  _freeImageDataIndices = std::move(assetManager._freeImageDataIndices);
-  return *this;
+std::unique_ptr<AssetManager> AssetManager::create(
+    const LogicalDevice& logicalDevice, const FileLoader& fileLoader,
+    std::launch launchPolicy) {
+  return std::unique_ptr<AssetManager>(new AssetManager(logicalDevice, fileLoader, launchPolicy));
 }
 
 size_t AssetManager::loadImageAsync(
@@ -38,9 +28,9 @@ size_t AssetManager::loadImageAsync(
       std::async(
           _launchPolicy,
           [this, filePath, loadingFunction = std::move(loadingFunction)]() mutable -> ImageData {
-            ImageResource resource = loadingFunction(_fileLoader->loadFileToBuffer(filePath));
+            ImageResource resource = loadingFunction(_fileLoader.loadFileToBuffer(filePath));
 
-            Buffer stagingBuffer = Buffer::createStagingBuffer(*_logicalDevice, resource.size);
+            Buffer stagingBuffer = Buffer::createStagingBuffer(_logicalDevice, resource.size);
             stagingBuffer.copyData(
                 std::span(static_cast<const std::byte*>(resource.data), resource.size));
             ImageLoader::deallocateResources(resource);

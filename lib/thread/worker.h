@@ -45,9 +45,9 @@ Worker<N, Args...>::~Worker() {
   {
     std::lock_guard<std::mutex> lock(_mtx);
     _stop = true;
+    _cv.notify_one();
   }
 
-  _cv.notify_one();
   if (_thread.joinable()) {
     _thread.join();
   }
@@ -58,6 +58,7 @@ void Worker<N, Args...>::startWorkingThread(Args... args) {
   if (_thread.joinable()) [[unlikely]] {
     return;
   }
+
   _context = Context{std::forward<Args>(args)...};
   _stop = false;
   _thread = std::thread(&Worker::workingThread, this);

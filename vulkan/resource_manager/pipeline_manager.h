@@ -36,10 +36,10 @@ class PipelineManager {
 
   using PipelineMap = lib::SparseMap<PipelineResource, MAX_PIPELINES>;
 
-public:
-  using PipelineMapIndex = typename PipelineMap::IndexType;
+  PipelineManager(const FileLoader& fileLoader);
 
-  PipelineManager(const std::shared_ptr<FileLoader>& fileLoader);
+public:
+  static std::unique_ptr<PipelineManager> create(const FileLoader& fileLoader);
 
   ~PipelineManager() = default;
 
@@ -48,6 +48,8 @@ public:
   VkDescriptorSetLayout getOrCreateBindlessLayout(const LogicalDevice& logicalDevice);
 
   VkDescriptorSetLayout getOrCreateCameraLayout(const LogicalDevice& logicalDevice);
+
+  using PipelineMapIndex = typename PipelineMap::IndexType;
 
   Pipeline* getPipeline(PipelineMapIndex index);
 
@@ -72,7 +74,7 @@ private:
   PipelineMap _pipelines;
   std::vector<PipelineMapIndex> _freePipelineIndices;
 
-  std::shared_ptr<FileLoader> _fileLoader;
+  const FileLoader& _fileLoader;
 
   std::unordered_map<std::string_view, Shader> _shaders;
   std::unordered_map<DescriptorSetType, DescriptorSetLayout> _descriptorSetLayouts;

@@ -10,11 +10,15 @@
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 #include "vulkan/wrapper/pipeline/input_description.h"
 
-PipelineManager::PipelineManager(const std::shared_ptr<FileLoader>& fileLoader)
+PipelineManager::PipelineManager(const FileLoader& fileLoader)
   : _fileLoader(fileLoader), _freePipelineLayoutIndices(MAX_PIPELINE_LAYOUTS),
     _freePipelineIndices(MAX_PIPELINES) {
   std::iota(_freePipelineLayoutIndices.rbegin(), _freePipelineLayoutIndices.rend(), 0);
   std::iota(_freePipelineIndices.rbegin(), _freePipelineIndices.rend(), 0);
+}
+
+std::unique_ptr<PipelineManager> PipelineManager::create(const FileLoader& fileLoader) {
+  return std::unique_ptr<PipelineManager>(new PipelineManager(fileLoader));
 }
 
 std::reference_wrapper<const Shader> PipelineManager::addShader(
@@ -26,7 +30,7 @@ std::reference_wrapper<const Shader> PipelineManager::addShader(
   }
 
   const lib::Buffer<std::byte> shaderData =
-      _fileLoader->loadFileToBuffer((std::filesystem::path(SHADERS_PATH) / shaderFile).string());
+      _fileLoader.loadFileToBuffer((std::filesystem::path(SHADERS_PATH) / shaderFile).string());
   return it->second = Shader::create(logicalDevice, shaderData, shaderStages);
 }
 
