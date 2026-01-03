@@ -7,6 +7,7 @@ layout(push_constant) uniform Constants {
     mat4 model;
     uint environmentHandle;
     uint light;
+    uint padding[14];
 } pushConstants;
 
 layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which depends on frame in flight

@@ -278,8 +278,8 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
 
   static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexPTNT>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
+    getBindingDescription<VertexPN>()};
+  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexPN>();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
@@ -294,7 +294,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
             .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
             .withShaderStageCreateInfo(shaderStages)
             .withViewportStateCreateInfo()
-            .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT)
+            .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
             .withMultisampleStateCreateInfo(
                 renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))

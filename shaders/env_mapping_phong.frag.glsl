@@ -13,6 +13,7 @@ layout(push_constant) uniform Constants {
     mat4 model;
     uint environmentHandle;
     uint light;
+    uint padding[14];
 } pushConstants;
 
 layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which depends on frame in flight
@@ -44,7 +45,7 @@ void main() {
     vec3 envColor = texture(uGlobalTexturesCube[nonuniformEXT(pushConstants.environmentHandle)], R).rgb;
 
     // 4. Combine results
-    vec3 finalColor = (envColor * 0.5) + (diffuse * 0.5) + specular;
+    vec3 finalColor = (envColor * 0.1) + envColor*(diffuse * 0.5 + specular);
 
     outFragColor = vec4(finalColor, 1.0);
 }
