@@ -18,7 +18,7 @@ layout(push_constant) uniform Constants {
     uint normal;
     uint metallicRoughness;
     uint shadow;
-
+    uint padding[11]; // Padding to 128B.
 } pushConstants;
 
 layout(location = 0) in vec3 inPosition;

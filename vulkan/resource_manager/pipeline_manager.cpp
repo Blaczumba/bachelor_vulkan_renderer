@@ -170,7 +170,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Render
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
         {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
-        {getPushConstantRange<PushConstantsPBR>(
+        {getPushConstantRange<PushConstantsModelDescriptorHandles>(
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
   },
       logicalDevice);
@@ -218,7 +218,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
 
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
-                        {getPushConstantRange<PushConstantsPBR>(
+                        {getPushConstantRange<PushConstantsModelDescriptorHandles>(
                             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
       logicalDevice);
 
@@ -266,8 +266,9 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
         {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
-                        {getPushConstantRange<PushConstantsPBR>(
-                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
+        {getPushConstantRange<PushConstantsModelDescriptorHandles>(
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
+  },
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
