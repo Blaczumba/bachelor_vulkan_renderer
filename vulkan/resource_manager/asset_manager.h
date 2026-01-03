@@ -22,8 +22,8 @@
 #include "vulkan/wrapper/util/index_buffer_util.h"
 
 class AssetManager : public common::AssetManager<AssetManager> {
-  AssetManager(const LogicalDevice& logicalDevice, const FileLoader& fileLoader,
-               std::launch launchPolicy);
+  AssetManager(
+      const LogicalDevice& logicalDevice, const FileLoader& fileLoader, std::launch launchPolicy);
 
 public:
   static std::unique_ptr<AssetManager> create(
@@ -60,8 +60,9 @@ public:
   const VertexData& getVertexData(size_t index);
 
 private:
-  size_t loadImageAsync(const std::string& filePath,
-                        std::move_only_function<ImageResource(std::span<const std::byte>)> loadingFunction);
+  size_t loadImageAsync(
+      const std::string& filePath,
+      std::move_only_function<ImageResource(std::span<const std::byte>)> loadingFunction);
 
   std::launch _launchPolicy;
 

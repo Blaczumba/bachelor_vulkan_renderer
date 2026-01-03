@@ -3,8 +3,8 @@
 using ImageData = AssetManager::ImageData;
 using VertexData = AssetManager::VertexData;
 
-AssetManager::AssetManager(const LogicalDevice& logicalDevice,
-                           const FileLoader& fileLoader, std::launch launchPolicy)
+AssetManager::AssetManager(
+    const LogicalDevice& logicalDevice, const FileLoader& fileLoader, std::launch launchPolicy)
   : _logicalDevice(logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy),
     _freeImageDataIndices(MAX_IMAGE_DATA_RESOURCES),
     _freeVertexDataIndices(MAX_VERTEX_DATA_RESOURCES) {
@@ -13,8 +13,7 @@ AssetManager::AssetManager(const LogicalDevice& logicalDevice,
 }
 
 std::unique_ptr<AssetManager> AssetManager::create(
-    const LogicalDevice& logicalDevice, const FileLoader& fileLoader,
-    std::launch launchPolicy) {
+    const LogicalDevice& logicalDevice, const FileLoader& fileLoader, std::launch launchPolicy) {
   return std::unique_ptr<AssetManager>(new AssetManager(logicalDevice, fileLoader, launchPolicy));
 }
 

@@ -84,21 +84,24 @@ LogicalDevice LogicalDevice::create(
                      .pQueuePriorities = &queuePriority};
                  });
 
-  DeviceFeatures deviceFeatures;
-  chainExtensionIndexTypeUint8(deviceFeatures, physicalDevice);
-  chainExtensionBufferDeviceAddress(deviceFeatures, physicalDevice);
-  chainExtensionInheritedViewportScissor(deviceFeatures, physicalDevice);
-  chainExtensionDescriptorIndexing(deviceFeatures, physicalDevice);
-  chainExtensionMultiview(deviceFeatures, physicalDevice);
+  ExtensionsConnector extensionsConnector(physicalDevice);
+  extensionsConnector.withDescriptorIndexingExtension()
+      .withBufferDeviceAddressExtension()
+      .withIndexTypeUint8Extension()
+      .withInheritedViewportScissorExtension()
+      .withMultiviewExtension()
+      .withStorage8BitExtension()
+      .withStorage16BitExtension();
 
   const VkPhysicalDeviceFeatures2 deviceFeaturesInfo = {
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-    .pNext = deviceFeatures.next,
-    .features = {.geometryShader = VK_TRUE,
-                 .tessellationShader = VK_TRUE,
-                 .sampleRateShading = VK_TRUE,
-                 .depthClamp = VK_TRUE,
-                 .samplerAnisotropy = VK_TRUE}
+    .pNext = extensionsConnector.getNext(),
+    .features = VkPhysicalDeviceFeatures{
+                                         .geometryShader = VK_TRUE,
+                                         .tessellationShader = VK_TRUE,
+                                         .sampleRateShading = VK_TRUE,
+                                         .depthClamp = VK_TRUE,
+                                         .samplerAnisotropy = VK_TRUE}
   };
 
   const lib::Buffer<const char*> extensions = physicalDevice.getAvailableExtensions();

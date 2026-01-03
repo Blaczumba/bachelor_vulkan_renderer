@@ -16,17 +16,19 @@ public:
 
   ~SparseMap() = default;
 
-  Type& getValue(IndexType index);
+  [[nodiscard]] Type& getValue(IndexType index);
 
-  const Type& getValue(IndexType index) const;
+  [[nodiscard]] const Type& getValue(IndexType index) const;
 
-  std::span<Type> getValues();
+  [[nodiscard]] std::span<Type> getValues() noexcept;
 
-  std::span<const Type> getValues() const;
+  [[nodiscard]] std::span<const Type> getValues() const noexcept;
 
-  IndexType size() const;
+  [[nodiscard]] IndexType size() const noexcept;
 
-  bool exists(IndexType index) const;
+  [[nodiscard]] bool empty() const noexcept;
+
+  [[nodiscard]] bool exists(IndexType index) const;
 
   bool insert(IndexType index, Type&& value);
 
@@ -54,18 +56,23 @@ const Type& SparseMap<Type, N>::getValue(IndexType index) const {
 }
 
 template <typename Type, size_t N>
-std::span<Type> SparseMap<Type, N>::getValues() {
+std::span<Type> SparseMap<Type, N>::getValues() noexcept {
   return std::span<Type>(_values.data(), _size);
 }
 
 template <typename Type, size_t N>
-std::span<const Type> SparseMap<Type, N>::getValues() const {
+std::span<const Type> SparseMap<Type, N>::getValues() const noexcept {
   return std::span<const Type>(_values.data(), _size);
 }
 
 template <typename Type, size_t N>
-typename SparseMap<Type, N>::IndexType SparseMap<Type, N>::size() const {
+typename SparseMap<Type, N>::IndexType SparseMap<Type, N>::size() const noexcept {
   return _size;
+}
+
+template <typename Type, size_t N>
+bool SparseMap<Type, N>::empty() const noexcept {
+  return _size == 0;
 }
 
 template <typename Type, size_t N>
@@ -80,7 +87,7 @@ bool SparseMap<Type, N>::insert(IndexType index, Type&& value) {
   }
 
   _sparse[index] = _size;
-  _dense[_size] = _size;
+  _dense[_size] = index;
   _values[_size] = std::move(value);
   ++_size;
   return true;
@@ -108,7 +115,12 @@ void SparseMap<Type, N>::eraseUnsafe(IndexType index) {
   const IndexType denseIndex = _sparse[index];
   const IndexType lastIndex = _dense[--_size];
   _dense[denseIndex] = lastIndex;
-  _values[denseIndex] = _size != denseIndex ? std::move(_values[lastIndex]) : Type{};
+  if (_size != denseIndex) {
+    _values[denseIndex] = std::move(_values[lastIndex]);
+  } else if constexpr (!std::is_trivially_destructible<Type>()) {
+    _values[denseIndex] = Type{};
+  }
+
   _sparse[lastIndex] = denseIndex;
 }
 
