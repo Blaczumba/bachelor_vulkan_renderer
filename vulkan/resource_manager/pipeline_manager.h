@@ -59,6 +59,8 @@ public:
 
   PipelineMapIndex createPbrEnvMappingProgram(const Renderpass& renderpass);
 
+  PipelineMapIndex createEnvMappingProgram(const Renderpass& renderpass);
+
   PipelineMapIndex createSkyboxProgram(const Renderpass& renderpass);
 
   PipelineMapIndex createShadowProgram(const Renderpass& renderpass);

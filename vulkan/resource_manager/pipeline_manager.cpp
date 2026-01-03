@@ -255,6 +255,54 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
   return pipelineIndex;
 }
 
+PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
+    const Renderpass& renderpass) {
+  const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
+  const Shader& vertex =
+      addShader(logicalDevice, "env_mapping_phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+  const Shader& fragment =
+      addShader(logicalDevice, "env_mapping_phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+  const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
+      PipelineLayoutKey{
+        {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
+                        {getPushConstantRange<PushConstantsPBR>(
+                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
+      logicalDevice);
+
+  lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
+      renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
+      VkPipelineColorBlendAttachmentState{
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                          | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
+
+  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
+    getBindingDescription<VertexPTNT>()};
+  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
+
+  const VkPipelineShaderStageCreateInfo shaderStages[] = {
+    vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
+
+  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
+  _freePipelineIndices.pop_back();
+  _pipelines.insertUnsafe(
+      pipelineIndex,
+      PipelineResource{
+        GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+            .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+            .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
+            .withShaderStageCreateInfo(shaderStages)
+            .withViewportStateCreateInfo()
+            .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT)
+            .withMultisampleStateCreateInfo(
+                renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
+            .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
+            .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
+            .createPipeline(renderpass, *pipelineLayout),
+        pipelineLayoutIndex});
+  return pipelineIndex;
+}
+
 PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
     const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
