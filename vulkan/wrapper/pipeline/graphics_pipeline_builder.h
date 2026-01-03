@@ -36,13 +36,11 @@ public:
 
   ~GraphicsPipelineBuilder() = default;
 
-  Pipeline createPipeline();
+  Pipeline createPipeline(const Renderpass& renderpass, const PipelineLayout& pipelineLayout);
 
-  static std::vector<Pipeline> createPipelines(std::span<const GraphicsPipelineBuilder> builders);
-
-  GraphicsPipelineBuilder& withRenderpass(const Renderpass& renderpass);
-
-  GraphicsPipelineBuilder& withPipelineLayout(const PipelineLayout& pipelineLayout);
+  static std::vector<Pipeline> createPipelines(
+      std::span<const Renderpass> renderpasses, std::span<const GraphicsPipelineBuilder> builders,
+      std::span<const PipelineLayout> pipelineLayouts);
 
   GraphicsPipelineBuilder& withShaderStageCreateInfo(
       lib::Buffer<VkPipelineShaderStageCreateInfo>&& shaderStages,
@@ -100,9 +98,6 @@ public:
       VkPipelineDepthStencilStateCreateFlags flags = 0);
 
 private:
-  const PipelineLayout* _pipelineLayout;
-  const Renderpass* _renderpass;
-
   SpecializationData _specializationData;
   lib::Buffer<VkPipelineShaderStageCreateInfo> _shaderStages;
 

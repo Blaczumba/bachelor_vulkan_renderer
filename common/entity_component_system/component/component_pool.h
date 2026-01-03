@@ -7,8 +7,7 @@
 #include <vector>
 
 #include "common/entity_component_system/entity/entity.h"
-
-// #include <boost/container/flat_set.hpp>
+#include "lib/sparse/sparse_map.h"
 
 class ComponentPool {
 public:
@@ -18,29 +17,24 @@ public:
 
 template <typename Component>
 class ComponentPoolImpl : public ComponentPool {
-  std::vector<std::pair<Entity, Component>> _components;
-  std::array<Entity, MAX_ENTITIES> _entities;  // TODO Try unordered flat map
+  lib::SparseMap<Component, MAX_ENTITIES> _sparseMap;
 
 public:
   ~ComponentPoolImpl() override = default;
 
   void addComponent(Entity entity, Component&& component) {
-    _entities[entity] = _components.size();
-    _components.emplace_back(entity, std::move(component));
+    _sparseMap.insertUnsafe(entity, std::move(component));
   }
 
   void destroyEntity(Entity entity) override {
-    Entity lastEntity = _components.back().first;
-    _components[_entities[entity]] = std::move(_components.back());
-    _entities[lastEntity] = _entities[entity];
-    _components.pop_back();
+    _sparseMap.eraseUnsafe(entity);
   }
 
   Component& getComponent(Entity entity) {
-    return _components[_entities[entity]].second;
+    return _sparseMap.getValue(entity);
   }
 
-  std::vector<std::pair<Entity, Component>>& getComponents() {
-    return _components;
+  std::span<Component> getComponents() {
+    return _sparseMap.getValues();
   }
 };

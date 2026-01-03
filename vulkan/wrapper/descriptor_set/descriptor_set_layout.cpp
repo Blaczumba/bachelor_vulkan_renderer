@@ -11,16 +11,7 @@ DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout&& layout) noexcept
   : _descriptorSetLayout(std::exchange(layout._descriptorSetLayout, VK_NULL_HANDLE)),
     _logicalDevice(layout._logicalDevice) {}
 
-DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& layout) noexcept {
-  if (&layout == this) {
-    return *this;
-  }
-  _descriptorSetLayout = std::exchange(layout._descriptorSetLayout, VK_NULL_HANDLE);
-  _logicalDevice = std::exchange(layout._logicalDevice, nullptr);
-  return *this;
-}
-
-DescriptorSetLayout::~DescriptorSetLayout() {
+void DescriptorSetLayout::destroy() {
   if (_descriptorSetLayout != VK_NULL_HANDLE) {
     _logicalDevice->destroyResource(
         [descriptorSetlayout = _descriptorSetLayout](DestroyerContext context) {
@@ -28,6 +19,22 @@ DescriptorSetLayout::~DescriptorSetLayout() {
               context.device, descriptorSetlayout, context.allocationCallbacks);
         });
   }
+}
+
+DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& layout) noexcept {
+  if (&layout == this) {
+    return *this;
+  }
+
+  destroy();
+
+  _descriptorSetLayout = std::exchange(layout._descriptorSetLayout, VK_NULL_HANDLE);
+  _logicalDevice = std::exchange(layout._logicalDevice, nullptr);
+  return *this;
+}
+
+DescriptorSetLayout::~DescriptorSetLayout() {
+  destroy();
 }
 
 DescriptorSetLayout DescriptorSetLayout::create(

@@ -28,6 +28,8 @@ public:
   const LogicalDevice& getLogicalDevice() const;
 
 private:
+  void destroy();
+
   const LogicalDevice* _logicalDevice = nullptr;
 
   VkPipelineLayout _layout = VK_NULL_HANDLE;

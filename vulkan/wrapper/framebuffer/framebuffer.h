@@ -39,6 +39,8 @@ public:
   VkFramebuffer getVkFramebuffer() const;
 
 private:
+  void destroy();
+
   VkFramebuffer _framebuffer = VK_NULL_HANDLE;
 
   const Renderpass* _renderpass = nullptr;

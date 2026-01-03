@@ -14,14 +14,13 @@ layout(push_constant) uniform Constants {
     uint normal;
     uint metallicRoughness;
     uint shadow;
-
+    uint padding[11]; // Padding to 128B.
 } pushConstants;
 
 layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which depends on frame in flight
     mat4 view;
     mat4 proj;
     vec3 viewPos;
-
 } camera;
 
 layout(location = 0) in vec3 inPosition;

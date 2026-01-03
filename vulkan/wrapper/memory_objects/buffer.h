@@ -64,6 +64,12 @@ public:
   const VkBuffer& getVkBuffer() const;
 
 private:
+  Buffer(const LogicalDevice& logicalDevice, const Allocation allocation,
+         const VkBuffer vertexBuffer, VkBufferUsageFlags usage, uint32_t size,
+         void* mappedData = nullptr) noexcept;
+
+  void destroy();
+
   VkBuffer _buffer = VK_NULL_HANDLE;
   Allocation _allocation;
   VkDeviceSize _size;
@@ -71,10 +77,6 @@ private:
   void* _mappedMemory = nullptr;
 
   const LogicalDevice* _logicalDevice;
-
-  Buffer(const LogicalDevice& logicalDevice, const Allocation allocation,
-         const VkBuffer vertexBuffer, VkBufferUsageFlags usage, uint32_t size,
-         void* mappedData = nullptr) noexcept;
 };
 
 template <typename T>

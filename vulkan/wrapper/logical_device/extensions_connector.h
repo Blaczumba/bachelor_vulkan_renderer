@@ -2,25 +2,41 @@
 
 #include "vulkan/wrapper/physical_device/physical_device.h"
 
-struct DeviceFeatures {
-  void* next = nullptr;
-  VkPhysicalDeviceIndexTypeUint8FeaturesEXT indexTypeUint8;
-  VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddress;
-  VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexing;
-  VkPhysicalDeviceInheritedViewportScissorFeaturesNV inheritedViewportScissor;
-  VkPhysicalDeviceMultiviewFeatures multiview;
+class ExtensionsConnector {
+public:
+  ExtensionsConnector(const PhysicalDevice& physicalDevice) noexcept;
+
+  ExtensionsConnector(const ExtensionsConnector& other) = delete;
+
+  ExtensionsConnector(ExtensionsConnector&& other) = delete;
+
+  ~ExtensionsConnector() = default;
+
+  ExtensionsConnector& withIndexTypeUint8Extension();
+
+  ExtensionsConnector& withBufferDeviceAddressExtension();
+
+  ExtensionsConnector& withInheritedViewportScissorExtension();
+
+  ExtensionsConnector& withDescriptorIndexingExtension();
+
+  ExtensionsConnector& withMultiviewExtension();
+
+  ExtensionsConnector& withStorage8BitExtension();
+
+  ExtensionsConnector& withStorage16BitExtension();
+
+  void* getNext() const;
+
+private:
+  const PhysicalDevice& _physicalDevice;
+
+  void* _next = nullptr;
+  VkPhysicalDeviceIndexTypeUint8FeaturesEXT _indexTypeUint8;
+  VkPhysicalDeviceBufferDeviceAddressFeatures _bufferDeviceAddress;
+  VkPhysicalDeviceDescriptorIndexingFeatures _descriptorIndexing;
+  VkPhysicalDeviceInheritedViewportScissorFeaturesNV _inheritedViewportScissor;
+  VkPhysicalDeviceMultiviewFeatures _multiview;
+  VkPhysicalDevice8BitStorageFeatures _storage8Bit;
+  VkPhysicalDevice16BitStorageFeatures _storage16Bit;
 };
-
-void chainExtensionIndexTypeUint8(
-    DeviceFeatures& deviceFeatures, const PhysicalDevice& physicalDevice);
-
-void chainExtensionBufferDeviceAddress(
-    DeviceFeatures& deviceFeatures, const PhysicalDevice& physicalDevice);
-
-void chainExtensionInheritedViewportScissor(
-    DeviceFeatures& deviceFeatures, const PhysicalDevice& physicalDevice);
-
-void chainExtensionDescriptorIndexing(
-    DeviceFeatures& deviceFeatures, const PhysicalDevice& physicalDevice);
-
-void chainExtensionMultiview(DeviceFeatures& deviceFeatures, const PhysicalDevice& physicalDevice);

@@ -79,6 +79,8 @@ private:
   Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass,
              const AttachmentLayout& attachmentLayout) noexcept;
 
+  void destroy();
+
   VkRenderPass _renderpass = VK_NULL_HANDLE;
 
   const LogicalDevice* _logicalDevice = nullptr;

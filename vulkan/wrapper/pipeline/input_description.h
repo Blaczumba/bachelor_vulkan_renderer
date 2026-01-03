@@ -169,14 +169,9 @@ getAttributeDescriptions<VertexP>() {
   };
 }
 
-struct PushConstantsPBR {
+struct PushConstantsModelDescriptorHandles {
   glm::mat4 model;
-  uint32_t uniformIndex;
-  uint32_t diffuse;
-  uint32_t normal;
-  uint32_t metallicRoughness;
-  uint32_t shadow;
-  uint32_t padding[3];
+  uint32_t descriptorHandles[16];
 };
 
 struct PushConstantsShadow {

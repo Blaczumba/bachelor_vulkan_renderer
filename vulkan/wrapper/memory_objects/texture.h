@@ -41,6 +41,8 @@ private:
           const ImageParameters& imageParameters, VkImageLayout layout,
           VkSampler sampler = VK_NULL_HANDLE) noexcept;
 
+  void destroy();
+
   VkImage _image = VK_NULL_HANDLE;
   std::vector<VkImageView> _views;
   // TODO: Create separate Sampler class which is not owned by Texture.

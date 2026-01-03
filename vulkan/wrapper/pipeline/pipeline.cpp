@@ -27,7 +27,8 @@ std::vector<Pipeline> Pipeline::create(
   std::vector<Pipeline> pipelines;
   pipelines.reserve(vkPipelines.size());
   std::transform(
-      vkPipelines.cbegin(), vkPipelines.cend(), std::cbegin(createInfos), std::back_inserter(pipelines),
+      vkPipelines.cbegin(), vkPipelines.cend(), std::cbegin(createInfos),
+      std::back_inserter(pipelines),
       [&logicalDevice](VkPipeline vkPipeline, const VkGraphicsPipelineCreateInfo& createInfo) {
         return vkPipeline != VK_NULL_HANDLE ?
                    Pipeline(logicalDevice, vkPipeline, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -42,25 +43,31 @@ Pipeline::Pipeline(Pipeline&& other) noexcept
     _pipeline(std::exchange(other._pipeline, VK_NULL_HANDLE)), _bindPoint(other._bindPoint),
     _layout(std::exchange(other._layout, VK_NULL_HANDLE)) {}
 
-Pipeline& Pipeline::operator=(Pipeline&& other) noexcept {
-  if (this == &other) {
-    return *this;
-  }
-
-  _logicalDevice = std::exchange(other._logicalDevice, nullptr);
-  _pipeline = std::exchange(other._pipeline, VK_NULL_HANDLE);
-  _bindPoint = other._bindPoint;
-  _layout = other._layout;
-
-  return *this;
-}
-
-Pipeline::~Pipeline() {
+void Pipeline::destroy() {
   if (_pipeline != VK_NULL_HANDLE) {
     _logicalDevice->destroyResource([pipeline = _pipeline](DestroyerContext context) {
       vkDestroyPipeline(context.device, pipeline, context.allocationCallbacks);
     });
   }
+}
+
+Pipeline& Pipeline::operator=(Pipeline&& other) noexcept {
+  if (this == &other) {
+    return *this;
+  }
+
+  destroy();
+
+  _logicalDevice = std::exchange(other._logicalDevice, nullptr);
+  _pipeline = std::exchange(other._pipeline, VK_NULL_HANDLE);
+  _bindPoint = other._bindPoint;
+  _layout = std::exchange(other._layout, VK_NULL_HANDLE);
+
+  return *this;
+}
+
+Pipeline::~Pipeline() {
+  destroy();
 }
 
 VkPipeline Pipeline::getVkPipeline() const {

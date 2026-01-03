@@ -31,10 +31,21 @@ Shader::Shader(Shader&& other) noexcept
   : _shaderModule(std::exchange(other._shaderModule, VK_NULL_HANDLE)),
     _logicalDevice(other._logicalDevice), _shaderStage(other._shaderStage) {}
 
+void Shader::destroy() {
+  if (_shaderModule != VK_NULL_HANDLE) {
+    _logicalDevice->destroyResource([shaderModule = _shaderModule](DestroyerContext context) {
+      vkDestroyShaderModule(context.device, shaderModule, context.allocationCallbacks);
+    });
+  }
+}
+
 Shader& Shader::operator=(Shader&& other) noexcept {
   if (this == &other) {
     return *this;
   }
+
+  destroy();
+
   _shaderModule = std::exchange(other._shaderModule, VK_NULL_HANDLE);
   _logicalDevice = other._logicalDevice;
   _shaderStage = other._shaderStage;
@@ -42,11 +53,7 @@ Shader& Shader::operator=(Shader&& other) noexcept {
 }
 
 Shader::~Shader() {
-  if (_shaderModule != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource([shaderModule = _shaderModule](DestroyerContext context) {
-      vkDestroyShaderModule(context.device, shaderModule, context.allocationCallbacks);
-    });
-  }
+  destroy();
 }
 
 VkPipelineShaderStageCreateInfo Shader::getVkPipelineStageCreateInfo() const {

@@ -105,8 +105,9 @@ std::vector<CommandBuffer> CommandBuffer::create(
 void CommandBuffer::beginRenderPass(const Framebuffer& framebuffer) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
     throw EngineException(
-        "Cannot begin renderpass without VK_COMMAND_BUFFER_LEVEL_PRIMARY " "specified.");
+        "Cannot begin renderpass without VK_COMMAND_BUFFER_LEVEL_PRIMARY specified.");
   }
+
   const Renderpass& renderpass = framebuffer.getRenderpass();
   std::span<const VkClearValue> clearValues = renderpass.getAttachmentsLayout().getVkClearValues();
   const VkRenderPassBeginInfo renderPassInfo = {
@@ -177,6 +178,7 @@ void CommandBuffer::executeSecondaryCommandBuffers(
     throw EngineException(
         "Secondary command buffers can only be executed from the primary command buffer.");
   }
+
   vkCmdExecuteCommands(
       _commandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.begin());
 }
@@ -186,6 +188,7 @@ void CommandBuffer::submit(QueueType type, const VkSemaphore waitSemaphore,
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
     throw EngineException("Secondary command buffers cannot be submitted directly to the queue.");
   }
+
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 

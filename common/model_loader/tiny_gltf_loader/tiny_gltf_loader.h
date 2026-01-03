@@ -34,7 +34,7 @@ template <typename AssetManagerImpl>
 void processNode(
     common::AssetManager<AssetManagerImpl>& assetManager, std::shared_ptr<SharedData>& sharedData,
     const tinygltf::Node& node, const glm::mat4& parentTransform,
-    std::vector<VertexData>& vertexDataList, const std::string& baseDir);
+    std::vector<VertexData>& vertexDataList, std::unordered_map<std::string, size_t>& textureIndexMap, const std::string& baseDir);
 
 }  // namespace
 
@@ -54,11 +54,13 @@ std::vector<VertexData> LoadGltfFromFile(
 
   const std::string baseDir = std::filesystem::path(filePath).parent_path().string();
   std::vector<VertexData> vertexDataList;
+  std::unordered_map<std::string, size_t> textureIndexMap;
   for (const tinygltf::Scene& scene : sharedData->model.scenes) {
     for (int nodeIndex : scene.nodes) {
       const tinygltf::Node& node = sharedData->model.nodes[nodeIndex];
 
-      processNode(assetManager, sharedData, node, glm::mat4(1.0f), vertexDataList, baseDir);
+      processNode(
+          assetManager, sharedData, node, glm::mat4(1.0f), vertexDataList, textureIndexMap, baseDir);
     }
   }
   return vertexDataList;
@@ -76,10 +78,12 @@ std::vector<VertexData> LoadGltfFromString(
       &sharedData->model, &error, &warning, dataString.data(), dataString.size(), baseDir);
 
   std::vector<VertexData> vertexDataList;
+  std::unordered_map<std::string, size_t> textureIndexMap;
   for (const tinygltf::Scene& scene : sharedData->model.scenes) {
     for (int nodeIndex : scene.nodes) {
       const tinygltf::Node& node = sharedData->model.nodes[nodeIndex];
-      processNode(assetManager, sharedData, node, glm::mat4(1.0f), vertexDataList, baseDir);
+      processNode(
+          assetManager, sharedData, node, glm::mat4(1.0f), vertexDataList, textureIndexMap, baseDir);
     }
   }
   return vertexDataList;
@@ -163,13 +167,14 @@ template <typename AssetManagerImpl>
 void processNode(
     common::AssetManager<AssetManagerImpl>& assetManager, std::shared_ptr<SharedData>& sharedData,
     const tinygltf::Node& node, const glm::mat4& parentTransform,
-    std::vector<VertexData>& vertexDataList, const std::string& baseDir) {
+    std::vector<VertexData>& vertexDataList,
+    std::unordered_map<std::string, size_t>& textureIndexMap, const std::string& baseDir) {
   const glm::mat4 currentTransform = parentTransform * GetNodeTransform(node);
 
   if (node.mesh < 0) {
     for (int childIndex : node.children) {
       processNode(assetManager, sharedData, sharedData->model.nodes[childIndex], currentTransform,
-                  vertexDataList, baseDir);
+                  vertexDataList, textureIndexMap, baseDir);
     }
     return;
   }
@@ -208,10 +213,6 @@ void processNode(
       continue;
     }
 
-    // TODO: refactor
-    static int objectCounter = 0;
-    std::string objectName = baseDir + std::to_string(objectCounter++);
-
     static std::pair<std::string, std::string> orders[] = {
       {"PTNT", "0123"},
       {"P",    "0"   }
@@ -222,8 +223,8 @@ void processNode(
         std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()), positionsData.size()),
         std::span(reinterpret_cast<const glm::vec2*>(textureCoordsData.data()),
                   textureCoordsData.size())));
-    assetManager.loadVertexDataInterleavingAsync(
-        sharedData, objectName, indicesBytes, indexSize, orders,
+    const size_t vertexResourceID = assetManager.loadVertexDataInterleavingAsync(
+        sharedData, indicesBytes, indexSize, orders,
         std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()), positionsData.size()),
         std::span(
             reinterpret_cast<const glm::vec2*>(textureCoordsData.data()), textureCoordsData.size()),
@@ -231,18 +232,27 @@ void processNode(
         std::span(reinterpret_cast<const glm::vec3*>(sharedData->tangents.back().data()),
                   sharedData->tangents.back().size()));
 
-    assetManager.loadImageAsync(baseDir + '/' + diffuseTexture);
-    assetManager.loadImageAsync(baseDir + '/' + metallicRoughnessTexture);
-    assetManager.loadImageAsync(baseDir + '/' + normalTexture);
+    auto getOrLoadTexture = [&](const std::string& textureName) -> size_t {
+      auto [it, inserted] = textureIndexMap.try_emplace(textureName);
+      if (inserted) {
+        it->second = assetManager.loadImageAsync(baseDir + '/' + textureName);
+      }
+      return it->second;
+    };
+
+    const size_t diffuseTextureID = getOrLoadTexture(diffuseTexture);
+    const size_t metallicRoughnessTextureID = getOrLoadTexture(metallicRoughnessTexture);
+    const size_t normalTextureID = getOrLoadTexture(normalTexture);
 
     vertexDataList.emplace_back(
-        std::move(positions), indexSize, currentTransform, std::move(diffuseTexture),
-        std::move(normalTexture), std::move(metallicRoughnessTexture), std::move(objectName));
+        std::move(positions), indexSize, currentTransform,
+        ImageID{diffuseTextureID, std::move(diffuseTexture)}, ImageID{normalTextureID, std::move(normalTexture)},
+        ImageID{metallicRoughnessTextureID, std::move(metallicRoughnessTexture)}, vertexResourceID);
   }
 
   for (int childIndex : node.children) {
     processNode(assetManager, sharedData, sharedData->model.nodes[childIndex], currentTransform,
-                vertexDataList, baseDir);
+                vertexDataList, textureIndexMap, baseDir);
   }
 }
 

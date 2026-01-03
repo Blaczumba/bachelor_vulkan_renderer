@@ -4,6 +4,9 @@
 #include <unordered_map>
 
 #include "common/file/file_loader.h"
+#include "lib/sparse/sparse_map.h"
+#include "lib/types/util.h"
+#include "vulkan/resource_manager/hasher.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 #include "vulkan/wrapper/pipeline/shader.h"
@@ -14,8 +17,29 @@ enum class DescriptorSetType : uint8_t {
 };
 
 class PipelineManager {
+  static constexpr uint8_t MAX_PIPELINE_LAYOUTS = 32;
+
+  struct PipelineLayoutID {
+    PipelineLayout layout;
+    size_t refCount;
+  };
+
+  using PipelineLayoutMap = lib::SparseMap<PipelineLayoutID, MAX_PIPELINE_LAYOUTS>;
+  using PipelineLayoutMapIndex = typename PipelineLayoutMap::IndexType;
+
+  static constexpr size_t MAX_PIPELINES = 32;
+
+  struct PipelineResource {
+    Pipeline pipeline;
+    PipelineLayoutMapIndex layoutIndex;
+  };
+
+  using PipelineMap = lib::SparseMap<PipelineResource, MAX_PIPELINES>;
+
+  PipelineManager(const FileLoader& fileLoader);
+
 public:
-  PipelineManager(const std::shared_ptr<FileLoader>& fileLoader);
+  static std::unique_ptr<PipelineManager> create(const FileLoader& fileLoader);
 
   ~PipelineManager() = default;
 
@@ -25,28 +49,44 @@ public:
 
   VkDescriptorSetLayout getOrCreateCameraLayout(const LogicalDevice& logicalDevice);
 
-  GraphicsPipelineBuilder createPBRProgram(const Renderpass& renderpass);
+  using PipelineMapIndex = typename PipelineMap::IndexType;
 
-  GraphicsPipelineBuilder createPbrEnvMappingProgram(const Renderpass& renderpass);
+  Pipeline* getPipeline(PipelineMapIndex index);
 
-  GraphicsPipelineBuilder createSkyboxProgram(const Renderpass& renderpass);
+  bool removePipeline(PipelineMapIndex index);
 
-  GraphicsPipelineBuilder createShadowProgram(const Renderpass& renderpass);
+  PipelineMapIndex createPBRProgram(const Renderpass& renderpass);
+
+  PipelineMapIndex createPbrEnvMappingProgram(const Renderpass& renderpass);
+
+  PipelineMapIndex createEnvMappingProgram(const Renderpass& renderpass);
+
+  PipelineMapIndex createSkyboxProgram(const Renderpass& renderpass);
+
+  PipelineMapIndex createShadowProgram(const Renderpass& renderpass);
 
 private:
-  std::shared_ptr<FileLoader> _fileLoader;
+  PipelineLayoutMap _pipelineLayouts;
+  std::vector<PipelineLayoutMapIndex> _freePipelineLayoutIndices;
+
+  std::unordered_map<PipelineLayoutKey, PipelineLayoutMapIndex, PipelineLayoutHasher>
+      _pipelineLayoutIndices;
+  std::unordered_map<PipelineLayoutMapIndex, PipelineLayoutKey> _pipelineLayoutKeys;
+
+  PipelineMap _pipelines;
+  std::vector<PipelineMapIndex> _freePipelineIndices;
+
+  const FileLoader& _fileLoader;
 
   std::unordered_map<std::string_view, Shader> _shaders;
   std::unordered_map<DescriptorSetType, DescriptorSetLayout> _descriptorSetLayouts;
-  std::unordered_map<std::string_view, PipelineLayout> _pipelineLayouts;
 
   std::reference_wrapper<const Shader> addShader(
       const LogicalDevice& logicalDevice, std::string_view shaderFile,
       VkShaderStageFlagBits shaderStages);
 
-  std::reference_wrapper<const PipelineLayout> getOrCreatePipelineLayout(
-      std::string_view id, const LogicalDevice& logicalDevice,
-      std::span<const VkDescriptorSetLayout> descriptorSetLayouts = {},
-      std::span<const VkPushConstantRange> pushConstantRanges = {},
-      VkPipelineLayoutCreateFlags flags = 0);
+  std::pair<PipelineLayout*, PipelineLayoutMapIndex> getOrCreatePipelineLayout(
+      const PipelineLayoutKey& key, const LogicalDevice& logicalDevice);
+
+  bool removePipelineLayout(PipelineLayoutMapIndex index);
 };

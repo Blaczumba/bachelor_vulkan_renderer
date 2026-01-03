@@ -26,6 +26,8 @@ Texture& Texture::operator=(Texture&& texture) noexcept {
     return *this;
   }
 
+  destroy();
+
   _allocation = texture._allocation;
   _image = std::exchange(texture._image, VK_NULL_HANDLE);
   _views = std::move(texture._views);
@@ -66,8 +68,7 @@ struct ImageDeleter {
 
 }  // namespace
 
-Texture::~Texture() {
-  const VkDevice device = _logicalDevice->getVkDevice();
+void Texture::destroy() {
   if (_sampler != VK_NULL_HANDLE) {
     _logicalDevice->destroyResource([sampler = _sampler](DestroyerContext context) {
       vkDestroySampler(context.device, sampler, context.allocationCallbacks);
@@ -86,6 +87,10 @@ Texture::~Texture() {
           std::visit(ImageDeleter{image}, *context.memoryAllocator, allocation);
         });
   }
+}
+
+Texture::~Texture() {
+  destroy();
 }
 
 VkImage Texture::getVkImage() const {

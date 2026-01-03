@@ -21,7 +21,7 @@ Swapchain::Swapchain(Swapchain&& swapchain) noexcept
     _surfaceFormat(swapchain._surfaceFormat), _extent(swapchain._extent),
     _images(std::move(swapchain._images)), _views(std::move(swapchain._views)) {}
 
-void Swapchain::tryDestroySwapchain() {
+void Swapchain::destroy() {
   for (const VkImageView view : _views) {
     _logicalDevice->destroyResource([view](DestroyerContext context) {
       vkDestroyImageView(context.device, view, context.allocationCallbacks);
@@ -40,7 +40,7 @@ Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
     return *this;
   }
 
-  tryDestroySwapchain();
+  destroy();
 
   _swapchain = std::exchange(other._swapchain, VK_NULL_HANDLE);
   _logicalDevice = std::exchange(other._logicalDevice, nullptr);
@@ -52,7 +52,7 @@ Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
 }
 
 Swapchain::~Swapchain() {
-  tryDestroySwapchain();
+  destroy();
 }
 
 const VkSwapchainKHR Swapchain::getVkSwapchain() const {

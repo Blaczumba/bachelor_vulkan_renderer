@@ -32,6 +32,8 @@ public:
   VkShaderStageFlagBits getVkShaderStageFlagBits() const;
 
 private:
+  void destroy();
+
   VkShaderModule _shaderModule = VK_NULL_HANDLE;
   VkShaderStageFlagBits _shaderStage;
   const LogicalDevice* _logicalDevice = nullptr;
