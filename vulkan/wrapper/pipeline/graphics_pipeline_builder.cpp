@@ -69,7 +69,7 @@ std::vector<Pipeline> GraphicsPipelineBuilder::createPipelines(
         "renderpasses.");
   }
 
-  if (std::all_of(renderpasses.cbegin(), renderpasses.cend(),
+  if (std::all_of(std::cbegin(renderpasses), std::cend(renderpasses),
                   [&firstDevice = renderpasses[0].getLogicalDevice()](const Renderpass& rp) {
                     return &rp.getLogicalDevice() == &firstDevice;
                   })

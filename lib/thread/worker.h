@@ -13,7 +13,7 @@ template <size_t N, typename... Args>
 class Worker {
 public:
   using Context = std::tuple<Args...>;
-  using Job = std::move_only_function<void(Args...)>;
+  using Job = std::function<void(Args...)>;
 
   Worker() = default;
 

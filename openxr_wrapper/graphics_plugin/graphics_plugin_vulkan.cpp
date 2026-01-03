@@ -243,15 +243,18 @@ LogicalDevice createLogicalDevice(
                      &queuePriority};
                  });
 
-  DeviceFeatures deviceFeatures;
-  chainExtensionIndexTypeUint8(deviceFeatures, physicalDevice);
-  chainExtensionBufferDeviceAddress(deviceFeatures, physicalDevice);
-  chainExtensionInheritedViewportScissor(deviceFeatures, physicalDevice);
-  chainExtensionDescriptorIndexing(deviceFeatures, physicalDevice);
+  ExtensionsConnector extensionsConnector(physicalDevice);
+  extensionsConnector.withDescriptorIndexingExtension()
+      .withBufferDeviceAddressExtension()
+      .withIndexTypeUint8Extension()
+      .withInheritedViewportScissorExtension()
+      .withMultiviewExtension()
+      .withStorage8BitExtension()
+      .withStorage16BitExtension();
 
   const VkPhysicalDeviceFeatures2 deviceFeaturesInfo = {
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-    .pNext = deviceFeatures.next,
+    .pNext = extensionsConnector.getNext(),
     .features = {.geometryShader = VK_TRUE,
                  .tessellationShader = VK_TRUE,
                  .sampleRateShading = VK_TRUE,

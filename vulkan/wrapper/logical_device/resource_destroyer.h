@@ -12,7 +12,7 @@ struct DestroyerContext {
   MemoryAllocator* memoryAllocator = nullptr;
 };
 
-using ResourceDestroyerJob = std::move_only_function<void(DestroyerContext)>;
+using ResourceDestroyerJob = std::function<void(DestroyerContext)>;
 
 class ResourceDestroyer {
 public:

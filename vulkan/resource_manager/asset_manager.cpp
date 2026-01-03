@@ -19,7 +19,7 @@ std::unique_ptr<AssetManager> AssetManager::create(
 
 size_t AssetManager::loadImageAsync(
     const std::string& filePath,
-    std::move_only_function<ImageResource(std::span<const std::byte>)> loadingFunction) {
+    std::function<ImageResource(std::span<const std::byte>)> loadingFunction) {
   const ImageResourceMapIndex index = _freeImageDataIndices.back();
   _freeImageDataIndices.pop_back();
   _awaitingImageDataResources.emplace(
