@@ -241,8 +241,7 @@ public:
       return it->second;
     }
 
-    _data.emplace_back(key, V{});
-    return _data.back().second;
+    return _data.emplace_back(key, V{}).second;
   }
 
   template <typename... Args>
