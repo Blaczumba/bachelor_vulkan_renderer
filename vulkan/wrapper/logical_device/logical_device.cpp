@@ -101,7 +101,8 @@ LogicalDevice LogicalDevice::create(
                                          .tessellationShader = VK_TRUE,
                                          .sampleRateShading = VK_TRUE,
                                          .depthClamp = VK_TRUE,
-                                         .samplerAnisotropy = VK_TRUE}
+                                         .samplerAnisotropy = VK_TRUE,
+                                         .shaderInt16 = VK_TRUE}
   };
 
   const lib::Buffer<const char*> extensions = physicalDevice.getAvailableExtensions();

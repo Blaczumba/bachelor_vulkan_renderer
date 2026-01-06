@@ -10,5 +10,6 @@ VertexInputDescriptionBuilder& VertexInputDescriptionBuilder::finishBinding(
 std::tuple<std::span<const VkVertexInputBindingDescription>,
            std::span<const VkVertexInputAttributeDescription>>
 VertexInputDescriptionBuilder::getDescription() const {
-  return std::make_tuple(std::span(_VkVertexInputBindingDescription), std::span(_vkVertexInputAttributeDescription));
+  return std::make_tuple(
+      std::span(_VkVertexInputBindingDescription), std::span(_vkVertexInputAttributeDescription));
 }

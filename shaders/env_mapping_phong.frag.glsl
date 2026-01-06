@@ -1,4 +1,7 @@
 #version 450
+
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+
 #include "bindless.glsl"
 
 layout (location = 0) in vec3 inNormal;
@@ -11,9 +14,9 @@ RegisterUniform(Light, { \
 
 layout(push_constant) uniform Constants {
     mat4 model;
-    uint environmentHandle;
-    uint light;
-    uint padding[14];
+    uint16_t environmentHandle;
+    uint16_t light;
+    uint16_t padding[30];
 } pushConstants;
 
 layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which depends on frame in flight

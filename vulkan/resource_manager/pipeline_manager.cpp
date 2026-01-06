@@ -333,8 +333,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
 
   VertexInputDescriptionBuilder builder;
-  builder.addVertexAttributeDescription<glm::vec3>()
-      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  builder.addVertexAttributeDescription<glm::vec3>().finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
   auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
@@ -377,8 +376,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
       VkPipelineColorBlendAttachmentState{.colorWriteMask = VK_COLOR_COMPONENT_R_BIT});
 
   VertexInputDescriptionBuilder builder;
-  builder.addVertexAttributeDescription<glm::vec3>()
-      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  builder.addVertexAttributeDescription<glm::vec3>().finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
   auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {

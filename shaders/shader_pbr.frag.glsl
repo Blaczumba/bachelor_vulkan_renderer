@@ -1,15 +1,17 @@
 #version 450
 
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+
 #include "bindless.glsl"
 
 layout(push_constant) uniform Constants {
     mat4 model;
-    uint light;
-    uint diffuse;
-    uint normal;
-    uint metallicRoughness;
-    uint shadow;
-    uint padding[11]; // Padding to 128B.
+    uint16_t light;
+    uint16_t diffuse;
+    uint16_t normal;
+    uint16_t metallicRoughness;
+    uint16_t shadow;
+    uint16_t padding[27]; // Padding to 128B.
 
 } pushConstants;
 

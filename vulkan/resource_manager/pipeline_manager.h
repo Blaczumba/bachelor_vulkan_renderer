@@ -1,8 +1,8 @@
 #pragma once
 
+#include <glm/glm.hpp>
 #include <string_view>
 #include <unordered_map>
-#include <glm/glm.hpp>
 
 #include "common/file/file_loader.h"
 #include "lib/sparse/sparse_map.h"
@@ -90,7 +90,7 @@ private:
 
 struct PushConstantsModelDescriptorHandles {
   glm::mat4 model;
-  uint32_t descriptorHandles[16];
+  uint16_t descriptorHandles[32];
 };
 
 struct PushConstantsShadow {
