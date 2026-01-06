@@ -12,7 +12,7 @@ namespace {
 template <typename T>
 void chainExtensionFeature(
     void** next, T& feature, std::string_view extension, const PhysicalDevice& physicalDevice) {
-  if (!physicalDevice.hasAvailableExtension(extension)) {
+  if (!physicalDevice.hasAvailableExtension(extension)) [[unlikely]] {
     throw EngineException(std::format("{} was not found in PhysicalDevice extensions.", extension));
   }
 

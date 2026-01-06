@@ -3,13 +3,9 @@
 #include <algorithm>
 #include <functional>
 #include <future>
-#include <numeric>
-#include <optional>
 #include <span>
 #include <string>
-#include <string_view>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "common/file/file_loader.h"
 #include "common/model_loader/image_loader/image_loader.h"
@@ -123,7 +119,6 @@ size_t AssetManager::loadVertexDataInterleavingAsync(
             const size_t shrunkIndexSize = getShrunkIndexSize(indices, indexSize);
             vertexData.indexBuffer = Buffer::createStagingBuffer(
                 _logicalDevice, indices.size() / indexSize * shrunkIndexSize);
-
             vertexData.indexBuffer.copyAndShrinkData(indices, shrunkIndexSize, indexSize);
 
             vertexData.indexType = getIndexType(shrunkIndexSize);

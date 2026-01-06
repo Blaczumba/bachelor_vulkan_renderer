@@ -1,5 +1,7 @@
 #include "asset_manager.h"
 
+#include <numeric>
+
 using ImageData = AssetManager::ImageData;
 using VertexData = AssetManager::VertexData;
 
@@ -34,20 +36,20 @@ size_t AssetManager::loadImageAsync(const std::string& filePath, ImageJob loadin
             lib::Buffer<VkBufferImageCopy> vkSubresources(resource.subresources.size());
             std::transform(resource.subresources.cbegin(), resource.subresources.cend(),
                            vkSubresources.begin(), [](const ImageSubresource& subresource) {
-                    return VkBufferImageCopy{
-                    .bufferOffset = subresource.offset,
-                    .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                        .mipLevel = subresource.mipLevel,
-                                        .baseArrayLayer = subresource.baseArrayLayer,
-                                        .layerCount = subresource.layerCount},
-                    .imageExtent = {.width = subresource.width,
-                                        .height = subresource.height,
-                                        .depth = subresource.depth}
-                    };
-                });
+                             return VkBufferImageCopy{
+                               .bufferOffset = subresource.offset,
+                               .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                                    .mipLevel = subresource.mipLevel,
+                                                    .baseArrayLayer = subresource.baseArrayLayer,
+                                                    .layerCount = subresource.layerCount},
+                               .imageExtent = {.width = subresource.width,
+                                                    .height = subresource.height,
+                                                    .depth = subresource.depth}
+                             };
+                           });
 
-            return ImageData(
-                std::move(stagingBuffer), resource.width, resource.height, resource.mipLevels, resource.layerCount, std::move(vkSubresources));
+            return ImageData(std::move(stagingBuffer), resource.width, resource.height,
+                             resource.mipLevels, resource.layerCount, std::move(vkSubresources));
           }));
 
   return index;

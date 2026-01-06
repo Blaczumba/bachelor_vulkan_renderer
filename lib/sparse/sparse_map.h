@@ -82,7 +82,7 @@ bool SparseMap<Type, N>::exists(IndexType index) const {
 
 template <typename Type, size_t N>
 bool SparseMap<Type, N>::insert(IndexType index, Type&& value) {
-  if (_size == N || exists(index)) {
+  if (_size == N || exists(index)) [[unlikely]] {
     return false;
   }
 
@@ -102,7 +102,7 @@ Type& SparseMap<Type, N>::insertUnsafe(IndexType index, Type&& value) {
 
 template <typename Type, size_t N>
 bool SparseMap<Type, N>::erase(IndexType index) {
-  if (!exists(index)) {
+  if (!exists(index)) [[unlikely]] {
     return false;
   }
 
@@ -115,10 +115,10 @@ void SparseMap<Type, N>::eraseUnsafe(IndexType index) {
   const IndexType denseIndex = _sparse[index];
   const IndexType lastIndex = _dense[--_size];
   _dense[denseIndex] = lastIndex;
-  if (_size != denseIndex) {
+  if (_size != denseIndex) [[likely]] {
     _values[denseIndex] = std::move(_values[lastIndex]);
   } else if constexpr (!std::is_trivially_destructible<Type>()) {
-    _values[denseIndex] = Type{};
+    std::destroy_at(&_values[denseIndex]);
   }
 
   _sparse[lastIndex] = denseIndex;
