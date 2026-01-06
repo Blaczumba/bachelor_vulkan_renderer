@@ -95,7 +95,7 @@ if(Vulkan_FOUND)
             LogicalDevice Renderpass
             Swapchain Buffer CommandBuffer
             Framebuffer Pipeline
-            DescriptorSet
+            DescriptorSet VulkanWrapperUtil
     )
     target_link_libraries(${ENGINE_NAME} INTERFACE ${VULKAN_ENGINE_NAME})
 endif()
