@@ -12,7 +12,8 @@
 PipelineManager::PipelineManager(const FileLoader& fileLoader)
   : _fileLoader(fileLoader), _freePipelineLayoutIndices(MAX_PIPELINE_LAYOUTS),
     _freePipelineIndices(MAX_PIPELINES) {
-  std::iota(_freePipelineLayoutIndices.rbegin(), _freePipelineLayoutIndices.rend(), PipelineLayoutMapIndex(0));
+  std::iota(_freePipelineLayoutIndices.rbegin(), _freePipelineLayoutIndices.rend(),
+            PipelineLayoutMapIndex(0));
   std::iota(_freePipelineIndices.rbegin(), _freePipelineIndices.rend(), PipelineMapIndex(0));
 }
 

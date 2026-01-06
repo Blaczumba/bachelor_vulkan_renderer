@@ -254,7 +254,7 @@ public:
     iterator last = std::prev(_data.end());
     if (it != last) {
       *it = std::move(*last);
-    } 
+    }
     _data.pop_back();
     return it;
   }

@@ -20,7 +20,6 @@ public:
   using Job = std::move_only_function<void(Args...)>;
 #endif  // ANDROID
 
-
   Worker() = default;
 
   Worker(Args... args);

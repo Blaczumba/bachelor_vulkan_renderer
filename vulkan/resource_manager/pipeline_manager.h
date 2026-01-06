@@ -6,12 +6,11 @@
 
 #include "common/file/file_loader.h"
 #include "lib/sparse/sparse_map.h"
+#include "lib/types/strong_int.h"
 #include "vulkan/resource_manager/hasher.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 #include "vulkan/wrapper/pipeline/shader.h"
-
-#include "lib/types/strong_int.h"
 
 enum class DescriptorSetType : uint8_t {
   BINDLESS,

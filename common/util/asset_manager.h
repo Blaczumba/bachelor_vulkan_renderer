@@ -10,14 +10,14 @@ namespace common {
 template <typename AssetManagerImpl>
 class AssetManager {
 public:
-  size_t loadImageAsync(const std::string& filePath) {
+  decltype(auto) loadImageAsync(const std::string& filePath) {
     return static_cast<AssetManagerImpl*>(this)->loadImageAsync(filePath);
   }
 
   template <typename Model, typename... Type>
-  size_t loadVertexDataInterleavingAsync(
-      std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices,
-      uint8_t indexSize, std::span<const std::pair<std::string, std::string>> orders,
+  decltype(auto) loadVertexDataInterleavingAsync(
+      std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
+      std::span<const std::pair<std::string, std::string>> orders,
       std::span<const Type>... attributes) {
     return static_cast<AssetManagerImpl*>(this)->loadVertexDataInterleavingAsync(
         modelPtr, indices, indexSize, orders, attributes...);

@@ -1,7 +1,7 @@
 #include "entity_manager.h"
 
-#include <numeric>
 #include <iterator>
+#include <numeric>
 
 EntityManager::EntityManager() {
   _availableEntities.resize(MAX_ENTITIES);

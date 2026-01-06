@@ -68,7 +68,8 @@ std::vector<BufferDescription> analyzeConfig(
             digit));
       }
 
-      const AttributeDescription& description = orderedDescs.emplace_back(descs[static_cast<size_t>(digit - '0')]);
+      const AttributeDescription& description =
+          orderedDescs.emplace_back(descs[static_cast<size_t>(digit - '0')]);
       totalSize += description.size * description.count;
     }
 

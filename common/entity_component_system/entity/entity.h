@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <limits>
 
-#include "lib/types/util.h"
 #include "lib/types/strong_int.h"
+#include "lib/types/util.h"
 
 constexpr size_t MAX_ENTITIES = 255;
 DEFINE_STRONG_INT(Entity, typename lib::SmallestIndex<MAX_ENTITIES>::type);
