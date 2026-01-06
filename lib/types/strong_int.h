@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-#define DEFINE_STRONG_INT(TYPE, INT_TYPE) using TYPE = lib::StrongInt<INT_TYPE, struct NAME##Tag>;
+#define DEFINE_STRONG_INT(TYPE, INT_TYPE) using TYPE = lib::StrongInt<INT_TYPE, struct NAME##Tag>
 
 namespace lib {
 
@@ -10,51 +10,74 @@ template <typename T, typename Tag>
 class StrongInt {
   static_assert(std::is_integral<T>::value, "StrongInt must be instantiated with an integer type");
 
-  T value_;
+  T _value;
 
 public:
-  explicit StrongInt(T value) : value_(value) {}
+  StrongInt() noexcept = default;
 
-  T value() const {
-    return value_;
-  }
+  explicit StrongInt(T value) noexcept : _value(value) {}
 
-  explicit operator T() const {
-    return value_;
-  }
+  ~StrongInt() = default;
 
-  bool operator==(const StrongInt& other) const {
-    return value_ == other.value_;
-  }
-  bool operator!=(const StrongInt& other) const {
-    return value_ != other.value_;
-  }
-  bool operator<(const StrongInt& other) const {
-    return value_ < other.value_;
-  }
-  bool operator<=(const StrongInt& other) const {
-    return value_ <= other.value_;
-  }
-  bool operator>(const StrongInt& other) const {
-    return value_ > other.value_;
-  }
-  bool operator>=(const StrongInt& other) const {
-    return value_ >= other.value_;
+  T value() const noexcept {
+    return _value;
   }
 
-  StrongInt& operator+=(const StrongInt& other) {
-    value_ += other.value_;
+  T operator*() const noexcept {
+    return _value;
+  }
+
+  bool operator==(const StrongInt& other) const noexcept {
+    return _value == other._value;
+  }
+
+  bool operator!=(const StrongInt& other) const noexcept {
+    return _value != other._value;
+  }
+
+  bool operator<(const StrongInt& other) const noexcept {
+    return _value < other._value;
+  }
+
+  bool operator<=(const StrongInt& other) const noexcept {
+    return _value <= other._value;
+  }
+
+  bool operator>(const StrongInt& other) const noexcept {
+    return _value > other._value;
+  }
+
+  bool operator>=(const StrongInt& other) const noexcept {
+    return _value >= other._value;
+  }
+
+  StrongInt& operator+=(const StrongInt& other) noexcept {
+    _value += other._value;
     return *this;
   }
-  StrongInt& operator-=(const StrongInt& other) {
-    value_ -= other.value_;
+
+  StrongInt& operator-=(const StrongInt& other) noexcept {
+    _value -= other._value;
     return *this;
   }
-  StrongInt operator+(const StrongInt& other) const {
-    return StrongInt(value_ + other.value_);
+
+  StrongInt operator+(const StrongInt& other) const noexcept {
+    return StrongInt(_value + other._value);
   }
-  StrongInt operator-(const StrongInt& other) const {
-    return StrongInt(value_ - other.value_);
+
+  StrongInt operator-(const StrongInt& other) const noexcept {
+    return StrongInt(_value - other._value);
+  }
+
+  StrongInt& operator++() noexcept {
+    ++_value;
+    return *this;
+  }
+
+  StrongInt operator++(int) noexcept {
+    StrongInt temp = *this;
+    ++_value;
+    return temp;
   }
 };
 

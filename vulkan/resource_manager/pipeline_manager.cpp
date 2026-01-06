@@ -12,8 +12,8 @@
 PipelineManager::PipelineManager(const FileLoader& fileLoader)
   : _fileLoader(fileLoader), _freePipelineLayoutIndices(MAX_PIPELINE_LAYOUTS),
     _freePipelineIndices(MAX_PIPELINES) {
-  std::iota(_freePipelineLayoutIndices.rbegin(), _freePipelineLayoutIndices.rend(), 0);
-  std::iota(_freePipelineIndices.rbegin(), _freePipelineIndices.rend(), 0);
+  std::iota(_freePipelineLayoutIndices.rbegin(), _freePipelineLayoutIndices.rend(), PipelineLayoutMapIndex(0));
+  std::iota(_freePipelineIndices.rbegin(), _freePipelineIndices.rend(), PipelineMapIndex(0));
 }
 
 std::unique_ptr<PipelineManager> PipelineManager::create(const FileLoader& fileLoader) {
@@ -131,20 +131,20 @@ bool PipelineManager::removePipelineLayout(PipelineLayoutMapIndex index) {
 }
 
 Pipeline* PipelineManager::getPipeline(PipelineMapIndex index) {
-  if (!_pipelines.exists(index)) {
+  if (!_pipelines.exists(*index)) {
     return nullptr;
   }
 
-  return &_pipelines.getValue(index).pipeline;
+  return &_pipelines.getValue(*index).pipeline;
 }
 
 bool PipelineManager::removePipeline(PipelineManager::PipelineMapIndex index) {
-  if (!_pipelines.exists(index)) {
+  if (!_pipelines.exists(*index)) {
     return false;
   }
 
-  const PipelineLayoutMapIndex layoutIndex = _pipelines.getValue(index).layoutIndex;
-  _pipelines.eraseUnsafe(index);
+  const PipelineLayoutMapIndex layoutIndex = _pipelines.getValue(*index).layoutIndex;
+  _pipelines.eraseUnsafe(*index);
   _freePipelineIndices.push_back(index);
   return removePipelineLayout(layoutIndex);
 }
@@ -194,7 +194,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Render
   const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
   _freePipelineIndices.pop_back();
   _pipelines.insertUnsafe(
-      pipelineIndex,
+      *pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
@@ -245,7 +245,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
   const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
   _freePipelineIndices.pop_back();
   _pipelines.insertUnsafe(
-      pipelineIndex,
+      *pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
@@ -296,7 +296,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
   const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
   _freePipelineIndices.pop_back();
   _pipelines.insertUnsafe(
-      pipelineIndex,
+      *pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
@@ -342,7 +342,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
   const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
   _freePipelineIndices.pop_back();
   _pipelines.insertUnsafe(
-      pipelineIndex,
+      *pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
@@ -385,7 +385,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
   const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
   _freePipelineIndices.pop_back();
   _pipelines.insertUnsafe(
-      pipelineIndex,
+      *pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)

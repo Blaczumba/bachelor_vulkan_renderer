@@ -140,7 +140,7 @@ private:
     return {p, true};
   }
 
-  std::array<value_type, N> _data;
+  std::array<value_type, N> _data;  // TODO: change to std::inplace_vector when it's introduced.
   size_t _size{0};
 };
 

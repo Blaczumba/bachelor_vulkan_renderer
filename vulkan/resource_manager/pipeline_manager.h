@@ -11,6 +11,8 @@
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 #include "vulkan/wrapper/pipeline/shader.h"
 
+#include "lib/types/strong_int.h"
+
 enum class DescriptorSetType : uint8_t {
   BINDLESS,
   CAMERA
@@ -39,6 +41,8 @@ class PipelineManager {
   PipelineManager(const FileLoader& fileLoader);
 
 public:
+  DEFINE_STRONG_INT(PipelineMapIndex, typename PipelineMap::IndexType);
+
   static std::unique_ptr<PipelineManager> create(const FileLoader& fileLoader);
 
   ~PipelineManager() = default;
@@ -46,8 +50,6 @@ public:
   VkDescriptorSetLayout getOrCreateBindlessLayout(const LogicalDevice& logicalDevice);
 
   VkDescriptorSetLayout getOrCreateCameraLayout(const LogicalDevice& logicalDevice);
-
-  using PipelineMapIndex = typename PipelineMap::IndexType;
 
   Pipeline* getPipeline(PipelineMapIndex index);
 

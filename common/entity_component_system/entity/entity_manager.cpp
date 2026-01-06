@@ -1,14 +1,11 @@
 #include "entity_manager.h"
 
-#include <algorithm>
+#include <numeric>
 #include <iterator>
 
 EntityManager::EntityManager() {
-  _availableEntities.reserve(MAX_ENTITIES);
-  std::generate_n(
-      std::back_inserter(_availableEntities), MAX_ENTITIES, [val = MAX_ENTITIES]() mutable {
-        return --val;
-      });
+  _availableEntities.resize(MAX_ENTITIES);
+  std::iota(_availableEntities.rbegin(), _availableEntities.rend(), Entity{0});
 }
 
 Entity EntityManager::createEntity() {

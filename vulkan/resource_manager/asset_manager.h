@@ -72,21 +72,26 @@ private:
 
   static constexpr size_t MAX_IMAGE_DATA_RESOURCES = 256;
   using ImageResourceMap = lib::SparseMap<ImageData, MAX_IMAGE_DATA_RESOURCES>;
-  using ImageResourceMapIndex = typename ImageResourceMap::IndexType;
+  
+  static constexpr size_t MAX_VERTEX_DATA_RESOURCES = 256;
+  using VertexResourceMap = lib::SparseMap<VertexData, MAX_VERTEX_DATA_RESOURCES>;
+ 
+public:
+    using ImageResourceMapIndex = typename ImageResourceMap::IndexType;
+    using VertexResourceMapIndex = typename VertexResourceMap::IndexType;
+
+private:
 
   std::vector<ImageResourceMapIndex> _freeImageDataIndices;  // TODO: Change to inplace vector.
   std::unordered_map<ImageResourceMapIndex, std::future<ImageData>>
       _awaitingImageDataResources;  // TODO: Change to flat unordered map.
   ImageResourceMap _imageDataResources;
 
-  static constexpr size_t MAX_VERTEX_DATA_RESOURCES = 256;
-  using VertexResourceMap = lib::SparseMap<VertexData, MAX_VERTEX_DATA_RESOURCES>;
-  using VertexResourceMapIndex = typename VertexResourceMap::IndexType;
-
   std::vector<VertexResourceMapIndex> _freeVertexDataIndices;  // TODO: Change to inplace vector.
   std::unordered_map<VertexResourceMapIndex, std::future<VertexData>>
       _awaitingVertexDataResources;  // TODO: Change to flat unordered map.
   VertexResourceMap _vertexDataResources;
+
 };
 
 template <typename Model, typename... Type>
