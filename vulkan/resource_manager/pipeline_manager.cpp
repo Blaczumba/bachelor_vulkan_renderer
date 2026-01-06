@@ -1,6 +1,5 @@
 #include "pipeline_manager.h"
 
-#include <array>
 #include <filesystem>
 #include <numeric>
 #include <string_view>
@@ -21,7 +20,7 @@ std::unique_ptr<PipelineManager> PipelineManager::create(const FileLoader& fileL
   return std::unique_ptr<PipelineManager>(new PipelineManager(fileLoader));
 }
 
-std::reference_wrapper<const Shader> PipelineManager::addShader(
+const Shader& PipelineManager::addShader(
     const LogicalDevice& logicalDevice, std::string_view shaderFile,
     VkShaderStageFlagBits shaderStages) {
   auto [it, inserted] = _shaders.try_emplace(shaderFile);

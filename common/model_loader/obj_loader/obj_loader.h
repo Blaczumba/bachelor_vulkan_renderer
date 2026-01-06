@@ -85,7 +85,7 @@ VertexData loadObj(common::AssetManager<AssetManagerImpl>& assetManager, const s
 
   static std::pair<std::string, std::string> orders[] = {
     {"P", "0"},
-    {"PN", "01" }
+    {"PN", "02" }
   };
 
   const size_t vertexResourceID = assetManager.loadVertexDataInterleavingAsync(
@@ -93,6 +93,7 @@ VertexData loadObj(common::AssetManager<AssetManagerImpl>& assetManager, const s
                 model->indices.size() * indexSize),
       indexSize, orders,
       std::span<const glm::vec3>(model->positions.data(), model->positions.size()),
+      std::span<const glm::vec2>(model->texCoords.data(), model->texCoords.size()),
       std::span<const glm::vec3>(model->normals.data(), model->normals.size()));
 
   return VertexData{.indexSize = indexSize, .vertexResourceID = vertexResourceID};

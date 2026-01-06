@@ -60,9 +60,15 @@ public:
   const VertexData& getVertexData(size_t index);
 
 private:
+// TODO: Change after std::move_only_function becomes a standard.
+#ifdef ANDROID
+  using ImageJob = std::function<ImageResource(std::span<const std::byte>)>;
+#else
+  using ImageJob = std::move_only_function<ImageResource(std::span<const std::byte>)>;
+#endif  // ANDROID
+
   size_t loadImageAsync(
-      const std::string& filePath,
-      std::function<ImageResource(std::span<const std::byte>)> loadingFunction);
+      const std::string& filePath, ImageJob loadingFunction);
 
   std::launch _launchPolicy;
 

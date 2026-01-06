@@ -5,7 +5,6 @@
 
 #include "common/file/file_loader.h"
 #include "lib/sparse/sparse_map.h"
-#include "lib/types/util.h"
 #include "vulkan/resource_manager/hasher.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
@@ -17,7 +16,7 @@ enum class DescriptorSetType : uint8_t {
 };
 
 class PipelineManager {
-  static constexpr uint8_t MAX_PIPELINE_LAYOUTS = 32;
+  static constexpr size_t MAX_PIPELINE_LAYOUTS = 32;
 
   struct PipelineLayoutID {
     PipelineLayout layout;
@@ -42,8 +41,6 @@ public:
   static std::unique_ptr<PipelineManager> create(const FileLoader& fileLoader);
 
   ~PipelineManager() = default;
-
-  const Shader* getShader(std::string_view shaderPath) const;
 
   VkDescriptorSetLayout getOrCreateBindlessLayout(const LogicalDevice& logicalDevice);
 
@@ -81,7 +78,7 @@ private:
   std::unordered_map<std::string_view, Shader> _shaders;
   std::unordered_map<DescriptorSetType, DescriptorSetLayout> _descriptorSetLayouts;
 
-  std::reference_wrapper<const Shader> addShader(
+  const Shader& addShader(
       const LogicalDevice& logicalDevice, std::string_view shaderFile,
       VkShaderStageFlagBits shaderStages);
 

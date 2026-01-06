@@ -13,7 +13,13 @@ template <size_t N, typename... Args>
 class Worker {
 public:
   using Context = std::tuple<Args...>;
+// TODO: Change after std::move_only_function becomes a standard.
+#ifdef ANDROID
   using Job = std::function<void(Args...)>;
+#else
+  using Job = std::move_only_function<void(Args...)>;
+#endif  // ANDROID
+
 
   Worker() = default;
 

@@ -61,7 +61,7 @@ LogicalDevice::~LogicalDevice() {
   }
 }
 
-void LogicalDevice::destroyResource(ResourceDestroyerJob&& destroyResource) const {
+void LogicalDevice::destroyResource(ResourceDestroyer::Job destroyResource) const {
   _resourceDestroyer->destroyResource(std::move(destroyResource));
 }
 
