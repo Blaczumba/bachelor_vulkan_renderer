@@ -26,14 +26,28 @@ size_t AssetManager::loadImageAsync(const std::string& filePath, ImageJob loadin
           _launchPolicy,
           [this, filePath, loadingFunction = std::move(loadingFunction)]() mutable -> ImageData {
             ImageResource resource = loadingFunction(_fileLoader.loadFileToBuffer(filePath));
-
             Buffer stagingBuffer = Buffer::createStagingBuffer(_logicalDevice, resource.size);
             stagingBuffer.copyData(
                 std::span(static_cast<const std::byte*>(resource.data), resource.size));
             ImageLoader::deallocateResources(resource);
+
+            lib::Buffer<VkBufferImageCopy> vkSubresources(resource.subresources.size());
+            std::transform(resource.subresources.cbegin(), resource.subresources.cend(),
+                           vkSubresources.begin(), [](const ImageSubresource& subresource) {
+                    return VkBufferImageCopy{
+                    .bufferOffset = subresource.offset,
+                    .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                        .mipLevel = subresource.mipLevel,
+                                        .baseArrayLayer = subresource.baseArrayLayer,
+                                        .layerCount = subresource.layerCount},
+                    .imageExtent = {.width = subresource.width,
+                                        .height = subresource.height,
+                                        .depth = subresource.depth}
+                    };
+                });
+
             return ImageData(
-                std::move(stagingBuffer), resource.width, resource.height, resource.mipLevels,
-                resource.layerCount, std::move(resource.subresources));
+                std::move(stagingBuffer), resource.width, resource.height, resource.mipLevels, resource.layerCount, std::move(vkSubresources));
           }));
 
   return index;

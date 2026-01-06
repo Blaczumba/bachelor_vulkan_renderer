@@ -38,7 +38,7 @@ public:
     uint32_t height;
     uint32_t mipLevels;
     uint32_t layerCount;
-    std::vector<ImageSubresource> copyRegions;
+    lib::Buffer<VkBufferImageCopy> copyRegions;
   };
 
   struct VertexData {
