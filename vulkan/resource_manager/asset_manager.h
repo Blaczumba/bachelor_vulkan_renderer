@@ -67,8 +67,7 @@ private:
   using ImageJob = std::move_only_function<ImageResource(std::span<const std::byte>)>;
 #endif  // ANDROID
 
-  size_t loadImageAsync(
-      const std::string& filePath, ImageJob loadingFunction);
+  size_t loadImageAsync(const std::string& filePath, ImageJob loadingFunction);
 
   std::launch _launchPolicy;
 

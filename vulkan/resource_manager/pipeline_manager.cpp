@@ -7,7 +7,7 @@
 
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
-#include "vulkan/wrapper/pipeline/input_description.h"
+#include "vulkan/wrapper/util/vertex_input_description_builder.h"
 
 PipelineManager::PipelineManager(const FileLoader& fileLoader)
   : _fileLoader(fileLoader), _freePipelineLayoutIndices(MAX_PIPELINE_LAYOUTS),
@@ -180,9 +180,13 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Render
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
 
-  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexPTNT>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec2>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
@@ -227,9 +231,13 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
 
-  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexPTNT>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec2>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
@@ -276,9 +284,11 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
 
-  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexPN>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexPN>();
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
@@ -322,9 +332,10 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
 
-  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexP>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexP>();
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>()
+      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
@@ -365,9 +376,10 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
       VkPipelineColorBlendAttachmentState{.colorWriteMask = VK_COLOR_COMPONENT_R_BIT});
 
-  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexP>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexP>();
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>()
+      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};

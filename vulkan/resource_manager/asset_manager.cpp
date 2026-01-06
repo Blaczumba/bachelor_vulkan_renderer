@@ -17,8 +17,7 @@ std::unique_ptr<AssetManager> AssetManager::create(
   return std::unique_ptr<AssetManager>(new AssetManager(logicalDevice, fileLoader, launchPolicy));
 }
 
-size_t AssetManager::loadImageAsync(
-    const std::string& filePath, ImageJob loadingFunction) {
+size_t AssetManager::loadImageAsync(const std::string& filePath, ImageJob loadingFunction) {
   const ImageResourceMapIndex index = _freeImageDataIndices.back();
   _freeImageDataIndices.pop_back();
   _awaitingImageDataResources.emplace(

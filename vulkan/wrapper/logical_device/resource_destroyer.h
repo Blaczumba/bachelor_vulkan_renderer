@@ -16,11 +16,10 @@ class ResourceDestroyer {
 public:
 // TODO: Change after std::move_only_function becomes a standard.
 #ifdef ANDROID
-    using Job = std::function<void(DestroyerContext)>;
+  using Job = std::function<void(DestroyerContext)>;
 #else
-    using Job = std::move_only_function<void(DestroyerContext)>;
+  using Job = std::move_only_function<void(DestroyerContext)>;
 #endif  // ANDROID
-
 
   virtual ~ResourceDestroyer() = default;
 

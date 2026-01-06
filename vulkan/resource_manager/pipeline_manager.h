@@ -2,6 +2,7 @@
 
 #include <string_view>
 #include <unordered_map>
+#include <glm/glm.hpp>
 
 #include "common/file/file_loader.h"
 #include "lib/sparse/sparse_map.h"
@@ -78,12 +79,33 @@ private:
   std::unordered_map<std::string_view, Shader> _shaders;
   std::unordered_map<DescriptorSetType, DescriptorSetLayout> _descriptorSetLayouts;
 
-  const Shader& addShader(
-      const LogicalDevice& logicalDevice, std::string_view shaderFile,
-      VkShaderStageFlagBits shaderStages);
+  const Shader& addShader(const LogicalDevice& logicalDevice, std::string_view shaderFile,
+                          VkShaderStageFlagBits shaderStages);
 
   std::pair<PipelineLayout*, PipelineLayoutMapIndex> getOrCreatePipelineLayout(
       const PipelineLayoutKey& key, const LogicalDevice& logicalDevice);
 
   bool removePipelineLayout(PipelineLayoutMapIndex index);
+};
+
+struct PushConstantsModelDescriptorHandles {
+  glm::mat4 model;
+  uint32_t descriptorHandles[16];
+};
+
+struct PushConstantsShadow {
+  glm::mat4 model;
+  glm::mat4 lightProjView;
+};
+
+struct PushConstantsPhongEnv {
+  glm::mat4 lightProjView;
+  glm::mat3x4 model;
+  uint32_t envMapHandle;
+};
+
+struct PushConstantsSkybox {
+  glm::mat4 proj;
+  glm::mat3x4 view;
+  uint32_t skyboxHandle;
 };
