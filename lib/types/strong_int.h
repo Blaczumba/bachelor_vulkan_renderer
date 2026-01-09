@@ -84,6 +84,7 @@ public:
 }  // namespace lib
 
 namespace std {
+
 template <typename T, typename Tag>
 struct hash<lib::StrongInt<T, Tag>> {
   size_t operator()(const lib::StrongInt<T, Tag>& obj) const noexcept {

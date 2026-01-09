@@ -239,8 +239,10 @@ void processNode(
             std::span(reinterpret_cast<const glm::vec3*>(sharedData->tangents.back().data()),
                       sharedData->tangents.back().size()));
 
+    using ImageResourceMapIndex = typename AssetManagerImpl::ImageResourceMapIndex;
+
     auto getOrLoadTexture =
-        [&](const std::string& textureName) -> AssetManagerImpl::ImageResourceMapIndex {
+        [&](const std::string& textureName) -> ImageResourceMapIndex {
       auto [it, inserted] = textureIndexMap.try_emplace(textureName);
       if (inserted) {
         it->second = assetManager.loadImageAsync(baseDir + '/' + textureName);
@@ -248,18 +250,20 @@ void processNode(
       return it->second;
     };
 
-    const typename AssetManagerImpl::ImageResourceMapIndex diffuseTextureID =
+    const ImageResourceMapIndex diffuseTextureID =
         getOrLoadTexture(diffuseTexture);
-    const typename AssetManagerImpl::ImageResourceMapIndex metallicRoughnessTextureID =
+    const ImageResourceMapIndex metallicRoughnessTextureID =
         getOrLoadTexture(metallicRoughnessTexture);
-    const typename AssetManagerImpl::ImageResourceMapIndex normalTextureID =
+    const ImageResourceMapIndex normalTextureID =
         getOrLoadTexture(normalTexture);
 
     vertexDataList.emplace_back(
         std::move(positions), indexSize, currentTransform,
-        ImageID<AssetManagerImpl>{diffuseTextureID, std::move(diffuseTexture)},
-        ImageID<AssetManagerImpl>{normalTextureID, std::move(normalTexture)},
-        ImageID<AssetManagerImpl>{metallicRoughnessTextureID, std::move(metallicRoughnessTexture)},
+        ImageID<ImageResourceMapIndex>{
+          diffuseTextureID, std::move(diffuseTexture)},
+        ImageID<ImageResourceMapIndex>{normalTextureID, std::move(normalTexture)},
+        ImageID<ImageResourceMapIndex>{
+          metallicRoughnessTextureID, std::move(metallicRoughnessTexture)},
         vertexResourceID);
   }
 

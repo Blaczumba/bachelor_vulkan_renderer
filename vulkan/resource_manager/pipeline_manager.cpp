@@ -10,12 +10,7 @@
 #include "vulkan/wrapper/util/vertex_input_description_builder.h"
 
 PipelineManager::PipelineManager(const FileLoader& fileLoader)
-  : _fileLoader(fileLoader), _freePipelineLayoutIndices(MAX_PIPELINE_LAYOUTS),
-    _freePipelineIndices(MAX_PIPELINES) {
-  std::iota(_freePipelineLayoutIndices.rbegin(), _freePipelineLayoutIndices.rend(),
-            PipelineLayoutMapIndex(0));
-  std::iota(_freePipelineIndices.rbegin(), _freePipelineIndices.rend(), PipelineMapIndex(0));
-}
+  : _fileLoader(fileLoader) {}
 
 std::unique_ptr<PipelineManager> PipelineManager::create(const FileLoader& fileLoader) {
   return std::unique_ptr<PipelineManager>(new PipelineManager(fileLoader));
@@ -89,6 +84,21 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevi
   return vkLayout;
 }
 
+namespace {
+
+template <typename T>
+T getNextHandle(uint32_t elementsCount, std::vector<T>& missingHandles) {
+  if (missingHandles.empty()) {
+    return T(elementsCount);
+  }
+
+  T it = missingHandles.back();
+  missingHandles.pop_back();
+  return it;
+}
+
+}
+
 std::pair<PipelineLayout*, PipelineManager::PipelineLayoutMapIndex> PipelineManager::
     getOrCreatePipelineLayout(const PipelineLayoutKey& key, const LogicalDevice& logicalDevice) {
   auto [it, inserted] = _pipelineLayoutIndices.try_emplace(key);
@@ -99,8 +109,8 @@ std::pair<PipelineLayout*, PipelineManager::PipelineLayoutMapIndex> PipelineMana
     return {&layoutID.layout, it->second};
   }
 
-  const PipelineLayoutMapIndex index = _freePipelineLayoutIndices.back();
-  _freePipelineLayoutIndices.pop_back();
+  const PipelineLayoutMapIndex index =
+      getNextHandle(_pipelineLayouts.size(), _freePipelineLayoutIndices);
   it->second = index;
   _pipelineLayoutKeys.emplace(index, key);
   return {
@@ -192,8 +202,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Render
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
-  _freePipelineIndices.pop_back();
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -243,8 +252,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
-  _freePipelineIndices.pop_back();
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -294,8 +302,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
-  _freePipelineIndices.pop_back();
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -340,8 +347,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
-  _freePipelineIndices.pop_back();
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -383,8 +389,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
-  _freePipelineIndices.pop_back();
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{

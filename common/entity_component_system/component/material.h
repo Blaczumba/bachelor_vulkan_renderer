@@ -7,9 +7,9 @@ class MaterialComponent {
   static constexpr ComponentType componentID = 3;
 
 public:
-  TextureHandle diffuse;
-  TextureHandle normal;
-  TextureHandle metallicRoughness;
+  BindlessTextureHandle diffuse;
+  BindlessTextureHandle normal;
+  BindlessTextureHandle metallicRoughness;
 
   static constexpr std::enable_if_t < componentID<MAX_COMPONENTS, ComponentType> getComponentID() {
     return componentID;

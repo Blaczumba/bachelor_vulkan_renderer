@@ -1,12 +1,8 @@
 #pragma once
 
 #include <memory>
-#include <span>
 #include <vector>
 #include <vulkan/vulkan.h>
-
-#include "lib/buffer/buffer.h"
-#include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
 
 class DescriptorPool;  // DescriptorPool is forward declared to avoid circular dependency
 

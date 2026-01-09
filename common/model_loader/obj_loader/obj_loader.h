@@ -88,7 +88,7 @@ VertexData<AssetManagerImpl> loadObj(common::AssetManager<AssetManagerImpl>& ass
     {"PN", "02"}
   };
 
-  const AssetManagerImpl::VertexResourceMapIndex vertexResourceID =
+  const typename AssetManagerImpl::VertexResourceMapIndex vertexResourceID =
       assetManager.loadVertexDataInterleavingAsync(
           model,
           std::span(reinterpret_cast<const std::byte*>(model->indices.data()),

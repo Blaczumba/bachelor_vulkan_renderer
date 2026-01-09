@@ -159,7 +159,7 @@ void main() {
     vec3 F0 = mix(vec3(0.1), albedo, metallicRoughness.r);
     
     float distance = length(TBNLightPos - TBNfragPosition);
-    float attenuation = 1.0 / (0.40 * distance);
+    float attenuation = 1.0 / (0.80 * distance);
     vec3 radiance = lightColor * attenuation;
 
     float NDF = DistributionGGX(normal, halfwayDir, metallicRoughness.g);   

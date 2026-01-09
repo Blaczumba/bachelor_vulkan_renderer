@@ -22,9 +22,9 @@ std::enable_if_t<std::is_unsigned<IndexT>::value, lib::Buffer<std::byte>> proces
   return indices;
 }
 
-template <typename AssetManagerImpl>
+template <typename ImageResourceMapIndex>
 struct ImageID {
-  AssetManagerImpl::ImageResourceMapIndex ID;
+  ImageResourceMapIndex ID;
   std::string path;
 };
 
@@ -35,9 +35,9 @@ struct VertexData {
 
   glm::mat4 model;
 
-  ImageID<AssetManagerImpl> diffuseTexture;
-  ImageID<AssetManagerImpl> normalTexture;
-  ImageID<AssetManagerImpl> metallicRoughnessTexture;
+  ImageID<typename AssetManagerImpl::ImageResourceMapIndex> diffuseTexture;
+  ImageID<typename AssetManagerImpl::ImageResourceMapIndex> normalTexture;
+  ImageID<typename AssetManagerImpl::ImageResourceMapIndex> metallicRoughnessTexture;
 
   AssetManagerImpl::VertexResourceMapIndex vertexResourceID;
 };
