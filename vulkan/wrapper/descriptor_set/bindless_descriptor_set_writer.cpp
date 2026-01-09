@@ -29,6 +29,12 @@ BindlessDescriptorSetWriter::BindlessDescriptorSetWriter(
     const DescriptorSet& descriptorSet) noexcept
   : _descriptorSet(descriptorSet) {}
 
+std::unique_ptr<BindlessDescriptorSetWriter> BindlessDescriptorSetWriter::create(
+    const DescriptorSet& descriptorSet) noexcept {
+  return std::unique_ptr<BindlessDescriptorSetWriter>(
+      new BindlessDescriptorSetWriter(descriptorSet));
+}
+
 BindlessTextureHandle BindlessDescriptorSetWriter::storeTexture(const Texture& texture) {
   const BindlessTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
   if (!_texturesMap.insert(*handle, &texture)) [[unlikely]] {

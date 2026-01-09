@@ -14,11 +14,13 @@ class BindlessDescriptorSetWriter {
     using TextureHandleMap = lib::SparseMap<const Texture*, RESOURCE_COUNT>;
     using BufferHandleMap  = lib::SparseMap<const Buffer*, RESOURCE_COUNT>;
 
+    BindlessDescriptorSetWriter(const DescriptorSet& descriptorSet) noexcept;
+
 public:
     DEFINE_STRONG_INT(TextureHandle, TextureHandleMap::IndexType);
     DEFINE_STRONG_INT(BufferHandle,  BufferHandleMap::IndexType);
 
-    BindlessDescriptorSetWriter(const DescriptorSet& descriptorSet) noexcept;
+    static std::unique_ptr<BindlessDescriptorSetWriter> create(const DescriptorSet& descriptorSet) noexcept;
 
     TextureHandle storeTexture(const Texture& texture);
     std::vector<TextureHandle> storeTextures(std::span<const Texture> textures);
