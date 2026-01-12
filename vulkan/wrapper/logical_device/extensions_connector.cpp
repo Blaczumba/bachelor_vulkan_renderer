@@ -13,7 +13,8 @@ template <typename T>
 void chainExtensionFeature(
     void** next, T& feature, std::string_view extension, const PhysicalDevice& physicalDevice) {
   if (!physicalDevice.hasAvailableExtension(extension)) [[unlikely]] {
-    throw EngineException(std::format("{} was not found in PhysicalDevice extensions.", extension));
+    // TODO: LOG info that it is not covered.
+    return;
   }
 
   feature.pNext = *next;
