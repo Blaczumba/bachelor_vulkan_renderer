@@ -1,7 +1,5 @@
 #include "debug_messenger_utils.h"
 
-#include <iostream>
-
 VkDebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfoUtility(
     PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
   return VkDebugUtilsMessengerCreateInfoEXT{
