@@ -1,8 +1,7 @@
 #version 450
 
-#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
-
 #include "bindless.glsl"
+#include "16bit_push_constants.glsl"
 
 layout (location = 0) in vec3 inNormal;
 layout (location = 1) in vec3 inWorldPos;
@@ -12,12 +11,10 @@ RegisterUniform(Light, { \
     vec3 pos; \
 });
 
-layout(push_constant) uniform Constants {
-    mat4 model;
-    uint16_t environmentHandle;
-    uint16_t light;
-    uint16_t padding[30];
-} pushConstants;
+// Push constants definitions:
+#define modelMat pushConstants.model
+#define environmentMapHandle pushConstants.handles[0]
+#define lightBufferHandle pushConstants.handles[1]
 
 layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which depends on frame in flight
     mat4 view;
@@ -33,7 +30,7 @@ void main() {
     vec3 N = normalize(inNormal);
     vec3 V = normalize(camera.pos - inWorldPos);
     
-    vec3 L = normalize(GetResource(Light, pushConstants.light).pos - inWorldPos);
+    vec3 L = normalize(GetResource(Light, lightBufferHandle).pos - inWorldPos);
     vec3 H = normalize(L + V); // Halfway vector for Blinn-Phong
 
     // 2. Blinn-Phong Lighting Components
@@ -45,7 +42,7 @@ void main() {
 
     // 3. Environment Mapping (Reflection)
     vec3 R = reflect(-V, N);
-    vec3 envColor = texture(uGlobalTexturesCube[nonuniformEXT(pushConstants.environmentHandle)], R).rgb;
+    vec3 envColor = texture(uGlobalTexturesCube[nonuniformEXT(environmentMapHandle)], R).rgb;
 
     // 4. Combine results
     vec3 finalColor = (envColor * 0.1) + envColor*(diffuse * 0.5 + specular);

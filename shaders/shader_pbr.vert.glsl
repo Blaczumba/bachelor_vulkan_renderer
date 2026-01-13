@@ -1,23 +1,16 @@
 #version 450
 
-#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
-
 #include "bindless.glsl"
+#include "16bit_push_constants.glsl"
 
 RegisterUniform(Light, { \
     mat4 projView; \
     vec3 pos; \
 });
 
-layout(push_constant) uniform Constants {
-    mat4 model;
-    uint16_t light;
-    uint16_t diffuse;
-    uint16_t normal;
-    uint16_t metallicRoughness;
-    uint16_t shadow;
-    uint16_t padding[27]; // Padding to 128B.
-} pushConstants;
+// Push constants definitions:
+#define modelMat pushConstants.model
+#define lightBufferHandle pushConstants.handles[0]
 
 layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which depends on frame in flight
     mat4 view;
@@ -46,7 +39,7 @@ const mat4 BiasMat = mat4(
 );
 
 void main() {
-    mat3 normalMatrix = transpose(inverse(mat3(pushConstants.model)));
+    mat3 normalMatrix = transpose(inverse(mat3(modelMat)));
     vec3 normal = normalize(normalMatrix * inNormal);
     // vec3 tangent = normalize(normalMatrix * inTangent);
     // vec3 bitangent = normalize(normalMatrix * inBitangent);
@@ -54,11 +47,11 @@ void main() {
     vec3 bitangent = cross(normal, tangent);
     mat3 TBNMat = transpose(mat3(tangent, bitangent, normal));
 
-    gl_Position = pushConstants.model * vec4(inPosition, 1.0);
+    gl_Position = modelMat * vec4(inPosition, 1.0);
     TBNfragPosition = TBNMat * gl_Position.xyz;
     TBNViewPos = TBNMat * camera.viewPos;
-    TBNLightPos = TBNMat * GetResource(Light, pushConstants.light).pos;
-    lightFragPosition = BiasMat * GetResource(Light, pushConstants.light).projView * gl_Position;
+    TBNLightPos = TBNMat * GetResource(Light, lightBufferHandle).pos;
+    lightFragPosition = BiasMat * GetResource(Light, lightBufferHandle).projView * gl_Position;
 
     gl_Position = camera.proj * camera.view * gl_Position;
     
