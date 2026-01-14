@@ -94,6 +94,11 @@ struct PushConstantsModelDescriptorHandles {
   uint16_t descriptorHandles[32];
 };
 
+struct PushConstantsModelDescriptorHandles32Bit {
+  glm::mat4 model;
+  uint32_t descriptorHandles[16];
+};
+
 struct PushConstantsShadow {
   glm::mat4 model;
   glm::mat4 lightProjView;

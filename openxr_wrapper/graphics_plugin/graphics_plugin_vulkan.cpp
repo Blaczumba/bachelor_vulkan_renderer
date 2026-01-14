@@ -248,8 +248,7 @@ LogicalDevice createLogicalDevice(
       .withBufferDeviceAddressExtension()
       .withIndexTypeUint8Extension()
       .withInheritedViewportScissorExtension()
-      .withMultiviewExtension()
-      .withStorage16BitExtension();
+      .withMultiviewExtension();
 
   const VkPhysicalDeviceFeatures2 deviceFeaturesInfo = {
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
