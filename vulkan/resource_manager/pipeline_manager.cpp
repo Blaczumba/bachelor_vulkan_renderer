@@ -180,7 +180,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Render
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
         {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
-        {getPushConstantRange<PushConstantsModelDescriptorHandles>(
+        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
   },
       logicalDevice);
@@ -231,7 +231,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
 
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
-                        {getPushConstantRange<PushConstantsModelDescriptorHandles>(
+                        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
                             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
       logicalDevice);
 
@@ -282,7 +282,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
         {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
-        {getPushConstantRange<PushConstantsModelDescriptorHandles>(
+        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
   },
       logicalDevice);

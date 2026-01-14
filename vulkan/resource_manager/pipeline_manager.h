@@ -89,7 +89,7 @@ private:
   bool removePipelineLayout(PipelineLayoutMapIndex index);
 };
 
-struct PushConstantsModelDescriptorHandles {
+struct PushConstantsModelDescriptorHandles16bit {
   glm::mat4 model;
   uint16_t descriptorHandles[32];
 };
