@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <array>
-#include <iterator>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -19,7 +19,6 @@ public:
   constexpr iterator begin() noexcept {
     return _data.data();
   }
-
   constexpr iterator end() noexcept {
     return _data.data() + _size;
   }
@@ -27,7 +26,6 @@ public:
   constexpr const_iterator begin() const noexcept {
     return _data.data();
   }
-
   constexpr const_iterator end() const noexcept {
     return _data.data() + _size;
   }
@@ -35,7 +33,6 @@ public:
   constexpr const_iterator cbegin() const noexcept {
     return begin();
   }
-
   constexpr const_iterator cend() const noexcept {
     return end();
   }
@@ -43,23 +40,21 @@ public:
   [[nodiscard]] constexpr bool empty() const noexcept {
     return _size == 0;
   }
-
   [[nodiscard]] constexpr size_t size() const noexcept {
     return _size;
   }
-
   [[nodiscard]] constexpr size_t max_size() const noexcept {
     return N;
   }
 
   [[nodiscard]] iterator find(const K& key) noexcept {
-    return std::find_if(begin(), end(), [&](const auto& p) {
+    return std::find_if(begin(), end(), [&](const value_type& p) {
       return p.first == key;
     });
   }
 
   [[nodiscard]] const_iterator find(const K& key) const noexcept {
-    return std::find_if(begin(), end(), [&](const auto& p) {
+    return std::find_if(cbegin(), cend(), [&](const value_type& p) {
       return p.first == key;
     });
   }
@@ -72,31 +67,27 @@ public:
     if (auto it = find(key); it != end()) {
       return it->second;
     }
-
-    throw std::out_of_range("AssociationList::at: key not found.");
+    throw std::out_of_range("AssociationList::at");
   }
 
   const V& at(const K& key) const {
     if (auto it = find(key); it != end()) {
       return it->second;
     }
-
-    throw std::out_of_range("AssociationList::at: key not found.");
+    throw std::out_of_range("AssociationList::at");
   }
 
   V& operator[](const K& key) {
     if (auto it = find(key); it != end()) {
       return it->second;
     }
-
-    return try_emplace(key).first->second;
+    return emplace_impl(key, V{}).first->second;
   }
 
   std::pair<iterator, bool> insert(const value_type& value) {
     if (auto it = find(value.first); it != end()) {
       return {it, false};
     }
-
     return emplace_impl(value.first, value.second);
   }
 
@@ -104,7 +95,6 @@ public:
     if (auto it = find(value.first); it != end()) {
       return {it, false};
     }
-
     return emplace_impl(std::move(value.first), std::move(value.second));
   }
 
@@ -113,7 +103,6 @@ public:
     if (auto it = find(key); it != end()) {
       return {it, false};
     }
-
     return emplace_impl(key, V(std::forward<Args>(args)...));
   }
 
@@ -122,17 +111,16 @@ public:
       erase(it);
       return true;
     }
-
     return false;
   }
 
   iterator erase(iterator it) noexcept {
-    if (it != std::prev(end())) {
-      *it = std::move(_data[--_size]);
-    } else if constexpr (!std::is_trivially_destructible<V>()) {
-      it->second = V{};
+    iterator last = end() - 1;
+    if (it != last) {
+      *it = std::move(*last);  // move last element
     }
-
+    std::destroy_at(last);  // destroy last element (optional)
+    --_size;
     return it;
   }
 
@@ -143,16 +131,16 @@ public:
 private:
   template <typename KK, typename VV>
   std::pair<iterator, bool> emplace_impl(KK&& key, VV&& value) {
-    if (_size >= N) {
-      throw std::out_of_range("AssociationList::emplace_impl: size exceeded the limit.");
+    if (_size == N) [[unlikely]] {
+      throw std::out_of_range("AssociationList capacity exceeded");
     }
-
-    _data[_size].first = std::forward<KK>(key);
-    _data[_size].second = std::forward<VV>(value);
-    return {&_data[_size++], true};
+    value_type* p = &_data[_size];
+    std::construct_at(p, std::forward<KK>(key), std::forward<VV>(value));
+    ++_size;
+    return {p, true};
   }
 
-  std::array<value_type, N> _data;
+  std::array<value_type, N> _data;  // TODO: change to std::inplace_vector when it's introduced.
   size_t _size{0};
 };
 
@@ -167,7 +155,6 @@ public:
   iterator begin() noexcept {
     return _data.begin();
   }
-
   iterator end() noexcept {
     return _data.end();
   }
@@ -175,7 +162,6 @@ public:
   const_iterator begin() const noexcept {
     return _data.begin();
   }
-
   const_iterator end() const noexcept {
     return _data.end();
   }
@@ -183,7 +169,6 @@ public:
   const_iterator cbegin() const noexcept {
     return _data.cbegin();
   }
-
   const_iterator cend() const noexcept {
     return _data.cend();
   }
@@ -191,7 +176,6 @@ public:
   [[nodiscard]] bool empty() const noexcept {
     return _data.empty();
   }
-
   [[nodiscard]] size_t size() const noexcept {
     return _data.size();
   }
@@ -205,13 +189,13 @@ public:
   }
 
   iterator find(const K& key) noexcept {
-    return std::find_if(begin(), end(), [&](const auto& p) {
+    return std::find_if(begin(), end(), [&](const value_type& p) {
       return p.first == key;
     });
   }
 
   const_iterator find(const K& key) const noexcept {
-    return std::find_if(begin(), end(), [&](const auto& p) {
+    return std::find_if(begin(), end(), [&](const value_type& p) {
       return p.first == key;
     });
   }
@@ -224,23 +208,20 @@ public:
     if (auto it = find(key); it != end()) {
       return it->second;
     }
-
-    throw std::out_of_range("DynamicAssociationList::at: key not found.");
+    throw std::out_of_range("DynamicAssociationList::at");
   }
 
   const V& at(const K& key) const {
     if (auto it = find(key); it != end()) {
       return it->second;
     }
-
-    throw std::out_of_range("DynamicAssociationList::at: key not found.");
+    throw std::out_of_range("DynamicAssociationList::at");
   }
 
   V& operator[](const K& key) {
     if (auto it = find(key); it != end()) {
       return it->second;
     }
-
     return _data.emplace_back(key, V{}).second;
   }
 
@@ -249,28 +230,16 @@ public:
     if (auto it = find(key); it != end()) {
       return {it, false};
     }
-
     _data.emplace_back(key, V(std::forward<Args>(args)...));
-    return {std::prev(end()), true};
+    return {std::prev(_data.end()), true};
   }
 
   std::pair<iterator, bool> insert(value_type&& value) {
     if (auto it = find(value.first); it != end()) {
       return {it, false};
     }
-
     _data.push_back(std::move(value));
-    return {std::prev(end()), true};
-  }
-
-  std::pair<iterator, bool> insert_or_assign(const K& key, V value) {
-    if (auto it = find(key); it != end()) {
-      it->second = std::move(value);
-      return {it, false};
-    }
-
-    _data.emplace_back(key, std::move(value));
-    return {std::prev(end()), true};
+    return {std::prev(_data.end()), true};
   }
 
   bool erase(const K& key) noexcept {
@@ -278,15 +247,14 @@ public:
       erase(it);
       return true;
     }
-
     return false;
   }
 
   iterator erase(iterator it) noexcept {
-    if (it != std::prev(end())) {
-      *it = std::move(_data.back());
+    iterator last = std::prev(_data.end());
+    if (it != last) {
+      *it = std::move(*last);
     }
-
     _data.pop_back();
     return it;
   }

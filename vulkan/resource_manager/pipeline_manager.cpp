@@ -1,6 +1,5 @@
 #include "pipeline_manager.h"
 
-#include <array>
 #include <filesystem>
 #include <numeric>
 #include <string_view>
@@ -8,20 +7,16 @@
 
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
-#include "vulkan/wrapper/pipeline/input_description.h"
+#include "vulkan/wrapper/util/vertex_input_description_builder.h"
 
 PipelineManager::PipelineManager(const FileLoader& fileLoader)
-  : _fileLoader(fileLoader), _freePipelineLayoutIndices(MAX_PIPELINE_LAYOUTS),
-    _freePipelineIndices(MAX_PIPELINES) {
-  std::iota(_freePipelineLayoutIndices.rbegin(), _freePipelineLayoutIndices.rend(), 0);
-  std::iota(_freePipelineIndices.rbegin(), _freePipelineIndices.rend(), 0);
-}
+  : _fileLoader(fileLoader) {}
 
 std::unique_ptr<PipelineManager> PipelineManager::create(const FileLoader& fileLoader) {
   return std::unique_ptr<PipelineManager>(new PipelineManager(fileLoader));
 }
 
-std::reference_wrapper<const Shader> PipelineManager::addShader(
+const Shader& PipelineManager::addShader(
     const LogicalDevice& logicalDevice, std::string_view shaderFile,
     VkShaderStageFlagBits shaderStages) {
   auto [it, inserted] = _shaders.try_emplace(shaderFile);
@@ -89,6 +84,21 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevi
   return vkLayout;
 }
 
+namespace {
+
+template <typename T>
+T getNextHandle(uint32_t elementsCount, std::vector<T>& missingHandles) {
+  if (missingHandles.empty()) {
+    return T(elementsCount);
+  }
+
+  T it = missingHandles.back();
+  missingHandles.pop_back();
+  return it;
+}
+
+}
+
 std::pair<PipelineLayout*, PipelineManager::PipelineLayoutMapIndex> PipelineManager::
     getOrCreatePipelineLayout(const PipelineLayoutKey& key, const LogicalDevice& logicalDevice) {
   auto [it, inserted] = _pipelineLayoutIndices.try_emplace(key);
@@ -99,8 +109,8 @@ std::pair<PipelineLayout*, PipelineManager::PipelineLayoutMapIndex> PipelineMana
     return {&layoutID.layout, it->second};
   }
 
-  const PipelineLayoutMapIndex index = _freePipelineLayoutIndices.back();
-  _freePipelineLayoutIndices.pop_back();
+  const PipelineLayoutMapIndex index =
+      getNextHandle(_pipelineLayouts.size(), _freePipelineLayoutIndices);
   it->second = index;
   _pipelineLayoutKeys.emplace(index, key);
   return {
@@ -132,20 +142,20 @@ bool PipelineManager::removePipelineLayout(PipelineLayoutMapIndex index) {
 }
 
 Pipeline* PipelineManager::getPipeline(PipelineMapIndex index) {
-  if (!_pipelines.exists(index)) {
+  if (!_pipelines.exists(*index)) {
     return nullptr;
   }
 
-  return &_pipelines.getValue(index).pipeline;
+  return &_pipelines.getValue(*index).pipeline;
 }
 
 bool PipelineManager::removePipeline(PipelineManager::PipelineMapIndex index) {
-  if (!_pipelines.exists(index)) {
+  if (!_pipelines.exists(*index)) {
     return false;
   }
 
-  const PipelineLayoutMapIndex layoutIndex = _pipelines.getValue(index).layoutIndex;
-  _pipelines.eraseUnsafe(index);
+  const PipelineLayoutMapIndex layoutIndex = _pipelines.getValue(*index).layoutIndex;
+  _pipelines.eraseUnsafe(*index);
   _freePipelineIndices.push_back(index);
   return removePipelineLayout(layoutIndex);
 }
@@ -170,7 +180,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Render
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
         {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
-        {getPushConstantRange<PushConstantsModelDescriptorHandles>(
+        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
   },
       logicalDevice);
@@ -181,17 +191,20 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Render
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
 
-  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexPTNT>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec2>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
-  _freePipelineIndices.pop_back();
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
-      pipelineIndex,
+      *pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
@@ -218,7 +231,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
 
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
-                        {getPushConstantRange<PushConstantsModelDescriptorHandles>(
+                        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
                             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
       logicalDevice);
 
@@ -228,17 +241,20 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
 
-  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexPTNT>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexPTNT>();
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec2>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
-  _freePipelineIndices.pop_back();
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
-      pipelineIndex,
+      *pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
@@ -266,7 +282,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
         {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
-        {getPushConstantRange<PushConstantsModelDescriptorHandles>(
+        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
   },
       logicalDevice);
@@ -277,17 +293,18 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
 
-  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexPN>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexPN>();
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
-  _freePipelineIndices.pop_back();
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
-      pipelineIndex,
+      *pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
@@ -323,17 +340,16 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
 
-  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexP>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexP>();
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>().finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
-  _freePipelineIndices.pop_back();
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
-      pipelineIndex,
+      *pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
@@ -366,17 +382,16 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
       renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
       VkPipelineColorBlendAttachmentState{.colorWriteMask = VK_COLOR_COMPONENT_R_BIT});
 
-  static constexpr VkVertexInputBindingDescription bindingDescriptions[] = {
-    getBindingDescription<VertexP>()};
-  static constexpr std::array attributeDescriptions = getAttributeDescriptions<VertexP>();
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>().finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
 
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = _freePipelineIndices.back();
-  _freePipelineIndices.pop_back();
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
-      pipelineIndex,
+      *pipelineIndex,
       PipelineResource{
         GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)

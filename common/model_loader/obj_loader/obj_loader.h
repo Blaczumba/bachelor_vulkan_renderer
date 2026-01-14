@@ -36,8 +36,8 @@ struct Indices {
 };
 
 template <typename AssetManagerImpl>
-VertexData loadObj(common::AssetManager<AssetManagerImpl>& assetManager, const std::string& name,
-                   std::string& stringData) {
+VertexData<AssetManagerImpl> loadObj(common::AssetManager<AssetManagerImpl>& assetManager,
+                                     const std::string& name, std::string& stringData) {
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
@@ -84,16 +84,19 @@ VertexData loadObj(common::AssetManager<AssetManagerImpl>& assetManager, const s
   static constexpr uint8_t indexSize = 4;
 
   static std::pair<std::string, std::string> orders[] = {
-    {"P", "0"},
-    {"PN", "01" }
+    {"P",  "0" },
+    {"PN", "02"}
   };
 
-  const size_t vertexResourceID = assetManager.loadVertexDataInterleavingAsync(
-      model, std::span(reinterpret_cast<const std::byte*>(model->indices.data()),
-                model->indices.size() * indexSize),
-      indexSize, orders,
-      std::span<const glm::vec3>(model->positions.data(), model->positions.size()),
-      std::span<const glm::vec3>(model->normals.data(), model->normals.size()));
+  const typename AssetManagerImpl::VertexResourceMapIndex vertexResourceID =
+      assetManager.loadVertexDataInterleavingAsync(
+          model,
+          std::span(reinterpret_cast<const std::byte*>(model->indices.data()),
+                    model->indices.size() * indexSize),
+          indexSize, orders,
+          std::span<const glm::vec3>(model->positions.data(), model->positions.size()),
+          std::span<const glm::vec2>(model->texCoords.data(), model->texCoords.size()),
+          std::span<const glm::vec3>(model->normals.data(), model->normals.size()));
 
-  return VertexData{.indexSize = indexSize, .vertexResourceID = vertexResourceID};
+  return VertexData<AssetManagerImpl>{.indexSize = indexSize, .vertexResourceID = vertexResourceID};
 }

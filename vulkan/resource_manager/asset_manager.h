@@ -3,13 +3,9 @@
 #include <algorithm>
 #include <functional>
 #include <future>
-#include <numeric>
-#include <optional>
 #include <span>
 #include <string>
-#include <string_view>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "common/file/file_loader.h"
 #include "common/model_loader/image_loader/image_loader.h"
@@ -17,6 +13,7 @@
 #include "common/util/buffer_manip.h"
 #include "lib/association_list/association_list.h"
 #include "lib/sparse/sparse_map.h"
+#include "lib/types/strong_int.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/util/index_buffer_util.h"
@@ -38,7 +35,7 @@ public:
     uint32_t height;
     uint32_t mipLevels;
     uint32_t layerCount;
-    std::vector<ImageSubresource> copyRegions;
+    lib::Buffer<VkBufferImageCopy> copyRegions;
   };
 
   struct VertexData {
@@ -47,40 +44,48 @@ public:
     VkIndexType indexType;
   };
 
-  size_t loadImageAsync(const std::string& filePath);
+private:
+  static constexpr size_t MAX_IMAGE_DATA_RESOURCES = 256;
+  using ImageResourceMap = lib::SparseMap<ImageData, MAX_IMAGE_DATA_RESOURCES>;
+
+  static constexpr size_t MAX_VERTEX_DATA_RESOURCES = 256;
+  using VertexResourceMap = lib::SparseMap<VertexData, MAX_VERTEX_DATA_RESOURCES>;
+
+public:
+  DEFINE_STRONG_INT(ImageResourceMapIndex, typename ImageResourceMap::IndexType);
+  DEFINE_STRONG_INT(VertexResourceMapIndex, typename VertexResourceMap::IndexType);
+
+  ImageResourceMapIndex loadImageAsync(const std::string& filePath);
 
   template <typename Model, typename... Type>
-  size_t loadVertexDataInterleavingAsync(
+  VertexResourceMapIndex loadVertexDataInterleavingAsync(
       std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
       std::span<const std::pair<std::string, std::string>> orders,
       std::span<const Type>... attributes);
 
-  const ImageData& getImageData(size_t index);
+  const ImageData& getImageData(ImageResourceMapIndex index);
 
-  const VertexData& getVertexData(size_t index);
+  const VertexData& getVertexData(VertexResourceMapIndex index);
 
 private:
-  size_t loadImageAsync(
-      const std::string& filePath,
-      std::function<ImageResource(std::span<const std::byte>)> loadingFunction);
+// TODO: Change after std::move_only_function becomes a standard.
+#ifdef ANDROID
+  using ImageJob = std::function<ImageResource(std::span<const std::byte>)>;
+#else
+  using ImageJob = std::move_only_function<ImageResource(std::span<const std::byte>)>;
+#endif  // ANDROID
+
+  ImageResourceMapIndex loadImageAsync(const std::string& filePath, ImageJob loadingFunction);
 
   std::launch _launchPolicy;
 
   const LogicalDevice& _logicalDevice;
   const FileLoader& _fileLoader;
 
-  static constexpr size_t MAX_IMAGE_DATA_RESOURCES = 256;
-  using ImageResourceMap = lib::SparseMap<ImageData, MAX_IMAGE_DATA_RESOURCES>;
-  using ImageResourceMapIndex = typename ImageResourceMap::IndexType;
-
   std::vector<ImageResourceMapIndex> _freeImageDataIndices;  // TODO: Change to inplace vector.
   std::unordered_map<ImageResourceMapIndex, std::future<ImageData>>
       _awaitingImageDataResources;  // TODO: Change to flat unordered map.
   ImageResourceMap _imageDataResources;
-
-  static constexpr size_t MAX_VERTEX_DATA_RESOURCES = 256;
-  using VertexResourceMap = lib::SparseMap<VertexData, MAX_VERTEX_DATA_RESOURCES>;
-  using VertexResourceMapIndex = typename VertexResourceMap::IndexType;
 
   std::vector<VertexResourceMapIndex> _freeVertexDataIndices;  // TODO: Change to inplace vector.
   std::unordered_map<VertexResourceMapIndex, std::future<VertexData>>
@@ -89,7 +94,7 @@ private:
 };
 
 template <typename Model, typename... Type>
-size_t AssetManager::loadVertexDataInterleavingAsync(
+AssetManager::VertexResourceMapIndex AssetManager::loadVertexDataInterleavingAsync(
     std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
     std::span<const std::pair<std::string, std::string>> orders,
     std::span<const Type>... attributes) {
@@ -118,7 +123,6 @@ size_t AssetManager::loadVertexDataInterleavingAsync(
             const size_t shrunkIndexSize = getShrunkIndexSize(indices, indexSize);
             vertexData.indexBuffer = Buffer::createStagingBuffer(
                 _logicalDevice, indices.size() / indexSize * shrunkIndexSize);
-
             vertexData.indexBuffer.copyAndShrinkData(indices, shrunkIndexSize, indexSize);
 
             vertexData.indexType = getIndexType(shrunkIndexSize);

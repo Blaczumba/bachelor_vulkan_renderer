@@ -35,7 +35,7 @@ public:
 
   ~LogicalDevice();
 
-  void destroyResource(ResourceDestroyerJob&& destroyResource) const;
+  void destroyResource(ResourceDestroyer::Job destroyResource) const;
 
   VkSampler createSampler(const SamplerParameters& params) const;
 

@@ -1,17 +1,11 @@
 #include "descriptor_set.h"
 
 #include <algorithm>
-#include <array>
 #include <iterator>
-#include <stdexcept>
-#include <string>
-#include <unordered_map>
 
 #include "descriptor_pool.h"
-#include "descriptor_set_layout.h"
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
-#include "vulkan/wrapper/pipeline/pipeline.h"
 #include "vulkan/wrapper/util/check.h"
 
 DescriptorSet::DescriptorSet(VkDescriptorSet descriptorSet,

@@ -24,11 +24,11 @@ public:
   void destroyEntity(Entity entity) {
     Signature i = 1;
     for (ComponentType j = 0; j < MAX_COMPONENTS; i <<= 2, ++j) {
-      if ((_signatures[entity] & i) != 0) {
+      if ((_signatures[*entity] & i) != 0) {
         _componentsData[j]->destroyEntity(entity);
       }
     }
-    _signatures[entity].reset();
+    _signatures[*entity].reset();
     entityManager.destroyEntity(entity);
   }
 
@@ -40,7 +40,7 @@ public:
     }
     static_cast<ComponentPoolImpl<Component>*>(_componentsData[Component::getComponentID()].get())
         ->addComponent(entity, std::move(component));
-    _signatures[entity].set(Component::getComponentID());
+    _signatures[*entity].set(Component::getComponentID());
   }
 
   template <typename Component>
@@ -49,7 +49,7 @@ public:
       _componentsData[Component::getComponentID()] =
           std::make_unique<ComponentPoolImpl<Component>>();
     }
-    _signatures[entity].set(Component::getComponentID());
+    _signatures[*entity].set(Component::getComponentID());
     return static_cast<ComponentPoolImpl<Component>*>(
                _componentsData[Component::getComponentID()].get())
         ->getComponent(entity);
@@ -71,10 +71,10 @@ public:
           _componentsData[Components::getComponentID()].get()))...};
 
     // Iterate over all entities
-    for (Entity entity = 0; entity < MAX_ENTITIES; ++entity) {  // TODO: get entities from system
+    for (Entity entity(0); *entity < MAX_ENTITIES; ++entity) {  // TODO: get entities from system
                                                                 // probably.
       // Check if the entity matches the signature of these components
-      if ((_signatures[entity] & signature) == signature) {
+      if ((_signatures[*entity] & signature) == signature) {
         // Get references to the components for the entity
         callback(std::get<ComponentPoolImpl<Components>&>(pools).getComponent(entity)...);
       }

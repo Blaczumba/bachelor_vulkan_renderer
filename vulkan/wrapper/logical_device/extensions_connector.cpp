@@ -1,8 +1,10 @@
 #include "extensions_connector.h"
 
+#include <format>
 #include <string_view>
 #include <vulkan/vulkan.h>
 
+#include "common/util/engine_exception.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 
 namespace {
@@ -10,10 +12,13 @@ namespace {
 template <typename T>
 void chainExtensionFeature(
     void** next, T& feature, std::string_view extension, const PhysicalDevice& physicalDevice) {
-  if (physicalDevice.hasAvailableExtension(extension)) {
-    feature.pNext = *next;
-    *next = (void*)&feature;
+  if (!physicalDevice.hasAvailableExtension(extension)) [[unlikely]] {
+    // TODO: LOG info that it is not covered.
+    return;
   }
+
+  feature.pNext = *next;
+  *next = (void*)&feature;
 }
 
 }  // namespace
@@ -90,7 +95,7 @@ ExtensionsConnector& ExtensionsConnector::withStorage8BitExtension() {
 ExtensionsConnector& ExtensionsConnector::withStorage16BitExtension() {
   _storage16Bit = VkPhysicalDevice16BitStorageFeatures{
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES,
-    .storageBuffer16BitAccess = VK_FALSE,
+    .storageBuffer16BitAccess = VK_TRUE,
     .uniformAndStorageBuffer16BitAccess = VK_TRUE,
     .storagePushConstant16 = VK_TRUE};
 

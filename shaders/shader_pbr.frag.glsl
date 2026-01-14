@@ -1,17 +1,14 @@
 #version 450
 
 #include "bindless.glsl"
+#include "32bit_push_constants.glsl"
 
-layout(push_constant) uniform Constants {
-    mat4 model;
-    uint light;
-    uint diffuse;
-    uint normal;
-    uint metallicRoughness;
-    uint shadow;
-    uint padding[11]; // Padding to 128B.
-
-} pushConstants;
+// Push constants definitions:
+#define modelMat pushConstants.model
+#define diffuseMapHandle pushConstants.handles[1]
+#define normalMapHandle pushConstants.handles[2]
+#define metallicRoughnessMapHandle pushConstants.handles[3]
+#define shadowMapHandle pushConstants.handles[4]
 
 layout(location = 0) in vec3 TBNfragPosition;
 layout(location = 1) in vec2 fragTexCoord;
@@ -107,15 +104,15 @@ float calculateShadowPcf() {
     if(lightFrag.z >= 1.0)
         return 1.0;
 
-    float sum = textureOffset(uGlobalTexturesShadow[nonuniformEXT(pushConstants.shadow)], lightFrag.xyz, offsets[0])
-        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(pushConstants.shadow)], lightFrag.xyz, offsets[1])
-        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(pushConstants.shadow)], lightFrag.xyz, offsets[2])
-        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(pushConstants.shadow)], lightFrag.xyz, offsets[3])
-        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(pushConstants.shadow)], lightFrag.xyz, offsets[4])
-        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(pushConstants.shadow)], lightFrag.xyz, offsets[5])
-        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(pushConstants.shadow)], lightFrag.xyz, offsets[6])
-        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(pushConstants.shadow)], lightFrag.xyz, offsets[7])
-        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(pushConstants.shadow)], lightFrag.xyz, offsets[8]);
+    float sum = textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[0])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[1])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[2])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[3])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[4])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[5])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[6])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[7])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[8]);
 
     return sum / KELNER_SIZE;
 }
@@ -146,9 +143,9 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
 }
 
 void main() {
-    vec3 albedo = texture(uGlobalTextures2D[nonuniformEXT(pushConstants.diffuse)], fragTexCoord, 0).rgb;
-    vec2 metallicRoughness = texture(uGlobalTextures2D[nonuniformEXT(pushConstants.metallicRoughness)], fragTexCoord).bg;
-    vec3 normal = normalize(2.0 * texture(uGlobalTextures2D[nonuniformEXT(pushConstants.normal)], fragTexCoord).rgb - 1.0);
+    vec3 albedo = texture(uGlobalTextures2D[nonuniformEXT(diffuseMapHandle)], fragTexCoord, 0).rgb;
+    vec2 metallicRoughness = texture(uGlobalTextures2D[nonuniformEXT(metallicRoughnessMapHandle)], fragTexCoord).bg;
+    vec3 normal = normalize(2.0 * texture(uGlobalTextures2D[nonuniformEXT(normalMapHandle)], fragTexCoord).rgb - 1.0);
 
     vec3 lightDir = normalize(TBNLightPos - TBNfragPosition);
     vec3 viewDir = normalize(TBNViewPos - TBNfragPosition);
@@ -157,7 +154,7 @@ void main() {
     vec3 F0 = mix(vec3(0.1), albedo, metallicRoughness.r);
     
     float distance = length(TBNLightPos - TBNfragPosition);
-    float attenuation = 1.0 / (0.40 * distance);
+    float attenuation = 1.0 / (0.80 * distance);
     vec3 radiance = lightColor * attenuation;
 
     float NDF = DistributionGGX(normal, halfwayDir, metallicRoughness.g);   

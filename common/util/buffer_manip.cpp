@@ -30,14 +30,10 @@ size_t getMaxIndex(std::span<const std::byte> indicesBuffer, size_t indexSize) {
                                  reinterpret_cast<const uint8_t*>(indicesBuffer.data())
                                      + indicesBuffer.size() / sizeof(uint8_t));
       }
-    default:
-      {
-        return *std::max_element(reinterpret_cast<const uint64_t*>(indicesBuffer.data()),
-                                 reinterpret_cast<const uint64_t*>(indicesBuffer.data())
-                                     + indicesBuffer.size() / sizeof(uint64_t));
-      }
   }
-  return 0;
+  return *std::max_element(reinterpret_cast<const uint64_t*>(indicesBuffer.data()),
+                           reinterpret_cast<const uint64_t*>(indicesBuffer.data())
+                               + indicesBuffer.size() / sizeof(uint64_t));
 }
 
 }  // namespace
@@ -65,15 +61,16 @@ std::vector<BufferDescription> analyzeConfig(
     orderedDescs.reserve(config.size());
 
     size_t totalSize = 0;
-    for (size_t i = 0; i < config.size(); ++i) {
-      if (!std::isdigit(config[i])) [[unlikely]] {
+    for (const char digit : config) {
+      if (!std::isdigit(digit)) [[unlikely]] {
         throw EngineException(std::format(
             "The format of config string in analyzeConfig must contain digits only. Got: {}.",
-            config[i]));
+            digit));
       }
 
-      orderedDescs.push_back(descs[static_cast<size_t>(config[i] - '0')]);
-      totalSize += orderedDescs.back().size * orderedDescs.back().count;
+      const AttributeDescription& description =
+          orderedDescs.emplace_back(descs[static_cast<size_t>(digit - '0')]);
+      totalSize += description.size * description.count;
     }
 
     descriptions.emplace_back(name, std::move(orderedDescs), totalSize);

@@ -23,15 +23,15 @@ public:
   ~ComponentPoolImpl() override = default;
 
   void addComponent(Entity entity, Component&& component) {
-    _sparseMap.insertUnsafe(entity, std::move(component));
+    _sparseMap.insertUnsafe(*entity, std::move(component));
   }
 
   void destroyEntity(Entity entity) override {
-    _sparseMap.eraseUnsafe(entity);
+    _sparseMap.eraseUnsafe(*entity);
   }
 
   Component& getComponent(Entity entity) {
-    return _sparseMap.getValue(entity);
+    return _sparseMap.getValue(*entity);
   }
 
   std::span<Component> getComponents() {

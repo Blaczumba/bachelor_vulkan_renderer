@@ -3,6 +3,7 @@
 #extension GL_EXT_multiview : enable
 
 #include "bindless.glsl"
+#include "32bit_push_constants.glsl"
 
 RegisterUniform(UniformData, { \
     mat4 projView[6]; \
@@ -11,15 +12,13 @@ RegisterUniform(UniformData, { \
     vec3 lightPos; \
 });
 
-layout(push_constant) uniform Constants {
-    mat4 model;
-    uint uniformIndex;
-    uint diffuse;
-    uint normal;
-    uint metallicRoughness;
-    uint shadow;
-    uint padding[11]; // Padding to 128B.
-} pushConstants;
+// Push constants definitions:
+#define modelMat pushConstants.model
+#define uniformBufferIndex pushConstants.handles[0]
+#define diffuseMapHandle pushConstants.handles[1]
+#define normalMapHandle pushConstants.handles[2]
+#define metallicRoughnessMapHandle pushConstants.handles[3]
+#define shadowMapHandle pushConstants.handles[4]
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTexCoord;
@@ -42,7 +41,7 @@ const mat4 BiasMat = mat4(
 );
 
 void main() {
-    mat3 normalMatrix = transpose(inverse(mat3(pushConstants.model)));
+    mat3 normalMatrix = transpose(inverse(mat3(modelMat)));
     vec3 normal = normalize(normalMatrix * inNormal);
     // vec3 tangent = normalize(normalMatrix * inTangent);
     // vec3 bitangent = normalize(normalMatrix * inBitangent);
@@ -50,13 +49,13 @@ void main() {
     vec3 bitangent = cross(normal, tangent);
     mat3 TBNMat = transpose(mat3(tangent, bitangent, normal));
 
-    gl_Position = pushConstants.model * vec4(inPosition, 1.0);
+    gl_Position = modelMat * vec4(inPosition, 1.0);
     TBNfragPosition = TBNMat * gl_Position.xyz;
-    TBNViewPos = TBNMat * GetResource(UniformData, pushConstants.uniformIndex).viewPos;
-    TBNLightPos = TBNMat * GetResource(UniformData, pushConstants.uniformIndex).lightPos;
-    lightFragPosition = BiasMat * GetResource(UniformData, pushConstants.uniformIndex).lightProjView * gl_Position;
+    TBNViewPos = TBNMat * GetResource(UniformData, uniformBufferIndex).viewPos;
+    TBNLightPos = TBNMat * GetResource(UniformData, uniformBufferIndex).lightPos;
+    lightFragPosition = BiasMat * GetResource(UniformData, uniformBufferIndex).lightProjView * gl_Position;
 
-    gl_Position = GetResource(UniformData, pushConstants.uniformIndex).projView[gl_ViewIndex] * gl_Position;
+    gl_Position = GetResource(UniformData, uniformBufferIndex).projView[gl_ViewIndex] * gl_Position;
     
     fragTexCoord = inTexCoord;
 }

@@ -1,14 +1,10 @@
 #pragma once
 
 #include <memory>
-#include <stdexcept>
-#include <unordered_map>
 #include <vector>
 #include <vulkan/vulkan.h>
 
 #include "descriptor_set.h"
-#include "descriptor_set_layout.h"
-#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class DescriptorPool : public std::enable_shared_from_this<const DescriptorPool> {
