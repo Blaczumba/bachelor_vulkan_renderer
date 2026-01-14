@@ -1,7 +1,7 @@
 #version 450
 
 #include "bindless.glsl"
-#include "16bit_push_constants.glsl"
+#include "32bit_push_constants.glsl"
 
 // Push constants definitions:
 #define modelMat pushConstants.model

@@ -3,7 +3,7 @@
 #extension GL_EXT_multiview : enable
 
 #include "bindless.glsl"
-#include "16bit_push_constants.glsl"
+#include "32bit_push_constants.glsl"
 
 RegisterUniform(UniformData, { \
     mat4 projView[6]; \
