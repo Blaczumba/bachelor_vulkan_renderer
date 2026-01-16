@@ -12,7 +12,7 @@ constexpr uint32_t UNIFORM_BINDING = 0;
 constexpr uint32_t TEXTURE_BINDING = 1;
 constexpr uint32_t STORAGE_BINDING = 2;
 
-template<typename T>
+template <typename T>
 T getNextHandle(uint32_t elementsCount, std::vector<T>& missingBindings) {
   if (missingBindings.empty()) {
     return T(elementsCount);
@@ -39,7 +39,8 @@ BindlessTextureHandle BindlessDescriptorSetWriter::storeTexture(const Texture& t
   const BindlessTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
   if (!_texturesMap.insert(*handle, &texture)) [[unlikely]] {
     throw EngineException(std::format(
-        "BindlessDescriptorSetWriter::storeTexture: Failed to insert Texture Handle = {}.", *handle));
+        "BindlessDescriptorSetWriter::storeTexture: Failed to insert Texture Handle = {}.",
+        *handle));
   }
 
   const VkDescriptorImageInfo imageInfo = {
@@ -96,8 +97,7 @@ std::vector<BindlessTextureHandle> BindlessDescriptorSetWriter::storeTextures(
   }
 
   vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
-                         static_cast<uint32_t>(writes.size()),
-                         writes.data(), 0, nullptr);
+                         static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
   return handles;
 }
 
@@ -114,8 +114,7 @@ BindlessBufferHandle BindlessDescriptorSetWriter::storeBuffer(const Buffer& buff
   }
 
   const VkDescriptorBufferInfo bufferInfo = {
-    .buffer = buffer.getVkBuffer(),
-    .range = buffer.getSize()};
+    .buffer = buffer.getVkBuffer(), .range = buffer.getSize()};
 
   const VkWriteDescriptorSet write = {
     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -151,9 +150,8 @@ std::vector<BindlessBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
   lib::Buffer<VkWriteDescriptorSet> writes(buffers.size());
 
   for (uint32_t i = 0; i < buffers.size(); i++) {
-    bufferInfos[i] = VkDescriptorBufferInfo{
-        .buffer = buffers[i].getVkBuffer(),
-        .range = buffers[i].getSize()};
+    bufferInfos[i] =
+        VkDescriptorBufferInfo{.buffer = buffers[i].getVkBuffer(), .range = buffers[i].getSize()};
 
     writes[i] = VkWriteDescriptorSet{
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

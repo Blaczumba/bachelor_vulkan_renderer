@@ -40,6 +40,8 @@ public:
 
   float getMaxSamplerAnisotropy() const;
 
+  VkPhysicalDeviceType getPhysicalDeviceType() const;
+
   size_t getMemoryAlignment(size_t size) const;
 
   lib::Buffer<const char*> getAvailableExtensions() const;

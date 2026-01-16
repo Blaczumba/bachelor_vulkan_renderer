@@ -29,7 +29,8 @@ public:
 
   static Buffer createIndexBuffer(const LogicalDevice& logicalDevice, uint32_t size);
 
-  static Buffer createStagingBuffer(const LogicalDevice& logicalDevice, uint32_t size);
+  static Buffer createStagingBuffer(
+      const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags additionalUsage = {});
 
   static Buffer createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t size);
 
@@ -62,6 +63,8 @@ public:
   void* getMappedMemory() const;
 
   const VkBuffer& getVkBuffer() const;
+
+  const LogicalDevice& getLogicalDevice() const;
 
 private:
   Buffer(const LogicalDevice& logicalDevice, const Allocation allocation,

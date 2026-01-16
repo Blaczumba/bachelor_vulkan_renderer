@@ -113,16 +113,32 @@ AssetManager::VertexResourceMapIndex AssetManager::loadVertexDataInterleavingAsy
 
             std::vector<BufferDescription> bufferDescriptions = analyzeConfig(orders, descs);
 
+            const VkPhysicalDeviceType deviceType =
+                _logicalDevice.getPhysicalDevice().getPhysicalDeviceType();
+
+            struct {
+              VkBufferUsageFlags vertexBufferUsage = 0;
+              VkBufferUsageFlags indexBufferUsage = 0;
+            } additionalFlags;
+
+            // For integrated graphics we create buffers properly in place so that they do not need
+            // to be copied to the same memory later.
+            if (deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
+              additionalFlags.vertexBufferUsage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+              additionalFlags.indexBufferUsage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+            }
+
             for (BufferDescription& description : bufferDescriptions) {
-              Buffer vertexBuffer =
-                  Buffer::createStagingBuffer(_logicalDevice, description.totalSize);
+              Buffer vertexBuffer = Buffer::createStagingBuffer(
+                  _logicalDevice, description.totalSize, additionalFlags.vertexBufferUsage);
               vertexBuffer.copyDataInterleaving(description.attributes);
               vertexData.buffers.insert({std::move(description.name), std::move(vertexBuffer)});
             }
 
             const size_t shrunkIndexSize = getShrunkIndexSize(indices, indexSize);
             vertexData.indexBuffer = Buffer::createStagingBuffer(
-                _logicalDevice, indices.size() / indexSize * shrunkIndexSize);
+                _logicalDevice, indices.size() / indexSize * shrunkIndexSize,
+                additionalFlags.indexBufferUsage);
             vertexData.indexBuffer.copyAndShrinkData(indices, shrunkIndexSize, indexSize);
 
             vertexData.indexType = getIndexType(shrunkIndexSize);

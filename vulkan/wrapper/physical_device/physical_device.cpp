@@ -186,6 +186,10 @@ float PhysicalDevice::getMaxSamplerAnisotropy() const {
   return _properties.limits.maxSamplerAnisotropy;
 }
 
+VkPhysicalDeviceType PhysicalDevice::getPhysicalDeviceType() const {
+  return _properties.deviceType;
+}
+
 size_t PhysicalDevice::getMemoryAlignment(size_t size) const {
   const size_t minUboAlignment = _properties.limits.minUniformBufferOffsetAlignment;
   return minUboAlignment > 0 ? (size + minUboAlignment - 1) & ~(minUboAlignment - 1) : size;
