@@ -65,7 +65,11 @@ public:
 
   const ImageData& getImageData(ImageResourceMapIndex index);
 
+  ImageData releaseImageData(ImageResourceMapIndex index);
+
   const VertexData& getVertexData(VertexResourceMapIndex index);
+
+  VertexData releaseVertexData(VertexResourceMapIndex index);
 
 private:
 // TODO: Change after std::move_only_function becomes a standard.

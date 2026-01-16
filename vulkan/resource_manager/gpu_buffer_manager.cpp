@@ -20,10 +20,10 @@ T getNextHandle(uint32_t elementsCount, std::vector<T>& missingHandles) {
 }  // namespace
 
 GpuBufferManager::GpuBufferMapIndex GpuBufferManager::uploadBuffer(
-    VkCommandBuffer commandBuffer, Buffer& stagingBuffer, BufferType bufferType) {
+    VkCommandBuffer commandBuffer, const Buffer& stagingBuffer, BufferType bufferType) {
   const LogicalDevice& logicalDevice = stagingBuffer.getLogicalDevice();
   GpuBufferMapIndex index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
-  
+
   Buffer buffer;
   if (bufferType == BufferType::VERTEX) {
     buffer = Buffer::createVertexBuffer(logicalDevice, stagingBuffer.getSize());

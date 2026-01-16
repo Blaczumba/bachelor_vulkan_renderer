@@ -75,9 +75,26 @@ const ImageData& AssetManager::getImageData(AssetManager::ImageResourceMapIndex 
     throw EngineException(std::format("Failed to find index {} in AssetManager.", *index));
   }
 
-  const ImageData& ptr = _imageDataResources.insertUnsafe(*index, it->second.get());
+  const ImageData& data = _imageDataResources.insertUnsafe(*index, it->second.get());
   _awaitingImageDataResources.erase(it);
-  return ptr;
+  return data;
+}
+
+ImageData AssetManager::releaseImageData(AssetManager::ImageResourceMapIndex index) {
+  if (_imageDataResources.exists(*index)) [[likely]] {
+    ImageData data = std::move(_imageDataResources.getValue(*index));
+    _imageDataResources.eraseUnsafe(*index);
+    return data;
+  }
+
+  auto it = _awaitingImageDataResources.find(index);
+  if (it == _awaitingImageDataResources.cend()) [[unlikely]] {
+    throw EngineException(std::format("Failed to find index {} in AssetManager.", *index));
+  }
+
+  ImageData data = std::move(_imageDataResources.insertUnsafe(*index, it->second.get()));
+  _awaitingImageDataResources.erase(it);
+  return data;
 }
 
 const VertexData& AssetManager::getVertexData(AssetManager::VertexResourceMapIndex index) {
@@ -90,7 +107,24 @@ const VertexData& AssetManager::getVertexData(AssetManager::VertexResourceMapInd
     throw EngineException(std::format("Failed to find index {} in AssetManager.", *index));
   }
 
-  const VertexData& ptr = _vertexDataResources.insertUnsafe(*index, it->second.get());
+  const VertexData& data = _vertexDataResources.insertUnsafe(*index, it->second.get());
   _awaitingVertexDataResources.erase(it);
-  return ptr;
+  return data;
+}
+
+VertexData AssetManager::releaseVertexData(AssetManager::VertexResourceMapIndex index) {
+  if (_vertexDataResources.exists(*index)) [[likely]] {
+    VertexData data = std::move(_vertexDataResources.getValue(*index));
+    _vertexDataResources.eraseUnsafe(*index);
+    return data;
+  }
+
+  auto it = _awaitingVertexDataResources.find(index);
+  if (it == _awaitingVertexDataResources.cend()) [[unlikely]] {
+    throw EngineException(std::format("Failed to find index {} in AssetManager.", *index));
+  }
+
+  VertexData data = std::move(_vertexDataResources.insertUnsafe(*index, it->second.get()));
+  _awaitingVertexDataResources.erase(it);
+  return data;
 }

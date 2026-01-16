@@ -18,11 +18,12 @@ public:
   DEFINE_STRONG_INT(GpuBufferMapIndex, GpuBufferMap::IndexType);
 
   enum class BufferType : uint8_t {
-	VERTEX,
-	INDEX
+    VERTEX,
+    INDEX
   };
 
-  GpuBufferMapIndex uploadBuffer(VkCommandBuffer commandBuffer, Buffer& stagingBuffer, BufferType bufferType);
+  GpuBufferMapIndex uploadBuffer(
+      VkCommandBuffer commandBuffer, const Buffer& stagingBuffer, BufferType bufferType);
 
   GpuBufferMapIndex transferBuffer(Buffer&& stagingBuffer);
 
