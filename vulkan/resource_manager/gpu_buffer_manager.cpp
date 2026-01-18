@@ -17,7 +17,44 @@ T getNextHandle(uint32_t elementsCount, std::vector<T>& missingHandles) {
   return it;
 }
 
+template <typename MapType, typename IndexType>
+inline void increaseRefCountInternal(MapType& map, IndexType index) {
+  if (auto* resource = map.tryGetValue(*index); resource != nullptr) {
+    ++resource->refCount;
+  }
+}
+
+template <typename MapType, typename IndexType>
+inline void decreaseRefCountInternal(MapType& map, IndexType index) {
+  auto* resource = map.tryGetValue(*index);
+  if (resource == nullptr) [[unlikely]] {
+    return;
+  }
+
+  --resource->refCount;
+
+  if (resource->refCount == 0) {
+    map.eraseUnsafe(*index);
+  }
+}
+
 }  // namespace
+
+void GpuBufferManager::increaseRefCount(GpuBufferManager::GpuBufferMapIndex index) {
+  increaseRefCountInternal(_bufferMap, index);
+}
+
+void GpuBufferManager::decreaseRefCount(GpuBufferManager::GpuBufferMapIndex index) {
+  decreaseRefCountInternal(_bufferMap, index);
+}
+
+void GpuBufferManager::increaseRefCount(GpuBufferManager::GpuTextureMapIndex index) {
+  increaseRefCountInternal(_textureMap, index);
+}
+
+void GpuBufferManager::decreaseRefCount(GpuBufferManager::GpuTextureMapIndex index) {
+  decreaseRefCountInternal(_textureMap, index);
+}
 
 GpuBufferManager::GpuBufferMapIndex GpuBufferManager::uploadBuffer(
     VkCommandBuffer commandBuffer, const Buffer& stagingBuffer, BufferType bufferType) {
@@ -37,7 +74,7 @@ GpuBufferManager::GpuBufferMapIndex GpuBufferManager::uploadBuffer(
 
 GpuBufferManager::GpuBufferMapIndex GpuBufferManager::transferBuffer(Buffer&& stagingBuffer) {
   GpuBufferMapIndex index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
-  _bufferMap.insertUnsafe(*index, std::move(stagingBuffer));
+  _bufferMap.insertUnsafe(*index, BufferResource(std::move(stagingBuffer), 1));
   return index;
 }
 
@@ -52,4 +89,10 @@ bool GpuBufferManager::removeBuffer(GpuBufferManager::GpuBufferMapIndex index) {
   }
 
   return true;
+}
+
+GpuBufferManager::GpuTextureMapIndex GpuBufferManager::transferTexture(Texture&& texture) {
+  GpuTextureMapIndex index = getNextHandle(_textureMap.size(), _freeTextureIndices);
+  _textureMap.insertUnsafe(*index, TextureResource(std::move(texture), 1));
+  return index;
 }
