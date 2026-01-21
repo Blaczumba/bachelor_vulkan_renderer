@@ -25,12 +25,11 @@ public:
 
   ~Buffer();
 
-  static Buffer createVertexBuffer(const LogicalDevice& logicalDevice, uint32_t size);
-
-  static Buffer createIndexBuffer(const LogicalDevice& logicalDevice, uint32_t size);
+  static Buffer createVertexInputBuffer(
+      const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage = {});
 
   static Buffer createStagingBuffer(
-      const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags additionalUsage = {});
+      const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage = {});
 
   static Buffer createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t size);
 

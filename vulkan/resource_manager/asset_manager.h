@@ -130,6 +130,11 @@ AssetManager::VertexResourceMapIndex AssetManager::loadVertexDataInterleavingAsy
             if (deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
               additionalFlags.vertexBufferUsage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
               additionalFlags.indexBufferUsage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+            } else if (deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+              additionalFlags.vertexBufferUsage =
+                  VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+              additionalFlags.indexBufferUsage =
+                  VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
             }
 
             for (BufferDescription& description : bufferDescriptions) {

@@ -132,7 +132,7 @@ VkPhysicalDevice getBestPhysicalDevice(std::span<const VkPhysicalDevice> devices
     if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
       rate += 100;
     } else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
-      rate += 50;
+      rate += 75;
     }
 
     if (!swapchainSupportDetails.formats.empty() && !swapchainSupportDetails.presentModes.empty()) {

@@ -6,7 +6,7 @@
 #include "vulkan/wrapper/memory_objects/texture.h"
 
 class GpuBufferManager {
-  static constexpr size_t MAX_BUFFERS = 256;
+  static constexpr size_t MAX_BUFFERS = 1024;
 
   struct BufferResource {
     Buffer buffer;
@@ -15,10 +15,10 @@ class GpuBufferManager {
 
   using GpuBufferMap = lib::SparseMap<BufferResource, MAX_BUFFERS>;
 
-  static constexpr size_t MAX_TEXTURES = 256;
+  static constexpr size_t MAX_TEXTURES = 1024;
 
   struct TextureResource {
-    Texture buffer;
+    Texture texture;
     size_t refCount = 0;
   };
 
@@ -52,9 +52,13 @@ public:
 
   GpuBufferMapIndex transferBuffer(Buffer&& stagingBuffer);
 
+  const Buffer& getBuffer(GpuBufferMapIndex index) const;
+
   bool removeBuffer(GpuBufferMapIndex index);
 
   GpuTextureMapIndex transferTexture(Texture&& stagingBuffer);
+
+  const Texture& getTexture(GpuTextureMapIndex index) const;
 
 private:
   GpuBufferMap _bufferMap;

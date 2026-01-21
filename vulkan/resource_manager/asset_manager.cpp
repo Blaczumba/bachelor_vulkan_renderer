@@ -30,7 +30,7 @@ AssetManager::ImageResourceMapIndex AssetManager::loadImageAsync(
           _launchPolicy,
           [this, filePath, loadingFunction = std::move(loadingFunction)]() mutable -> ImageData {
             ImageResource resource = loadingFunction(_fileLoader.loadFileToBuffer(filePath));
-            Buffer stagingBuffer = Buffer::createStagingBuffer(_logicalDevice, resource.size);
+            Buffer stagingBuffer = Buffer::createStagingBuffer(_logicalDevice, resource.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
             stagingBuffer.copyData(
                 std::span(static_cast<const std::byte*>(resource.data), resource.size));
             ImageLoader::deallocateResources(resource);

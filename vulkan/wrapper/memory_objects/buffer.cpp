@@ -71,26 +71,11 @@ struct BufferData {
   void* mappedMemory;
 };
 
-struct VertexBufferAllocator {
+struct VertexInputBufferAllocator {
   const size_t size;
+  VkBufferUsageFlags usage;
 
   BufferData operator()(VmaWrapper& allocator) {
-    VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    const VmaWrapper::Buffer buffer =
-        allocator.createVkBuffer(size, usage, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
-    return BufferData{buffer.buffer, buffer.allocation, usage};
-  }
-
-  BufferData operator()(auto&&) {
-    return {};
-  }
-};
-
-struct IndexBufferAllocator {
-  const size_t size;
-
-  BufferData operator()(VmaWrapper& allocator) {
-    VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     const VmaWrapper::Buffer buffer =
         allocator.createVkBuffer(size, usage, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
     return BufferData{buffer.buffer, buffer.allocation, usage};
@@ -103,10 +88,9 @@ struct IndexBufferAllocator {
 
 struct StagingBufferAllocator {
   const size_t size;
-  VkBufferUsageFlags additionalUsage = {};
+  VkBufferUsageFlags usage = {};
 
   BufferData operator()(VmaWrapper& wrapper) {
-    VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | additionalUsage;
     const VmaWrapper::Buffer buffer = wrapper.createVkBuffer(
         size, usage, VMA_MEMORY_USAGE_AUTO,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
@@ -136,24 +120,17 @@ struct UniformBufferAllocator {
 
 }  // namespace
 
-Buffer Buffer::createVertexBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
+Buffer Buffer::createVertexInputBuffer(const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage) {
   const BufferData bufferData =
-      std::visit(VertexBufferAllocator{size}, logicalDevice.getMemoryAllocator());
-  return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
-                bufferData.mappedMemory);
-}
-
-Buffer Buffer::createIndexBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
-  const BufferData bufferData =
-      std::visit(IndexBufferAllocator{size}, logicalDevice.getMemoryAllocator());
+      std::visit(VertexInputBufferAllocator{size, usage}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
                 bufferData.mappedMemory);
 }
 
 Buffer Buffer::createStagingBuffer(
-    const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags additionalFlags) {
+    const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage) {
   const BufferData bufferData =
-      std::visit(StagingBufferAllocator{size, additionalFlags}, logicalDevice.getMemoryAllocator());
+      std::visit(StagingBufferAllocator{size, usage}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
                 bufferData.mappedMemory);
 }
