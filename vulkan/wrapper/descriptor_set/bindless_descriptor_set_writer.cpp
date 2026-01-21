@@ -66,9 +66,9 @@ std::vector<BindlessTextureHandle> BindlessDescriptorSetWriter::storeTextures(
     std::span<const Texture> textures) {
   std::vector<BindlessTextureHandle> handles;
   handles.reserve(textures.size());
-  for (uint32_t i = 0; i < textures.size(); i++) {
+  for (const Texture& texture : textures) {
     const BindlessTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
-    if (!_texturesMap.insert(*handle, &textures[i])) [[unlikely]] {
+    if (!_texturesMap.insert(*handle, &texture)) [[unlikely]] {
       throw EngineException(std::format(
           "BindlessDescriptorSetWriter::storeTextures: Failed to insert Texture Handle = {}.",
           *handle));

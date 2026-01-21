@@ -22,7 +22,7 @@ struct SwapChainSupportDetails {
 
 class PhysicalDevice {
   PhysicalDevice(VkPhysicalDevice physicalDevice, const Instance& instance,
-                 const QueueFamilyIndices& queueFamilyIndices) noexcept;
+                 const QueueFamilyIndices& queueFamilyIndices, const VkPhysicalDeviceProperties& properties) noexcept;
 
 public:
   ~PhysicalDevice() = default;

@@ -60,6 +60,7 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& other) noexcept {
   if (this == &other) {
     return *this;
   }
+
   _commandPool = std::move(other._commandPool);
   _commandBuffer = std::exchange(other._commandBuffer, VK_NULL_HANDLE);
   _level = other._level;

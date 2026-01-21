@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <ranges>
 
 #include "common/util/engine_exception.h"
 
@@ -82,22 +83,22 @@ std::vector<Pipeline> GraphicsPipelineBuilder::createPipelines(
   std::vector<VkGraphicsPipelineCreateInfo> createInfos;
   createInfos.reserve(builders.size());
 
-  for (size_t i = 0; i < builders.size(); i++) {
+  for (auto&& [builder, layout, renderpass] : std::views::zip(builders, pipelineLayouts, renderpasses)) {
     createInfos.push_back(VkGraphicsPipelineCreateInfo{
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-      .stageCount = static_cast<uint32_t>(builders[i]._shaderStages.size()),
-      .pStages = builders[i]._shaderStages.data(),
-      .pVertexInputState = &builders[i]._vertexInputState,
-      .pInputAssemblyState = &builders[i]._inputAssemblyState,
-      .pTessellationState = &builders[i]._tessellationState,
-      .pViewportState = &builders[i]._viewportState,
-      .pRasterizationState = &builders[i]._rasterizationState,
-      .pMultisampleState = &builders[i]._multisampleState,
-      .pDepthStencilState = &builders[i]._depthStencilState,
-      .pColorBlendState = &builders[i]._colorBlendState,
-      .pDynamicState = &builders[i]._dynamicState,
-      .layout = pipelineLayouts[i].getVkPipelineLayout(),
-      .renderPass = renderpasses[i].getVkRenderPass()});
+      .stageCount = static_cast<uint32_t>(builder._shaderStages.size()),
+      .pStages = builder._shaderStages.data(),
+      .pVertexInputState = &builder._vertexInputState,
+      .pInputAssemblyState = &builder._inputAssemblyState,
+      .pTessellationState = &builder._tessellationState,
+      .pViewportState = &builder._viewportState,
+      .pRasterizationState = &builder._rasterizationState,
+      .pMultisampleState = &builder._multisampleState,
+      .pDepthStencilState = &builder._depthStencilState,
+      .pColorBlendState = &builder._colorBlendState,
+      .pDynamicState = &builder._dynamicState,
+      .layout = layout.getVkPipelineLayout(),
+      .renderPass = renderpass.getVkRenderPass()});
   }
 
   return Pipeline::create(renderpasses[0].getLogicalDevice(), createInfos);
