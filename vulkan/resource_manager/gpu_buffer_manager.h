@@ -60,6 +60,8 @@ public:
 
   const Texture& getTexture(GpuTextureMapIndex index) const;
 
+  bool removeTexture(GpuTextureMapIndex index);
+
 private:
   GpuBufferMap _bufferMap;
   std::vector<GpuBufferMapIndex> _freeBufferIndices;

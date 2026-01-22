@@ -133,9 +133,7 @@ bool PipelineManager::removePipelineLayout(PipelineLayoutMapIndex index) {
   }
 
   _pipelineLayouts.eraseUnsafe(index);
-  if (index != _freePipelineIndices.size()) [[unlikely]] {
-    _freePipelineLayoutIndices.push_back(index);
-  }
+  _freePipelineLayoutIndices.push_back(index);
 
   auto it = _pipelineLayoutKeys.find(index);
   _pipelineLayoutIndices.erase(it->second);
@@ -158,9 +156,7 @@ bool PipelineManager::removePipeline(PipelineManager::PipelineMapIndex index) {
 
   const PipelineLayoutMapIndex layoutIndex = _pipelines.getValue(*index).layoutIndex;
   _pipelines.eraseUnsafe(*index);
-  if (*index != _freePipelineIndices.size()) [[unlikely]] {
-    _freePipelineIndices.push_back(index);
-  }
+  _freePipelineIndices.push_back(index);
 
   return removePipelineLayout(layoutIndex);
 }

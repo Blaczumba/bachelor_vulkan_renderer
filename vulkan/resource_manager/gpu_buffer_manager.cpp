@@ -61,7 +61,7 @@ GpuBufferManager::GpuBufferMapIndex GpuBufferManager::uploadBuffer(
   const LogicalDevice& logicalDevice = stagingBuffer.getLogicalDevice();
   if (_bufferMap.size() == MAX_BUFFERS) [[unlikely]] {
     throw EngineException(
-        "GpuBufferManager::uploadBuffer: Cannot upload more buffers, maximum limit reached.");
+        std::format("GpuBufferManager::uploadBuffer: Cannot upload more buffers, maximum limit of {} reached.", MAX_BUFFERS));
   }
 
   GpuBufferMapIndex index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
@@ -77,7 +77,7 @@ GpuBufferManager::GpuBufferMapIndex GpuBufferManager::uploadBuffer(
 GpuBufferManager::GpuBufferMapIndex GpuBufferManager::transferBuffer(Buffer&& stagingBuffer) {
   if (_bufferMap.size() == MAX_BUFFERS) [[unlikely]] {
     throw EngineException(
-        "GpuBufferManager::uploadBuffer: Cannot upload more buffers, maximum limit reached.");
+        std::format("GpuBufferManager::transferBuffer: Cannot upload more buffers, maximum limit of {} reached.", MAX_BUFFERS));
   }
 
   GpuBufferMapIndex index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
@@ -101,9 +101,7 @@ bool GpuBufferManager::removeBuffer(GpuBufferManager::GpuBufferMapIndex index) {
   }
 
   _bufferMap.eraseUnsafe(*index);
-  if (*index != _bufferMap.size()) [[unlikely]] {
-    _freeBufferIndices.push_back(index);
-  }
+  _freeBufferIndices.push_back(index);
 
   return true;
 }
@@ -112,7 +110,7 @@ GpuBufferManager::GpuTextureMapIndex GpuBufferManager::transferTexture(Texture&&
   GpuTextureMapIndex index = getNextHandle(_textureMap.size(), _freeTextureIndices);
   if (_textureMap.size() == MAX_TEXTURES) [[unlikely]] {
     throw EngineException(
-        "GpuBufferManager::transferTexture: Cannot upload more textures, maximum limit reached.");
+        std::format("GpuBufferManager::transferTexture: Cannot upload more textures, maximum limit of {} reached.", MAX_TEXTURES));
   }
 
   _textureMap.insertUnsafe(*index, TextureResource(std::move(texture), 1));
@@ -127,4 +125,15 @@ const Texture& GpuBufferManager::getTexture(GpuBufferManager::GpuTextureMapIndex
   }
 
   return resource->texture;
+}
+
+bool GpuBufferManager::removeTexture(GpuBufferManager::GpuTextureMapIndex index) {
+  if (!_textureMap.exists(*index)) [[unlikely]] {
+    return false;
+  }
+
+  _textureMap.eraseUnsafe(*index);
+  _freeTextureIndices.push_back(index);
+
+  return true;
 }
