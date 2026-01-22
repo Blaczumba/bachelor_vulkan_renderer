@@ -40,31 +40,31 @@ inline void decreaseRefCountInternal(MapType& map, IndexType index) {
 
 }  // namespace
 
-void GpuBufferManager::increaseRefCount(GpuBufferManager::GpuBufferMapIndex index) {
+void GpuBufferManager::increaseRefCount(GpuBufferHandle index) {
   increaseRefCountInternal(_bufferMap, index);
 }
 
-void GpuBufferManager::decreaseRefCount(GpuBufferManager::GpuBufferMapIndex index) {
+void GpuBufferManager::decreaseRefCount(GpuBufferHandle index) {
   decreaseRefCountInternal(_bufferMap, index);
 }
 
-void GpuBufferManager::increaseRefCount(GpuBufferManager::GpuTextureMapIndex index) {
+void GpuBufferManager::increaseRefCount(GpuTextureHandle index) {
   increaseRefCountInternal(_textureMap, index);
 }
 
-void GpuBufferManager::decreaseRefCount(GpuBufferManager::GpuTextureMapIndex index) {
+void GpuBufferManager::decreaseRefCount(GpuTextureHandle index) {
   decreaseRefCountInternal(_textureMap, index);
 }
 
-GpuBufferManager::GpuBufferMapIndex GpuBufferManager::uploadBuffer(
+GpuBufferHandle GpuBufferManager::uploadBuffer(
     VkCommandBuffer commandBuffer, const Buffer& stagingBuffer, BufferType bufferType) {
   const LogicalDevice& logicalDevice = stagingBuffer.getLogicalDevice();
-  if (_bufferMap.size() == MAX_BUFFERS) [[unlikely]] {
+  if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(
-        std::format("GpuBufferManager::uploadBuffer: Cannot upload more buffers, maximum limit of {} reached.", MAX_BUFFERS));
+        std::format("GpuBufferManager::uploadBuffer: Cannot upload more buffers, maximum limit of {} reached.", MAX_GPU_BUFFERS));
   }
 
-  GpuBufferMapIndex index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
+  GpuBufferHandle index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
   Buffer buffer = Buffer::createVertexInputBuffer(
         logicalDevice, stagingBuffer.getSize(), bufferType == BufferType::VERTEX
             ? VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT :
@@ -74,18 +74,18 @@ GpuBufferManager::GpuBufferMapIndex GpuBufferManager::uploadBuffer(
   return index;
 }
 
-GpuBufferManager::GpuBufferMapIndex GpuBufferManager::transferBuffer(Buffer&& stagingBuffer) {
-  if (_bufferMap.size() == MAX_BUFFERS) [[unlikely]] {
+GpuBufferHandle GpuBufferManager::transferBuffer(Buffer&& stagingBuffer) {
+  if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(
-        std::format("GpuBufferManager::transferBuffer: Cannot upload more buffers, maximum limit of {} reached.", MAX_BUFFERS));
+        std::format("GpuBufferManager::transferBuffer: Cannot upload more buffers, maximum limit of {} reached.", MAX_GPU_BUFFERS));
   }
 
-  GpuBufferMapIndex index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
+  GpuBufferHandle index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
   _bufferMap.insertUnsafe(*index, BufferResource(std::move(stagingBuffer), 1));
   return index;
 }
 
-const Buffer& GpuBufferManager::getBuffer(GpuBufferManager::GpuBufferMapIndex index) const {
+const Buffer& GpuBufferManager::getBuffer(GpuBufferHandle index) const {
   const BufferResource* resource = _bufferMap.tryGetValue(*index);
   if (resource == nullptr) [[unlikely]] {
     throw EngineException(std::format(
@@ -95,7 +95,7 @@ const Buffer& GpuBufferManager::getBuffer(GpuBufferManager::GpuBufferMapIndex in
   return resource->buffer;
 }
 
-bool GpuBufferManager::removeBuffer(GpuBufferManager::GpuBufferMapIndex index) {
+bool GpuBufferManager::removeBuffer(GpuBufferHandle index) {
   if (!_bufferMap.exists(*index)) [[unlikely]] {
     return false;
   }
@@ -106,18 +106,18 @@ bool GpuBufferManager::removeBuffer(GpuBufferManager::GpuBufferMapIndex index) {
   return true;
 }
 
-GpuBufferManager::GpuTextureMapIndex GpuBufferManager::transferTexture(Texture&& texture) {
-  GpuTextureMapIndex index = getNextHandle(_textureMap.size(), _freeTextureIndices);
-  if (_textureMap.size() == MAX_TEXTURES) [[unlikely]] {
+GpuTextureHandle GpuBufferManager::transferTexture(Texture&& texture) {
+  GpuTextureHandle index = getNextHandle(_textureMap.size(), _freeTextureIndices);
+  if (_textureMap.size() == MAX_GPU_TEXTURES) [[unlikely]] {
     throw EngineException(
-        std::format("GpuBufferManager::transferTexture: Cannot upload more textures, maximum limit of {} reached.", MAX_TEXTURES));
+        std::format("GpuBufferManager::transferTexture: Cannot upload more textures, maximum limit of {} reached.", MAX_GPU_TEXTURES));
   }
 
   _textureMap.insertUnsafe(*index, TextureResource(std::move(texture), 1));
   return index;
 }
 
-const Texture& GpuBufferManager::getTexture(GpuBufferManager::GpuTextureMapIndex index) const {
+const Texture& GpuBufferManager::getTexture(GpuTextureHandle index) const {
   const TextureResource* resource = _textureMap.tryGetValue(*index);
   if (resource == nullptr) [[unlikely]] {
     throw EngineException(std::format(
@@ -127,7 +127,7 @@ const Texture& GpuBufferManager::getTexture(GpuBufferManager::GpuTextureMapIndex
   return resource->texture;
 }
 
-bool GpuBufferManager::removeTexture(GpuBufferManager::GpuTextureMapIndex index) {
+bool GpuBufferManager::removeTexture(GpuTextureHandle index) {
   if (!_textureMap.exists(*index)) [[unlikely]] {
     return false;
   }

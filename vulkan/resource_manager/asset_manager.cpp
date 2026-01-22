@@ -8,11 +8,11 @@ using VertexData = AssetManager::VertexData;
 AssetManager::AssetManager(
     const LogicalDevice& logicalDevice, const FileLoader& fileLoader, std::launch launchPolicy)
   : _logicalDevice(logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy),
-    _freeImageDataIndices(MAX_IMAGE_DATA_RESOURCES),
-    _freeVertexDataIndices(MAX_VERTEX_DATA_RESOURCES) {
-  std::iota(_freeImageDataIndices.rbegin(), _freeImageDataIndices.rend(), ImageResourceMapIndex(0));
+    _freeImageDataIndices(MAX_STAGING_IMAGE_DATA_RESOURCES),
+    _freeVertexDataIndices(MAX_STAGING_VERTEX_DATA_RESOURCES) {
+  std::iota(_freeImageDataIndices.rbegin(), _freeImageDataIndices.rend(), StagingImageDataResourceHandle(0));
   std::iota(
-      _freeVertexDataIndices.rbegin(), _freeVertexDataIndices.rend(), VertexResourceMapIndex(0));
+      _freeVertexDataIndices.rbegin(), _freeVertexDataIndices.rend(), StagingVertexDataResourceHandle(0));
 }
 
 std::unique_ptr<AssetManager> AssetManager::create(
@@ -20,9 +20,9 @@ std::unique_ptr<AssetManager> AssetManager::create(
   return std::unique_ptr<AssetManager>(new AssetManager(logicalDevice, fileLoader, launchPolicy));
 }
 
-AssetManager::ImageResourceMapIndex AssetManager::loadImageAsync(
+StagingImageDataResourceHandle AssetManager::loadImageAsync(
     const std::string& filePath, ImageJob loadingFunction) {
-  const ImageResourceMapIndex index = _freeImageDataIndices.back();
+  const StagingImageDataResourceHandle index = _freeImageDataIndices.back();
   _freeImageDataIndices.pop_back();
   _awaitingImageDataResources.emplace(
       index,
@@ -57,7 +57,7 @@ AssetManager::ImageResourceMapIndex AssetManager::loadImageAsync(
   return index;
 }
 
-AssetManager::ImageResourceMapIndex AssetManager::loadImageAsync(const std::string& filePath) {
+StagingImageDataResourceHandle AssetManager::loadImageAsync(const std::string& filePath) {
   if (filePath.ends_with(".ktx") || filePath.ends_with(".ktx2")) {
     return loadImageAsync(filePath, ImageLoader::loadImageKtx);
   } else {
@@ -65,7 +65,7 @@ AssetManager::ImageResourceMapIndex AssetManager::loadImageAsync(const std::stri
   }
 }
 
-const ImageData& AssetManager::getImageData(AssetManager::ImageResourceMapIndex index) {
+const ImageData& AssetManager::getImageData(StagingImageDataResourceHandle index) {
   if (_imageDataResources.exists(*index)) [[likely]] {
     return _imageDataResources.getValue(*index);
   }
@@ -80,7 +80,7 @@ const ImageData& AssetManager::getImageData(AssetManager::ImageResourceMapIndex 
   return data;
 }
 
-ImageData AssetManager::releaseImageData(AssetManager::ImageResourceMapIndex index) {
+ImageData AssetManager::releaseImageData(StagingImageDataResourceHandle index) {
   if (_imageDataResources.exists(*index)) [[likely]] {
     ImageData data = std::move(_imageDataResources.getValue(*index));
     _imageDataResources.eraseUnsafe(*index);
@@ -97,7 +97,7 @@ ImageData AssetManager::releaseImageData(AssetManager::ImageResourceMapIndex ind
   return data;
 }
 
-const VertexData& AssetManager::getVertexData(AssetManager::VertexResourceMapIndex index) {
+const VertexData& AssetManager::getVertexData(StagingVertexDataResourceHandle index) {
   if (_vertexDataResources.exists(*index)) [[likely]] {
     return _vertexDataResources.getValue(*index);
   }
@@ -112,7 +112,7 @@ const VertexData& AssetManager::getVertexData(AssetManager::VertexResourceMapInd
   return data;
 }
 
-VertexData AssetManager::releaseVertexData(AssetManager::VertexResourceMapIndex index) {
+VertexData AssetManager::releaseVertexData(StagingVertexDataResourceHandle index) {
   if (_vertexDataResources.exists(*index)) [[likely]] {
     VertexData data = std::move(_vertexDataResources.getValue(*index));
     _vertexDataResources.eraseUnsafe(*index);

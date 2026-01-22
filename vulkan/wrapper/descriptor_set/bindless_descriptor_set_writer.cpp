@@ -35,8 +35,8 @@ std::unique_ptr<BindlessDescriptorSetWriter> BindlessDescriptorSetWriter::create
       new BindlessDescriptorSetWriter(descriptorSet));
 }
 
-BindlessTextureHandle BindlessDescriptorSetWriter::storeTexture(const Texture& texture) {
-  const BindlessTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
+UniformTextureHandle BindlessDescriptorSetWriter::storeTexture(const Texture& texture) {
+  const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
   if (!_texturesMap.insert(*handle, &texture)) [[unlikely]] {
     throw EngineException(std::format(
         "BindlessDescriptorSetWriter::storeTexture: Failed to insert Texture Handle = {}.",
@@ -62,12 +62,12 @@ BindlessTextureHandle BindlessDescriptorSetWriter::storeTexture(const Texture& t
   return handle;
 }
 
-std::vector<BindlessTextureHandle> BindlessDescriptorSetWriter::storeTextures(
+std::vector<UniformTextureHandle> BindlessDescriptorSetWriter::storeTextures(
     std::span<const Texture> textures) {
-  std::vector<BindlessTextureHandle> handles;
+  std::vector<UniformTextureHandle> handles;
   handles.reserve(textures.size());
   for (const Texture& texture : textures) {
-    const BindlessTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
+    const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
     if (!_texturesMap.insert(*handle, &texture)) [[unlikely]] {
       throw EngineException(std::format(
           "BindlessDescriptorSetWriter::storeTextures: Failed to insert Texture Handle = {}.",
@@ -101,13 +101,13 @@ std::vector<BindlessTextureHandle> BindlessDescriptorSetWriter::storeTextures(
   return handles;
 }
 
-void BindlessDescriptorSetWriter::removeTexture(BindlessTextureHandle handle) {
+void BindlessDescriptorSetWriter::removeTexture(UniformTextureHandle handle) {
   _missingTextures.push_back(handle);
   _texturesMap.erase(*handle);
 }
 
-BindlessBufferHandle BindlessDescriptorSetWriter::storeBuffer(const Buffer& buffer) {
-  const BindlessBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
+UniformBufferHandle BindlessDescriptorSetWriter::storeBuffer(const Buffer& buffer) {
+  const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
   if (!_buffersMap.insert(*handle, &buffer)) [[unlikely]] {
     throw EngineException(std::format(
         "BindlessDescriptorSetWriter::storeBuffer: Failed to insert Buffer Handle = {}.", *handle));
@@ -131,12 +131,12 @@ BindlessBufferHandle BindlessDescriptorSetWriter::storeBuffer(const Buffer& buff
   return handle;
 }
 
-std::vector<BindlessBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
+std::vector<UniformBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
     std::span<const Buffer> buffers) {
-  std::vector<BindlessBufferHandle> handles;
+  std::vector<UniformBufferHandle> handles;
   handles.reserve(buffers.size());
   for (uint32_t i = 0; i < buffers.size(); i++) {
-    const BindlessBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
+    const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
     if (!_buffersMap.insert(*handle, &buffers[i])) [[unlikely]] {
       throw EngineException(std::format(
           "BindlessDescriptorSetWriter::storeBuffers: Failed to insert Buffer Handle = {}.",
@@ -168,7 +168,7 @@ std::vector<BindlessBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
   return handles;
 }
 
-void BindlessDescriptorSetWriter::removeBuffer(BindlessBufferHandle handle) {
+void BindlessDescriptorSetWriter::removeBuffer(UniformBufferHandle handle) {
   _missingBuffers.push_back(handle);
   _buffersMap.erase(*handle);
 }

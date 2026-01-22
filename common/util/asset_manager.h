@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/util/resource_handles.h"
+
 #include <glm/glm.hpp>
 #include <memory>
 #include <span>
@@ -10,12 +12,12 @@ namespace common {
 template <typename AssetManagerImpl>
 class AssetManager {
 public:
-  decltype(auto) loadImageAsync(const std::string& filePath) {
+  StagingImageDataResourceHandle loadImageAsync(const std::string& filePath) {
     return static_cast<AssetManagerImpl*>(this)->loadImageAsync(filePath);
   }
 
   template <typename Model, typename... Type>
-  decltype(auto) loadVertexDataInterleavingAsync(
+  StagingVertexDataResourceHandle loadVertexDataInterleavingAsync(
       std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
       std::span<const std::pair<std::string, std::string>> orders,
       std::span<const Type>... attributes) {

@@ -11,6 +11,7 @@
 #include "common/model_loader/image_loader/image_loader.h"
 #include "common/util/asset_manager.h"
 #include "common/util/buffer_manip.h"
+#include "common/util/resource_handles.h"
 #include "lib/association_list/association_list.h"
 #include "lib/sparse/sparse_map.h"
 #include "lib/types/strong_int.h"
@@ -45,31 +46,25 @@ public:
   };
 
 private:
-  static constexpr size_t MAX_IMAGE_DATA_RESOURCES = 256;
-  using ImageResourceMap = lib::SparseMap<ImageData, MAX_IMAGE_DATA_RESOURCES>;
-
-  static constexpr size_t MAX_VERTEX_DATA_RESOURCES = 256;
-  using VertexResourceMap = lib::SparseMap<VertexData, MAX_VERTEX_DATA_RESOURCES>;
+  using ImageResourceMap = lib::SparseMap<ImageData, MAX_STAGING_IMAGE_DATA_RESOURCES>;
+  using VertexResourceMap = lib::SparseMap<VertexData, MAX_STAGING_VERTEX_DATA_RESOURCES>;
 
 public:
-  DEFINE_STRONG_INT(ImageResourceMapIndex, typename ImageResourceMap::IndexType);
-  DEFINE_STRONG_INT(VertexResourceMapIndex, typename VertexResourceMap::IndexType);
-
-  ImageResourceMapIndex loadImageAsync(const std::string& filePath);
+  StagingImageDataResourceHandle loadImageAsync(const std::string& filePath);
 
   template <typename Model, typename... Type>
-  VertexResourceMapIndex loadVertexDataInterleavingAsync(
+  StagingVertexDataResourceHandle loadVertexDataInterleavingAsync(
       std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
       std::span<const std::pair<std::string, std::string>> orders,
       std::span<const Type>... attributes);
 
-  const ImageData& getImageData(ImageResourceMapIndex index);
+  const ImageData& getImageData(StagingImageDataResourceHandle index);
 
-  ImageData releaseImageData(ImageResourceMapIndex index);
+  ImageData releaseImageData(StagingImageDataResourceHandle index);
 
-  const VertexData& getVertexData(VertexResourceMapIndex index);
+  const VertexData& getVertexData(StagingVertexDataResourceHandle index);
 
-  VertexData releaseVertexData(VertexResourceMapIndex index);
+  VertexData releaseVertexData(StagingVertexDataResourceHandle index);
 
 private:
 // TODO: Change after std::move_only_function becomes a standard.
@@ -79,30 +74,31 @@ private:
   using ImageJob = std::move_only_function<ImageResource(std::span<const std::byte>)>;
 #endif  // ANDROID
 
-  ImageResourceMapIndex loadImageAsync(const std::string& filePath, ImageJob loadingFunction);
+  StagingImageDataResourceHandle loadImageAsync(
+      const std::string& filePath, ImageJob loadingFunction);
 
   std::launch _launchPolicy;
 
   const LogicalDevice& _logicalDevice;
   const FileLoader& _fileLoader;
 
-  std::vector<ImageResourceMapIndex> _freeImageDataIndices;  // TODO: Change to inplace vector.
-  std::unordered_map<ImageResourceMapIndex, std::future<ImageData>>
+  std::vector<StagingImageDataResourceHandle> _freeImageDataIndices;
+  std::unordered_map<StagingImageDataResourceHandle, std::future<ImageData>>
       _awaitingImageDataResources;  // TODO: Change to flat unordered map.
   ImageResourceMap _imageDataResources;
 
-  std::vector<VertexResourceMapIndex> _freeVertexDataIndices;  // TODO: Change to inplace vector.
-  std::unordered_map<VertexResourceMapIndex, std::future<VertexData>>
+  std::vector<StagingVertexDataResourceHandle> _freeVertexDataIndices;
+  std::unordered_map<StagingVertexDataResourceHandle, std::future<VertexData>>
       _awaitingVertexDataResources;  // TODO: Change to flat unordered map.
   VertexResourceMap _vertexDataResources;
 };
 
 template <typename Model, typename... Type>
-AssetManager::VertexResourceMapIndex AssetManager::loadVertexDataInterleavingAsync(
+StagingVertexDataResourceHandle AssetManager::loadVertexDataInterleavingAsync(
     std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
     std::span<const std::pair<std::string, std::string>> orders,
     std::span<const Type>... attributes) {
-  const VertexResourceMapIndex index = _freeVertexDataIndices.back();
+  const StagingVertexDataResourceHandle index = _freeVertexDataIndices.back();
   _freeVertexDataIndices.pop_back();
   _awaitingVertexDataResources.emplace(
       index,

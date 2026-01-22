@@ -13,6 +13,7 @@
 #include "common/util/asset_manager.h"
 #include "common/util/engine_exception.h"
 #include "common/util/primitives.h"
+#include "common/util/resource_handles.h"
 #include "lib/buffer/shared_buffer.h"
 
 struct Indices {
@@ -36,7 +37,7 @@ struct Indices {
 };
 
 template <typename AssetManagerImpl>
-VertexData<AssetManagerImpl> loadObj(common::AssetManager<AssetManagerImpl>& assetManager,
+VertexData loadObj(common::AssetManager<AssetManagerImpl>& assetManager,
                                      const std::string& name, std::string& stringData) {
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
@@ -88,7 +89,7 @@ VertexData<AssetManagerImpl> loadObj(common::AssetManager<AssetManagerImpl>& ass
     {"PN", "02"}
   };
 
-  const typename AssetManagerImpl::VertexResourceMapIndex vertexResourceID =
+  const StagingVertexDataResourceHandle vertexResourceID =
       assetManager.loadVertexDataInterleavingAsync(
           model,
           std::span(reinterpret_cast<const std::byte*>(model->indices.data()),
@@ -98,5 +99,5 @@ VertexData<AssetManagerImpl> loadObj(common::AssetManager<AssetManagerImpl>& ass
           std::span<const glm::vec2>(model->texCoords.data(), model->texCoords.size()),
           std::span<const glm::vec3>(model->normals.data(), model->normals.size()));
 
-  return VertexData<AssetManagerImpl>{.indexSize = indexSize, .vertexResourceID = vertexResourceID};
+  return VertexData{.indexSize = indexSize, .vertexResourceID = vertexResourceID};
 }

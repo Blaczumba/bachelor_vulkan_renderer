@@ -4,14 +4,15 @@
 
 #include "common/entity_component_system/entity/entity.h"
 #include "common/util/geometry.h"
+#include "common/util/resource_handles.h"
 
 class MeshComponent {
   static constexpr ComponentType componentID = 2;
 
 public:
-  size_t vertexBufferHandle;
-  size_t indexBufferHandle;
-  size_t vertexBufferPrimitiveHandle;
+  GpuBufferHandle vertexBufferHandle;
+  GpuBufferHandle indexBufferHandle;
+  GpuBufferHandle vertexBufferPrimitiveHandle;
   AABB aabb;
   VkIndexType indexType;
 

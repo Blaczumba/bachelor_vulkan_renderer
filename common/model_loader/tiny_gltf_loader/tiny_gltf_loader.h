@@ -17,6 +17,7 @@
 #include "common/util/engine_exception.h"
 #include "common/util/geometry.h"
 #include "common/util/primitives.h"
+#include "common/util/resource_handles.h"
 #include "lib/buffer/shared_buffer.h"
 
 #ifdef __ANDROID__
@@ -34,15 +35,15 @@ template <typename AssetManagerImpl>
 void processNode(
     common::AssetManager<AssetManagerImpl>& assetManager, std::shared_ptr<SharedData>& sharedData,
     const tinygltf::Node& node, const glm::mat4& parentTransform,
-    std::vector<VertexData<AssetManagerImpl>>& vertexDataList,
-    std::unordered_map<std::string, typename AssetManagerImpl::ImageResourceMapIndex>&
+    std::vector<VertexData>& vertexDataList,
+    std::unordered_map<std::string, StagingImageDataResourceHandle>&
         textureIndexMap,
     const std::string& baseDir);
 
 }  // namespace
 
 template <typename AssetManagerImpl>
-std::vector<VertexData<AssetManagerImpl>> LoadGltfFromFile(
+std::vector<VertexData> LoadGltfFromFile(
     common::AssetManager<AssetManagerImpl>& assetManager, const std::string& filePath) {
   auto sharedData = std::make_shared<SharedData>();
   tinygltf::TinyGLTF loader;
@@ -56,8 +57,8 @@ std::vector<VertexData<AssetManagerImpl>> LoadGltfFromFile(
   }
 
   const std::string baseDir = std::filesystem::path(filePath).parent_path().string();
-  std::vector<VertexData<AssetManagerImpl>> vertexDataList;
-  std::unordered_map<std::string, typename AssetManagerImpl::ImageResourceMapIndex> textureIndexMap;
+  std::vector<VertexData> vertexDataList;
+  std::unordered_map<std::string, StagingImageDataResourceHandle> textureIndexMap;
   for (const tinygltf::Scene& scene : sharedData->model.scenes) {
     for (int nodeIndex : scene.nodes) {
       const tinygltf::Node& node = sharedData->model.nodes[nodeIndex];
@@ -70,7 +71,7 @@ std::vector<VertexData<AssetManagerImpl>> LoadGltfFromFile(
 }
 
 template <typename AssetManagerImpl>
-std::vector<VertexData<AssetManagerImpl>> LoadGltfFromString(
+std::vector<VertexData> LoadGltfFromString(
     common::AssetManager<AssetManagerImpl>& assetManager, const std::string& dataString,
     const std::string& baseDir) {
   auto sharedData = std::make_shared<SharedData>();
@@ -80,8 +81,8 @@ std::vector<VertexData<AssetManagerImpl>> LoadGltfFromString(
   loader.LoadASCIIFromString(
       &sharedData->model, &error, &warning, dataString.data(), dataString.size(), baseDir);
 
-  std::vector<VertexData<AssetManagerImpl>> vertexDataList;
-  std::unordered_map<std::string, typename AssetManagerImpl::ImageResourceMapIndex> textureIndexMap;
+  std::vector<VertexData> vertexDataList;
+  std::unordered_map<std::string, StagingImageDataResourceHandle> textureIndexMap;
   for (const tinygltf::Scene& scene : sharedData->model.scenes) {
     for (int nodeIndex : scene.nodes) {
       const tinygltf::Node& node = sharedData->model.nodes[nodeIndex];
@@ -170,8 +171,8 @@ template <typename AssetManagerImpl>
 void processNode(
     common::AssetManager<AssetManagerImpl>& assetManager, std::shared_ptr<SharedData>& sharedData,
     const tinygltf::Node& node, const glm::mat4& parentTransform,
-    std::vector<VertexData<AssetManagerImpl>>& vertexDataList,
-    std::unordered_map<std::string, typename AssetManagerImpl::ImageResourceMapIndex>&
+    std::vector<VertexData>& vertexDataList,
+    std::unordered_map<std::string, StagingImageDataResourceHandle>&
         textureIndexMap,
     const std::string& baseDir) {
   const glm::mat4 currentTransform = parentTransform * GetNodeTransform(node);
@@ -228,7 +229,7 @@ void processNode(
         std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()), positionsData.size()),
         std::span(reinterpret_cast<const glm::vec2*>(textureCoordsData.data()),
                   textureCoordsData.size())));
-    const typename AssetManagerImpl::VertexResourceMapIndex vertexResourceID =
+    const StagingVertexDataResourceHandle vertexResourceID =
         assetManager.loadVertexDataInterleavingAsync(
             sharedData, indicesBytes, indexSize, orders,
             std::span(
@@ -239,10 +240,7 @@ void processNode(
             std::span(reinterpret_cast<const glm::vec3*>(sharedData->tangents.back().data()),
                       sharedData->tangents.back().size()));
 
-    using ImageResourceMapIndex = typename AssetManagerImpl::ImageResourceMapIndex;
-
-    auto getOrLoadTexture =
-        [&](const std::string& textureName) -> ImageResourceMapIndex {
+    auto getOrLoadTexture = [&](const std::string& textureName) -> StagingImageDataResourceHandle {
       auto [it, inserted] = textureIndexMap.try_emplace(textureName);
       if (inserted) {
         it->second = assetManager.loadImageAsync(baseDir + '/' + textureName);
@@ -250,19 +248,19 @@ void processNode(
       return it->second;
     };
 
-    const ImageResourceMapIndex diffuseTextureID =
+    const StagingImageDataResourceHandle diffuseTextureID =
         getOrLoadTexture(diffuseTexture);
-    const ImageResourceMapIndex metallicRoughnessTextureID =
+    const StagingImageDataResourceHandle metallicRoughnessTextureID =
         getOrLoadTexture(metallicRoughnessTexture);
-    const ImageResourceMapIndex normalTextureID =
+    const StagingImageDataResourceHandle normalTextureID =
         getOrLoadTexture(normalTexture);
 
     vertexDataList.emplace_back(
         std::move(positions), indexSize, currentTransform,
-        ImageID<ImageResourceMapIndex>{
+        ImageID{
           diffuseTextureID, std::move(diffuseTexture)},
-        ImageID<ImageResourceMapIndex>{normalTextureID, std::move(normalTexture)},
-        ImageID<ImageResourceMapIndex>{
+        ImageID{normalTextureID, std::move(normalTexture)},
+        ImageID{
           metallicRoughnessTextureID, std::move(metallicRoughnessTexture)},
         vertexResourceID);
   }

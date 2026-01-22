@@ -1,28 +1,25 @@
 #pragma once
 
+#include <common/util/resource_handles.h>
 #include "lib/sparse/sparse_map.h"
 #include "lib/types/strong_int.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
 
 class GpuBufferManager {
-  static constexpr size_t MAX_BUFFERS = 1024;
-
   struct BufferResource {
     Buffer buffer;
     size_t refCount = 0;
   };
 
-  using GpuBufferMap = lib::SparseMap<BufferResource, MAX_BUFFERS>;
-
-  static constexpr size_t MAX_TEXTURES = 1024;
+  using GpuBufferMap = lib::SparseMap<BufferResource, MAX_GPU_BUFFERS>;
 
   struct TextureResource {
     Texture texture;
     size_t refCount = 0;
   };
 
-  using GpuTextureMap = lib::SparseMap<TextureResource, MAX_TEXTURES>;
+  using GpuTextureMap = lib::SparseMap<TextureResource, MAX_GPU_TEXTURES>;
 
   GpuBufferManager() noexcept = default;
 
@@ -31,41 +28,38 @@ public:
 
   static std::unique_ptr<GpuBufferManager> create();
 
-  DEFINE_STRONG_INT(GpuBufferMapIndex, GpuBufferMap::IndexType);
-  DEFINE_STRONG_INT(GpuTextureMapIndex, GpuTextureMap::IndexType);
+  void increaseRefCount(GpuBufferHandle index);
 
-  void increaseRefCount(GpuBufferMapIndex index);
+  void decreaseRefCount(GpuBufferHandle index);
 
-  void decreaseRefCount(GpuBufferMapIndex index);
+  void increaseRefCount(GpuTextureHandle index);
 
-  void increaseRefCount(GpuTextureMapIndex index);
-
-  void decreaseRefCount(GpuTextureMapIndex index);
+  void decreaseRefCount(GpuTextureHandle index);
 
   enum class BufferType : uint8_t {
     VERTEX,
     INDEX
   };
 
-  GpuBufferMapIndex uploadBuffer(
+  GpuBufferHandle uploadBuffer(
       VkCommandBuffer commandBuffer, const Buffer& stagingBuffer, BufferType bufferType);
 
-  GpuBufferMapIndex transferBuffer(Buffer&& stagingBuffer);
+  GpuBufferHandle transferBuffer(Buffer&& stagingBuffer);
 
-  const Buffer& getBuffer(GpuBufferMapIndex index) const;
+  const Buffer& getBuffer(GpuBufferHandle index) const;
 
-  bool removeBuffer(GpuBufferMapIndex index);
+  bool removeBuffer(GpuBufferHandle index);
 
-  GpuTextureMapIndex transferTexture(Texture&& stagingBuffer);
+  GpuTextureHandle transferTexture(Texture&& stagingBuffer);
 
-  const Texture& getTexture(GpuTextureMapIndex index) const;
+  const Texture& getTexture(GpuTextureHandle index) const;
 
-  bool removeTexture(GpuTextureMapIndex index);
+  bool removeTexture(GpuTextureHandle index);
 
 private:
   GpuBufferMap _bufferMap;
-  std::vector<GpuBufferMapIndex> _freeBufferIndices;
+  std::vector<GpuBufferHandle> _freeBufferIndices;
 
   GpuTextureMap _textureMap;
-  std::vector<GpuTextureMapIndex> _freeTextureIndices;
+  std::vector<GpuTextureHandle> _freeTextureIndices;
 };
