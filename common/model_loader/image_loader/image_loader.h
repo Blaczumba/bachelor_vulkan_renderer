@@ -1,11 +1,12 @@
 #pragma once
 
+#include <lib/buffer/buffer.h>
+
 #include <ktx.h>
 #include <span>
 #include <stb_image/stb_image.h>
 #include <string_view>
 #include <variant>
-#include <vector>
 
 struct ImageSubresource {
   size_t offset;
@@ -23,14 +24,15 @@ struct ImageResource {
   uint32_t height;
   uint32_t mipLevels;
   uint32_t layerCount;
-  std::vector<ImageSubresource> subresources;
+  lib::Buffer<ImageSubresource> subresources;
   void* data;
   size_t size;
 };
 
-class ImageLoader {
-public:
-  static ImageResource loadImageStbi(std::span<const std::byte> imagePath);
-  static ImageResource loadImageKtx(std::span<const std::byte> imagePath);
-  static void deallocateResources(ImageResource& resource);
-};
+ImageResource loadImageStbi(std::span<const std::byte> imageData);
+
+ImageResource loadImageKtx(std::span<const std::byte> imageData);
+
+ImageResource loadImage(std::span<const std::byte> imageData, std::string_view filePath);
+
+void deallocateResources(ImageResource& resource);

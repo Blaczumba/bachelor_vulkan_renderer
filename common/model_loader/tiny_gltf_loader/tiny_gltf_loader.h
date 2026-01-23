@@ -250,10 +250,10 @@ void processNode(
 
     const StagingImageDataResourceHandle diffuseTextureID =
         getOrLoadTexture(diffuseTexture);
-    const StagingImageDataResourceHandle metallicRoughnessTextureID =
-        getOrLoadTexture(metallicRoughnessTexture);
     const StagingImageDataResourceHandle normalTextureID =
         getOrLoadTexture(normalTexture);
+    const StagingImageDataResourceHandle metallicRoughnessTextureID =
+        getOrLoadTexture(metallicRoughnessTexture);
 
     vertexDataList.emplace_back(
         std::move(positions), indexSize, currentTransform,

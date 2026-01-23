@@ -67,16 +67,6 @@ public:
   VertexData releaseVertexData(StagingVertexDataResourceHandle index);
 
 private:
-// TODO: Change after std::move_only_function becomes a standard.
-#ifdef ANDROID
-  using ImageJob = std::function<ImageResource(std::span<const std::byte>)>;
-#else
-  using ImageJob = std::move_only_function<ImageResource(std::span<const std::byte>)>;
-#endif  // ANDROID
-
-  StagingImageDataResourceHandle loadImageAsync(
-      const std::string& filePath, ImageJob loadingFunction);
-
   std::launch _launchPolicy;
 
   const LogicalDevice& _logicalDevice;

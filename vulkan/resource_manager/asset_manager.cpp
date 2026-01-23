@@ -21,19 +21,19 @@ std::unique_ptr<AssetManager> AssetManager::create(
 }
 
 StagingImageDataResourceHandle AssetManager::loadImageAsync(
-    const std::string& filePath, ImageJob loadingFunction) {
+    const std::string& filePath) {
   const StagingImageDataResourceHandle index = _freeImageDataIndices.back();
   _freeImageDataIndices.pop_back();
   _awaitingImageDataResources.emplace(
       index,
       std::async(
           _launchPolicy,
-          [this, filePath, loadingFunction = std::move(loadingFunction)]() mutable -> ImageData {
-            ImageResource resource = loadingFunction(_fileLoader.loadFileToBuffer(filePath));
+          [this, filePath]() -> ImageData {
+            ImageResource resource = loadImage(_fileLoader.loadFileToBuffer(filePath), filePath);
             Buffer stagingBuffer = Buffer::createStagingBuffer(_logicalDevice, resource.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
             stagingBuffer.copyData(
                 std::span(static_cast<const std::byte*>(resource.data), resource.size));
-            ImageLoader::deallocateResources(resource);
+            deallocateResources(resource);
 
             lib::Buffer<VkBufferImageCopy> vkSubresources(resource.subresources.size());
             std::transform(resource.subresources.cbegin(), resource.subresources.cend(),
@@ -55,14 +55,6 @@ StagingImageDataResourceHandle AssetManager::loadImageAsync(
           }));
 
   return index;
-}
-
-StagingImageDataResourceHandle AssetManager::loadImageAsync(const std::string& filePath) {
-  if (filePath.ends_with(".ktx") || filePath.ends_with(".ktx2")) {
-    return loadImageAsync(filePath, ImageLoader::loadImageKtx);
-  } else {
-    return loadImageAsync(filePath, ImageLoader::loadImageStbi);
-  }
 }
 
 const ImageData& AssetManager::getImageData(StagingImageDataResourceHandle index) {
