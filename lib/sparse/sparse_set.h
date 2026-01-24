@@ -15,9 +15,9 @@ public:
 
   ~SparseSet() = default;
 
-  IndexType size() const;
+  [[nodiscard]] IndexType size() const noexcept;
 
-  bool exists(IndexType index) const;
+  [[nodiscard]] bool exists(IndexType index) const;
 
   bool insert(IndexType index);
 
@@ -34,13 +34,13 @@ private:
 };
 
 template <size_t N>
-typename SparseSet<N>::IndexType SparseSet<N>::size() const {
+SparseSet<N>::IndexType SparseSet<N>::size() const noexcept {
   return _size;
 }
 
 template <size_t N>
 bool SparseSet<N>::exists(IndexType index) const {
-  return index < N && _sparse[index] < _size && _dense[_sparse[index]] == index;
+  return _sparse[index] < _size && _dense[_sparse[index]] == index;
 }
 
 template <size_t N>
@@ -50,16 +50,14 @@ bool SparseSet<N>::insert(IndexType index) {
   }
 
   _sparse[index] = _size;
-  _dense[_size] = index;
-  ++_size;
+  _dense[_size++] = index;
   return true;
 }
 
 template <size_t N>
 void SparseSet<N>::insertUnsafe(IndexType index) {
   _sparse[index] = _size;
-  _dense[_size] = index;
-  ++_size;
+  _dense[_size++] = index;
 }
 
 template <size_t N>
@@ -69,20 +67,18 @@ bool SparseSet<N>::erase(IndexType index) {
   }
 
   const IndexType denseIndex = _sparse[index];
-  const IndexType lastIndex = _dense[_size - 1];
+  const IndexType lastIndex = _dense[--_size];
   _dense[denseIndex] = lastIndex;
   _sparse[lastIndex] = denseIndex;
-  --_size;
   return true;
 }
 
 template <size_t N>
 void SparseSet<N>::eraseUnsafe(IndexType index) {
   const IndexType denseIndex = _sparse[index];
-  const IndexType lastIndex = _dense[_size - 1];
+  const IndexType lastIndex = _dense[--_size];
   _dense[denseIndex] = lastIndex;
   _sparse[lastIndex] = denseIndex;
-  --_size;
 }
 
 }  // namespace lib

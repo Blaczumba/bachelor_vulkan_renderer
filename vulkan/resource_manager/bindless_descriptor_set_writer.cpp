@@ -1,8 +1,9 @@
-#include "vulkan/wrapper/descriptor_set/bindless_descriptor_set_writer.h"
+#include "bindless_descriptor_set_writer.h"
 
 #include <format>
 #include <vulkan/vulkan.h>
 
+#include "vulkan/resource_manager/util.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_writer_lib.h"
 
@@ -11,17 +12,6 @@ namespace {
 constexpr uint32_t UNIFORM_BINDING = 0;
 constexpr uint32_t TEXTURE_BINDING = 1;
 constexpr uint32_t STORAGE_BINDING = 2;
-
-template <typename T>
-T getNextHandle(uint32_t elementsCount, std::vector<T>& missingBindings) {
-  if (missingBindings.empty()) {
-    return T(elementsCount);
-  }
-
-  T it = missingBindings.back();
-  missingBindings.pop_back();
-  return it;
-}
 
 }  // namespace
 
@@ -37,7 +27,7 @@ std::unique_ptr<BindlessDescriptorSetWriter> BindlessDescriptorSetWriter::create
 
 UniformTextureHandle BindlessDescriptorSetWriter::storeTexture(const Texture& texture) {
   const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
-  if (!_texturesMap.insert(*handle, &texture)) [[unlikely]] {
+  if (!_texturesMap.insert(*handle)) [[unlikely]] {
     throw EngineException(std::format(
         "BindlessDescriptorSetWriter::storeTexture: Failed to insert Texture Handle = {}.",
         *handle));
@@ -66,9 +56,9 @@ std::vector<UniformTextureHandle> BindlessDescriptorSetWriter::storeTextures(
     std::span<const Texture> textures) {
   std::vector<UniformTextureHandle> handles;
   handles.reserve(textures.size());
-  for (const Texture& texture : textures) {
+  for (uint32_t i = 0; i < textures.size(); i++) {
     const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
-    if (!_texturesMap.insert(*handle, &texture)) [[unlikely]] {
+    if (!_texturesMap.insert(*handle)) [[unlikely]] {
       throw EngineException(std::format(
           "BindlessDescriptorSetWriter::storeTextures: Failed to insert Texture Handle = {}.",
           *handle));
@@ -108,7 +98,7 @@ void BindlessDescriptorSetWriter::removeTexture(UniformTextureHandle handle) {
 
 UniformBufferHandle BindlessDescriptorSetWriter::storeBuffer(const Buffer& buffer) {
   const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
-  if (!_buffersMap.insert(*handle, &buffer)) [[unlikely]] {
+  if (!_buffersMap.insert(*handle)) [[unlikely]] {
     throw EngineException(std::format(
         "BindlessDescriptorSetWriter::storeBuffer: Failed to insert Buffer Handle = {}.", *handle));
   }
@@ -137,7 +127,7 @@ std::vector<UniformBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
   handles.reserve(buffers.size());
   for (uint32_t i = 0; i < buffers.size(); i++) {
     const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
-    if (!_buffersMap.insert(*handle, &buffers[i])) [[unlikely]] {
+    if (!_buffersMap.insert(*handle)) [[unlikely]] {
       throw EngineException(std::format(
           "BindlessDescriptorSetWriter::storeBuffers: Failed to insert Buffer Handle = {}.",
           *handle));

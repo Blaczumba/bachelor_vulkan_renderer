@@ -3,15 +3,15 @@
 #include <vector>
 
 #include "common/util/resource_handles.h"
-#include "lib/sparse/sparse_map.h"
+#include "lib/sparse/sparse_set.h"
 #include "lib/types/strong_int.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
 
 class BindlessDescriptorSetWriter {
-  using TextureHandleMap = lib::SparseMap<const Texture*, MAX_UNIFORM_RESOURCES>;
-  using BufferHandleMap = lib::SparseMap<const Buffer*, MAX_UNIFORM_RESOURCES>;
+  using TextureHandleMap = lib::SparseSet<MAX_UNIFORM_RESOURCES>;
+  using BufferHandleMap = lib::SparseSet<MAX_UNIFORM_RESOURCES>;
 
   BindlessDescriptorSetWriter(const DescriptorSet& descriptorSet) noexcept;
 
