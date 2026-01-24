@@ -53,10 +53,8 @@ ImageResource loadImageKtx(std::span<const std::byte> imageData) {
     .data = ktxTexture->pData,
     .size = ktxTexture->dataSize};
 
-  for (uint32_t face = 0; face < image.layerCount; ++face) {
-    const uint32_t faceIndex = face * image.mipLevels;
-    for (uint32_t level = 0; level < image.mipLevels; ++level) {
-      // Calculate offset into staging buffer for the current mip level and face
+  for (uint32_t face = 0, index = 0; face < image.layerCount; face++) {
+    for (uint32_t level = 0; level < image.mipLevels; level++, index++) {
       ktx_size_t offset;
       if (ktxResult result = ktxTexture_GetImageOffset(ktxTexture, level, 0, face, &offset);
           result != KTX_SUCCESS) [[unlikely]] {
@@ -65,7 +63,7 @@ ImageResource loadImageKtx(std::span<const std::byte> imageData) {
             std::format("Failed to get image offset for level: {}, face: {} (ktx).", level, face));
       }
 
-      image.subresources[faceIndex + level] = ImageSubresource{
+      image.subresources[index] = ImageSubresource{
         .offset = offset,
         .mipLevel = level,
         .baseArrayLayer = face,

@@ -8,6 +8,7 @@
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 #include "vulkan/wrapper/util/vertex_input_description_builder.h"
+#include "vulkan/resource_manager/util.h"
 
 PipelineManager::PipelineManager(const FileLoader& fileLoader) : _fileLoader(fileLoader) {}
 
@@ -82,21 +83,6 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevi
   _descriptorSetLayouts.emplace(layoutType, std::move(layout));
   return vkLayout;
 }
-
-namespace {
-
-template <typename T>
-T getNextHandle(uint32_t elementsCount, std::vector<T>& missingHandles) {
-  if (missingHandles.empty()) {
-    return T(elementsCount);
-  }
-
-  T it = missingHandles.back();
-  missingHandles.pop_back();
-  return it;
-}
-
-}  // namespace
 
 std::pair<PipelineLayout*, PipelineManager::PipelineLayoutMapIndex> PipelineManager::
     getOrCreatePipelineLayout(const PipelineLayoutKey& key, const LogicalDevice& logicalDevice) {

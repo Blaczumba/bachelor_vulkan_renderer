@@ -12,6 +12,7 @@
 #include <tinygltf/tiny_gltf.h>
 #include <vector>
 
+#include "common/file/file.h"
 #include "common/model_loader/model_loader.h"
 #include "common/util/asset_manager.h"
 #include "common/util/engine_exception.h"
@@ -243,7 +244,7 @@ void processNode(
     auto getOrLoadTexture = [&](const std::string& textureName) -> StagingImageDataResourceHandle {
       auto [it, inserted] = textureIndexMap.try_emplace(textureName);
       if (inserted) {
-        it->second = assetManager.loadImageAsync(baseDir + '/' + textureName);
+        it->second = assetManager.loadImageAsync(joinPaths(baseDir, textureName));
       }
       return it->second;
     };

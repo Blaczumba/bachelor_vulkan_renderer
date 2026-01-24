@@ -1,4 +1,4 @@
-add_library(AssetManager asset_manager.h asset_manager.cpp pipeline_manager.h pipeline_manager.cpp hasher.h gpu_buffer_manager.h gpu_buffer_manager.cpp)
+add_library(AssetManager asset_manager.h asset_manager.cpp pipeline_manager.h pipeline_manager.cpp hasher.h gpu_buffer_manager.h gpu_buffer_manager.cpp util.h)
 
 target_link_libraries(AssetManager PUBLIC Vulkan::Vulkan)
 target_link_libraries(AssetManager PUBLIC CommonModelLoader LogicalDevice Buffer CommonUtil VulkanWrapperUtil)
