@@ -94,7 +94,7 @@ if(Vulkan_FOUND)
             PhysicalDevice MemoryAllocator
             LogicalDevice Renderpass
             Swapchain Buffer CommandBuffer
-            Framebuffer Pipeline
+            Framebuffer Pipeline Sampler
             DescriptorSet VulkanWrapperUtil
     )
     target_link_libraries(${ENGINE_NAME} INTERFACE ${VULKAN_ENGINE_NAME})
