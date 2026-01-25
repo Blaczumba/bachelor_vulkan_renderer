@@ -192,15 +192,15 @@ Framebuffer::~Framebuffer() {
   destroy();
 }
 
-VkExtent2D Framebuffer::getVkExtent() const {
+VkExtent2D Framebuffer::getVkExtent() const noexcept {
   return _scissor.extent;
 }
 
-const VkViewport& Framebuffer::getViewport() const {
+const VkViewport& Framebuffer::getViewport() const noexcept {
   return _viewport;
 }
 
-const VkRect2D& Framebuffer::getScissor() const {
+const VkRect2D& Framebuffer::getScissor() const noexcept {
   return _scissor;
 }
 
@@ -208,6 +208,6 @@ const Renderpass& Framebuffer::getRenderpass() const {
   return *_renderpass;
 }
 
-VkFramebuffer Framebuffer::getVkFramebuffer() const {
+VkFramebuffer Framebuffer::getVkFramebuffer() const noexcept {
   return _framebuffer;
 }

@@ -18,14 +18,14 @@ public:
       const LogicalDevice& logicalDevice, uint32_t maxNumSets,
       VkDescriptorPoolCreateFlags flags = {});
 
-  VkDescriptorPool getVkDescriptorPool() const;
+  VkDescriptorPool getVkDescriptorPool() const noexcept;
 
   DescriptorSet createDesriptorSet(VkDescriptorSetLayout layout) const;
 
   std::vector<DescriptorSet> createDesriptorSets(
       VkDescriptorSetLayout layout, uint32_t numSets) const;
 
-  bool maxSetsReached() const;
+  bool maxSetsReached() const noexcept;
 
   const LogicalDevice& getLogicalDevice() const;
 

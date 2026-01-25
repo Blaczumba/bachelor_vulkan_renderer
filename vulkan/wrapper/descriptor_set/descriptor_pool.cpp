@@ -39,7 +39,7 @@ std::unique_ptr<DescriptorPool> DescriptorPool::create(
       new DescriptorPool(descriptorPool, logicalDevice, maxNumSets));
 }
 
-VkDescriptorPool DescriptorPool::getVkDescriptorPool() const {
+VkDescriptorPool DescriptorPool::getVkDescriptorPool() const noexcept {
   return _descriptorPool;
 }
 
@@ -62,7 +62,7 @@ std::vector<DescriptorSet> DescriptorPool::createDesriptorSets(
   return DescriptorSet::create(shared_from_this(), layout, numSets);
 }
 
-bool DescriptorPool::maxSetsReached() const {
+bool DescriptorPool::maxSetsReached() const noexcept {
   return _allocatedSets >= _maxNumSets;
 }
 

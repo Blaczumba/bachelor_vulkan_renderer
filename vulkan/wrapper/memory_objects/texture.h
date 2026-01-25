@@ -24,17 +24,17 @@ public:
 
   void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
 
-  VkImage getVkImage() const;
+  VkImage getVkImage() const noexcept;
 
   VkImageView getVkImageView(size_t index = 0) const;
 
-  VkSampler getVkSampler() const;
+  VkSampler getVkSampler() const noexcept;
 
-  VkExtent2D getVkExtent2D() const;
+  VkExtent2D getVkExtent2D() const noexcept;
 
-  VkExtent3D getVkExtent3D() const;
+  VkExtent3D getVkExtent3D() const noexcept;
 
-  VkImageLayout getVkImageLayout() const;
+  VkImageLayout getVkImageLayout() const noexcept;
 
 private:
   Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
@@ -58,61 +58,61 @@ private:
 
 class TextureBuilder {
 public:
-  TextureBuilder& withType(VkImageType type);
+  TextureBuilder& withType(VkImageType type) noexcept;
 
-  TextureBuilder& withLayout(VkImageLayout layout);
+  TextureBuilder& withLayout(VkImageLayout layout) noexcept;
 
-  TextureBuilder& withFormat(VkFormat format);
+  TextureBuilder& withFormat(VkFormat format) noexcept;
 
-  TextureBuilder& withExtent(uint32_t width);
+  TextureBuilder& withExtent(uint32_t width) noexcept;
 
-  TextureBuilder& withExtent(uint32_t width, uint32_t height);
+  TextureBuilder& withExtent(uint32_t width, uint32_t height) noexcept;
 
-  TextureBuilder& withExtent(VkExtent2D extent);
+  TextureBuilder& withExtent(VkExtent2D extent) noexcept;
 
-  TextureBuilder& withExtent(uint32_t width, uint32_t height, uint32_t depth);
+  TextureBuilder& withExtent(uint32_t width, uint32_t height, uint32_t depth) noexcept;
 
-  TextureBuilder& withExtent(VkExtent3D extent);
+  TextureBuilder& withExtent(VkExtent3D extent) noexcept;
 
-  TextureBuilder& withAspect(VkImageAspectFlags aspect);
+  TextureBuilder& withAspect(VkImageAspectFlags aspect) noexcept;
 
-  TextureBuilder& withMipLevels(uint32_t mipLevels);
+  TextureBuilder& withMipLevels(uint32_t mipLevels) noexcept;
 
-  TextureBuilder& withNumSamples(VkSampleCountFlagBits numSamples);
+  TextureBuilder& withNumSamples(VkSampleCountFlagBits numSamples) noexcept;
 
-  TextureBuilder& withTiling(VkImageTiling tiling);
+  TextureBuilder& withTiling(VkImageTiling tiling) noexcept;
 
-  TextureBuilder& withUsage(VkImageUsageFlags usage);
+  TextureBuilder& withUsage(VkImageUsageFlags usage) noexcept;
 
-  TextureBuilder& withProperties(VkMemoryPropertyFlags properties);
+  TextureBuilder& withProperties(VkMemoryPropertyFlags properties) noexcept;
 
-  TextureBuilder& withLayerCount(uint32_t layerCount);
+  TextureBuilder& withLayerCount(uint32_t layerCount) noexcept;
 
-  TextureBuilder& withAdditionalCreateInfoFlags(VkImageCreateFlags flags);
+  TextureBuilder& withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept;
 
-  TextureBuilder& withMagFilter(VkFilter magFilter);
+  TextureBuilder& withMagFilter(VkFilter magFilter) noexcept;
 
-  TextureBuilder& withMinFilter(VkFilter minFilter);
+  TextureBuilder& withMinFilter(VkFilter minFilter) noexcept;
 
-  TextureBuilder& withMipmapMode(VkSamplerMipmapMode mipmapMode);
+  TextureBuilder& withMipmapMode(VkSamplerMipmapMode mipmapMode) noexcept;
 
   TextureBuilder& withAddressModes(
       VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV,
-      VkSamplerAddressMode addressModeW);
+      VkSamplerAddressMode addressModeW) noexcept;
 
-  TextureBuilder& withMipLodBias(float mipLodBias);
+  TextureBuilder& withMipLodBias(float mipLodBias) noexcept;
 
-  TextureBuilder& withMaxAnisotropy(float maxAnisotropy);
+  TextureBuilder& withMaxAnisotropy(float maxAnisotropy) noexcept;
 
-  TextureBuilder& withCompareOp(VkCompareOp compareOp);
+  TextureBuilder& withCompareOp(VkCompareOp compareOp) noexcept;
 
-  TextureBuilder& withMinLod(float minLod);
+  TextureBuilder& withMinLod(float minLod) noexcept;
 
-  TextureBuilder& withMaxLod(float maxLod);
+  TextureBuilder& withMaxLod(float maxLod) noexcept;
 
-  TextureBuilder& withBorderColor(VkBorderColor borderColor);
+  TextureBuilder& withBorderColor(VkBorderColor borderColor) noexcept;
 
-  TextureBuilder& withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates);
+  TextureBuilder& withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) noexcept;
 
   Texture buildAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const;
 

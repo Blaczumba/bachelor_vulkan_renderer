@@ -93,7 +93,7 @@ Texture::~Texture() {
   destroy();
 }
 
-VkImage Texture::getVkImage() const {
+VkImage Texture::getVkImage() const noexcept {
   return _image;
 }
 
@@ -101,19 +101,19 @@ VkImageView Texture::getVkImageView(size_t index) const {
   return index < _views.size() ? _views[index] : VK_NULL_HANDLE;
 }
 
-VkSampler Texture::getVkSampler() const {
+VkSampler Texture::getVkSampler() const noexcept {
   return _sampler;
 }
 
-VkExtent2D Texture::getVkExtent2D() const {
+VkExtent2D Texture::getVkExtent2D() const noexcept {
   return VkExtent2D{_imageParameters.extent.width, _imageParameters.extent.height};
 }
 
-VkExtent3D Texture::getVkExtent3D() const {
+VkExtent3D Texture::getVkExtent3D() const noexcept {
   return _imageParameters.extent;
 }
 
-VkImageLayout Texture::getVkImageLayout() const {
+VkImageLayout Texture::getVkImageLayout() const noexcept {
   return _layout;
 }
 
@@ -180,141 +180,143 @@ inline VkImage allocate(Allocation& allocation, const ImageParameters& imagePara
 
 }  // namespace
 
-TextureBuilder& TextureBuilder::withType(VkImageType type) {
+TextureBuilder& TextureBuilder::withType(VkImageType type) noexcept {
   _imageParameters.type = type;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withLayout(VkImageLayout layout) {
+TextureBuilder& TextureBuilder::withLayout(VkImageLayout layout) noexcept {
   _imageLayout = layout;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withFormat(VkFormat format) {
+TextureBuilder& TextureBuilder::withFormat(VkFormat format) noexcept {
   _imageParameters.format = format;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withExtent(uint32_t width) {
+TextureBuilder& TextureBuilder::withExtent(uint32_t width) noexcept {
   _imageParameters.extent = {width, 1, 1};
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withExtent(uint32_t width, uint32_t height) {
+TextureBuilder& TextureBuilder::withExtent(uint32_t width, uint32_t height) noexcept {
   _imageParameters.extent = {width, height, 1};
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withExtent(VkExtent2D extent) {
+TextureBuilder& TextureBuilder::withExtent(VkExtent2D extent) noexcept {
   _imageParameters.extent = {extent.width, extent.height, 1};
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withExtent(uint32_t width, uint32_t height, uint32_t depth) {
+TextureBuilder& TextureBuilder::withExtent(
+    uint32_t width, uint32_t height, uint32_t depth) noexcept {
   _imageParameters.extent = {width, height, depth};
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withExtent(VkExtent3D extent) {
+TextureBuilder& TextureBuilder::withExtent(VkExtent3D extent) noexcept {
   _imageParameters.extent = extent;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withAspect(VkImageAspectFlags aspect) {
+TextureBuilder& TextureBuilder::withAspect(VkImageAspectFlags aspect) noexcept {
   _imageParameters.aspect = aspect;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withMipLevels(uint32_t mipLevels) {
+TextureBuilder& TextureBuilder::withMipLevels(uint32_t mipLevels) noexcept {
   _imageParameters.mipLevels = mipLevels;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withNumSamples(VkSampleCountFlagBits numSamples) {
+TextureBuilder& TextureBuilder::withNumSamples(VkSampleCountFlagBits numSamples) noexcept {
   _imageParameters.numSamples = numSamples;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withTiling(VkImageTiling tiling) {
+TextureBuilder& TextureBuilder::withTiling(VkImageTiling tiling) noexcept {
   _imageParameters.tiling = tiling;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withUsage(VkImageUsageFlags usage) {
+TextureBuilder& TextureBuilder::withUsage(VkImageUsageFlags usage) noexcept {
   _imageParameters.usage = usage;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withProperties(VkMemoryPropertyFlags properties) {
+TextureBuilder& TextureBuilder::withProperties(VkMemoryPropertyFlags properties) noexcept {
   _imageParameters.properties = properties;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withLayerCount(uint32_t layerCount) {
+TextureBuilder& TextureBuilder::withLayerCount(uint32_t layerCount) noexcept {
   _imageParameters.layerCount = layerCount;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withAdditionalCreateInfoFlags(VkImageCreateFlags flags) {
+TextureBuilder& TextureBuilder::withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept {
   _imageParameters.flags |= flags;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withMagFilter(VkFilter magFilter) {
+TextureBuilder& TextureBuilder::withMagFilter(VkFilter magFilter) noexcept {
   _samplerParameters.magFilter = magFilter;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withMinFilter(VkFilter minFilter) {
+TextureBuilder& TextureBuilder::withMinFilter(VkFilter minFilter) noexcept {
   _samplerParameters.minFilter = minFilter;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withMipmapMode(VkSamplerMipmapMode mipmapMode) {
+TextureBuilder& TextureBuilder::withMipmapMode(VkSamplerMipmapMode mipmapMode) noexcept {
   _samplerParameters.mipmapMode = mipmapMode;
   return *this;
 }
 
 TextureBuilder& TextureBuilder::withAddressModes(
     VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV,
-    VkSamplerAddressMode addressModeW) {
+    VkSamplerAddressMode addressModeW) noexcept {
   _samplerParameters.addressModeU = addressModeU;
   _samplerParameters.addressModeV = addressModeV;
   _samplerParameters.addressModeW = addressModeW;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withMipLodBias(float mipLodBias) {
+TextureBuilder& TextureBuilder::withMipLodBias(float mipLodBias) noexcept {
   _samplerParameters.mipLodBias = mipLodBias;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withMaxAnisotropy(float maxAnisotropy) {
+TextureBuilder& TextureBuilder::withMaxAnisotropy(float maxAnisotropy) noexcept {
   _samplerParameters.maxAnisotropy = maxAnisotropy;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withCompareOp(VkCompareOp compareOp) {
+TextureBuilder& TextureBuilder::withCompareOp(VkCompareOp compareOp) noexcept {
   _samplerParameters.compareOp = compareOp;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withMinLod(float minLod) {
+TextureBuilder& TextureBuilder::withMinLod(float minLod) noexcept {
   _samplerParameters.minLod = minLod;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withMaxLod(float maxLod) {
+TextureBuilder& TextureBuilder::withMaxLod(float maxLod) noexcept {
   _samplerParameters.maxLod = maxLod;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withBorderColor(VkBorderColor borderColor) {
+TextureBuilder& TextureBuilder::withBorderColor(VkBorderColor borderColor) noexcept {
   _samplerParameters.borderColor = borderColor;
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) {
+TextureBuilder& TextureBuilder::withUnnormalizedCoordinates(
+    VkBool32 unnormalizedCoordinates) noexcept {
   _samplerParameters.unnormalizedCoordinates = unnormalizedCoordinates;
   return *this;
 }

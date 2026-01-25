@@ -69,9 +69,9 @@ public:
 
   ~Renderpass();
 
-  VkRenderPass getVkRenderPass() const;
+  VkRenderPass getVkRenderPass() const noexcept;
 
-  const AttachmentLayout& getAttachmentsLayout() const;
+  const AttachmentLayout& getAttachmentsLayout() const noexcept;
 
   const LogicalDevice& getLogicalDevice() const;
 

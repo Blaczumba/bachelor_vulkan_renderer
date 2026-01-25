@@ -19,15 +19,15 @@ public:
 
   ~Swapchain();
 
-  const VkSwapchainKHR getVkSwapchain() const;
+  const VkSwapchainKHR getVkSwapchain() const noexcept;
 
-  const VkFormat getVkFormat() const;
+  const VkFormat getVkFormat() const noexcept;
 
-  VkExtent2D getExtent() const;
+  VkExtent2D getExtent() const noexcept;
 
-  uint32_t getImagesCount() const;
+  uint32_t getImagesCount() const noexcept;
 
-  const VkImageView getSwapchainVkImageView(size_t index) const;
+  const VkImageView getSwapchainVkImageView(size_t index) const noexcept;
 
   VkResult acquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t* imageIndex) const;
 
@@ -49,19 +49,20 @@ private:
 
 class SwapchainBuilder {
 public:
-  SwapchainBuilder& withOldSwapchain(VkSwapchainKHR oldSwapchain);
+  SwapchainBuilder& withOldSwapchain(VkSwapchainKHR oldSwapchain) noexcept;
 
-  SwapchainBuilder& withPreferredFormat(VkFormat format);
+  SwapchainBuilder& withPreferredFormat(VkFormat format) noexcept;
 
-  SwapchainBuilder& withPreferredPresentMode(VkPresentModeKHR presentMode);
+  SwapchainBuilder& withPreferredPresentMode(VkPresentModeKHR presentMode) noexcept;
 
-  SwapchainBuilder& withImageArrayLayers(uint32_t layers);
+  SwapchainBuilder& withImageArrayLayers(uint32_t layers) noexcept;
 
-  SwapchainBuilder& withCompositeAlpha(VkCompositeAlphaFlagBitsKHR compositeAlpha);
+  SwapchainBuilder& withCompositeAlpha(VkCompositeAlphaFlagBitsKHR compositeAlpha) noexcept;
 
-  SwapchainBuilder& withClipped(VkBool32 clipped);
+  SwapchainBuilder& withClipped(VkBool32 clipped) noexcept;
 
-  Swapchain build(const LogicalDevice& logicalDevice, VkSurfaceKHR surface, VkExtent2D extent);
+  Swapchain build(
+      const LogicalDevice& logicalDevice, VkSurfaceKHR surface, VkExtent2D extent);
 
 private:
   VkSwapchainKHR _oldSwapchain = nullptr;

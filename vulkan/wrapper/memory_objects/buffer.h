@@ -55,13 +55,13 @@ public:
   template <typename T>
   void copyData(const T& data, VkDeviceSize offset = 0);
 
-  VkBufferUsageFlags getUsage() const;
+  VkBufferUsageFlags getUsage() const noexcept;
 
-  uint32_t getSize() const;
+  uint32_t getSize() const noexcept;
 
-  void* getMappedMemory() const;
+  void* getMappedMemory() const noexcept;
 
-  const VkBuffer& getVkBuffer() const;
+  const VkBuffer& getVkBuffer() const noexcept;
 
   const LogicalDevice& getLogicalDevice() const;
 

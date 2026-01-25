@@ -40,7 +40,7 @@ void CommandPool::reset() const {
   vkResetCommandPool(_logicalDevice.getVkDevice(), _commandPool, 0);
 }
 
-VkCommandPool CommandPool::getVkCommandPool() const {
+VkCommandPool CommandPool::getVkCommandPool() const noexcept {
   return _commandPool;
 }
 
@@ -224,7 +224,7 @@ void CommandBuffer::resetCommandBuffer() const {
   vkResetCommandBuffer(_commandBuffer, 0);
 }
 
-VkCommandBuffer CommandBuffer::getVkCommandBuffer() const {
+VkCommandBuffer CommandBuffer::getVkCommandBuffer() const noexcept {
   return _commandBuffer;
 }
 
@@ -268,6 +268,6 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
   vkFreeCommandBuffers(device, _commandPool.getVkCommandPool(), 1, &_commandBuffer);
 }
 
-VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const {
+VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const noexcept {
   return _commandBuffer;
 }

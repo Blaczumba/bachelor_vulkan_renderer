@@ -43,6 +43,6 @@ Surface::~Surface() {
   }
 }
 
-VkSurfaceKHR Surface::getVkSurface() const {
+VkSurfaceKHR Surface::getVkSurface() const noexcept {
   return _surface;
 }

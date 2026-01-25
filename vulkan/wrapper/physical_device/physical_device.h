@@ -32,21 +32,21 @@ public:
   static std::unique_ptr<PhysicalDevice> wrap(
       VkPhysicalDevice physicalDevice, const Instance& instance);
 
-  VkPhysicalDevice getVkPhysicalDevice() const;
+  VkPhysicalDevice getVkPhysicalDevice() const noexcept;
 
-  const Instance& getInstance() const;
+  const Instance& getInstance() const noexcept;
 
-  bool hasAvailableExtension(std::string_view extension) const;
+  bool hasAvailableExtension(std::string_view extension) const noexcept;
 
-  float getMaxSamplerAnisotropy() const;
+  float getMaxSamplerAnisotropy() const noexcept;
 
-  VkPhysicalDeviceType getPhysicalDeviceType() const;
+  VkPhysicalDeviceType getPhysicalDeviceType() const noexcept;
 
-  size_t getMemoryAlignment(size_t size) const;
+  size_t getMemoryAlignment(size_t size) const noexcept;
 
   lib::Buffer<const char*> getAvailableExtensions() const;
 
-  const QueueFamilyIndices& getQueueFamilyIndices() const;
+  const QueueFamilyIndices& getQueueFamilyIndices() const noexcept;
 
   const SwapChainSupportDetails getSwapchainSupportDetails(VkSurfaceKHR surface) const;
 

@@ -226,19 +226,19 @@ void Buffer::copyDataInterleaving(std::span<const AttributeDescription> attribut
   }
 }
 
-VkBufferUsageFlags Buffer::getUsage() const {
+VkBufferUsageFlags Buffer::getUsage() const noexcept {
   return _usage;
 }
 
-uint32_t Buffer::getSize() const {
+uint32_t Buffer::getSize() const noexcept {
   return _size;
 }
 
-void* Buffer::getMappedMemory() const {
+void* Buffer::getMappedMemory() const noexcept {
   return _mappedMemory;
 }
 
-const VkBuffer& Buffer::getVkBuffer() const {
+const VkBuffer& Buffer::getVkBuffer() const noexcept {
   return _buffer;
 }
 

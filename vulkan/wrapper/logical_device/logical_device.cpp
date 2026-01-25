@@ -183,7 +183,7 @@ VkSampler LogicalDevice::createSampler(const SamplerParameters& params) const {
   return sampler;
 }
 
-VkDevice LogicalDevice::getVkDevice() const {
+VkDevice LogicalDevice::getVkDevice() const noexcept {
   return _device;
 }
 
@@ -195,7 +195,7 @@ MemoryAllocator& LogicalDevice::getMemoryAllocator() const {
   return *_memoryAllocator;
 }
 
-VkQueue LogicalDevice::getVkQueue(QueueType queueType) const {
+VkQueue LogicalDevice::getVkQueue(QueueType queueType) const noexcept {
   switch (queueType) {
     case QueueType::GRAPHICS:
       return _graphicsQueue;
@@ -210,18 +210,18 @@ VkQueue LogicalDevice::getVkQueue(QueueType queueType) const {
   }
 }
 
-VkQueue LogicalDevice::getGraphicsVkQueue() const {
+VkQueue LogicalDevice::getGraphicsVkQueue() const noexcept {
   return _graphicsQueue;
 }
 
-VkQueue LogicalDevice::getPresentVkQueue() const {
+VkQueue LogicalDevice::getPresentVkQueue() const noexcept {
   return _presentQueue;
 }
 
-VkQueue LogicalDevice::getComputeVkQueue() const {
+VkQueue LogicalDevice::getComputeVkQueue() const noexcept {
   return _computeQueue;
 }
 
-VkQueue LogicalDevice::getTransferVkQueue() const {
+VkQueue LogicalDevice::getTransferVkQueue() const noexcept {
   return _transferQueue;
 }

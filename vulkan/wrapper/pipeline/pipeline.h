@@ -24,13 +24,13 @@ public:
 
   ~Pipeline();
 
-  VkPipeline getVkPipeline() const;
+  VkPipeline getVkPipeline() const noexcept;
 
-  VkPipelineBindPoint getVkPipelineBindPoint() const;
+  VkPipelineBindPoint getVkPipelineBindPoint() const noexcept;
 
-  VkPipelineLayout getVkPipelineLayout() const;
+  VkPipelineLayout getVkPipelineLayout() const noexcept;
 
-  bool isValid() const;
+  bool isValid() const noexcept;
 
 private:
   void destroy();

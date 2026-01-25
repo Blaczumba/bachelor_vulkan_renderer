@@ -55,7 +55,7 @@ PipelineLayout::~PipelineLayout() {
   destroy();
 }
 
-VkPipelineLayout PipelineLayout::getVkPipelineLayout() const {
+VkPipelineLayout PipelineLayout::getVkPipelineLayout() const noexcept {
   return _layout;
 }
 

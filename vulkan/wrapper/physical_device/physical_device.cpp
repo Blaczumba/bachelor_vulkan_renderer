@@ -52,17 +52,16 @@ lib::Buffer<VkQueueFamilyProperties> getQueueFamilyProperties(VkPhysicalDevice d
 QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice device, VkSurfaceKHR surface) {
   lib::Buffer<VkQueueFamilyProperties> queueFamilies = getQueueFamilyProperties(device);
   QueueFamilyIndices indices;
-
-  for (uint32_t i = 0; i < queueFamilies.size() && !areQueueFamilyIndicesComplete(indices); ++i) {
-    if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+  for (auto&& [i, queueFamily] : std::views::enumerate(queueFamilies)) {
+    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphicsFamily = i;
     }
 
-    if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+    if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
       indices.computeFamily = i;
     }
 
-    if (queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) {
+    if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) {
       indices.transferFamily = i;
     }
 
@@ -71,27 +70,32 @@ QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice device, VkSurfaceKHR 
     if (presentSupport) {
       indices.presentFamily = i;
     }
+
+    if (areQueueFamilyIndicesComplete(indices)) {
+      return indices;
+    }
   }
-  return indices;
+
+  throw EngineException("Failed to find complete set of queue family indices.");
 }
 
 QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice device) {
   lib::Buffer<VkQueueFamilyProperties> queueFamilies = getQueueFamilyProperties(device);
   QueueFamilyIndices indices;
-
-  for (uint32_t i = 0; i < queueFamilies.size() && !areQueueFamilyIndicesComplete(indices); ++i) {
-    if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+  for (auto&& [i, queueFamily] : std::views::enumerate(queueFamilies)) {
+    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphicsFamily = indices.presentFamily = i;
     }
 
-    if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+    if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
       indices.computeFamily = i;
     }
 
-    if (queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) {
+    if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) {
       indices.transferFamily = i;
     }
   }
+
   return indices;
 }
 
@@ -184,27 +188,27 @@ std::unique_ptr<PhysicalDevice> PhysicalDevice::wrap(
       new PhysicalDevice(physicalDevice, instance, findQueueFamilyIncides(physicalDevice), properties));
 }
 
-VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const {
+VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const noexcept {
   return _device;
 }
 
-const Instance& PhysicalDevice::getInstance() const {
+const Instance& PhysicalDevice::getInstance() const noexcept {
   return _instance;
 }
 
-bool PhysicalDevice::hasAvailableExtension(std::string_view extension) const {
+bool PhysicalDevice::hasAvailableExtension(std::string_view extension) const noexcept {
   return _availableRequestedExtensions.contains(extension);
 }
 
-float PhysicalDevice::getMaxSamplerAnisotropy() const {
+float PhysicalDevice::getMaxSamplerAnisotropy() const noexcept {
   return _properties.limits.maxSamplerAnisotropy;
 }
 
-VkPhysicalDeviceType PhysicalDevice::getPhysicalDeviceType() const {
+VkPhysicalDeviceType PhysicalDevice::getPhysicalDeviceType() const noexcept {
   return _properties.deviceType;
 }
 
-size_t PhysicalDevice::getMemoryAlignment(size_t size) const {
+size_t PhysicalDevice::getMemoryAlignment(size_t size) const noexcept {
   const size_t minUboAlignment = _properties.limits.minUniformBufferOffsetAlignment;
   return minUboAlignment > 0 ? (size + minUboAlignment - 1) & ~(minUboAlignment - 1) : size;
 }
@@ -218,7 +222,7 @@ lib::Buffer<const char*> PhysicalDevice::getAvailableExtensions() const {
   return extensions;
 }
 
-const QueueFamilyIndices& PhysicalDevice::getQueueFamilyIndices() const {
+const QueueFamilyIndices& PhysicalDevice::getQueueFamilyIndices() const noexcept {
   return _queueFamilyIndices;
 }
 

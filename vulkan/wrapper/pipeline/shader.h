@@ -23,13 +23,9 @@ public:
 
   Shader& operator=(Shader&& other) noexcept;
 
-  Shader(const Shader&) = delete;
+  VkPipelineShaderStageCreateInfo getVkPipelineStageCreateInfo() const noexcept;
 
-  Shader& operator=(const Shader&) = delete;
-
-  VkPipelineShaderStageCreateInfo getVkPipelineStageCreateInfo() const;
-
-  VkShaderStageFlagBits getVkShaderStageFlagBits() const;
+  VkShaderStageFlagBits getVkShaderStageFlagBits() const noexcept;
 
 private:
   void destroy();

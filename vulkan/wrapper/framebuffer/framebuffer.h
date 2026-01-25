@@ -28,15 +28,15 @@ public:
 
   ~Framebuffer();
 
-  VkExtent2D getVkExtent() const;
+  VkExtent2D getVkExtent() const noexcept;
 
-  const VkViewport& getViewport() const;
+  const VkViewport& getViewport() const noexcept;
 
-  const VkRect2D& getScissor() const;
+  const VkRect2D& getScissor() const noexcept;
 
   const Renderpass& getRenderpass() const;
 
-  VkFramebuffer getVkFramebuffer() const;
+  VkFramebuffer getVkFramebuffer() const noexcept;
 
 private:
   void destroy();

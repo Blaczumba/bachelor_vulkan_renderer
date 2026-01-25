@@ -59,6 +59,6 @@ DescriptorSetLayout DescriptorSetLayout::create(
   return DescriptorSetLayout(logicalDevice, descriptorSetLayout);
 }
 
-VkDescriptorSetLayout DescriptorSetLayout::getVkDescriptorSetLayout() const {
+VkDescriptorSetLayout DescriptorSetLayout::getVkDescriptorSetLayout() const noexcept {
   return _descriptorSetLayout;
 }

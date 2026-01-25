@@ -22,7 +22,7 @@ public:
       std::span<const VkDescriptorBindingFlags> bindingFlags = {},
       VkDescriptorSetLayoutCreateFlags flags = 0);
 
-  VkDescriptorSetLayout getVkDescriptorSetLayout() const;
+  VkDescriptorSetLayout getVkDescriptorSetLayout() const noexcept;
 
 private:
   void destroy();

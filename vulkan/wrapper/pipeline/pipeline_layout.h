@@ -23,7 +23,7 @@ public:
 
   ~PipelineLayout();
 
-  VkPipelineLayout getVkPipelineLayout() const;
+  VkPipelineLayout getVkPipelineLayout() const noexcept;
 
   const LogicalDevice& getLogicalDevice() const;
 

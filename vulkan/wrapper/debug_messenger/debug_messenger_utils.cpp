@@ -1,7 +1,7 @@
 #include "debug_messenger_utils.h"
 
 VkDebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfoUtility(
-    PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
+    PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) noexcept {
   return VkDebugUtilsMessengerCreateInfoEXT{
     .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
     .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT

@@ -26,7 +26,7 @@ public:
       const std::shared_ptr<const DescriptorPool>& descriptorPool, VkDescriptorSetLayout layout,
       uint32_t numSets);
 
-  VkDescriptorSet getVkDescriptorSet() const;
+  VkDescriptorSet getVkDescriptorSet() const noexcept;
 
   const DescriptorPool& getDescriptorPool() const;
 

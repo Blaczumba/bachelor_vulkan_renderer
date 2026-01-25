@@ -105,7 +105,7 @@ Instance Instance::wrap(VkInstance instance) {
   return Instance(instance);
 }
 
-VkInstance Instance::getVkInstance() const {
+VkInstance Instance::getVkInstance() const noexcept {
   return _instance;
 }
 

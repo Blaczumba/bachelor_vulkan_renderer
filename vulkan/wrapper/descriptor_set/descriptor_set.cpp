@@ -67,7 +67,7 @@ std::vector<DescriptorSet> DescriptorSet::create(
   return descSets;
 }
 
-VkDescriptorSet DescriptorSet::getVkDescriptorSet() const {
+VkDescriptorSet DescriptorSet::getVkDescriptorSet() const noexcept {
   return _descriptorSet;
 }
 
