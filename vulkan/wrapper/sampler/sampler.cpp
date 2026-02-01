@@ -53,18 +53,18 @@ Sampler SamplerBuilder::build(const LogicalDevice& logicalDevice) const {
   return Sampler::create(logicalDevice, _samplerInfo);
 }
 
-SamplerBuilder& SamplerBuilder::setMinMagFilter(VkFilter minFilter, VkFilter magFilter) noexcept {
+SamplerBuilder& SamplerBuilder::withMinMagFilter(VkFilter minFilter, VkFilter magFilter) noexcept {
   _samplerInfo.minFilter = minFilter;
   _samplerInfo.magFilter = magFilter;
   return *this;
 }
 
-SamplerBuilder& SamplerBuilder::setMipmapMode(VkSamplerMipmapMode mode) noexcept {
+SamplerBuilder& SamplerBuilder::withMipmapMode(VkSamplerMipmapMode mode) noexcept {
   _samplerInfo.mipmapMode = mode;
   return *this;
 }
 
-SamplerBuilder& SamplerBuilder::setAddressMode(
+SamplerBuilder& SamplerBuilder::withAddressMode(
     VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV,
     VkSamplerAddressMode addressModeW) noexcept {
   _samplerInfo.addressModeU = addressModeU;
@@ -73,35 +73,36 @@ SamplerBuilder& SamplerBuilder::setAddressMode(
   return *this;
 }
 
-SamplerBuilder& SamplerBuilder::setMipLodBias(float mipLodBias) noexcept {
+SamplerBuilder& SamplerBuilder::withMipLodBias(float mipLodBias) noexcept {
   _samplerInfo.mipLodBias = mipLodBias;
   return *this;
 }
 
-SamplerBuilder& SamplerBuilder::setAnisotropy(float maxAnisotropy) noexcept {
+SamplerBuilder& SamplerBuilder::withAnisotropy(float maxAnisotropy) noexcept {
   _samplerInfo.anisotropyEnable = VK_TRUE;
   _samplerInfo.maxAnisotropy = maxAnisotropy;
   return *this;
 }
 
-SamplerBuilder& SamplerBuilder::setCompareOp(VkCompareOp compareOp) noexcept {
+SamplerBuilder& SamplerBuilder::withCompareOp(VkCompareOp compareOp) noexcept {
   _samplerInfo.compareEnable = VK_TRUE;
   _samplerInfo.compareOp = compareOp;
   return *this;
 }
 
-SamplerBuilder& SamplerBuilder::setLodRange(float minLod, float maxLod) noexcept {
+SamplerBuilder& SamplerBuilder::withLodRange(float minLod, float maxLod) noexcept {
   _samplerInfo.minLod = minLod;
   _samplerInfo.maxLod = maxLod;
+  _samplerInfo.unnormalizedCoordinates = VK_FALSE;
   return *this;
 }
 
-SamplerBuilder& SamplerBuilder::setBorderColor(VkBorderColor borderColor) noexcept {
+SamplerBuilder& SamplerBuilder::withBorderColor(VkBorderColor borderColor) noexcept {
   _samplerInfo.borderColor = borderColor;
   return *this;
 }
 
-SamplerBuilder& SamplerBuilder::setUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) noexcept {
+SamplerBuilder& SamplerBuilder::withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) noexcept {
   _samplerInfo.unnormalizedCoordinates = unnormalizedCoordinates;
   return *this;
 }

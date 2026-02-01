@@ -7,13 +7,12 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
-#include "vulkan/wrapper/memory_objects/image.h"
 
 class Texture {
   Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
           VkImageType type, VkFormat format, VkExtent3D extent, VkImageAspectFlags aspect,
           VkImageCreateFlags createFlags, uint32_t mipLevels, uint32_t arrayLevels,
-          VkImageLayout layout, VkSampler sampler = VK_NULL_HANDLE) noexcept;
+          VkImageLayout layout) noexcept;
 
 public:
   Texture() noexcept = default;
@@ -32,8 +31,6 @@ public:
   VkImage getVkImage() const noexcept;
 
   VkImageView getVkImageView(size_t index = 0) const;
-
-  VkSampler getVkSampler() const noexcept;
 
   VkExtent2D getVkExtent2D() const noexcept;
 
@@ -55,8 +52,6 @@ private:
   uint32_t _layerCount;
   VkImageLayout _layout;
   std::vector<VkImageView> _views;
-  // TODO: Create separate Sampler class which is not owned by Texture.
-  VkSampler _sampler = VK_NULL_HANDLE;
 
   const LogicalDevice* _logicalDevice = nullptr;
 
@@ -95,30 +90,6 @@ public:
 
   TextureBuilder& withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept;
 
-  TextureBuilder& withMagFilter(VkFilter magFilter) noexcept;
-
-  TextureBuilder& withMinFilter(VkFilter minFilter) noexcept;
-
-  TextureBuilder& withMipmapMode(VkSamplerMipmapMode mipmapMode) noexcept;
-
-  TextureBuilder& withAddressModes(
-      VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV,
-      VkSamplerAddressMode addressModeW) noexcept;
-
-  TextureBuilder& withMipLodBias(float mipLodBias) noexcept;
-
-  TextureBuilder& withMaxAnisotropy(float maxAnisotropy) noexcept;
-
-  TextureBuilder& withCompareOp(VkCompareOp compareOp) noexcept;
-
-  TextureBuilder& withMinLod(float minLod) noexcept;
-
-  TextureBuilder& withMaxLod(float maxLod) noexcept;
-
-  TextureBuilder& withBorderColor(VkBorderColor borderColor) noexcept;
-
-  TextureBuilder& withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) noexcept;
-
   Texture buildAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const;
 
   Texture buildImage(
@@ -147,6 +118,4 @@ private:
     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
   VkImageAspectFlags _aspect = VK_IMAGE_ASPECT_COLOR_BIT;
   VkImageLayout _imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-  // TODO: Use Sampler class with its own Builder.
-  SamplerParameters _samplerParameters;
 };

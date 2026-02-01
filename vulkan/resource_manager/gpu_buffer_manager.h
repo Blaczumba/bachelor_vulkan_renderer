@@ -1,6 +1,6 @@
 #pragma once
 
-#include <common/util/resource_handles.h>
+#include "common/util/resource_handles.h"
 #include "lib/sparse/sparse_map.h"
 #include "lib/types/strong_int.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"

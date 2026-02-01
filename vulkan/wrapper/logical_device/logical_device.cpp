@@ -144,31 +144,6 @@ VkImageView LogicalDevice::createImageView(const VkImageViewCreateInfo& imageVie
   return view;
 }
 
-VkSampler LogicalDevice::createSampler(const SamplerParameters& params) const {
-  const VkSamplerCreateInfo samplerInfo = {
-    .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-    .magFilter = params.magFilter,
-    .minFilter = params.minFilter,
-    .mipmapMode = params.mipmapMode,
-    .addressModeU = params.addressModeU,
-    .addressModeV = params.addressModeV,
-    .addressModeW = params.addressModeW,
-    .mipLodBias = params.mipLodBias,
-    .anisotropyEnable = params.maxAnisotropy.has_value() ? VK_TRUE : VK_FALSE,
-    .maxAnisotropy = params.maxAnisotropy.value_or(0.0f),
-    .compareEnable = params.compareOp.has_value() ? VK_TRUE : VK_FALSE,
-    .compareOp = params.compareOp.value_or(VK_COMPARE_OP_NEVER),
-    .minLod = params.minLod,
-    .maxLod = params.maxLod,
-    .borderColor = params.borderColor,
-    .unnormalizedCoordinates = params.unnormalizedCoordinates};
-
-  VkSampler sampler;
-  CHECK_VKCMD(
-      vkCreateSampler(_device, &samplerInfo, nullptr, &sampler), "Failed to create VkSampler.");
-  return sampler;
-}
-
 VkDevice LogicalDevice::getVkDevice() const noexcept {
   return _device;
 }

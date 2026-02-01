@@ -12,15 +12,15 @@
 Texture::Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
                  VkImageType type, VkFormat format, VkExtent3D extent, VkImageAspectFlags aspect,
                  VkImageCreateFlags createFlags, uint32_t mipLevels, uint32_t layerCount,
-                 VkImageLayout layout, VkSampler sampler) noexcept
+                 VkImageLayout layout) noexcept
   : _logicalDevice(&logicalDevice), _image(image), _allocation(allocation), _imageType(type),
     _imageFormat(format), _imageExtent(extent), _imageAspect(aspect),
     _imageCreateFlags(createFlags), _mipLevels(mipLevels), _layerCount(layerCount),
-    _layout(layout), _sampler(sampler) {}
+    _layout(layout) {}
 
 Texture::Texture(Texture&& texture) noexcept
   : _allocation(texture._allocation), _image(std::exchange(texture._image, VK_NULL_HANDLE)),
-    _views(std::move(texture._views)), _sampler(std::exchange(texture._sampler, VK_NULL_HANDLE)),
+    _views(std::move(texture._views)),
     _layout(texture._layout), _logicalDevice(texture._logicalDevice), _imageType(texture._imageType),
     _imageFormat(texture._imageFormat), _imageExtent(texture._imageExtent), _imageAspect(texture._imageAspect),
     _imageCreateFlags(texture._imageCreateFlags), _mipLevels(texture._mipLevels), _layerCount(texture._layerCount){}
@@ -35,7 +35,6 @@ Texture& Texture::operator=(Texture&& texture) noexcept {
   _allocation = texture._allocation;
   _image = std::exchange(texture._image, VK_NULL_HANDLE);
   _views = std::move(texture._views);
-  _sampler = std::exchange(texture._sampler, VK_NULL_HANDLE);
   _layout = texture._layout;
   _logicalDevice = texture._logicalDevice;
   _imageType = texture._imageType;
@@ -79,12 +78,6 @@ struct ImageDeleter {
 }  // namespace
 
 void Texture::destroy() {
-  if (_sampler != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource([sampler = _sampler](DestroyerContext context) {
-      vkDestroySampler(context.device, sampler, context.allocationCallbacks);
-    });
-  }
-
   for (VkImageView view : _views) {
     _logicalDevice->destroyResource([view](DestroyerContext context) {
       vkDestroyImageView(context.device, view, context.allocationCallbacks);
@@ -109,10 +102,6 @@ VkImage Texture::getVkImage() const noexcept {
 
 VkImageView Texture::getVkImageView(size_t index) const {
   return index < _views.size() ? _views[index] : VK_NULL_HANDLE;
-}
-
-VkSampler Texture::getVkSampler() const noexcept {
-  return _sampler;
 }
 
 VkExtent2D Texture::getVkExtent2D() const noexcept {
@@ -275,66 +264,6 @@ TextureBuilder& TextureBuilder::withAdditionalCreateInfoFlags(VkImageCreateFlags
   return *this;
 }
 
-TextureBuilder& TextureBuilder::withMagFilter(VkFilter magFilter) noexcept {
-  _samplerParameters.magFilter = magFilter;
-  return *this;
-}
-
-TextureBuilder& TextureBuilder::withMinFilter(VkFilter minFilter) noexcept {
-  _samplerParameters.minFilter = minFilter;
-  return *this;
-}
-
-TextureBuilder& TextureBuilder::withMipmapMode(VkSamplerMipmapMode mipmapMode) noexcept {
-  _samplerParameters.mipmapMode = mipmapMode;
-  return *this;
-}
-
-TextureBuilder& TextureBuilder::withAddressModes(
-    VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV,
-    VkSamplerAddressMode addressModeW) noexcept {
-  _samplerParameters.addressModeU = addressModeU;
-  _samplerParameters.addressModeV = addressModeV;
-  _samplerParameters.addressModeW = addressModeW;
-  return *this;
-}
-
-TextureBuilder& TextureBuilder::withMipLodBias(float mipLodBias) noexcept {
-  _samplerParameters.mipLodBias = mipLodBias;
-  return *this;
-}
-
-TextureBuilder& TextureBuilder::withMaxAnisotropy(float maxAnisotropy) noexcept {
-  _samplerParameters.maxAnisotropy = maxAnisotropy;
-  return *this;
-}
-
-TextureBuilder& TextureBuilder::withCompareOp(VkCompareOp compareOp) noexcept {
-  _samplerParameters.compareOp = compareOp;
-  return *this;
-}
-
-TextureBuilder& TextureBuilder::withMinLod(float minLod) noexcept {
-  _samplerParameters.minLod = minLod;
-  return *this;
-}
-
-TextureBuilder& TextureBuilder::withMaxLod(float maxLod) noexcept {
-  _samplerParameters.maxLod = maxLod;
-  return *this;
-}
-
-TextureBuilder& TextureBuilder::withBorderColor(VkBorderColor borderColor) noexcept {
-  _samplerParameters.borderColor = borderColor;
-  return *this;
-}
-
-TextureBuilder& TextureBuilder::withUnnormalizedCoordinates(
-    VkBool32 unnormalizedCoordinates) noexcept {
-  _samplerParameters.unnormalizedCoordinates = unnormalizedCoordinates;
-  return *this;
-}
-
 Texture TextureBuilder::buildAttachment(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const {
   Allocation allocation;
@@ -342,11 +271,9 @@ Texture TextureBuilder::buildAttachment(
   transitionImageLayout(
       commandBuffer, image, VK_IMAGE_LAYOUT_UNDEFINED, _imageLayout, _aspect,
       _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
-  // TODO: remove
-  const VkSampler sampler = logicalDevice.createSampler(_samplerParameters);
   return Texture(logicalDevice, image, allocation, _imageCreateInfo.imageType, _imageCreateInfo.format,
       _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags, _imageCreateInfo.mipLevels,
-      _imageCreateInfo.arrayLayers, _imageLayout, sampler);
+      _imageCreateInfo.arrayLayers, _imageLayout);
 }
 
 Texture TextureBuilder::buildImage(
@@ -362,11 +289,10 @@ Texture TextureBuilder::buildImage(
   transitionImageLayout(
       commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, _imageLayout,
       _aspect, _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
-  const VkSampler sampler = logicalDevice.createSampler(_samplerParameters);
   return Texture(
       logicalDevice, image, allocation, _imageCreateInfo.imageType, _imageCreateInfo.format,
       _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags, _imageCreateInfo.mipLevels,
-      _imageCreateInfo.arrayLayers, _imageLayout, sampler);
+      _imageCreateInfo.arrayLayers, _imageLayout);
 }
 
 Texture TextureBuilder::buildImageSampler(
@@ -376,11 +302,10 @@ Texture TextureBuilder::buildImageSampler(
   transitionImageLayout(
       commandBuffer, image, VK_IMAGE_LAYOUT_UNDEFINED, _imageLayout, _aspect,
       _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
-  const VkSampler sampler = logicalDevice.createSampler(_samplerParameters);
   return Texture(
       logicalDevice, image, allocation, _imageCreateInfo.imageType, _imageCreateInfo.format,
       _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags, _imageCreateInfo.mipLevels,
-      _imageCreateInfo.arrayLayers, _imageLayout, sampler);
+      _imageCreateInfo.arrayLayers, _imageLayout);
 }
 
 Texture TextureBuilder::buildMipmapImage(
@@ -397,9 +322,8 @@ Texture TextureBuilder::buildMipmapImage(
       commandBuffer, image, _imageCreateInfo.format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       _imageCreateInfo.extent.width, _imageCreateInfo.extent.height, _imageCreateInfo.mipLevels,
       _imageCreateInfo.arrayLayers);
-  const VkSampler sampler = logicalDevice.createSampler(_samplerParameters);
   return Texture(logicalDevice, image, allocation, _imageCreateInfo.imageType,
                  _imageCreateInfo.format, _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags,
                  _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers,
-                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, sampler);
+                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }

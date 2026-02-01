@@ -5,8 +5,6 @@
 #include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
-#include "vulkan/wrapper/memory_objects/image.h"
-
 class VmaWrapper {
 public:
   VmaWrapper(VkDevice device, VkPhysicalDevice physicalDevice, VkInstance instance);

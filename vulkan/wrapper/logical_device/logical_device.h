@@ -37,9 +37,6 @@ public:
 
   void destroyResource(ResourceDestroyer::Job destroyResource) const;
 
-  // TODO: Change to VkSamplerCreateInfo.
-  VkSampler createSampler(const SamplerParameters& params) const;
-
   VkImageView createImageView(const VkImageViewCreateInfo& imageViewCreateInfo) const;
 
   VkDevice getVkDevice() const noexcept;

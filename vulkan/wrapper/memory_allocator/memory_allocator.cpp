@@ -1,6 +1,5 @@
 #include "memory_allocator.h"
 
-#include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/util/check.h"
 
 #define VMA_IMPLEMENTATION

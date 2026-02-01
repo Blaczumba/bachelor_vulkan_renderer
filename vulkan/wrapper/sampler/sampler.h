@@ -33,28 +33,39 @@ public:
 
   Sampler build(const LogicalDevice& logicalDevice) const;
 
-  SamplerBuilder& setMinMagFilter(VkFilter minFiler, VkFilter magFilter) noexcept;
+  SamplerBuilder& withMinMagFilter(VkFilter minFiler, VkFilter magFilter) noexcept;
 
-  SamplerBuilder& setMipmapMode(VkSamplerMipmapMode mode) noexcept;
+  SamplerBuilder& withMipmapMode(VkSamplerMipmapMode mode) noexcept;
 
-  SamplerBuilder& setAddressMode(
-	  VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV,
+  SamplerBuilder& withAddressMode(
+      VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV,
       VkSamplerAddressMode addressModeW) noexcept;
 
-  SamplerBuilder& setMipLodBias(float mipLodBias) noexcept;
+  SamplerBuilder& withMipLodBias(float mipLodBias) noexcept;
 
-  SamplerBuilder& setAnisotropy(float maxAnisotropy) noexcept;
+  SamplerBuilder& withAnisotropy(float maxAnisotropy) noexcept;
 
-  SamplerBuilder& setCompareOp(VkCompareOp compareOp) noexcept;
+  SamplerBuilder& withCompareOp(VkCompareOp compareOp) noexcept;
 
-  SamplerBuilder& setLodRange(float minLod, float maxLod) noexcept;
+  SamplerBuilder& withLodRange(float minLod, float maxLod) noexcept;
 
-  SamplerBuilder& setBorderColor(VkBorderColor borderColor) noexcept;
+  SamplerBuilder& withBorderColor(VkBorderColor borderColor) noexcept;
 
-  SamplerBuilder& setUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) noexcept;
+  SamplerBuilder& withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) noexcept;
 
   const VkSamplerCreateInfo& getVkSamplerCreateInfo() const noexcept;
 
 private:
-  VkSamplerCreateInfo _samplerInfo{};
+  VkSamplerCreateInfo _samplerInfo = {
+    .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+    .magFilter = VK_FILTER_LINEAR,
+    .minFilter = VK_FILTER_LINEAR,
+    .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+    .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .minLod = 0.0f,
+    .maxLod = VK_LOD_CLAMP_NONE,
+    .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+    .unnormalizedCoordinates = VK_FALSE};
 };
