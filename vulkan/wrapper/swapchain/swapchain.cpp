@@ -220,8 +220,19 @@ Swapchain SwapchainBuilder::build(
   std::transform(
       images.cbegin(), images.cend(), views.begin(),
       [logicalDevice = &logicalDevice, format = surfaceFormat.format](const VkImage image) {
-        return logicalDevice->createImageView(
-            image, VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+        const VkImageViewCreateInfo imageViewCreateInfo = {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+          .image = image,
+          .viewType = VK_IMAGE_VIEW_TYPE_2D,
+          .format = format,
+          .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1}};
+
+        return logicalDevice->createImageView(imageViewCreateInfo);
       });
 
   return Swapchain(swapchain, logicalDevice, surfaceFormat.format, actualExtent, std::move(images),

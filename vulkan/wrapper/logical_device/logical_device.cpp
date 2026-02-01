@@ -137,24 +137,10 @@ LogicalDevice LogicalDevice::wrap(VkDevice device, const PhysicalDevice& physica
   return LogicalDevice(device, physicalDevice, std::move(resourceDestroyer));
 }
 
-VkImageView LogicalDevice::createImageView(
-    VkImage image, VkImageViewType type, VkFormat format, VkImageAspectFlags aspect,
-    uint32_t baseMipLevel, uint32_t mipLevels, uint32_t baseArrayLayer, uint32_t layerCount) const {
-  const VkImageViewCreateInfo viewInfo = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .image = image,
-    .viewType = type,
-    .format = format,
-    .subresourceRange = {.aspectMask = aspect,
-                         .baseMipLevel = baseMipLevel,
-                         .levelCount = mipLevels,
-                         .baseArrayLayer = baseArrayLayer,
-                         .layerCount = layerCount}
-  };
-
+VkImageView LogicalDevice::createImageView(const VkImageViewCreateInfo& imageViewCreateInfo) const {
   VkImageView view;
-  CHECK_VKCMD(
-      vkCreateImageView(_device, &viewInfo, nullptr, &view), "Failed to create VkImageView.");
+  CHECK_VKCMD(vkCreateImageView(_device, &imageViewCreateInfo, nullptr, &view),
+              "Failed to create VkImageView.");
   return view;
 }
 

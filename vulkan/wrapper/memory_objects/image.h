@@ -4,20 +4,6 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-struct ImageParameters {
-  VkImageType type = VK_IMAGE_TYPE_2D;
-  VkFormat format = VK_FORMAT_UNDEFINED;
-  VkExtent3D extent = {1, 1, 1};
-  VkImageAspectFlags aspect = VK_IMAGE_ASPECT_NONE;
-  uint32_t mipLevels = 1;
-  VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT;
-  VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
-  VkImageUsageFlags usage = 0;
-  VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-  uint32_t layerCount = 1;
-  VkImageCreateFlags flags = 0;
-};
-
 struct SamplerParameters {
   VkFilter magFilter = VK_FILTER_LINEAR;
   VkFilter minFilter = VK_FILTER_LINEAR;

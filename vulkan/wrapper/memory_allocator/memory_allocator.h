@@ -36,7 +36,7 @@ public:
   void sendDataToBufferMemory(
       VkBuffer buffer, const VmaAllocation allocation, const void* data, size_t size);
 
-  Image createVkImage(const ImageParameters& params, VkImageLayout layout,
+  Image createVkImage(const VkImageCreateInfo& params,
                       VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags = 0U);
 
   void destroyVkImage(VkImage image, const VmaAllocation allocation);

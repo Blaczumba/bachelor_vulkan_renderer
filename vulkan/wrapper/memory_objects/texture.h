@@ -10,6 +10,11 @@
 #include "vulkan/wrapper/memory_objects/image.h"
 
 class Texture {
+  Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
+          VkImageType type, VkFormat format, VkExtent3D extent, VkImageAspectFlags aspect,
+          VkImageCreateFlags createFlags, uint32_t mipLevels, uint32_t arrayLevels,
+          VkImageLayout layout, VkSampler sampler = VK_NULL_HANDLE) noexcept;
+
 public:
   Texture() noexcept = default;
 
@@ -37,21 +42,23 @@ public:
   VkImageLayout getVkImageLayout() const noexcept;
 
 private:
-  Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
-          const ImageParameters& imageParameters, VkImageLayout layout,
-          VkSampler sampler = VK_NULL_HANDLE) noexcept;
-
   void destroy();
 
   VkImage _image = VK_NULL_HANDLE;
+  Allocation _allocation;
+  VkImageType _imageType;
+  VkFormat _imageFormat;
+  VkExtent3D _imageExtent;
+  VkImageAspectFlags _imageAspect;
+  VkImageCreateFlags _imageCreateFlags;
+  uint32_t _mipLevels;
+  uint32_t _layerCount;
+  VkImageLayout _layout;
   std::vector<VkImageView> _views;
   // TODO: Create separate Sampler class which is not owned by Texture.
   VkSampler _sampler = VK_NULL_HANDLE;
-  Allocation _allocation;
-  VkImageLayout _layout;
-  ImageParameters _imageParameters;
 
-  const LogicalDevice* _logicalDevice;
+  const LogicalDevice* _logicalDevice = nullptr;
 
   friend class TextureBuilder;
 };
@@ -83,8 +90,6 @@ public:
   TextureBuilder& withTiling(VkImageTiling tiling) noexcept;
 
   TextureBuilder& withUsage(VkImageUsageFlags usage) noexcept;
-
-  TextureBuilder& withProperties(VkMemoryPropertyFlags properties) noexcept;
 
   TextureBuilder& withLayerCount(uint32_t layerCount) noexcept;
 
@@ -128,7 +133,20 @@ public:
       std::span<const VkBufferImageCopy> copyRegions) const;
 
 private:
-  ImageParameters _imageParameters;
-  SamplerParameters _samplerParameters;
+  VkImageCreateInfo _imageCreateInfo = {
+    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .imageType = VK_IMAGE_TYPE_2D,
+    .format = VK_FORMAT_UNDEFINED,
+    .extent = {1, 1, 1},
+    .mipLevels = 1,
+    .arrayLayers = 1,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+    .tiling = VK_IMAGE_TILING_OPTIMAL,
+    .usage = 0,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
+  VkImageAspectFlags _aspect = VK_IMAGE_ASPECT_COLOR_BIT;
   VkImageLayout _imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  // TODO: Use Sampler class with its own Builder.
+  SamplerParameters _samplerParameters;
 };

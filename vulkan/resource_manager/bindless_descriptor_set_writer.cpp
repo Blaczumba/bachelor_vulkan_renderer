@@ -1,6 +1,7 @@
 #include "bindless_descriptor_set_writer.h"
 
 #include <format>
+#include <ranges>
 #include <vulkan/vulkan.h>
 
 #include "vulkan/resource_manager/util.h"
@@ -70,20 +71,21 @@ std::vector<UniformTextureHandle> BindlessDescriptorSetWriter::storeTextures(
   lib::Buffer<VkDescriptorImageInfo> imageInfos(textures.size());
   lib::Buffer<VkWriteDescriptorSet> writes(textures.size());
 
-  for (uint32_t i = 0; i < textures.size(); i++) {
-    imageInfos[i] = VkDescriptorImageInfo{
-      .sampler = textures[i].getVkSampler(),
-      .imageView = textures[i].getVkImageView(),
-      .imageLayout = textures[i].getVkImageLayout()};
+  for (auto&& [imageInfo, write, handle, texture] :
+      std::views::zip(imageInfos, writes, handles, textures)) {
+    imageInfo = VkDescriptorImageInfo{
+      .sampler = texture.getVkSampler(),
+      .imageView = texture.getVkImageView(),
+      .imageLayout = texture.getVkImageLayout()};
 
-    writes[i] = VkWriteDescriptorSet{
+    write = VkWriteDescriptorSet{
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
       .dstSet = _descriptorSet.getVkDescriptorSet(),
       .dstBinding = TEXTURE_BINDING,
-      .dstArrayElement = static_cast<uint32_t>(*handles[i]),
+      .dstArrayElement = static_cast<uint32_t>(*handle),
       .descriptorCount = 1,
       .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .pImageInfo = &imageInfos[i]};
+      .pImageInfo = &imageInfo};
   }
 
   vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
@@ -139,18 +141,18 @@ std::vector<UniformBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
   lib::Buffer<VkDescriptorBufferInfo> bufferInfos(buffers.size());
   lib::Buffer<VkWriteDescriptorSet> writes(buffers.size());
 
-  for (uint32_t i = 0; i < buffers.size(); i++) {
-    bufferInfos[i] =
-        VkDescriptorBufferInfo{.buffer = buffers[i].getVkBuffer(), .range = buffers[i].getSize()};
+  for (auto&& [bufferInfo, write, handle, buffer] : std::views::zip(bufferInfos, writes, handles, buffers)) {
+    bufferInfo =
+        VkDescriptorBufferInfo{.buffer = buffer.getVkBuffer(), .range = buffer.getSize()};
 
-    writes[i] = VkWriteDescriptorSet{
+    write = VkWriteDescriptorSet{
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
       .dstSet = _descriptorSet.getVkDescriptorSet(),
       .dstBinding = UNIFORM_BINDING,
-      .dstArrayElement = static_cast<uint32_t>(*handles[i]),
+      .dstArrayElement = static_cast<uint32_t>(*handle),
       .descriptorCount = 1,
-      .descriptorType = getDescriptorType(buffers[i].getUsage()),
-      .pBufferInfo = &bufferInfos[i]};
+      .descriptorType = getDescriptorType(buffer.getUsage()),
+      .pBufferInfo = &bufferInfo};
   }
 
   vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
