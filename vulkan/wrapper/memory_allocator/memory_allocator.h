@@ -5,8 +5,6 @@
 #include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
-#include "vulkan/wrapper/memory_objects/image.h"
-
 class VmaWrapper {
 public:
   VmaWrapper(VkDevice device, VkPhysicalDevice physicalDevice, VkInstance instance);
@@ -36,8 +34,8 @@ public:
   void sendDataToBufferMemory(
       VkBuffer buffer, const VmaAllocation allocation, const void* data, size_t size);
 
-  Image createVkImage(const ImageParameters& params, VkImageLayout layout,
-                      VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags = 0U);
+  Image createVkImage(const VkImageCreateInfo& params, VmaMemoryUsage memoryUsage,
+                      VmaAllocationCreateFlags flags = 0U);
 
   void destroyVkImage(VkImage image, const VmaAllocation allocation);
 

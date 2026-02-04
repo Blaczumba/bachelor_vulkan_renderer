@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "common/util/resource_handles.h"
 #include "lib/buffer/buffer.h"
 #include "lib/buffer/shared_buffer.h"
 
@@ -22,24 +23,22 @@ std::enable_if_t<std::is_unsigned<IndexT>::value, lib::Buffer<std::byte>> proces
   return indices;
 }
 
-template <typename ImageResourceMapIndex>
 struct ImageID {
-  ImageResourceMapIndex ID;
+  StagingImageDataResourceHandle ID;
   std::string path;
 };
 
-template <typename AssetManagerImpl>
 struct VertexData {
   lib::Buffer<glm::vec3> positions;
   uint8_t indexSize;
 
   glm::mat4 model;
 
-  ImageID<typename AssetManagerImpl::ImageResourceMapIndex> diffuseTexture;
-  ImageID<typename AssetManagerImpl::ImageResourceMapIndex> normalTexture;
-  ImageID<typename AssetManagerImpl::ImageResourceMapIndex> metallicRoughnessTexture;
+  ImageID diffuseTexture;
+  ImageID normalTexture;
+  ImageID metallicRoughnessTexture;
 
-  AssetManagerImpl::VertexResourceMapIndex vertexResourceID;
+  StagingVertexDataResourceHandle vertexResourceID;
 };
 
 class ModelLoader {

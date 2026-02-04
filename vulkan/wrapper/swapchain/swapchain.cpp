@@ -55,23 +55,23 @@ Swapchain::~Swapchain() {
   destroy();
 }
 
-const VkSwapchainKHR Swapchain::getVkSwapchain() const {
+const VkSwapchainKHR Swapchain::getVkSwapchain() const noexcept {
   return _swapchain;
 }
 
-VkExtent2D Swapchain::getExtent() const {
+VkExtent2D Swapchain::getExtent() const noexcept {
   return _extent;
 }
 
-const VkFormat Swapchain::getVkFormat() const {
+const VkFormat Swapchain::getVkFormat() const noexcept {
   return _surfaceFormat;
 }
 
-uint32_t Swapchain::getImagesCount() const {
+uint32_t Swapchain::getImagesCount() const noexcept {
   return _images.size();
 }
 
-const VkImageView Swapchain::getSwapchainVkImageView(size_t index) const {
+const VkImageView Swapchain::getSwapchainVkImageView(size_t index) const noexcept {
   if (index < _views.size()) {
     return _views[index];
   }
@@ -98,27 +98,34 @@ VkResult Swapchain::present(uint32_t imageIndex, VkSemaphore waitSemaphore) cons
   return vkQueuePresentKHR(_logicalDevice->getPresentVkQueue(), &presentInfo);
 }
 
-SwapchainBuilder& SwapchainBuilder::withOldSwapchain(VkSwapchainKHR oldSwapchain) {
+SwapchainBuilder& SwapchainBuilder::withOldSwapchain(VkSwapchainKHR oldSwapchain) noexcept {
   _oldSwapchain = oldSwapchain;
   return *this;
 }
-SwapchainBuilder& SwapchainBuilder::withPreferredFormat(VkFormat format) {
+
+SwapchainBuilder& SwapchainBuilder::withPreferredFormat(VkFormat format) noexcept {
   _preferredFormat = format;
   return *this;
 }
-SwapchainBuilder& SwapchainBuilder::withPreferredPresentMode(VkPresentModeKHR presentMode) {
+
+SwapchainBuilder& SwapchainBuilder::withPreferredPresentMode(
+    VkPresentModeKHR presentMode) noexcept {
   _preferredPresentMode = presentMode;
   return *this;
 }
-SwapchainBuilder& SwapchainBuilder::withImageArrayLayers(uint32_t layers) {
+
+SwapchainBuilder& SwapchainBuilder::withImageArrayLayers(uint32_t layers) noexcept {
   imageArrayLayers = layers;
   return *this;
 }
-SwapchainBuilder& SwapchainBuilder::withCompositeAlpha(VkCompositeAlphaFlagBitsKHR compositeAlpha) {
+
+SwapchainBuilder& SwapchainBuilder::withCompositeAlpha(
+    VkCompositeAlphaFlagBitsKHR compositeAlpha) noexcept {
   _compositeAlpha = compositeAlpha;
   return *this;
 }
-SwapchainBuilder& SwapchainBuilder::withClipped(VkBool32 clipped) {
+
+SwapchainBuilder& SwapchainBuilder::withClipped(VkBool32 clipped) noexcept {
   _clipped = clipped;
   return *this;
 }
@@ -126,7 +133,7 @@ SwapchainBuilder& SwapchainBuilder::withClipped(VkBool32 clipped) {
 namespace {
 
 VkSurfaceFormatKHR chooseSwapSurfaceFormat(
-    std::span<const VkSurfaceFormatKHR> availableFormats, VkFormat preferredFormat) {
+    std::span<const VkSurfaceFormatKHR> availableFormats, VkFormat preferredFormat) noexcept {
   auto availableFormat = std::find_if(
       std::cbegin(availableFormats), std::cend(availableFormats), [=](const auto& format) {
         return format.format == preferredFormat
@@ -136,8 +143,8 @@ VkSurfaceFormatKHR chooseSwapSurfaceFormat(
   return (availableFormat != std::cend(availableFormats)) ? *availableFormat : availableFormats[0];
 }
 
-VkPresentModeKHR chooseSwapPresentMode(
-    std::span<const VkPresentModeKHR> availablePresentModes, VkPresentModeKHR preferredMode) {
+VkPresentModeKHR chooseSwapPresentMode(std::span<const VkPresentModeKHR> availablePresentModes,
+                                       VkPresentModeKHR preferredMode) noexcept {
   auto availablePresentMode = std::find(
       std::cbegin(availablePresentModes), std::cend(availablePresentModes), preferredMode);
 
@@ -147,7 +154,7 @@ VkPresentModeKHR chooseSwapPresentMode(
 }
 
 VkExtent2D chooseSwapExtent(
-    VkExtent2D actualWindowExtent, const VkSurfaceCapabilitiesKHR& capabilities) {
+    VkExtent2D actualWindowExtent, const VkSurfaceCapabilitiesKHR& capabilities) noexcept {
   if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
     return capabilities.currentExtent;
   }
@@ -215,8 +222,19 @@ Swapchain SwapchainBuilder::build(
   std::transform(
       images.cbegin(), images.cend(), views.begin(),
       [logicalDevice = &logicalDevice, format = surfaceFormat.format](const VkImage image) {
-        return logicalDevice->createImageView(
-            image, VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+        const VkImageViewCreateInfo imageViewCreateInfo = {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+          .image = image,
+          .viewType = VK_IMAGE_VIEW_TYPE_2D,
+          .format = format,
+          .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                               .baseMipLevel = 0,
+                               .levelCount = 1,
+                               .baseArrayLayer = 0,
+                               .layerCount = 1}
+        };
+
+        return logicalDevice->createImageView(imageViewCreateInfo);
       });
 
   return Swapchain(swapchain, logicalDevice, surfaceFormat.format, actualExtent, std::move(images),

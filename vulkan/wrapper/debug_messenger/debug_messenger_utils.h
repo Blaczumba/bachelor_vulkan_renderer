@@ -3,4 +3,4 @@
 #include <vulkan/vulkan.h>
 
 VkDebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfoUtility(
-    PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
+    PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) noexcept;

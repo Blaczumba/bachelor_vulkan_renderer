@@ -52,13 +52,6 @@ constexpr PipelineStageInfo destinationStageAndAccessMask(VkImageLayout layout) 
 void transitionImageLayout(
     VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
     VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t layerCount) {
-  const VkImageSubresourceRange range = {
-    .aspectMask = aspectFlags,
-    .baseMipLevel = 0,
-    .levelCount = mipLevels,
-    .baseArrayLayer = 0,
-    .layerCount = layerCount};
-
   const PipelineStageInfo srcStageInfo = sourceStageAndAccessMask(oldLayout);
   const PipelineStageInfo dstStageInfo = sourceStageAndAccessMask(newLayout);
 
@@ -71,7 +64,13 @@ void transitionImageLayout(
     .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
     .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
     .image = image,
-    .subresourceRange = range};
+    .subresourceRange = VkImageSubresourceRange{
+                                                .aspectMask = aspectFlags,
+                                                .baseMipLevel = 0,
+                                                .levelCount = mipLevels,
+                                                .baseArrayLayer = 0,
+                                                .layerCount = layerCount}
+  };
 
   vkCmdPipelineBarrier(commandBuffer, srcStageInfo.stageFlags, dstStageInfo.stageFlags, 0, 0,
                        nullptr, 0, nullptr, 1, &barrier);
@@ -85,79 +84,6 @@ void copyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuf
     .size = size,
   };
   vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-}
-
-void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image,
-                       uint32_t width, uint32_t height) {
-  const VkBufferImageCopy region = {
-    .bufferOffset = 0,
-    .bufferRowLength = 0,
-    .bufferImageHeight = 0,
-    .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                         .mipLevel = 0,
-                         .baseArrayLayer = 0,
-                         .layerCount = 1},
-    .imageOffset = {0, 0, 0},
-    .imageExtent = {width, height, 1},
-  };
-
-  vkCmdCopyBufferToImage(
-      commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-}
-
-void copyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image,
-                       std::span<const VkBufferImageCopy> regions) {
-  vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                         static_cast<uint32_t>(regions.size()), regions.data());
-}
-
-void copyImageToBuffer(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout layout,
-                       VkBuffer buffer, uint32_t width, uint32_t height) {
-  const VkBufferImageCopy region = {
-    .bufferOffset = 0,
-    .bufferRowLength = 0,
-    .bufferImageHeight = 0,
-
-    .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                         .mipLevel = 0,
-                         .baseArrayLayer = 0,
-                         .layerCount = 1},
-    .imageOffset = {0, 0, 0},
-    .imageExtent = {width, height, 1},
-  };
-
-  vkCmdCopyImageToBuffer(commandBuffer, image, layout, buffer, 1, &region);
-}
-
-void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImage,
-                      VkExtent2D srcSize, VkExtent2D dstSize, VkImageAspectFlagBits aspect) {
-  const VkOffset3D srcBlitSize = {
-    static_cast<int32_t>(srcSize.width), static_cast<int32_t>(srcSize.height), 1};
-
-  const VkOffset3D dstBlitSize = {
-    static_cast<int32_t>(dstSize.width), static_cast<int32_t>(dstSize.height), 1};
-
-  const VkImageBlit imageBlitRegion = {
-    .srcSubresource = {.aspectMask = static_cast<VkImageAspectFlags>(aspect), .layerCount = 1},
-    .srcOffsets = {{},                                                    srcBlitSize    },
-    .dstSubresource = {.aspectMask = static_cast<VkImageAspectFlags>(aspect), .layerCount = 1},
-    .dstOffsets = {{},                                                    dstBlitSize    }
-  };
-
-  vkCmdBlitImage(commandBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage,
-                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlitRegion, VK_FILTER_LINEAR);
-}
-
-void copyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImage dstImage,
-                      VkExtent2D extent, VkImageAspectFlagBits aspect) {
-  const VkImageCopy imageCopyRegion = {
-    .srcSubresource = {.aspectMask = static_cast<VkImageAspectFlags>(aspect), .layerCount = 1},
-    .dstSubresource = {.aspectMask = static_cast<VkImageAspectFlags>(aspect), .layerCount = 1},
-    .extent = {extent.width, extent.height, 1}
-  };
-
-  vkCmdCopyImage(commandBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage,
-                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
 }
 
 // Image layout needs to be VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
@@ -221,6 +147,7 @@ void generateImageMipmaps(
     if (mipWidth > 1) {
       mipWidth /= 2;
     }
+
     if (mipHeight > 1) {
       mipHeight /= 2;
     }

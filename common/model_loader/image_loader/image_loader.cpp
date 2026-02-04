@@ -9,12 +9,12 @@
 
 #include "common/util/engine_exception.h"
 
-ImageResource ImageLoader::loadImageStbi(std::span<const std::byte> imageData) {
+ImageResource loadImageStbi(std::span<const std::byte> imageData) {
   int width, height, channels;
   stbi_uc* pixels = stbi_load_from_memory(
       reinterpret_cast<const stbi_uc*>(imageData.data()), static_cast<int>(imageData.size()),
       &width, &height, &channels, STBI_rgb_alpha);
-  if (!pixels) {
+  if (!pixels) [[unlikely]] {
     throw EngineException("Failed to load image file (stbi).");
   }
 
@@ -34,12 +34,12 @@ ImageResource ImageLoader::loadImageStbi(std::span<const std::byte> imageData) {
     .size = static_cast<uint32_t>(4 * width * height)};
 }
 
-ImageResource ImageLoader::loadImageKtx(std::span<const std::byte> imageData) {
+ImageResource loadImageKtx(std::span<const std::byte> imageData) {
   ktxTexture* ktxTexture;
   if (ktxResult result = ktxTexture_CreateFromMemory(
           reinterpret_cast<const ktx_uint8_t*>(imageData.data()), imageData.size(),
           KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
-      result != KTX_SUCCESS) {
+      result != KTX_SUCCESS) [[unlikely]] {
     throw EngineException("Failed to load image file (ktx).");
   }
 
@@ -48,22 +48,22 @@ ImageResource ImageLoader::loadImageKtx(std::span<const std::byte> imageData) {
     .width = ktxTexture->baseWidth,
     .height = ktxTexture->baseHeight,
     .mipLevels = ktxTexture->numLevels,
-    .layerCount = 6,
+    .layerCount = ktxTexture->numFaces,
+    .subresources = lib::Buffer<ImageSubresource>(ktxTexture->numLevels * ktxTexture->numFaces),
     .data = ktxTexture->pData,
     .size = ktxTexture->dataSize};
 
-  for (uint32_t face = 0; face < image.layerCount; ++face) {
-    for (uint32_t level = 0; level < image.mipLevels; ++level) {
-      // Calculate offset into staging buffer for the current mip level and face
+  for (uint32_t face = 0, index = 0; face < image.layerCount; face++) {
+    for (uint32_t level = 0; level < image.mipLevels; level++, index++) {
       ktx_size_t offset;
       if (ktxResult result = ktxTexture_GetImageOffset(ktxTexture, level, 0, face, &offset);
-          result != KTX_SUCCESS) {
+          result != KTX_SUCCESS) [[unlikely]] {
         ktxTexture_Destroy(ktxTexture);
         throw EngineException(
             std::format("Failed to get image offset for level: {}, face: {} (ktx).", level, face));
       }
 
-      image.subresources.push_back(ImageSubresource{
+      image.subresources[index] = ImageSubresource{
         .offset = offset,
         .mipLevel = level,
         .baseArrayLayer = face,
@@ -71,10 +71,18 @@ ImageResource ImageLoader::loadImageKtx(std::span<const std::byte> imageData) {
         .width = image.width >> level,
         .height = image.height >> level,
         .depth = 1,
-      });
+      };
     }
   }
   return image;
+}
+
+ImageResource loadImage(std::span<const std::byte> imageData, std::string_view filePath) {
+  if (filePath.ends_with(".ktx") || filePath.ends_with(".ktx2")) {
+    return loadImageKtx(imageData);
+  } else {
+    return loadImageStbi(imageData);
+  }
 }
 
 namespace {
@@ -93,6 +101,6 @@ struct Deallocator {
 
 }  // namespace
 
-void ImageLoader::deallocateResources(ImageResource& resource) {
+void deallocateResources(ImageResource& resource) {
   std::visit(Deallocator{}, resource.libraryResource);
 }

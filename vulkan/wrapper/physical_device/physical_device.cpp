@@ -1,6 +1,7 @@
 #include "physical_device.h"
 
 #include <algorithm>
+#include <ranges>
 #include <vulkan/vulkan.hpp>
 
 #include "common/util/engine_exception.h"
@@ -51,17 +52,16 @@ lib::Buffer<VkQueueFamilyProperties> getQueueFamilyProperties(VkPhysicalDevice d
 QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice device, VkSurfaceKHR surface) {
   lib::Buffer<VkQueueFamilyProperties> queueFamilies = getQueueFamilyProperties(device);
   QueueFamilyIndices indices;
-
-  for (uint32_t i = 0; i < queueFamilies.size() && !areQueueFamilyIndicesComplete(indices); ++i) {
-    if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+  for (auto&& [i, queueFamily] : std::views::enumerate(queueFamilies)) {
+    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphicsFamily = i;
     }
 
-    if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+    if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
       indices.computeFamily = i;
     }
 
-    if (queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) {
+    if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) {
       indices.transferFamily = i;
     }
 
@@ -70,27 +70,32 @@ QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice device, VkSurfaceKHR 
     if (presentSupport) {
       indices.presentFamily = i;
     }
+
+    if (areQueueFamilyIndicesComplete(indices)) {
+      return indices;
+    }
   }
-  return indices;
+
+  throw EngineException("Failed to find complete set of queue family indices.");
 }
 
 QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice device) {
   lib::Buffer<VkQueueFamilyProperties> queueFamilies = getQueueFamilyProperties(device);
   QueueFamilyIndices indices;
-
-  for (uint32_t i = 0; i < queueFamilies.size() && !areQueueFamilyIndicesComplete(indices); ++i) {
-    if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+  for (auto&& [i, queueFamily] : std::views::enumerate(queueFamilies)) {
+    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphicsFamily = indices.presentFamily = i;
     }
 
-    if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+    if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
       indices.computeFamily = i;
     }
 
-    if (queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) {
+    if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) {
       indices.transferFamily = i;
     }
   }
+
   return indices;
 }
 
@@ -118,46 +123,57 @@ SwapChainSupportDetails querySwapchainSupportDetails(
   return details;
 }
 
+VkPhysicalDevice getBestPhysicalDevice(
+    std::span<const VkPhysicalDevice> devices, VkSurfaceKHR surface) {
+  lib::Buffer<uint32_t> rates(devices.size());
+  for (auto&& [device, rate] : std::views::zip(devices, rates)) {
+    rate = 0;
+    const SwapChainSupportDetails swapchainSupportDetails =
+        querySwapchainSupportDetails(device, surface);
+
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(device, &properties);
+
+    if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+      rate += 100;
+    } else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
+      rate += 75;
+    }
+
+    if (!swapchainSupportDetails.formats.empty() && !swapchainSupportDetails.presentModes.empty()) {
+      rate += 75;
+    }
+  }
+
+  const auto maxElementIt = std::max_element(rates.begin(), rates.end());
+  if (maxElementIt != rates.end()) {
+    return devices[std::distance(rates.begin(), maxElementIt)];
+  }
+
+  return VK_NULL_HANDLE;
+}
+
 }  // namespace
 
 PhysicalDevice::PhysicalDevice(VkPhysicalDevice physicalDevice, const Instance& instance,
-                               const QueueFamilyIndices& queueFamilyIndices) noexcept
+                               const QueueFamilyIndices& queueFamilyIndices,
+                               const VkPhysicalDeviceProperties& properties) noexcept
   : _device(physicalDevice), _instance(instance),
     _availableRequestedExtensions(checkDeviceExtensionSupport(physicalDevice)),
-    _queueFamilyIndices(queueFamilyIndices) {
-  vkGetPhysicalDeviceProperties(_device, &_properties);
-}
+    _queueFamilyIndices(queueFamilyIndices), _properties(properties) {}
 
 std::unique_ptr<PhysicalDevice> PhysicalDevice::create(
     const Instance& instance, VkSurfaceKHR surface) {
   const lib::Buffer<VkPhysicalDevice> devices = instance.getAvailablePhysicalDevices();
-  for (const auto device : devices) {
-    const QueueFamilyIndices queueFamilyIndices = findQueueFamilyIncides(device, surface);
-    const SwapChainSupportDetails swapchainSupportDetails =
-        querySwapchainSupportDetails(device, surface);
-
-    const bool swapChainAdequate =
-        !swapchainSupportDetails.formats.empty() && !swapchainSupportDetails.presentModes.empty();
-
-    VkPhysicalDeviceFeatures supportedFeatures;
-    vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
-
-    VkPhysicalDeviceProperties properties;
-    vkGetPhysicalDeviceProperties(device, &properties);
-    const bool discreteGPU = (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
-
-    if (lib::cont_all_of(
-            std::initializer_list{
-              areQueueFamilyIndicesComplete(queueFamilyIndices), swapChainAdequate,
-              static_cast<bool>(supportedFeatures.samplerAnisotropy)},
-            [](bool condition) {
-              return condition;
-            })) {
-      return std::unique_ptr<PhysicalDevice>(
-          new PhysicalDevice(device, instance, queueFamilyIndices));
-    }
+  const VkPhysicalDevice bestDevice = getBestPhysicalDevice(devices, surface);
+  if (bestDevice == VK_NULL_HANDLE) {
+    throw EngineException("Failed to find physical device.");
   }
-  throw EngineException("Failed to find suitable physical device.");
+
+  VkPhysicalDeviceProperties properties;
+  vkGetPhysicalDeviceProperties(bestDevice, &properties);
+  return std::unique_ptr<PhysicalDevice>(new PhysicalDevice(
+      bestDevice, instance, findQueueFamilyIncides(bestDevice, surface), properties));
 }
 
 std::unique_ptr<PhysicalDevice> PhysicalDevice::wrap(
@@ -166,27 +182,34 @@ std::unique_ptr<PhysicalDevice> PhysicalDevice::wrap(
     throw EngineException("Cannot wrap VK_NULL_HANDLE around PhysicalDevice.");
   }
 
-  return std::unique_ptr<PhysicalDevice>(
-      new PhysicalDevice(physicalDevice, instance, findQueueFamilyIncides(physicalDevice)));
+  VkPhysicalDeviceProperties properties;
+  vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+  return std::unique_ptr<PhysicalDevice>(new PhysicalDevice(
+      physicalDevice, instance, findQueueFamilyIncides(physicalDevice), properties));
 }
 
-VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const {
+VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const noexcept {
   return _device;
 }
 
-const Instance& PhysicalDevice::getInstance() const {
+const Instance& PhysicalDevice::getInstance() const noexcept {
   return _instance;
 }
 
-bool PhysicalDevice::hasAvailableExtension(std::string_view extension) const {
+bool PhysicalDevice::hasAvailableExtension(std::string_view extension) const noexcept {
   return _availableRequestedExtensions.contains(extension);
 }
 
-float PhysicalDevice::getMaxSamplerAnisotropy() const {
+float PhysicalDevice::getMaxSamplerAnisotropy() const noexcept {
   return _properties.limits.maxSamplerAnisotropy;
 }
 
-size_t PhysicalDevice::getMemoryAlignment(size_t size) const {
+VkPhysicalDeviceType PhysicalDevice::getPhysicalDeviceType() const noexcept {
+  return _properties.deviceType;
+}
+
+size_t PhysicalDevice::getMemoryAlignment(size_t size) const noexcept {
   const size_t minUboAlignment = _properties.limits.minUniformBufferOffsetAlignment;
   return minUboAlignment > 0 ? (size + minUboAlignment - 1) & ~(minUboAlignment - 1) : size;
 }
@@ -200,7 +223,7 @@ lib::Buffer<const char*> PhysicalDevice::getAvailableExtensions() const {
   return extensions;
 }
 
-const QueueFamilyIndices& PhysicalDevice::getQueueFamilyIndices() const {
+const QueueFamilyIndices& PhysicalDevice::getQueueFamilyIndices() const noexcept {
   return _queueFamilyIndices;
 }
 

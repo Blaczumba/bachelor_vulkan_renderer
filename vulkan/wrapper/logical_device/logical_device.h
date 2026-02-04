@@ -37,27 +37,23 @@ public:
 
   void destroyResource(ResourceDestroyer::Job destroyResource) const;
 
-  VkSampler createSampler(const SamplerParameters& params) const;
+  VkImageView createImageView(const VkImageViewCreateInfo& imageViewCreateInfo) const;
 
-  VkImageView createImageView(VkImage image, VkImageViewType type, VkFormat format,
-                              VkImageAspectFlags aspect, uint32_t baseMipLevel, uint32_t mipLevels,
-                              uint32_t baseArrayLayer, uint32_t layerCount) const;
-
-  VkDevice getVkDevice() const;
+  VkDevice getVkDevice() const noexcept;
 
   const PhysicalDevice& getPhysicalDevice() const;
 
   MemoryAllocator& getMemoryAllocator() const;
 
-  VkQueue getVkQueue(QueueType queueType) const;
+  VkQueue getVkQueue(QueueType queueType) const noexcept;
 
-  VkQueue getGraphicsVkQueue() const;
+  VkQueue getGraphicsVkQueue() const noexcept;
 
-  VkQueue getPresentVkQueue() const;
+  VkQueue getPresentVkQueue() const noexcept;
 
-  VkQueue getComputeVkQueue() const;
+  VkQueue getComputeVkQueue() const noexcept;
 
-  VkQueue getTransferVkQueue() const;
+  VkQueue getTransferVkQueue() const noexcept;
 
 private:
   VkDevice _device = VK_NULL_HANDLE;

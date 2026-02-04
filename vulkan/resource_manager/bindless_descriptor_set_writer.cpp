@@ -1,8 +1,10 @@
-#include "vulkan/wrapper/descriptor_set/bindless_descriptor_set_writer.h"
+#include "bindless_descriptor_set_writer.h"
 
 #include <format>
+#include <ranges>
 #include <vulkan/vulkan.h>
 
+#include "vulkan/resource_manager/util.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_writer_lib.h"
 
@@ -11,17 +13,6 @@ namespace {
 constexpr uint32_t UNIFORM_BINDING = 0;
 constexpr uint32_t TEXTURE_BINDING = 1;
 constexpr uint32_t STORAGE_BINDING = 2;
-
-template<typename T>
-T getNextHandle(uint32_t elementsCount, std::vector<T>& missingBindings) {
-  if (missingBindings.empty()) {
-    return T(elementsCount);
-  }
-
-  T it = missingBindings.back();
-  missingBindings.pop_back();
-  return it;
-}
 
 }  // namespace
 
@@ -35,15 +26,17 @@ std::unique_ptr<BindlessDescriptorSetWriter> BindlessDescriptorSetWriter::create
       new BindlessDescriptorSetWriter(descriptorSet));
 }
 
-BindlessTextureHandle BindlessDescriptorSetWriter::storeTexture(const Texture& texture) {
-  const BindlessTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
-  if (!_texturesMap.insert(*handle, &texture)) [[unlikely]] {
+UniformTextureHandle BindlessDescriptorSetWriter::storeTexture(
+    const Texture& texture, const Sampler& sampler) {
+  const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
+  if (!_texturesMap.insert(*handle)) [[unlikely]] {
     throw EngineException(std::format(
-        "BindlessDescriptorSetWriter::storeTexture: Failed to insert Texture Handle = {}.", *handle));
+        "BindlessDescriptorSetWriter::storeTexture: Failed to insert Texture Handle = {}.",
+        *handle));
   }
 
   const VkDescriptorImageInfo imageInfo = {
-    .sampler = texture.getVkSampler(),
+    .sampler = sampler.getVkSampler(),
     .imageView = texture.getVkImageView(),
     .imageLayout = texture.getVkImageLayout()};
 
@@ -61,13 +54,13 @@ BindlessTextureHandle BindlessDescriptorSetWriter::storeTexture(const Texture& t
   return handle;
 }
 
-std::vector<BindlessTextureHandle> BindlessDescriptorSetWriter::storeTextures(
+std::vector<UniformTextureHandle> BindlessDescriptorSetWriter::storeTextures(
     std::span<const Texture> textures) {
-  std::vector<BindlessTextureHandle> handles;
+  std::vector<UniformTextureHandle> handles;
   handles.reserve(textures.size());
   for (uint32_t i = 0; i < textures.size(); i++) {
-    const BindlessTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
-    if (!_texturesMap.insert(*handle, &textures[i])) [[unlikely]] {
+    const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
+    if (!_texturesMap.insert(*handle)) [[unlikely]] {
       throw EngineException(std::format(
           "BindlessDescriptorSetWriter::storeTextures: Failed to insert Texture Handle = {}.",
           *handle));
@@ -79,43 +72,43 @@ std::vector<BindlessTextureHandle> BindlessDescriptorSetWriter::storeTextures(
   lib::Buffer<VkDescriptorImageInfo> imageInfos(textures.size());
   lib::Buffer<VkWriteDescriptorSet> writes(textures.size());
 
-  for (uint32_t i = 0; i < textures.size(); i++) {
-    imageInfos[i] = VkDescriptorImageInfo{
-      .sampler = textures[i].getVkSampler(),
-      .imageView = textures[i].getVkImageView(),
-      .imageLayout = textures[i].getVkImageLayout()};
+  for (auto&& [imageInfo, write, handle, texture] :
+       std::views::zip(imageInfos, writes, handles, textures)) {
+    imageInfo = VkDescriptorImageInfo{
+      // TODO: Use samplers.
+      .sampler = VK_NULL_HANDLE,
+      .imageView = texture.getVkImageView(),
+      .imageLayout = texture.getVkImageLayout()};
 
-    writes[i] = VkWriteDescriptorSet{
+    write = VkWriteDescriptorSet{
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
       .dstSet = _descriptorSet.getVkDescriptorSet(),
       .dstBinding = TEXTURE_BINDING,
-      .dstArrayElement = static_cast<uint32_t>(*handles[i]),
+      .dstArrayElement = static_cast<uint32_t>(*handle),
       .descriptorCount = 1,
       .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .pImageInfo = &imageInfos[i]};
+      .pImageInfo = &imageInfo};
   }
 
   vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
-                         static_cast<uint32_t>(writes.size()),
-                         writes.data(), 0, nullptr);
+                         static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
   return handles;
 }
 
-void BindlessDescriptorSetWriter::removeTexture(BindlessTextureHandle handle) {
+void BindlessDescriptorSetWriter::removeTexture(UniformTextureHandle handle) {
   _missingTextures.push_back(handle);
   _texturesMap.erase(*handle);
 }
 
-BindlessBufferHandle BindlessDescriptorSetWriter::storeBuffer(const Buffer& buffer) {
-  const BindlessBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
-  if (!_buffersMap.insert(*handle, &buffer)) [[unlikely]] {
+UniformBufferHandle BindlessDescriptorSetWriter::storeBuffer(const Buffer& buffer) {
+  const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
+  if (!_buffersMap.insert(*handle)) [[unlikely]] {
     throw EngineException(std::format(
         "BindlessDescriptorSetWriter::storeBuffer: Failed to insert Buffer Handle = {}.", *handle));
   }
 
   const VkDescriptorBufferInfo bufferInfo = {
-    .buffer = buffer.getVkBuffer(),
-    .range = buffer.getSize()};
+    .buffer = buffer.getVkBuffer(), .range = buffer.getSize()};
 
   const VkWriteDescriptorSet write = {
     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -132,13 +125,13 @@ BindlessBufferHandle BindlessDescriptorSetWriter::storeBuffer(const Buffer& buff
   return handle;
 }
 
-std::vector<BindlessBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
+std::vector<UniformBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
     std::span<const Buffer> buffers) {
-  std::vector<BindlessBufferHandle> handles;
+  std::vector<UniformBufferHandle> handles;
   handles.reserve(buffers.size());
   for (uint32_t i = 0; i < buffers.size(); i++) {
-    const BindlessBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
-    if (!_buffersMap.insert(*handle, &buffers[i])) [[unlikely]] {
+    const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
+    if (!_buffersMap.insert(*handle)) [[unlikely]] {
       throw EngineException(std::format(
           "BindlessDescriptorSetWriter::storeBuffers: Failed to insert Buffer Handle = {}.",
           *handle));
@@ -150,19 +143,18 @@ std::vector<BindlessBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
   lib::Buffer<VkDescriptorBufferInfo> bufferInfos(buffers.size());
   lib::Buffer<VkWriteDescriptorSet> writes(buffers.size());
 
-  for (uint32_t i = 0; i < buffers.size(); i++) {
-    bufferInfos[i] = VkDescriptorBufferInfo{
-        .buffer = buffers[i].getVkBuffer(),
-        .range = buffers[i].getSize()};
+  for (auto&& [bufferInfo, write, handle, buffer] :
+       std::views::zip(bufferInfos, writes, handles, buffers)) {
+    bufferInfo = VkDescriptorBufferInfo{.buffer = buffer.getVkBuffer(), .range = buffer.getSize()};
 
-    writes[i] = VkWriteDescriptorSet{
+    write = VkWriteDescriptorSet{
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
       .dstSet = _descriptorSet.getVkDescriptorSet(),
       .dstBinding = UNIFORM_BINDING,
-      .dstArrayElement = static_cast<uint32_t>(*handles[i]),
+      .dstArrayElement = static_cast<uint32_t>(*handle),
       .descriptorCount = 1,
-      .descriptorType = getDescriptorType(buffers[i].getUsage()),
-      .pBufferInfo = &bufferInfos[i]};
+      .descriptorType = getDescriptorType(buffer.getUsage()),
+      .pBufferInfo = &bufferInfo};
   }
 
   vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
@@ -170,7 +162,7 @@ std::vector<BindlessBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
   return handles;
 }
 
-void BindlessDescriptorSetWriter::removeBuffer(BindlessBufferHandle handle) {
+void BindlessDescriptorSetWriter::removeBuffer(UniformBufferHandle handle) {
   _missingBuffers.push_back(handle);
   _buffersMap.erase(*handle);
 }

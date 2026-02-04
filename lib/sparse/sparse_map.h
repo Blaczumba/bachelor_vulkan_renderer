@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <memory>
 #include <span>
 
 #include "lib/types/util.h"
@@ -15,6 +16,10 @@ public:
   SparseMap() noexcept = default;
 
   ~SparseMap() = default;
+
+  [[nodiscard]] Type* tryGetValue(IndexType index);
+
+  [[nodiscard]] const Type* tryGetValue(IndexType index) const;
 
   [[nodiscard]] Type& getValue(IndexType index);
 
@@ -50,6 +55,27 @@ private:
 };
 
 template <typename Type, size_t N>
+Type* SparseMap<Type, N>::tryGetValue(IndexType index) {
+  const IndexType denseIndex = _sparse[index];
+  if (denseIndex < _size && _dense[denseIndex] == index) [[likely]] {
+    return &_values[denseIndex];
+  }
+
+  return nullptr;
+}
+
+template <typename Type, size_t N>
+const Type* SparseMap<Type, N>::tryGetValue(
+    IndexType index) const {
+  const IndexType denseIndex = _sparse[index];
+  if (denseIndex < _size && _dense[denseIndex] == index) [[likely]] {
+    return &_values[denseIndex];
+  }
+
+  return nullptr;
+}
+
+template <typename Type, size_t N>
 Type& SparseMap<Type, N>::getValue(IndexType index) {
   return _values[_sparse[index]];
 }
@@ -81,7 +107,8 @@ bool SparseMap<Type, N>::empty() const noexcept {
 
 template <typename Type, size_t N>
 bool SparseMap<Type, N>::exists(IndexType index) const {
-  return _sparse[index] < _size && _dense[_sparse[index]] == index;
+  const IndexType denseIndex = _sparse[index];
+  return denseIndex < _size && _dense[denseIndex] == index;
 }
 
 template <typename Type, size_t N>

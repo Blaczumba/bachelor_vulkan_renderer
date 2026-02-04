@@ -19,7 +19,7 @@ public:
 
   std::tuple<std::span<const VkVertexInputBindingDescription>,
              std::span<const VkVertexInputAttributeDescription>>
-  getDescription() const;
+  getDescription() const noexcept;
 
 private:
   std::vector<VkVertexInputBindingDescription> _VkVertexInputBindingDescription;

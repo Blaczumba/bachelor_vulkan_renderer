@@ -1,7 +1,7 @@
 add_library(Buffer
 	buffer.h buffer.cpp
 	texture.h texture.cpp
-	buffers.cpp image.h
+	buffers.cpp 
 )
 target_link_libraries(Buffer PUBLIC Vulkan::Vulkan)
 target_link_libraries(Buffer PUBLIC LogicalDevice CommandBuffer)

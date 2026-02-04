@@ -159,11 +159,11 @@ Renderpass::~Renderpass() {
   destroy();
 }
 
-VkRenderPass Renderpass::getVkRenderPass() const {
+VkRenderPass Renderpass::getVkRenderPass() const noexcept {
   return _renderpass;
 }
 
-const AttachmentLayout& Renderpass::getAttachmentsLayout() const {
+const AttachmentLayout& Renderpass::getAttachmentsLayout() const noexcept {
   return _attachmentsLayout;
 }
 

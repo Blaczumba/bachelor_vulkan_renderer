@@ -1,6 +1,5 @@
 #include "memory_allocator.h"
 
-#include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/util/check.h"
 
 #define VMA_IMPLEMENTATION
@@ -67,28 +66,14 @@ void VmaWrapper::sendDataToBufferMemory(
 }
 
 VmaWrapper::Image VmaWrapper::createVkImage(
-    const ImageParameters& params, VkImageLayout layout, VmaMemoryUsage memoryUsage,
+    const VkImageCreateInfo& imageCreateInfo, VmaMemoryUsage memoryUsage,
     VmaAllocationCreateFlags flags) {
-  const VkImageCreateInfo imageInfo = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-    .flags = params.flags,
-    .imageType = params.type,
-    .format = params.format,
-    .extent = params.extent,
-    .mipLevels = params.mipLevels,
-    .arrayLayers = params.layerCount,
-    .samples = params.numSamples,
-    .tiling = params.tiling,
-    .usage = params.usage,
-    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-    .initialLayout = layout};
-
   const VmaAllocationCreateInfo vmaAllocInfo = {.flags = flags, .usage = memoryUsage};
-
   VmaAllocation allocation;
   VkImage image;
-  CHECK_VKCMD(vmaCreateImage(_allocator, &imageInfo, &vmaAllocInfo, &image, &allocation, nullptr),
-              "Failed to create VkImage by VMA.");
+  CHECK_VKCMD(
+      vmaCreateImage(_allocator, &imageCreateInfo, &vmaAllocInfo, &image, &allocation, nullptr),
+      "Failed to create VkImage by VMA.");
   return VmaWrapper::Image{image, allocation};
 }
 

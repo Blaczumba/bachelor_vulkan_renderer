@@ -56,7 +56,7 @@ Shader::~Shader() {
   destroy();
 }
 
-VkPipelineShaderStageCreateInfo Shader::getVkPipelineStageCreateInfo() const {
+VkPipelineShaderStageCreateInfo Shader::getVkPipelineStageCreateInfo() const noexcept {
   static constexpr std::string_view pname = "main";
   return VkPipelineShaderStageCreateInfo{
     .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -65,6 +65,6 @@ VkPipelineShaderStageCreateInfo Shader::getVkPipelineStageCreateInfo() const {
     .pName = pname.data()};
 }
 
-VkShaderStageFlagBits Shader::getVkShaderStageFlagBits() const {
+VkShaderStageFlagBits Shader::getVkShaderStageFlagBits() const noexcept {
   return _shaderStage;
 }

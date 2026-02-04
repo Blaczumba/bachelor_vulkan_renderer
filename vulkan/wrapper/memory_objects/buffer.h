@@ -25,11 +25,11 @@ public:
 
   ~Buffer();
 
-  static Buffer createVertexBuffer(const LogicalDevice& logicalDevice, uint32_t size);
+  static Buffer createVertexInputBuffer(
+      const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage = {});
 
-  static Buffer createIndexBuffer(const LogicalDevice& logicalDevice, uint32_t size);
-
-  static Buffer createStagingBuffer(const LogicalDevice& logicalDevice, uint32_t size);
+  static Buffer createStagingBuffer(
+      const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage = {});
 
   static Buffer createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t size);
 
@@ -55,13 +55,15 @@ public:
   template <typename T>
   void copyData(const T& data, VkDeviceSize offset = 0);
 
-  VkBufferUsageFlags getUsage() const;
+  VkBufferUsageFlags getUsage() const noexcept;
 
-  uint32_t getSize() const;
+  uint32_t getSize() const noexcept;
 
-  void* getMappedMemory() const;
+  void* getMappedMemory() const noexcept;
 
-  const VkBuffer& getVkBuffer() const;
+  const VkBuffer& getVkBuffer() const noexcept;
+
+  const LogicalDevice& getLogicalDevice() const;
 
 private:
   Buffer(const LogicalDevice& logicalDevice, const Allocation allocation,

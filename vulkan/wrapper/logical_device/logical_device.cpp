@@ -137,53 +137,14 @@ LogicalDevice LogicalDevice::wrap(VkDevice device, const PhysicalDevice& physica
   return LogicalDevice(device, physicalDevice, std::move(resourceDestroyer));
 }
 
-VkImageView LogicalDevice::createImageView(
-    VkImage image, VkImageViewType type, VkFormat format, VkImageAspectFlags aspect,
-    uint32_t baseMipLevel, uint32_t mipLevels, uint32_t baseArrayLayer, uint32_t layerCount) const {
-  const VkImageViewCreateInfo viewInfo = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .image = image,
-    .viewType = type,
-    .format = format,
-    .subresourceRange = {.aspectMask = aspect,
-                         .baseMipLevel = baseMipLevel,
-                         .levelCount = mipLevels,
-                         .baseArrayLayer = baseArrayLayer,
-                         .layerCount = layerCount}
-  };
-
+VkImageView LogicalDevice::createImageView(const VkImageViewCreateInfo& imageViewCreateInfo) const {
   VkImageView view;
-  CHECK_VKCMD(
-      vkCreateImageView(_device, &viewInfo, nullptr, &view), "Failed to create VkImageView.");
+  CHECK_VKCMD(vkCreateImageView(_device, &imageViewCreateInfo, nullptr, &view),
+              "Failed to create VkImageView.");
   return view;
 }
 
-VkSampler LogicalDevice::createSampler(const SamplerParameters& params) const {
-  const VkSamplerCreateInfo samplerInfo = {
-    .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-    .magFilter = params.magFilter,
-    .minFilter = params.minFilter,
-    .mipmapMode = params.mipmapMode,
-    .addressModeU = params.addressModeU,
-    .addressModeV = params.addressModeV,
-    .addressModeW = params.addressModeW,
-    .mipLodBias = params.mipLodBias,
-    .anisotropyEnable = params.maxAnisotropy.has_value() ? VK_TRUE : VK_FALSE,
-    .maxAnisotropy = params.maxAnisotropy.value_or(0.0f),
-    .compareEnable = params.compareOp.has_value() ? VK_TRUE : VK_FALSE,
-    .compareOp = params.compareOp.value_or(VK_COMPARE_OP_NEVER),
-    .minLod = params.minLod,
-    .maxLod = params.maxLod,
-    .borderColor = params.borderColor,
-    .unnormalizedCoordinates = params.unnormalizedCoordinates};
-
-  VkSampler sampler;
-  CHECK_VKCMD(
-      vkCreateSampler(_device, &samplerInfo, nullptr, &sampler), "Failed to create VkSampler.");
-  return sampler;
-}
-
-VkDevice LogicalDevice::getVkDevice() const {
+VkDevice LogicalDevice::getVkDevice() const noexcept {
   return _device;
 }
 
@@ -195,7 +156,7 @@ MemoryAllocator& LogicalDevice::getMemoryAllocator() const {
   return *_memoryAllocator;
 }
 
-VkQueue LogicalDevice::getVkQueue(QueueType queueType) const {
+VkQueue LogicalDevice::getVkQueue(QueueType queueType) const noexcept {
   switch (queueType) {
     case QueueType::GRAPHICS:
       return _graphicsQueue;
@@ -210,18 +171,18 @@ VkQueue LogicalDevice::getVkQueue(QueueType queueType) const {
   }
 }
 
-VkQueue LogicalDevice::getGraphicsVkQueue() const {
+VkQueue LogicalDevice::getGraphicsVkQueue() const noexcept {
   return _graphicsQueue;
 }
 
-VkQueue LogicalDevice::getPresentVkQueue() const {
+VkQueue LogicalDevice::getPresentVkQueue() const noexcept {
   return _presentQueue;
 }
 
-VkQueue LogicalDevice::getComputeVkQueue() const {
+VkQueue LogicalDevice::getComputeVkQueue() const noexcept {
   return _computeQueue;
 }
 
-VkQueue LogicalDevice::getTransferVkQueue() const {
+VkQueue LogicalDevice::getTransferVkQueue() const noexcept {
   return _transferQueue;
 }

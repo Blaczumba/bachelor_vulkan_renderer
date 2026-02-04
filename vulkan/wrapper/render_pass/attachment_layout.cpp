@@ -5,27 +5,28 @@
 AttachmentLayout::AttachmentLayout(VkSampleCountFlagBits numMsaaSamples)
   : _numMsaaSamples(numMsaaSamples) {}
 
-VkSampleCountFlagBits AttachmentLayout::getNumMsaaSamples() const {
+VkSampleCountFlagBits AttachmentLayout::getNumMsaaSamples() const noexcept {
   return _numMsaaSamples;
 }
 
-std::span<const VkClearValue> AttachmentLayout::getVkClearValues() const {
+std::span<const VkClearValue> AttachmentLayout::getVkClearValues() const noexcept {
   return _clearValues;
 }
 
-std::span<const VkAttachmentDescription> AttachmentLayout::getVkAttachmentDescriptions() const {
+std::span<const VkAttachmentDescription>
+AttachmentLayout::getVkAttachmentDescriptions() const noexcept {
   return _attachmentDescriptions;
 }
 
-std::span<const VkImageLayout> AttachmentLayout::getVkSubpassLayouts() const {
+std::span<const VkImageLayout> AttachmentLayout::getVkSubpassLayouts() const noexcept {
   return _subpassImageLayouts;
 }
 
-std::span<const AttachmentType> AttachmentLayout::getAttachmentsTypes() const {
+std::span<const AttachmentType> AttachmentLayout::getAttachmentsTypes() const noexcept {
   return _attachmentTypes;
 }
 
-uint32_t AttachmentLayout::getColorAttachmentsCount() const {
+uint32_t AttachmentLayout::getColorAttachmentsCount() const noexcept {
   return std::count(_attachmentTypes.cbegin(), _attachmentTypes.cend(), AttachmentType::COLOR);
 }
 
@@ -35,7 +36,7 @@ VkAttachmentDescription createDescription(
     VkFormat format, VkSampleCountFlagBits samples, VkAttachmentLoadOp loadOp,
     VkAttachmentStoreOp storeOp, VkImageLayout initialLayout, VkImageLayout finalLayout,
     VkAttachmentLoadOp stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-    VkAttachmentStoreOp stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE) {
+    VkAttachmentStoreOp stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE) noexcept {
   return VkAttachmentDescription{
     .flags = 0,
     .format = format,

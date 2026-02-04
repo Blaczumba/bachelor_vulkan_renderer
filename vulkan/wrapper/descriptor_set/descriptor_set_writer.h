@@ -11,12 +11,13 @@
 #include "vulkan/wrapper/descriptor_set/descriptor_set.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
+#include "vulkan/wrapper/sampler/sampler.h"
 
 class DescriptorSetWriter {
 public:
   DescriptorSetWriter() noexcept = default;
 
-  DescriptorSetWriter& storeTexture(const Texture& texture);
+  DescriptorSetWriter& storeTexture(const Texture& texture, const Sampler& sampler);
 
   DescriptorSetWriter& storeBuffer(const Buffer& buffer);
 

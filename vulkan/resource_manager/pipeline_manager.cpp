@@ -6,11 +6,11 @@
 #include <vulkan/vulkan.h>
 
 #include "lib/buffer/buffer.h"
+#include "vulkan/resource_manager/util.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 #include "vulkan/wrapper/util/vertex_input_description_builder.h"
 
-PipelineManager::PipelineManager(const FileLoader& fileLoader)
-  : _fileLoader(fileLoader) {}
+PipelineManager::PipelineManager(const FileLoader& fileLoader) : _fileLoader(fileLoader) {}
 
 std::unique_ptr<PipelineManager> PipelineManager::create(const FileLoader& fileLoader) {
   return std::unique_ptr<PipelineManager>(new PipelineManager(fileLoader));
@@ -84,21 +84,6 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevi
   return vkLayout;
 }
 
-namespace {
-
-template <typename T>
-T getNextHandle(uint32_t elementsCount, std::vector<T>& missingHandles) {
-  if (missingHandles.empty()) {
-    return T(elementsCount);
-  }
-
-  T it = missingHandles.back();
-  missingHandles.pop_back();
-  return it;
-}
-
-}
-
 std::pair<PipelineLayout*, PipelineManager::PipelineLayoutMapIndex> PipelineManager::
     getOrCreatePipelineLayout(const PipelineLayoutKey& key, const LogicalDevice& logicalDevice) {
   auto [it, inserted] = _pipelineLayoutIndices.try_emplace(key);
@@ -135,6 +120,7 @@ bool PipelineManager::removePipelineLayout(PipelineLayoutMapIndex index) {
 
   _pipelineLayouts.eraseUnsafe(index);
   _freePipelineLayoutIndices.push_back(index);
+
   auto it = _pipelineLayoutKeys.find(index);
   _pipelineLayoutIndices.erase(it->second);
   _pipelineLayoutKeys.erase(it);
@@ -157,6 +143,7 @@ bool PipelineManager::removePipeline(PipelineManager::PipelineMapIndex index) {
   const PipelineLayoutMapIndex layoutIndex = _pipelines.getValue(*index).layoutIndex;
   _pipelines.eraseUnsafe(*index);
   _freePipelineIndices.push_back(index);
+
   return removePipelineLayout(layoutIndex);
 }
 

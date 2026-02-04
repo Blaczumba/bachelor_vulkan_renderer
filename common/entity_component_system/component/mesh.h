@@ -4,15 +4,15 @@
 
 #include "common/entity_component_system/entity/entity.h"
 #include "common/util/geometry.h"
-#include "vulkan/wrapper/memory_objects/buffer.h"  // TODO: do not use vulkan specific things in this directory
+#include "common/util/resource_handles.h"
 
 class MeshComponent {
   static constexpr ComponentType componentID = 2;
 
 public:
-  Buffer vertexBuffer;
-  Buffer indexBuffer;
-  Buffer vertexBufferPrimitive;
+  GpuBufferHandle vertexBufferHandle;
+  GpuBufferHandle indexBufferHandle;
+  GpuBufferHandle vertexBufferPrimitiveHandle;
   AABB aabb;
   VkIndexType indexType;
 

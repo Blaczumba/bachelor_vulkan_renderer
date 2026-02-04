@@ -70,18 +70,18 @@ Pipeline::~Pipeline() {
   destroy();
 }
 
-VkPipeline Pipeline::getVkPipeline() const {
+VkPipeline Pipeline::getVkPipeline() const noexcept {
   return _pipeline;
 }
 
-VkPipelineBindPoint Pipeline::getVkPipelineBindPoint() const {
+VkPipelineBindPoint Pipeline::getVkPipelineBindPoint() const noexcept {
   return _bindPoint;
 }
 
-VkPipelineLayout Pipeline::getVkPipelineLayout() const {
+VkPipelineLayout Pipeline::getVkPipelineLayout() const noexcept {
   return _layout;
 }
 
-bool Pipeline::isValid() const {
+bool Pipeline::isValid() const noexcept {
   return _pipeline != VK_NULL_HANDLE;
 }

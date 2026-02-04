@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-#define DEFINE_STRONG_INT(TYPE, INT_TYPE) using TYPE = lib::StrongInt<INT_TYPE, struct NAME##Tag>
+#define DEFINE_STRONG_INT(TYPE, INT_TYPE) using TYPE = lib::StrongInt<INT_TYPE, struct TYPE##Tag>
 
 namespace lib {
 

@@ -40,7 +40,7 @@ void CommandPool::reset() const {
   vkResetCommandPool(_logicalDevice.getVkDevice(), _commandPool, 0);
 }
 
-VkCommandPool CommandPool::getVkCommandPool() const {
+VkCommandPool CommandPool::getVkCommandPool() const noexcept {
   return _commandPool;
 }
 
@@ -60,6 +60,7 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& other) noexcept {
   if (this == &other) {
     return *this;
   }
+
   _commandPool = std::move(other._commandPool);
   _commandBuffer = std::exchange(other._commandBuffer, VK_NULL_HANDLE);
   _level = other._level;
@@ -223,7 +224,7 @@ void CommandBuffer::resetCommandBuffer() const {
   vkResetCommandBuffer(_commandBuffer, 0);
 }
 
-VkCommandBuffer CommandBuffer::getVkCommandBuffer() const {
+VkCommandBuffer CommandBuffer::getVkCommandBuffer() const noexcept {
   return _commandBuffer;
 }
 
@@ -267,6 +268,6 @@ SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
   vkFreeCommandBuffers(device, _commandPool.getVkCommandPool(), 1, &_commandBuffer);
 }
 
-VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const {
+VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const noexcept {
   return _commandBuffer;
 }

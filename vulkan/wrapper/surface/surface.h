@@ -20,7 +20,7 @@ public:
 
   ~Surface();
 
-  VkSurfaceKHR getVkSurface() const;
+  VkSurfaceKHR getVkSurface() const noexcept;
 
 private:
   VkSurfaceKHR _surface = VK_NULL_HANDLE;

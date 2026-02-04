@@ -29,7 +29,7 @@ public:
 
   void reset() const;
 
-  VkCommandPool getVkCommandPool() const;
+  VkCommandPool getVkCommandPool() const noexcept;
 
   const LogicalDevice& getLogicalDevice() const;
 
@@ -81,7 +81,7 @@ public:
 
   void resetCommandBuffer() const;
 
-  VkCommandBuffer getVkCommandBuffer() const;
+  VkCommandBuffer getVkCommandBuffer() const noexcept;
 
 private:
   VkCommandBuffer _commandBuffer = VK_NULL_HANDLE;
@@ -141,5 +141,5 @@ public:
 
   ~SingleTimeCommandBuffer();
 
-  VkCommandBuffer getCommandBuffer() const;
+  VkCommandBuffer getCommandBuffer() const noexcept;
 };

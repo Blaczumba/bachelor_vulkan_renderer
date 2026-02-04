@@ -25,7 +25,7 @@ public:
 
   static Instance wrap(VkInstance instance);
 
-  VkInstance getVkInstance() const;
+  VkInstance getVkInstance() const noexcept;
 
   lib::Buffer<VkPhysicalDevice> getAvailablePhysicalDevices() const;
 
