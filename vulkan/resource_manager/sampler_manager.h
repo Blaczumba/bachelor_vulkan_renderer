@@ -1,8 +1,8 @@
 #pragma once
 
-#include "vulkan/wrapper/sampler/sampler.h"
-#include "lib/sparse/sparse_map.h"
 #include "common/util/resource_handles.h"
+#include "lib/sparse/sparse_map.h"
+#include "vulkan/wrapper/sampler/sampler.h"
 
 class SamplerManager {
   SamplerManager() noexcept = default;

@@ -1,7 +1,7 @@
 #include "sampler_manager.h"
 
-#include "vulkan/resource_manager/util.h"
 #include "common/util/engine_exception.h"
+#include "vulkan/resource_manager/util.h"
 
 std::unique_ptr<SamplerManager> SamplerManager::create() {
   return std::unique_ptr<SamplerManager>(new SamplerManager());

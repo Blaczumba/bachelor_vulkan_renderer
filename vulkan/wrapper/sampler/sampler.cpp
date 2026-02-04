@@ -2,19 +2,22 @@
 
 #include "vulkan/wrapper/util/check.h"
 
-Sampler::Sampler(const LogicalDevice& logicalDevice, VkSampler sampler) noexcept : _sampler(sampler), _logicalDevice(&logicalDevice){}
+Sampler::Sampler(const LogicalDevice& logicalDevice, VkSampler sampler) noexcept
+  : _sampler(sampler), _logicalDevice(&logicalDevice) {}
 
-Sampler Sampler::create(const LogicalDevice& logicalDevice, const VkSamplerCreateInfo& samplerInfo) {
+Sampler Sampler::create(
+    const LogicalDevice& logicalDevice, const VkSamplerCreateInfo& samplerInfo) {
   VkSampler sampler;
   CHECK_VKCMD(vkCreateSampler(logicalDevice.getVkDevice(), &samplerInfo, nullptr, &sampler),
               "Failed to create VkSampler.");
   return Sampler(logicalDevice, sampler);
 }
 
-Sampler::Sampler(Sampler&& other) noexcept : _sampler(std::exchange(other._sampler, VK_NULL_HANDLE)), 
+Sampler::Sampler(Sampler&& other) noexcept
+  : _sampler(std::exchange(other._sampler, VK_NULL_HANDLE)),
     _logicalDevice(std::exchange(other._logicalDevice, nullptr)) {}
 
-Sampler& Sampler::operator=(Sampler && other) noexcept {
+Sampler& Sampler::operator=(Sampler&& other) noexcept {
   if (this == &other) {
     return *this;
   }
@@ -29,10 +32,10 @@ Sampler& Sampler::operator=(Sampler && other) noexcept {
 }
 
 Sampler::~Sampler() {
- if (isValid()) {
+  if (isValid()) {
     destroy();
-   _sampler = VK_NULL_HANDLE;
- }
+    _sampler = VK_NULL_HANDLE;
+  }
 }
 
 VkSampler Sampler::getVkSampler() const noexcept {
@@ -45,8 +48,8 @@ bool Sampler::isValid() const noexcept {
 
 void Sampler::destroy() {
   _logicalDevice->destroyResource([sampler = _sampler](DestroyerContext context) {
-        vkDestroySampler(context.device, sampler, context.allocationCallbacks);
-   });
+    vkDestroySampler(context.device, sampler, context.allocationCallbacks);
+  });
 }
 
 Sampler SamplerBuilder::build(const LogicalDevice& logicalDevice) const {
@@ -102,7 +105,8 @@ SamplerBuilder& SamplerBuilder::withBorderColor(VkBorderColor borderColor) noexc
   return *this;
 }
 
-SamplerBuilder& SamplerBuilder::withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) noexcept {
+SamplerBuilder& SamplerBuilder::withUnnormalizedCoordinates(
+    VkBool32 unnormalizedCoordinates) noexcept {
   _samplerInfo.unnormalizedCoordinates = unnormalizedCoordinates;
   return *this;
 }

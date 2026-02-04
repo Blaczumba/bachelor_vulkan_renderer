@@ -2,7 +2,8 @@
 
 #include "vulkan/wrapper/descriptor_set/descriptor_set_writer_lib.h"
 
-DescriptorSetWriter& DescriptorSetWriter::storeTexture(const Texture& texture, const Sampler& sampler) {
+DescriptorSetWriter& DescriptorSetWriter::storeTexture(
+    const Texture& texture, const Sampler& sampler) {
   _imageInfos.push_back(VkDescriptorImageInfo{
     .sampler = sampler.getVkSampler(),
     .imageView = texture.getVkImageView(),

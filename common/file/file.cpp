@@ -1,11 +1,11 @@
 #include "file.h"
 
-#include "common/util/engine_exception.h"
-
 #include <format>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+
+#include "common/util/engine_exception.h"
 
 std::string_view getImageFileExtension(std::string_view filePath) {
   size_t lastDot = filePath.find_last_of(".");

@@ -6,9 +6,9 @@
 #include <vulkan/vulkan.h>
 
 #include "lib/buffer/buffer.h"
+#include "vulkan/resource_manager/util.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 #include "vulkan/wrapper/util/vertex_input_description_builder.h"
-#include "vulkan/resource_manager/util.h"
 
 PipelineManager::PipelineManager(const FileLoader& fileLoader) : _fileLoader(fileLoader) {}
 

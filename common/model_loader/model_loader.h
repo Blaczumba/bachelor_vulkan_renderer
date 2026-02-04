@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
+#include "common/util/resource_handles.h"
 #include "lib/buffer/buffer.h"
 #include "lib/buffer/shared_buffer.h"
-#include "common/util/resource_handles.h"
 
 template <typename IndexT>
 std::enable_if_t<std::is_unsigned<IndexT>::value, lib::Buffer<std::byte>> processIndices(

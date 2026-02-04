@@ -49,7 +49,7 @@ ImageResource loadImageKtx(std::span<const std::byte> imageData) {
     .height = ktxTexture->baseHeight,
     .mipLevels = ktxTexture->numLevels,
     .layerCount = ktxTexture->numFaces,
-    .subresources = lib::Buffer<ImageSubresource>(ktxTexture->numLevels*ktxTexture->numFaces),
+    .subresources = lib::Buffer<ImageSubresource>(ktxTexture->numLevels * ktxTexture->numFaces),
     .data = ktxTexture->pData,
     .size = ktxTexture->dataSize};
 

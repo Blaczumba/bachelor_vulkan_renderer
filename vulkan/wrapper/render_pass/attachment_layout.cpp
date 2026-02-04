@@ -13,7 +13,8 @@ std::span<const VkClearValue> AttachmentLayout::getVkClearValues() const noexcep
   return _clearValues;
 }
 
-std::span<const VkAttachmentDescription> AttachmentLayout::getVkAttachmentDescriptions() const noexcept {
+std::span<const VkAttachmentDescription>
+AttachmentLayout::getVkAttachmentDescriptions() const noexcept {
   return _attachmentDescriptions;
 }
 

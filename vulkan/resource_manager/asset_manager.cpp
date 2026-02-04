@@ -10,9 +10,10 @@ AssetManager::AssetManager(
   : _logicalDevice(logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy),
     _freeImageDataIndices(MAX_STAGING_IMAGE_DATA_RESOURCES),
     _freeVertexDataIndices(MAX_STAGING_VERTEX_DATA_RESOURCES) {
-  std::iota(_freeImageDataIndices.rbegin(), _freeImageDataIndices.rend(), StagingImageDataResourceHandle(0));
-  std::iota(
-      _freeVertexDataIndices.rbegin(), _freeVertexDataIndices.rend(), StagingVertexDataResourceHandle(0));
+  std::iota(_freeImageDataIndices.rbegin(), _freeImageDataIndices.rend(),
+            StagingImageDataResourceHandle(0));
+  std::iota(_freeVertexDataIndices.rbegin(), _freeVertexDataIndices.rend(),
+            StagingVertexDataResourceHandle(0));
 }
 
 std::unique_ptr<AssetManager> AssetManager::create(
@@ -20,39 +21,36 @@ std::unique_ptr<AssetManager> AssetManager::create(
   return std::unique_ptr<AssetManager>(new AssetManager(logicalDevice, fileLoader, launchPolicy));
 }
 
-StagingImageDataResourceHandle AssetManager::loadImageAsync(
-    const std::string& filePath) {
+StagingImageDataResourceHandle AssetManager::loadImageAsync(const std::string& filePath) {
   const StagingImageDataResourceHandle index = _freeImageDataIndices.back();
   _freeImageDataIndices.pop_back();
   _awaitingImageDataResources.emplace(
-      index,
-      std::async(
-          _launchPolicy,
-          [this, filePath]() -> ImageData {
-            ImageResource resource = loadImage(_fileLoader.loadFileToBuffer(filePath), filePath);
-            Buffer stagingBuffer = Buffer::createStagingBuffer(_logicalDevice, resource.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-            stagingBuffer.copyData(
-                std::span(static_cast<const std::byte*>(resource.data), resource.size));
-            deallocateResources(resource);
+      index, std::async(_launchPolicy, [this, filePath]() -> ImageData {
+        ImageResource resource = loadImage(_fileLoader.loadFileToBuffer(filePath), filePath);
+        Buffer stagingBuffer = Buffer::createStagingBuffer(
+            _logicalDevice, resource.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        stagingBuffer.copyData(
+            std::span(static_cast<const std::byte*>(resource.data), resource.size));
+        deallocateResources(resource);
 
-            lib::Buffer<VkBufferImageCopy> vkSubresources(resource.subresources.size());
-            std::transform(resource.subresources.cbegin(), resource.subresources.cend(),
-                           vkSubresources.begin(), [](const ImageSubresource& subresource) {
-                             return VkBufferImageCopy{
-                               .bufferOffset = subresource.offset,
-                               .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                                    .mipLevel = subresource.mipLevel,
-                                                    .baseArrayLayer = subresource.baseArrayLayer,
-                                                    .layerCount = subresource.layerCount},
-                               .imageExtent = {.width = subresource.width,
-                                                    .height = subresource.height,
-                                                    .depth = subresource.depth}
-                             };
-                           });
+        lib::Buffer<VkBufferImageCopy> vkSubresources(resource.subresources.size());
+        std::transform(resource.subresources.cbegin(), resource.subresources.cend(),
+                       vkSubresources.begin(), [](const ImageSubresource& subresource) {
+                         return VkBufferImageCopy{
+                           .bufferOffset = subresource.offset,
+                           .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                                .mipLevel = subresource.mipLevel,
+                                                .baseArrayLayer = subresource.baseArrayLayer,
+                                                .layerCount = subresource.layerCount},
+                           .imageExtent = {.width = subresource.width,
+                                                .height = subresource.height,
+                                                .depth = subresource.depth}
+                         };
+                       });
 
-            return ImageData(std::move(stagingBuffer), resource.width, resource.height,
-                             resource.mipLevels, resource.layerCount, std::move(vkSubresources));
-          }));
+        return ImageData(std::move(stagingBuffer), resource.width, resource.height,
+                         resource.mipLevels, resource.layerCount, std::move(vkSubresources));
+      }));
 
   return index;
 }

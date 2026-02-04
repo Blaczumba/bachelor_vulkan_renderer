@@ -1,8 +1,8 @@
 #pragma once
 
+#include <stacktrace>
 #include <stdexcept>
 #include <string_view>
-#include <stacktrace>
 
 class EngineException : public std::runtime_error {
 public:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+
 #include "common/util/engine_exception.h"
 
 constexpr VkIndexType getIndexType(uint8_t indexSize) {
@@ -25,6 +26,7 @@ constexpr uint32_t getIndexSize(VkIndexType type) {
     case VK_INDEX_TYPE_UINT32:
       return 4;
     default:
-      throw EngineException(std::format("Unrecognized VkIndexType of {}.", static_cast<uint32_t>(type)));
+      throw EngineException(
+          std::format("Unrecognized VkIndexType of {}.", static_cast<uint32_t>(type)));
   }
 }

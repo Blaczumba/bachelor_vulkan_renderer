@@ -83,7 +83,8 @@ std::vector<Pipeline> GraphicsPipelineBuilder::createPipelines(
   std::vector<VkGraphicsPipelineCreateInfo> createInfos;
   createInfos.reserve(builders.size());
 
-  for (auto&& [builder, layout, renderpass] : std::views::zip(builders, pipelineLayouts, renderpasses)) {
+  for (auto&& [builder, layout, renderpass] :
+       std::views::zip(builders, pipelineLayouts, renderpasses)) {
     createInfos.push_back(VkGraphicsPipelineCreateInfo{
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
       .stageCount = static_cast<uint32_t>(builder._shaderStages.size()),

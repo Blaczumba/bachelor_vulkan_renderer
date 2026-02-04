@@ -61,8 +61,7 @@ public:
 
   SwapchainBuilder& withClipped(VkBool32 clipped) noexcept;
 
-  Swapchain build(
-      const LogicalDevice& logicalDevice, VkSurfaceKHR surface, VkExtent2D extent);
+  Swapchain build(const LogicalDevice& logicalDevice, VkSurfaceKHR surface, VkExtent2D extent);
 
 private:
   VkSwapchainKHR _oldSwapchain = nullptr;

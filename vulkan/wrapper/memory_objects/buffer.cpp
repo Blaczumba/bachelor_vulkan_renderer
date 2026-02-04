@@ -120,7 +120,8 @@ struct UniformBufferAllocator {
 
 }  // namespace
 
-Buffer Buffer::createVertexInputBuffer(const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage) {
+Buffer Buffer::createVertexInputBuffer(
+    const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage) {
   const BufferData bufferData =
       std::visit(VertexInputBufferAllocator{size, usage}, logicalDevice.getMemoryAllocator());
   return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,

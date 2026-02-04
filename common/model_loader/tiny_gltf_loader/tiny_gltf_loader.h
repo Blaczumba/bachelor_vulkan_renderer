@@ -33,13 +33,11 @@ struct SharedData {
 namespace {
 
 template <typename AssetManagerImpl>
-void processNode(
-    common::AssetManager<AssetManagerImpl>& assetManager, std::shared_ptr<SharedData>& sharedData,
-    const tinygltf::Node& node, const glm::mat4& parentTransform,
-    std::vector<VertexData>& vertexDataList,
-    std::unordered_map<std::string, StagingImageDataResourceHandle>&
-        textureIndexMap,
-    const std::string& baseDir);
+void processNode(common::AssetManager<AssetManagerImpl>& assetManager,
+                 std::shared_ptr<SharedData>& sharedData, const tinygltf::Node& node,
+                 const glm::mat4& parentTransform, std::vector<VertexData>& vertexDataList,
+                 std::unordered_map<std::string, StagingImageDataResourceHandle>& textureIndexMap,
+                 const std::string& baseDir);
 
 }  // namespace
 
@@ -169,13 +167,11 @@ std::string getTextureUri(const tinygltf::Model& model, const tinygltf::Paramete
 }
 
 template <typename AssetManagerImpl>
-void processNode(
-    common::AssetManager<AssetManagerImpl>& assetManager, std::shared_ptr<SharedData>& sharedData,
-    const tinygltf::Node& node, const glm::mat4& parentTransform,
-    std::vector<VertexData>& vertexDataList,
-    std::unordered_map<std::string, StagingImageDataResourceHandle>&
-        textureIndexMap,
-    const std::string& baseDir) {
+void processNode(common::AssetManager<AssetManagerImpl>& assetManager,
+                 std::shared_ptr<SharedData>& sharedData, const tinygltf::Node& node,
+                 const glm::mat4& parentTransform, std::vector<VertexData>& vertexDataList,
+                 std::unordered_map<std::string, StagingImageDataResourceHandle>& textureIndexMap,
+                 const std::string& baseDir) {
   const glm::mat4 currentTransform = parentTransform * GetNodeTransform(node);
 
   if (node.mesh < 0) {
@@ -249,21 +245,16 @@ void processNode(
       return it->second;
     };
 
-    const StagingImageDataResourceHandle diffuseTextureID =
-        getOrLoadTexture(diffuseTexture);
-    const StagingImageDataResourceHandle normalTextureID =
-        getOrLoadTexture(normalTexture);
+    const StagingImageDataResourceHandle diffuseTextureID = getOrLoadTexture(diffuseTexture);
+    const StagingImageDataResourceHandle normalTextureID = getOrLoadTexture(normalTexture);
     const StagingImageDataResourceHandle metallicRoughnessTextureID =
         getOrLoadTexture(metallicRoughnessTexture);
 
     vertexDataList.emplace_back(
         std::move(positions), indexSize, currentTransform,
-        ImageID{
-          diffuseTextureID, std::move(diffuseTexture)},
+        ImageID{diffuseTextureID, std::move(diffuseTexture)},
         ImageID{normalTextureID, std::move(normalTexture)},
-        ImageID{
-          metallicRoughnessTextureID, std::move(metallicRoughnessTexture)},
-        vertexResourceID);
+        ImageID{metallicRoughnessTextureID, std::move(metallicRoughnessTexture)}, vertexResourceID);
   }
 
   for (int childIndex : node.children) {

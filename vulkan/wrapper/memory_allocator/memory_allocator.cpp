@@ -73,7 +73,7 @@ VmaWrapper::Image VmaWrapper::createVkImage(
   VkImage image;
   CHECK_VKCMD(
       vmaCreateImage(_allocator, &imageCreateInfo, &vmaAllocInfo, &image, &allocation, nullptr),
-              "Failed to create VkImage by VMA.");
+      "Failed to create VkImage by VMA.");
   return VmaWrapper::Image{image, allocation};
 }
 

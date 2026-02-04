@@ -108,7 +108,8 @@ SwapchainBuilder& SwapchainBuilder::withPreferredFormat(VkFormat format) noexcep
   return *this;
 }
 
-SwapchainBuilder& SwapchainBuilder::withPreferredPresentMode(VkPresentModeKHR presentMode) noexcept {
+SwapchainBuilder& SwapchainBuilder::withPreferredPresentMode(
+    VkPresentModeKHR presentMode) noexcept {
   _preferredPresentMode = presentMode;
   return *this;
 }
@@ -118,7 +119,8 @@ SwapchainBuilder& SwapchainBuilder::withImageArrayLayers(uint32_t layers) noexce
   return *this;
 }
 
-SwapchainBuilder& SwapchainBuilder::withCompositeAlpha(VkCompositeAlphaFlagBitsKHR compositeAlpha) noexcept {
+SwapchainBuilder& SwapchainBuilder::withCompositeAlpha(
+    VkCompositeAlphaFlagBitsKHR compositeAlpha) noexcept {
   _compositeAlpha = compositeAlpha;
   return *this;
 }
@@ -141,8 +143,8 @@ VkSurfaceFormatKHR chooseSwapSurfaceFormat(
   return (availableFormat != std::cend(availableFormats)) ? *availableFormat : availableFormats[0];
 }
 
-VkPresentModeKHR chooseSwapPresentMode(
-    std::span<const VkPresentModeKHR> availablePresentModes, VkPresentModeKHR preferredMode) noexcept {
+VkPresentModeKHR chooseSwapPresentMode(std::span<const VkPresentModeKHR> availablePresentModes,
+                                       VkPresentModeKHR preferredMode) noexcept {
   auto availablePresentMode = std::find(
       std::cbegin(availablePresentModes), std::cend(availablePresentModes), preferredMode);
 
@@ -225,12 +227,12 @@ Swapchain SwapchainBuilder::build(
           .image = image,
           .viewType = VK_IMAGE_VIEW_TYPE_2D,
           .format = format,
-          .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1}};
+          .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                               .baseMipLevel = 0,
+                               .levelCount = 1,
+                               .baseArrayLayer = 0,
+                               .layerCount = 1}
+        };
 
         return logicalDevice->createImageView(imageViewCreateInfo);
       });

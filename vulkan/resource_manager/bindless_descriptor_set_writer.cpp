@@ -26,7 +26,8 @@ std::unique_ptr<BindlessDescriptorSetWriter> BindlessDescriptorSetWriter::create
       new BindlessDescriptorSetWriter(descriptorSet));
 }
 
-UniformTextureHandle BindlessDescriptorSetWriter::storeTexture(const Texture& texture, const Sampler& sampler) {
+UniformTextureHandle BindlessDescriptorSetWriter::storeTexture(
+    const Texture& texture, const Sampler& sampler) {
   const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
   if (!_texturesMap.insert(*handle)) [[unlikely]] {
     throw EngineException(std::format(
@@ -72,7 +73,7 @@ std::vector<UniformTextureHandle> BindlessDescriptorSetWriter::storeTextures(
   lib::Buffer<VkWriteDescriptorSet> writes(textures.size());
 
   for (auto&& [imageInfo, write, handle, texture] :
-      std::views::zip(imageInfos, writes, handles, textures)) {
+       std::views::zip(imageInfos, writes, handles, textures)) {
     imageInfo = VkDescriptorImageInfo{
       // TODO: Use samplers.
       .sampler = VK_NULL_HANDLE,
@@ -142,9 +143,9 @@ std::vector<UniformBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
   lib::Buffer<VkDescriptorBufferInfo> bufferInfos(buffers.size());
   lib::Buffer<VkWriteDescriptorSet> writes(buffers.size());
 
-  for (auto&& [bufferInfo, write, handle, buffer] : std::views::zip(bufferInfos, writes, handles, buffers)) {
-    bufferInfo =
-        VkDescriptorBufferInfo{.buffer = buffer.getVkBuffer(), .range = buffer.getSize()};
+  for (auto&& [bufferInfo, write, handle, buffer] :
+       std::views::zip(bufferInfos, writes, handles, buffers)) {
+    bufferInfo = VkDescriptorBufferInfo{.buffer = buffer.getVkBuffer(), .range = buffer.getSize()};
 
     write = VkWriteDescriptorSet{
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

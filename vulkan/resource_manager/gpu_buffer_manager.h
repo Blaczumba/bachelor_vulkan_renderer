@@ -29,7 +29,7 @@ public:
   static std::unique_ptr<GpuBufferManager> create();
 
   void increaseRefCount(GpuBufferHandle index);
- 
+
   void decreaseRefCount(GpuBufferHandle index);
 
   void increaseRefCount(GpuTextureHandle index);

@@ -20,10 +20,11 @@ Texture::Texture(const LogicalDevice& logicalDevice, VkImage image, const Alloca
 
 Texture::Texture(Texture&& texture) noexcept
   : _allocation(texture._allocation), _image(std::exchange(texture._image, VK_NULL_HANDLE)),
-    _views(std::move(texture._views)),
-    _layout(texture._layout), _logicalDevice(texture._logicalDevice), _imageType(texture._imageType),
-    _imageFormat(texture._imageFormat), _imageExtent(texture._imageExtent), _imageAspect(texture._imageAspect),
-    _imageCreateFlags(texture._imageCreateFlags), _mipLevels(texture._mipLevels), _layerCount(texture._layerCount){}
+    _views(std::move(texture._views)), _layout(texture._layout),
+    _logicalDevice(texture._logicalDevice), _imageType(texture._imageType),
+    _imageFormat(texture._imageFormat), _imageExtent(texture._imageExtent),
+    _imageAspect(texture._imageAspect), _imageCreateFlags(texture._imageCreateFlags),
+    _mipLevels(texture._mipLevels), _layerCount(texture._layerCount) {}
 
 Texture& Texture::operator=(Texture&& texture) noexcept {
   if (this == &texture) [[unlikely]] {
@@ -54,8 +55,8 @@ struct ImageCreator {
   const VkImageCreateInfo& imageCreateInfo;
 
   VkImage operator()(VmaWrapper& allocator) {
-    VmaWrapper::Image imageData = allocator.createVkImage(
-        imageCreateInfo, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+    VmaWrapper::Image imageData =
+        allocator.createVkImage(imageCreateInfo, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
     allocation = imageData.allocation;
     return imageData.image;
   }
@@ -174,8 +175,8 @@ VkImageView Texture::addCreateVkImageView(
 }
 
 void Texture::transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) {
-  transitionImageLayout(commandBuffer, _image, _layout, newLayout, _imageAspect,
-                        _mipLevels, _layerCount);
+  transitionImageLayout(
+      commandBuffer, _image, _layout, newLayout, _imageAspect, _mipLevels, _layerCount);
   _layout = newLayout;
 }
 
@@ -268,12 +269,11 @@ Texture TextureBuilder::buildAttachment(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const {
   Allocation allocation;
   const VkImage image = allocate(allocation, _imageCreateInfo, logicalDevice.getMemoryAllocator());
-  transitionImageLayout(
-      commandBuffer, image, VK_IMAGE_LAYOUT_UNDEFINED, _imageLayout, _aspect,
-      _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
-  return Texture(logicalDevice, image, allocation, _imageCreateInfo.imageType, _imageCreateInfo.format,
-      _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags, _imageCreateInfo.mipLevels,
-      _imageCreateInfo.arrayLayers, _imageLayout);
+  transitionImageLayout(commandBuffer, image, VK_IMAGE_LAYOUT_UNDEFINED, _imageLayout, _aspect,
+                        _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
+  return Texture(logicalDevice, image, allocation, _imageCreateInfo.imageType,
+                 _imageCreateInfo.format, _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags,
+                 _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers, _imageLayout);
 }
 
 Texture TextureBuilder::buildImage(
@@ -286,26 +286,22 @@ Texture TextureBuilder::buildImage(
       _aspect, _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
   vkCmdCopyBufferToImage(commandBuffer, copyBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                          static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
-  transitionImageLayout(
-      commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, _imageLayout,
-      _aspect, _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
-  return Texture(
-      logicalDevice, image, allocation, _imageCreateInfo.imageType, _imageCreateInfo.format,
-      _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags, _imageCreateInfo.mipLevels,
-      _imageCreateInfo.arrayLayers, _imageLayout);
+  transitionImageLayout(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, _imageLayout,
+                        _aspect, _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
+  return Texture(logicalDevice, image, allocation, _imageCreateInfo.imageType,
+                 _imageCreateInfo.format, _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags,
+                 _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers, _imageLayout);
 }
 
 Texture TextureBuilder::buildImageSampler(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const {
   Allocation allocation;
   const VkImage image = allocate(allocation, _imageCreateInfo, logicalDevice.getMemoryAllocator());
-  transitionImageLayout(
-      commandBuffer, image, VK_IMAGE_LAYOUT_UNDEFINED, _imageLayout, _aspect,
-      _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
-  return Texture(
-      logicalDevice, image, allocation, _imageCreateInfo.imageType, _imageCreateInfo.format,
-      _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags, _imageCreateInfo.mipLevels,
-      _imageCreateInfo.arrayLayers, _imageLayout);
+  transitionImageLayout(commandBuffer, image, VK_IMAGE_LAYOUT_UNDEFINED, _imageLayout, _aspect,
+                        _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
+  return Texture(logicalDevice, image, allocation, _imageCreateInfo.imageType,
+                 _imageCreateInfo.format, _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags,
+                 _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers, _imageLayout);
 }
 
 Texture TextureBuilder::buildMipmapImage(
@@ -322,8 +318,8 @@ Texture TextureBuilder::buildMipmapImage(
       commandBuffer, image, _imageCreateInfo.format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       _imageCreateInfo.extent.width, _imageCreateInfo.extent.height, _imageCreateInfo.mipLevels,
       _imageCreateInfo.arrayLayers);
-  return Texture(logicalDevice, image, allocation, _imageCreateInfo.imageType,
-                 _imageCreateInfo.format, _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags,
-                 _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers,
-                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  return Texture(
+      logicalDevice, image, allocation, _imageCreateInfo.imageType, _imageCreateInfo.format,
+      _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags, _imageCreateInfo.mipLevels,
+      _imageCreateInfo.arrayLayers, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }

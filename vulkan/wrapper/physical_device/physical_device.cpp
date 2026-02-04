@@ -1,8 +1,8 @@
 #include "physical_device.h"
 
 #include <algorithm>
-#include <vulkan/vulkan.hpp>
 #include <ranges>
+#include <vulkan/vulkan.hpp>
 
 #include "common/util/engine_exception.h"
 #include "lib/algorithm.h"
@@ -123,7 +123,8 @@ SwapChainSupportDetails querySwapchainSupportDetails(
   return details;
 }
 
-VkPhysicalDevice getBestPhysicalDevice(std::span<const VkPhysicalDevice> devices, VkSurfaceKHR surface) {
+VkPhysicalDevice getBestPhysicalDevice(
+    std::span<const VkPhysicalDevice> devices, VkSurfaceKHR surface) {
   lib::Buffer<uint32_t> rates(devices.size());
   for (auto&& [device, rate] : std::views::zip(devices, rates)) {
     rate = 0;
@@ -184,8 +185,8 @@ std::unique_ptr<PhysicalDevice> PhysicalDevice::wrap(
   VkPhysicalDeviceProperties properties;
   vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
-  return std::unique_ptr<PhysicalDevice>(
-      new PhysicalDevice(physicalDevice, instance, findQueueFamilyIncides(physicalDevice), properties));
+  return std::unique_ptr<PhysicalDevice>(new PhysicalDevice(
+      physicalDevice, instance, findQueueFamilyIncides(physicalDevice), properties));
 }
 
 VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const noexcept {

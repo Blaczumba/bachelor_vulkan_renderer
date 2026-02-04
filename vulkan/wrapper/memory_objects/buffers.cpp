@@ -65,11 +65,12 @@ void transitionImageLayout(
     .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
     .image = image,
     .subresourceRange = VkImageSubresourceRange{
-      .aspectMask = aspectFlags,
-      .baseMipLevel = 0,
-      .levelCount = mipLevels,
-      .baseArrayLayer = 0,
-      .layerCount = layerCount}};
+                                                .aspectMask = aspectFlags,
+                                                .baseMipLevel = 0,
+                                                .levelCount = mipLevels,
+                                                .baseArrayLayer = 0,
+                                                .layerCount = layerCount}
+  };
 
   vkCmdPipelineBarrier(commandBuffer, srcStageInfo.stageFlags, dstStageInfo.stageFlags, 0, 0,
                        nullptr, 0, nullptr, 1, &barrier);

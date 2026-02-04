@@ -1,8 +1,7 @@
 #pragma once
 
-#include <lib/buffer/buffer.h>
-
 #include <ktx.h>
+#include <lib/buffer/buffer.h>
 #include <span>
 #include <stb_image/stb_image.h>
 #include <string_view>

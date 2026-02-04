@@ -115,7 +115,8 @@ private:
     .tiling = VK_IMAGE_TILING_OPTIMAL,
     .usage = 0,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+  };
   VkImageAspectFlags _aspect = VK_IMAGE_ASPECT_COLOR_BIT;
   VkImageLayout _imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 };

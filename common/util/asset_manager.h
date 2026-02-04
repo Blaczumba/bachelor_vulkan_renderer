@@ -1,11 +1,11 @@
 #pragma once
 
-#include "common/util/resource_handles.h"
-
 #include <glm/glm.hpp>
 #include <memory>
 #include <span>
 #include <string>
+
+#include "common/util/resource_handles.h"
 
 namespace common {
 
