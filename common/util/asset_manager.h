@@ -25,7 +25,7 @@ public:
         modelPtr, indices, indexSize, orders, attributes...);
   }
 
-  template <typename VertexType, typename Model>
+  template <typename Model, typename VertexType>
   void loadVertexDataAsync(
       std::shared_ptr<Model>& modelPtr, const std::string& filePath,
       std::span<const std::byte> indices, uint8_t indexSize, std::span<const VertexType> vertices) {

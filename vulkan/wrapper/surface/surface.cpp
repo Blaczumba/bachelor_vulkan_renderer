@@ -32,6 +32,11 @@ Surface& Surface::operator=(Surface&& other) noexcept {
   if (this == &other) {
     return *this;
   }
+
+  if (_surface != VK_NULL_HANDLE) {
+    vkDestroySurfaceKHR(_instance->getVkInstance(), _surface, nullptr);
+  }
+
   _surface = std::exchange(other._surface, VK_NULL_HANDLE);
   _instance = std::exchange(other._instance, nullptr);
   return *this;

@@ -1,0 +1,43 @@
+#pragma once
+
+#include <memory>
+
+#include "common/abstractions/graphics_context.h"
+#include "common/abstractions/presentation.h"
+#include "common/camera/camera.h"
+#include "common/input_manager/mouse_keyboard_manager.h"
+#include "common/window/window.h"
+#include "vulkan/graphics_context/graphics_context.h"
+#include "vulkan/wrapper/surface/surface.h"
+#include "vulkan/wrapper/swapchain/swapchain.h"
+
+namespace vlkn {
+
+class Presentation final : public common::Presentation {
+  Presentation(std::unique_ptr<Window>&& window, Surface&& surface, Swapchain&& swapchain,
+               std::unique_ptr<GraphicsContext<false>>&& graphicsContext,
+               const FileLoader& fileLoader);
+
+public:
+  static std::unique_ptr<common::Presentation> create(
+      std::unique_ptr<Window>&& window, const FileLoader& fileLoader);
+
+  common::GraphicsContext* getGraphicsContext() override;
+
+  ~Presentation() override = default;
+
+  void run() override;
+
+private:
+  std::unique_ptr<Window> _window;
+  std::unique_ptr<GraphicsContext<false>> _graphicsContext;
+
+  Surface _surface;
+  Swapchain _swapchain;
+
+  // This should come from the outside but for now it is ok:
+  common::DrawingContext _drawingContext;
+  std::unique_ptr<const MouseKeyboardManager> _mouseKeyboardManager;
+};
+
+}  // namespace vlkn

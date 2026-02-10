@@ -96,6 +96,7 @@ if(Vulkan_FOUND)
             Swapchain Buffer CommandBuffer
             Framebuffer Pipeline Sampler
             DescriptorSet VulkanWrapperUtil
+            VulkanLayer
     )
     target_link_libraries(${ENGINE_NAME} INTERFACE ${VULKAN_ENGINE_NAME})
 endif()
