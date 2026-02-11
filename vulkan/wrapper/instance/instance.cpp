@@ -53,9 +53,7 @@ bool checkValidationLayerSupport() {
   return true;
 }
 
-}  // namespace
-
-Instance Instance::create(
+VkInstance createVkInstance(
     std::string_view engineName, std::span<const char* const> requiredExtensions,
     PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
 #ifdef VALIDATION_LAYERS_ENABLED
@@ -94,7 +92,22 @@ Instance Instance::create(
 
   VkInstance instance;
   CHECK_VKCMD(vkCreateInstance(&createInfo, nullptr, &instance), "Failed to create VkInstance.");
-  return Instance(instance);
+  return instance;
+}
+
+}  // namespace
+
+Instance Instance::create(
+    std::string_view engineName, std::span<const char* const> requiredExtensions,
+    PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
+  return Instance(createVkInstance(engineName, requiredExtensions, debugCallback));
+}
+
+std::unique_ptr<Instance> Instance::createPtr(
+    std::string_view engineName, std::span<const char* const> requiredExtensions,
+    PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
+  return std::unique_ptr<Instance>(
+      new Instance(createVkInstance(engineName, requiredExtensions, debugCallback)));
 }
 
 Instance Instance::wrap(VkInstance instance) {

@@ -5,6 +5,3 @@ target_link_libraries(VulkanLayer PUBLIC CommonModelLoader Instance PhysicalDevi
 
 target_include_directories(VulkanLayer PUBLIC ${PROJECT_SOURCE_DIR})
 target_include_directories(VulkanLayer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_compile_definitions(MODELS_PATH="${PROJECT_SOURCE_DIR}/assets/models/")
-add_compile_definitions(TEXTURES_PATH="${PROJECT_SOURCE_DIR}/assets/textures/")

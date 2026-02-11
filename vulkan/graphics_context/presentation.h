@@ -14,13 +14,13 @@
 namespace vlkn {
 
 class Presentation final : public common::Presentation {
-  Presentation(std::unique_ptr<Window>&& window, Surface&& surface, Swapchain&& swapchain,
+  Presentation(std::shared_ptr<Window>&& window, Surface&& surface, Swapchain&& swapchain,
                std::unique_ptr<GraphicsContext<false>>&& graphicsContext,
                const FileLoader& fileLoader);
 
 public:
   static std::unique_ptr<common::Presentation> create(
-      std::unique_ptr<Window>&& window, const FileLoader& fileLoader);
+      std::shared_ptr<Window>&& window, const FileLoader& fileLoader);
 
   common::GraphicsContext* getGraphicsContext() override;
 
@@ -29,9 +29,10 @@ public:
   void run() override;
 
 private:
-  std::unique_ptr<Window> _window;
-  std::unique_ptr<GraphicsContext<false>> _graphicsContext;
+  // TODO: Change to unique_ptr.
+  std::shared_ptr<Window> _window;
 
+  std::unique_ptr<GraphicsContext<false>> _graphicsContext;
   Surface _surface;
   Swapchain _swapchain;
 

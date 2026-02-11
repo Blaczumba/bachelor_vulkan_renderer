@@ -12,7 +12,7 @@
 namespace vlkn {
 
 Presentation::Presentation(
-    std::unique_ptr<Window>&& window, Surface&& surface, Swapchain&& swapchain,
+    std::shared_ptr<Window>&& window, Surface&& surface, Swapchain&& swapchain,
     std::unique_ptr<GraphicsContext<false>>&& graphicsContext, const FileLoader& fileLoader)
   : _window(std::move(window)), _surface(std::move(surface)), _swapchain(std::move(swapchain)),
     _graphicsContext(std::move(graphicsContext)),
@@ -22,33 +22,40 @@ Presentation::Presentation(
     _mouseKeyboardManager(_window->createMouseKeyboardManager()) {}
 
 std::unique_ptr<common::Presentation> Presentation::create(
-    std::unique_ptr<Window>&& window, const FileLoader& fileLoader) {
+    std::shared_ptr<Window>&& window, const FileLoader& fileLoader) {
   std::vector<const char*> requiredExtensions = window->getVulkanExtensions();
 #ifdef VALIDATION_LAYERS_ENABLED
   requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif  // VALIDATION_LAYERS_ENABLED
   requiredExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-  Instance instance = Instance::create("Bejzak Engine", requiredExtensions, debugCallback);
+  std::unique_ptr<Instance> instance =
+      Instance::createPtr("Bejzak Engine", requiredExtensions, debugCallback1);
 #ifdef VALIDATION_LAYERS_ENABLED
-  DebugMessenger debugMessenger = DebugMessenger::create(instance, debugCallback);
+  DebugMessenger debugMessenger = DebugMessenger::create(*instance, debugCallback1);
 #else
   DebugMessenger debugMessenger;
 #endif  // VALIDATION_LAYERS_ENABLED
-  Surface surface = Surface::create(instance, *window);
+  Surface surface = Surface::create(*instance, *window);
   std::unique_ptr<PhysicalDevice> physicalDevice =
-      PhysicalDevice::create(instance, surface.getVkSurface());
-  LogicalDevice logicalDevice = LogicalDevice::create(*physicalDevice);
+      PhysicalDevice::create(*instance, surface.getVkSurface());
+  std::unique_ptr<LogicalDevice> logicalDevice = LogicalDevice::createPtr(*physicalDevice);
 
   const auto [width, height] = window->getFramebufferSize();
   Swapchain swapchain =
       SwapchainBuilder()
           .withPreferredPresentMode(VK_PRESENT_MODE_MAILBOX_KHR)
-          .build(logicalDevice, surface.getVkSurface(), VkExtent2D{width, height});
+          .build(*logicalDevice, surface.getVkSurface(), VkExtent2D{width, height});
+
+  SwapchainContext swapchainContext = {
+    .imageFormat = swapchain.getVkFormat(),
+    .imageExtent = swapchain.getExtent(),
+    .imageViews = swapchain.getImageViews(),
+    .multiview = false};
 
   auto graphicsContext =
       lib::dynamicUniqueCast<GraphicsContext<false>>(GraphicsContext<false>::create(
           std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
-          std::move(logicalDevice), fileLoader));
+          std::move(logicalDevice), swapchainContext, fileLoader));
   return std::unique_ptr<Presentation>(
       new Presentation(std::move(window), std::move(surface), std::move(swapchain),
                        std::move(graphicsContext), fileLoader));
@@ -67,16 +74,14 @@ void Presentation::run() {
   float deltaTime;
   VkResult result;
   // This should be handled outside by engine but for now it is ok here:
-  if (_mouseKeyboardManager != nullptr) {
-    _mouseKeyboardManager->absorbCursor();
-    _mouseKeyboardManager->setKeyboardCallback([&](Keyboard::Key key, int action) {
-      switch (key) {
-        case Keyboard::Key::Escape:
-          _window->close();
-          break;
-      }
-    });
-  }
+  _mouseKeyboardManager->absorbCursor();
+  _mouseKeyboardManager->setKeyboardCallback([&](Keyboard::Key key, int action) {
+    switch (key) {
+      case Keyboard::Key::Escape:
+        _window->close();
+        break;
+    }
+  });
   /////////////////////////
   const SynchronizationContext* synchContext =
       std::any_cast<const SynchronizationContext*>(_graphicsContext->getSynchronizationContext());
@@ -89,12 +94,13 @@ void Presentation::run() {
     _drawingContext.camera.updateFromKeyboard(*_mouseKeyboardManager, deltaTime);
     /////////////////////////
     _graphicsContext->waitCompleteExecution();
-    _swapchain.acquireNextImage(synchContext->_imageAvailableSemaphores[synchContext->currentFrame],
+    _swapchain.acquireNextImage(synchContext->imageAvailableSemaphores[synchContext->currentFrame],
                                 &_drawingContext.imageIndex);
     _graphicsContext->draw(_drawingContext);
     _swapchain.present(_drawingContext.imageIndex,
-                       synchContext->_renderFinishedSemaphores[_drawingContext.imageIndex]);
+                       synchContext->renderFinishedSemaphores[_drawingContext.imageIndex]);
   }
+  _graphicsContext->waitDeviceIdle();
 }
 
 }  // namespace vlkn

@@ -14,11 +14,15 @@ enum class GraphicsApi : uint8_t {
 
 class GraphicsContext {
 public:
+  virtual ~GraphicsContext() = default;
+
   virtual UpdateContextResponse update(const UpdateContext& updateContext) = 0;
 
   virtual void draw(const DrawingContext& drawingContext) = 0;
 
   virtual void waitCompleteExecution() const = 0;
+
+  virtual void waitDeviceIdle() const = 0;
 
   virtual std::any getSynchronizationContext() const = 0;
 
