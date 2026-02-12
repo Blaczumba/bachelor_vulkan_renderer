@@ -1,4 +1,4 @@
-add_library(VulkanLayer graphics_context.h presentation.h presentation.cpp graphics_context.cpp)
+add_library(VulkanLayer graphics_context.h presentation.h presentation.cpp)
 
 target_link_libraries(VulkanLayer PUBLIC Vulkan::Vulkan)
 target_link_libraries(VulkanLayer PUBLIC CommonModelLoader Instance PhysicalDevice LogicalDevice Surface Swapchain)
