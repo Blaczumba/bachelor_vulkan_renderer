@@ -71,9 +71,20 @@ void GraphicsPluginVulkan::createSwapchainContext(
   context.views = lib::Buffer<VkImageView>(imageCount);
   std::transform(context.images.cbegin(), context.images.cend(), context.views.begin(),
                  [logicalDevice = &_logicalDevice, format](const XrSwapchainImageVulkanKHR& image) {
-                   return logicalDevice->createImageView(
-                       image.image, VK_IMAGE_VIEW_TYPE_2D, static_cast<VkFormat>(format),
-                       VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+                   const VkImageViewCreateInfo imageViewCreateInfo = {
+                       .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                       .image = image.image,
+                       .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                       .format = static_cast<VkFormat>(format),
+                       .subresourceRange = {
+                           .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                           .baseMipLevel = 0,
+                           .levelCount = 1,
+                           .baseArrayLayer = 0,
+                           .layerCount = 1
+                       }
+                   };
+                   return logicalDevice->createImageView(imageViewCreateInfo);
                  });
   context.format = static_cast<VkFormat>(format);
   context.width = width;

@@ -107,7 +107,7 @@ if (ANDROID)
     target_link_libraries(${ENGINE_NAME} INTERFACE
             OpenxrGraphicsPlugin OpenxrPlatform OpenxrInstance
             OpenxrSystem OpenxrSession OpenxrSwapchain
-            OpenxrSpace
+            OpenxrSpace OpenxrPresentation
 
             OpenXR::headers
 

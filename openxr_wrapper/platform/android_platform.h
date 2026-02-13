@@ -3,7 +3,9 @@
 #include <openxr/openxr.h>
 
 #include "platform.h"
+#ifndef XR_USE_PLATFORM_ANDROID
 #define XR_USE_PLATFORM_ANDROID
+#endif
 #include <jni.h>
 #include <openxr/openxr_platform.h>
 #include <span>

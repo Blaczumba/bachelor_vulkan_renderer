@@ -11,7 +11,7 @@ if (Vulkan_FOUND)
     target_include_directories(OpenxrGraphicsPluginVulkan PUBLIC ${PROJECT_SOURCE_DIR})
     target_include_directories(OpenxrGraphicsPluginVulkan PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-    target_compile_definitions(OpenxrGraphicsPluginVulkan PRIVATE XR_USE_GRAPHICS_API_VULKAN)
+    target_compile_definitions(OpenxrGraphicsPluginVulkan PUBLIC XR_USE_GRAPHICS_API_VULKAN)
 
     target_link_libraries(OpenxrGraphicsPlugin INTERFACE OpenxrGraphicsPluginVulkan)
 endif ()
