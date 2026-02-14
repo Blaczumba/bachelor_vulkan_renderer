@@ -5,12 +5,14 @@
 #include <iostream>
 #include <vector>
 
+#include "common/abstractions/contexts.h"
 #include "common/abstractions/graphics_context.h"
 #include "common/entity_component_system/registry/registry.h"
 #include "common/model_loader/model_loader.h"
 #include "common/object/object.h"
 #include "common/scene/octree.h"
 #include "common/util/primitives.h"
+#include "lib/bitwise.h"
 #include "vulkan/graphics_context/graphics_context.h"
 #include "vulkan/resource_manager/asset_manager.h"
 #include "vulkan/resource_manager/bindless_descriptor_set_writer.h"
@@ -73,14 +75,13 @@ class GraphicsContext final : public common::GraphicsContext {
   GraphicsContext(std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
                   std::unique_ptr<PhysicalDevice>&& physicalDevice,
                   std::unique_ptr<LogicalDevice>&& logicalDevice,
-                  const SwapchainContext& swapchainContext, const FileLoader& fileLoader);
+                  const FileLoader& fileLoader);
 
 public:
   static std::unique_ptr<common::GraphicsContext> create(
       std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
       std::unique_ptr<PhysicalDevice>&& physicalDevice,
-      std::unique_ptr<LogicalDevice>&& logicalDevice, const SwapchainContext& swapchainContext,
-      const FileLoader& fileLoader);
+      std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader);
 
   ~GraphicsContext();
 
@@ -88,7 +89,11 @@ public:
 
   void draw(const common::DrawingContext& drawingContext) override;
 
+  void initializeResources() override;
+
   void waitCompleteExecution() const override;
+
+  void createPresentingResources(const common::PresentResources& presentResources) override;
 
   void waitDeviceIdle() const override;
 
@@ -104,7 +109,6 @@ private:
 
   const FileLoader& _fileLoader;
 
-  SwapchainContext _swapchainContexts;
   SynchronizationContext _synchContext;
 
   std::array<VkFence, MAX_FRAMES_IN_FLIGHT> _frameFences;
@@ -179,7 +183,6 @@ private:
   void setup();
   void loadCubemap(const VertexData& cubeData);
   void createDescriptorSets();
-  void createPresentResources(const SwapchainContext& context);
   void createEnvMappingResources();
   void createShadowResources();
   void createGraphicsPipelines();
@@ -210,8 +213,7 @@ template <bool SYNCED_OUTSIDE>
 GraphicsContext<SYNCED_OUTSIDE>::GraphicsContext(
     std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
     std::unique_ptr<PhysicalDevice>&& physicalDevice,
-    std::unique_ptr<LogicalDevice>&& logicalDevice, const SwapchainContext& swapchainContext,
-    const FileLoader& fileLoader)
+    std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader)
   : _instance(std::move(instance)), _debugMessenger(std::move(debugMessenger)),
     _physicalDevice(std::move(physicalDevice)), _logicalDevice(std::move(logicalDevice)),
     _fileLoader(fileLoader),
@@ -227,20 +229,16 @@ GraphicsContext<SYNCED_OUTSIDE>::GraphicsContext(
     _bindlessWriter(BindlessDescriptorSetWriter::create(_bindlessDescriptorSet)),
     _dynamicDescriptorPool(DescriptorPool::create(*_logicalDevice, 1)),
     _dynamicDescriptorSet(_dynamicDescriptorPool->createDesriptorSet(
-        _pipelineManager->getOrCreateCameraLayout(*_logicalDevice))) {
-  createPresentResources(swapchainContext);
-  setup();
-}
+        _pipelineManager->getOrCreateCameraLayout(*_logicalDevice))) {}
 
 template <bool SYNCED_OUTSIDE>
 std::unique_ptr<common::GraphicsContext> GraphicsContext<SYNCED_OUTSIDE>::create(
     std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
     std::unique_ptr<PhysicalDevice>&& physicalDevice,
-    std::unique_ptr<LogicalDevice>&& logicalDevice, const SwapchainContext& swapchainContext,
-    const FileLoader& fileLoader) {
+    std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader) {
   return std::unique_ptr<GraphicsContext<SYNCED_OUTSIDE>>(new GraphicsContext<SYNCED_OUTSIDE>(
       std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
-      std::move(logicalDevice), swapchainContext, fileLoader));
+      std::move(logicalDevice), fileLoader));
 }
 
 template <bool SYNCED_OUTSIDE>
@@ -304,9 +302,57 @@ void GraphicsContext<SYNCED_OUTSIDE>::draw(const common::DrawingContext& drawing
 }
 
 template <bool SYNCED_OUTSIDE>
+void GraphicsContext<SYNCED_OUTSIDE>::initializeResources() {
+  setup();
+}
+
+template <bool SYNCED_OUTSIDE>
 void GraphicsContext<SYNCED_OUTSIDE>::waitCompleteExecution() const {
   vkWaitForFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame],
                   VK_TRUE, UINT64_MAX);
+}
+
+template <bool SYNCED_OUTSIDE>
+void GraphicsContext<SYNCED_OUTSIDE>::createPresentingResources(const common::PresentResources& presentResources) {
+  static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+  const VkFormat swapchainImageFormat = static_cast<VkFormat>(presentResources.imageFormat);
+
+  AttachmentLayout attachmentsLayout(msaaSamples);
+  attachmentsLayout
+      .addColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+      .addColorAttachment(
+          swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
+      .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+
+  RenderpassBuilder renderpassBuilder(attachmentsLayout);
+  renderpassBuilder
+      .addDependency(
+          VK_SUBPASS_EXTERNAL, 0,
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+              | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+      .addSubpass({0, 1, 2});
+  if (presentResources.multiview && presentResources.numLayers != 1) {
+    auto mask = lib::setNLeastSignificantBits<uint32_t>(presentResources.numLayers);
+    renderpassBuilder.withMultiView({mask}, {mask});
+  }
+
+  _renderPass = renderpassBuilder.build(*_logicalDevice);
+
+  {
+    SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
+    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+    auto imageViews =
+        std::span<const VkImageView>(reinterpret_cast<const VkImageView*>(presentResources.imageViews.data()),
+                  presentResources.imageViews.size());
+    for (VkImageView imageView : imageViews) {
+      _framebuffers.push_back(Framebuffer::createFromSwapchain(
+          commandBuffer, _renderPass, {presentResources.width, presentResources.height}, imageView,
+          _attachments));
+    }
+  }
 }
 
 template <bool SYNCED_OUTSIDE>

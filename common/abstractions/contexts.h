@@ -5,6 +5,7 @@
 
 #include <any>
 #include <mutex>
+#include <span>
 #include <variant>
 #include <vector>
 #include <optional>
@@ -51,5 +52,14 @@ struct FramebufferCreateRequest {
 struct UpdateContextResponse {};
 
 struct UpdateContext {};
+
+struct PresentResources {
+  int64_t imageFormat;
+  uint32_t width;
+  uint32_t height;
+  uint32_t numLayers;
+  std::span<const std::byte> imageViews; // Type erasure.
+  bool multiview;
+};
 
 }  // namespace common

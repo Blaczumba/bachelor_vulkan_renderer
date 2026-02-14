@@ -46,16 +46,10 @@ std::unique_ptr<common::Presentation> Presentation::create(
           .withPreferredPresentMode(VK_PRESENT_MODE_MAILBOX_KHR)
           .build(*logicalDevice, surface.getVkSurface(), VkExtent2D{width, height});
 
-  SwapchainContext swapchainContext = {
-    .imageFormat = swapchain.getVkFormat(),
-    .imageExtent = swapchain.getExtent(),
-    .imageViews = swapchain.getImageViews(),
-    .multiview = false};
-
   auto graphicsContext =
       lib::dynamicUniqueCast<GraphicsContext<false>>(GraphicsContext<false>::create(
           std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
-          std::move(logicalDevice), swapchainContext, fileLoader));
+          std::move(logicalDevice), fileLoader));
   return std::unique_ptr<Presentation>(
       new Presentation(std::move(window), std::move(surface), std::move(swapchain),
                        std::move(graphicsContext), fileLoader));
@@ -85,6 +79,20 @@ void Presentation::run() {
   /////////////////////////
   const SynchronizationContext* synchContext =
       std::any_cast<const SynchronizationContext*>(_graphicsContext->getSynchronizationContext());
+
+  const auto [width, height] = _swapchain.getExtent();
+  std::span<const VkImageView> imageViews = _swapchain.getImageViews();
+  _graphicsContext->createPresentingResources(common::PresentResources{
+        .imageFormat = static_cast<int64_t>(_swapchain.getVkFormat()),
+        .width = width,
+        .height = height,
+        .numLayers = 1,
+        .imageViews = std::span(reinterpret_cast<const std::byte*>(imageViews.data()), imageViews.size()),
+        .multiview = false,
+      }
+  );
+
+  _graphicsContext->initializeResources();
   while (_window->open()) {
     current = std::chrono::steady_clock::now();
     deltaTime = std::chrono::duration<float>(current - previous).count();

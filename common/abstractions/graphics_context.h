@@ -20,7 +20,11 @@ public:
 
   virtual void draw(const DrawingContext& drawingContext) = 0;
 
+  virtual void initializeResources() = 0;
+
   virtual void waitCompleteExecution() const = 0;
+
+  virtual void createPresentingResources(const PresentResources& presentResources) = 0;
 
   virtual void waitDeviceIdle() const = 0;
 

@@ -164,41 +164,6 @@ void GraphicsContext<SYNCED_OUTSIDE>::createDescriptorSets() {
 }
 
 template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::createPresentResources(const SwapchainContext& context) {
-  static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
-  const VkFormat swapchainImageFormat = context.imageFormat;
-
-  AttachmentLayout attachmentsLayout(msaaSamples);
-  attachmentsLayout
-      .addColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE)
-      .addColorAttachment(
-          swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
-      .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE);
-
-  _renderPass =
-      RenderpassBuilder(attachmentsLayout)
-          .addDependency(
-              VK_SUBPASS_EXTERNAL, 0,
-              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                  | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                  | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-          .addSubpass({0, 1, 2})
-          .build(*_logicalDevice);
-
-  {
-    SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-    for (VkImageView imageView : context.imageViews) {
-      _framebuffers.push_back(Framebuffer::createFromSwapchain(
-          commandBuffer, _renderPass, context.imageExtent, imageView, _attachments));
-    }
-  }
-}
-
-template <bool SYNCED_OUTSIDE>
 void GraphicsContext<SYNCED_OUTSIDE>::createEnvMappingResources() {
   // First pass for rendering the environment map.
   const float samplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
