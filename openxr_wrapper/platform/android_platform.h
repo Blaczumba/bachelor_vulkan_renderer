@@ -1,12 +1,12 @@
 #pragma once
 
-#include <openxr/openxr.h>
-
-#include "platform.h"
 #include <jni.h>
+#include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 #include <span>
 #include <string_view>
+
+#include "platform.h"
 
 namespace xrw {
 

@@ -83,14 +83,14 @@ void Presentation::run() {
   const auto [width, height] = _swapchain.getExtent();
   std::span<const VkImageView> imageViews = _swapchain.getImageViews();
   _graphicsContext->createPresentingResources(common::PresentResources{
-        .imageFormat = static_cast<int64_t>(_swapchain.getVkFormat()),
-        .width = width,
-        .height = height,
-        .numLayers = 1,
-        .imageViews = std::span(reinterpret_cast<const std::byte*>(imageViews.data()), imageViews.size()),
-        .multiview = false,
-      }
-  );
+    .imageFormat = static_cast<int64_t>(_swapchain.getVkFormat()),
+    .width = width,
+    .height = height,
+    .numLayers = 1,
+    .imageViews =
+        std::span(reinterpret_cast<const std::byte*>(imageViews.data()), imageViews.size()),
+    .multiview = false,
+  });
 
   _graphicsContext->initializeResources();
   while (_window->open()) {

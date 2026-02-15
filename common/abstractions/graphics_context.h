@@ -1,15 +1,15 @@
 #pragma once
 
-#include "common/abstractions/contexts.h"
-#include "common/camera/camera.h"
-
 #include <any>
 #include <cstdint>
+
+#include "common/abstractions/contexts.h"
+#include "common/camera/camera.h"
 
 namespace common {
 
 enum class GraphicsApi : uint8_t {
-	VULKAN = 0,
+  VULKAN = 0,
 };
 
 class GraphicsContext {

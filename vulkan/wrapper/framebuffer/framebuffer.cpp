@@ -10,8 +10,9 @@
 
 namespace {
 
-Texture createColorAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                              VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers) {
+Texture createColorAttachment(
+    const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkFormat format,
+    VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers) {
   Texture texture =
       TextureBuilder()
           .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
@@ -32,8 +33,9 @@ bool hasStencil(VkFormat format) {
   return std::find(std::cbegin(formats), std::cend(formats), format) != std::cend(formats);
 }
 
-Texture createDepthAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                              VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers) {
+Texture createDepthAttachment(
+    const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkFormat format,
+    VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers) {
   Texture texture =
       TextureBuilder()
           .withAspect(hasStencil(format) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
@@ -54,8 +56,8 @@ Texture createDepthAttachment(const LogicalDevice& logicalDevice, VkCommandBuffe
 }  // namespace
 
 Framebuffer Framebuffer::createFromSwapchain(
-    VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent, uint32_t numLayers,
-    VkImageView swapchainImageView, std::vector<Texture>& attachments) {
+    VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent,
+    uint32_t numLayers, VkImageView swapchainImageView, std::vector<Texture>& attachments) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   std::span<const VkAttachmentDescription> attachmentDescriptions =
       renderpass.getAttachmentsLayout().getVkAttachmentDescriptions();

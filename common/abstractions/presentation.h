@@ -1,9 +1,9 @@
 #pragma once
 
-#include "common/file/file_loader.h"
-#include "common/abstractions/graphics_context.h"
-
 #include <memory>
+
+#include "common/abstractions/graphics_context.h"
+#include "common/file/file_loader.h"
 
 namespace common {
 

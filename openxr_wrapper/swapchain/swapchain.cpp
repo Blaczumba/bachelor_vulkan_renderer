@@ -89,7 +89,8 @@ std::vector<Swapchain> SwapchainBuilder::build(
     // TODO: Check if configViews have the same properties.
     processedConfigViews.push_back(configurationViews[0]);
   } else {
-    processedConfigViews = std::vector<XrViewConfigurationView>(configurationViews.cbegin(), configurationViews.cend());
+    processedConfigViews = std::vector<XrViewConfigurationView>(
+        configurationViews.cbegin(), configurationViews.cend());
   }
 
   std::vector<Swapchain> swapchains;

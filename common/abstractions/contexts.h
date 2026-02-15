@@ -1,14 +1,14 @@
 #pragma once
 
-#include "common/camera/camera.h"
-#include "common/util/resource_handles.h"
-
 #include <any>
 #include <mutex>
+#include <optional>
 #include <span>
 #include <variant>
 #include <vector>
-#include <optional>
+
+#include "common/camera/camera.h"
+#include "common/util/resource_handles.h"
 
 namespace common {
 
@@ -27,9 +27,7 @@ enum class ObjectType : uint8_t {
   PIPELINE,
 };
 
-struct AttachmentLayout {
-
-};
+struct AttachmentLayout {};
 
 struct RenderpassCreateRequest {
   ObjectType type = ObjectType::RENDERPASS;
@@ -58,7 +56,7 @@ struct PresentResources {
   uint32_t width;
   uint32_t height;
   uint32_t numLayers;
-  std::span<const std::byte> imageViews; // Type erasure.
+  std::span<const std::byte> imageViews;  // Type erasure.
   bool multiview;
 };
 

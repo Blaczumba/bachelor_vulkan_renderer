@@ -74,8 +74,7 @@ template <bool SYNCED_OUTSIDE>
 class GraphicsContext final : public common::GraphicsContext {
   GraphicsContext(std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
                   std::unique_ptr<PhysicalDevice>&& physicalDevice,
-                  std::unique_ptr<LogicalDevice>&& logicalDevice,
-                  const FileLoader& fileLoader);
+                  std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader);
 
 public:
   static std::unique_ptr<common::GraphicsContext> create(
@@ -313,7 +312,8 @@ void GraphicsContext<SYNCED_OUTSIDE>::waitCompleteExecution() const {
 }
 
 template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::createPresentingResources(const common::PresentResources& presentResources) {
+void GraphicsContext<SYNCED_OUTSIDE>::createPresentingResources(
+    const common::PresentResources& presentResources) {
   static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
   const VkFormat swapchainImageFormat = static_cast<VkFormat>(presentResources.imageFormat);
 
@@ -344,13 +344,13 @@ void GraphicsContext<SYNCED_OUTSIDE>::createPresentingResources(const common::Pr
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-    auto imageViews =
-        std::span<const VkImageView>(reinterpret_cast<const VkImageView*>(presentResources.imageViews.data()),
-                  presentResources.imageViews.size());
+    auto imageViews = std::span<const VkImageView>(
+        reinterpret_cast<const VkImageView*>(presentResources.imageViews.data()),
+        presentResources.imageViews.size());
     for (VkImageView imageView : imageViews) {
       _framebuffers.push_back(Framebuffer::createFromSwapchain(
-          commandBuffer, _renderPass, {presentResources.width, presentResources.height}, presentResources.numLayers, imageView,
-          _attachments));
+          commandBuffer, _renderPass, {presentResources.width, presentResources.height},
+          presentResources.numLayers, imageView, _attachments));
     }
   }
 }

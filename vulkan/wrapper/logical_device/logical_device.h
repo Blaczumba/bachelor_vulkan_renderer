@@ -34,9 +34,10 @@ public:
                             std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
                                 make_unique<ThreadedResourceDestroyer>());
 
-  static std::unique_ptr<LogicalDevice> wrapPtr(VkDevice device, const PhysicalDevice& physicalDevice,
-                            std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
-                            make_unique<ThreadedResourceDestroyer>());
+  static std::unique_ptr<LogicalDevice> wrapPtr(
+      VkDevice device, const PhysicalDevice& physicalDevice,
+      std::unique_ptr<ResourceDestroyer>&& resourceDestroyer = std::
+          make_unique<ThreadedResourceDestroyer>());
 
   LogicalDevice(LogicalDevice&& logicalDevice) noexcept;
 
