@@ -29,6 +29,8 @@ public:
 
   static Instance wrap(VkInstance instance);
 
+  static std::unique_ptr<Instance> wrapPtr(VkInstance instance);
+
   VkInstance getVkInstance() const noexcept;
 
   lib::Buffer<VkPhysicalDevice> getAvailablePhysicalDevices() const;

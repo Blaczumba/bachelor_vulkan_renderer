@@ -118,6 +118,14 @@ Instance Instance::wrap(VkInstance instance) {
   return Instance(instance);
 }
 
+std::unique_ptr<Instance> Instance::wrapPtr(VkInstance instance) {
+    if (instance == VK_NULL_HANDLE) {
+      throw EngineException("Cannot wrap VK_NULL_HANDLE around Instance.");
+    }
+
+    return std::unique_ptr<Instance>(new Instance(instance));
+}
+
 VkInstance Instance::getVkInstance() const noexcept {
   return _instance;
 }

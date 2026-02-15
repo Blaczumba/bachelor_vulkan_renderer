@@ -49,10 +49,14 @@ lib::Buffer<VkQueueFamilyProperties> getQueueFamilyProperties(VkPhysicalDevice d
   return queueFamilies;
 }
 
-QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice device, VkSurfaceKHR surface) {
+QueueFamilyIndices findQueueFamilyIndices(VkPhysicalDevice device, VkSurfaceKHR surface) {
   lib::Buffer<VkQueueFamilyProperties> queueFamilies = getQueueFamilyProperties(device);
   QueueFamilyIndices indices;
-  for (auto&& [i, queueFamily] : std::views::enumerate(queueFamilies)) {
+
+  // Use a standard index-based loop for maximum compatibility
+  for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilies.size()); ++i) {
+    const auto& queueFamily = queueFamilies[i];
+
     if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphicsFamily = i;
     }
@@ -79,12 +83,17 @@ QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice device, VkSurfaceKHR 
   throw EngineException("Failed to find complete set of queue family indices.");
 }
 
-QueueFamilyIndices findQueueFamilyIncides(VkPhysicalDevice device) {
+QueueFamilyIndices findQueueFamilyIndices(VkPhysicalDevice device) {
   lib::Buffer<VkQueueFamilyProperties> queueFamilies = getQueueFamilyProperties(device);
   QueueFamilyIndices indices;
-  for (auto&& [i, queueFamily] : std::views::enumerate(queueFamilies)) {
+
+  for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilies.size()); ++i) {
+    const auto& queueFamily = queueFamilies[i];
+
     if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-      indices.graphicsFamily = indices.presentFamily = i;
+      indices.graphicsFamily = i;
+      // Note: In your snippet, you assigned presentFamily here as well.
+      indices.presentFamily = i;
     }
 
     if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
@@ -173,7 +182,7 @@ std::unique_ptr<PhysicalDevice> PhysicalDevice::create(
   VkPhysicalDeviceProperties properties;
   vkGetPhysicalDeviceProperties(bestDevice, &properties);
   return std::unique_ptr<PhysicalDevice>(new PhysicalDevice(
-      bestDevice, instance, findQueueFamilyIncides(bestDevice, surface), properties));
+      bestDevice, instance, findQueueFamilyIndices(bestDevice, surface), properties));
 }
 
 std::unique_ptr<PhysicalDevice> PhysicalDevice::wrap(
@@ -186,7 +195,7 @@ std::unique_ptr<PhysicalDevice> PhysicalDevice::wrap(
   vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
   return std::unique_ptr<PhysicalDevice>(new PhysicalDevice(
-      physicalDevice, instance, findQueueFamilyIncides(physicalDevice), properties));
+      physicalDevice, instance, findQueueFamilyIndices(physicalDevice), properties));
 }
 
 VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const noexcept {

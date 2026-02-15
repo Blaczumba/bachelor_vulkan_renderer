@@ -11,17 +11,18 @@
 namespace {
 
 Texture createColorAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                              VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
+                              VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers) {
   Texture texture =
       TextureBuilder()
           .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
           .withExtent(extent.width, extent.height)
           .withFormat(format)
+          .withLayerCount(numLayers)
           .withNumSamples(samples)
           .withUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
           .withLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
           .buildAttachment(logicalDevice, commandBuffer);
-  texture.addCreateVkImageView(0, 1, 0, 1);
+  texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
 }
 
@@ -32,27 +33,28 @@ bool hasStencil(VkFormat format) {
 }
 
 Texture createDepthAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                              VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent) {
+                              VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers) {
   Texture texture =
       TextureBuilder()
           .withAspect(hasStencil(format) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
                                            VK_IMAGE_ASPECT_DEPTH_BIT)
           .withExtent(extent.width, extent.height)
           .withFormat(format)
+          .withLayerCount(numLayers)
           .withNumSamples(samples)
           .withUsage(
               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)
           .withLayout(hasStencil(format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
                                            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
           .buildAttachment(logicalDevice, commandBuffer);
-  texture.addCreateVkImageView(0, 1, 0, 1);
+  texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
 }
 
 }  // namespace
 
 Framebuffer Framebuffer::createFromSwapchain(
-    VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent,
+    VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent, uint32_t numLayers,
     VkImageView swapchainImageView, std::vector<Texture>& attachments) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   std::span<const VkAttachmentDescription> attachmentDescriptions =
@@ -69,7 +71,7 @@ Framebuffer Framebuffer::createFromSwapchain(
         {
           Texture attachment = createColorAttachment(
               logicalDevice, commandBuffer, description.format, description.samples,
-              swapchainExtent);
+              swapchainExtent, numLayers);
           imageViews.push_back(attachment.getVkImageView());
           attachments.push_back(std::move(attachment));
           break;
@@ -78,7 +80,7 @@ Framebuffer Framebuffer::createFromSwapchain(
         {
           Texture attachment = createDepthAttachment(
               logicalDevice, commandBuffer, description.format, description.samples,
-              swapchainExtent);
+              swapchainExtent, numLayers);
           imageViews.push_back(attachment.getVkImageView());
           attachments.push_back(std::move(attachment));
           break;

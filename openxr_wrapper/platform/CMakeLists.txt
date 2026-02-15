@@ -1,5 +1,6 @@
 add_library(OpenxrPlatform platform.h android_platform.h android_platform.cpp)
 
+target_compile_definitions(OpenxrPlatform PUBLIC XR_USE_PLATFORM_ANDROID)
 target_link_libraries(OpenxrPlatform PRIVATE OpenXR::headers)
 
 target_include_directories(OpenxrPlatform PRIVATE ${PROJECT_SOURCE_DIR}/openxr ${PROJECT_SOURCE_DIR}/sources)

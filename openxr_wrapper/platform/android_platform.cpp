@@ -1,6 +1,5 @@
 #include "android_platform.h"
 
-#define XR_USE_PLATFORM_ANDROID
 #include <array>
 #include <jni.h>
 #include <openxr/openxr_platform.h>

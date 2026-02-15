@@ -349,7 +349,7 @@ void GraphicsContext<SYNCED_OUTSIDE>::createPresentingResources(const common::Pr
                   presentResources.imageViews.size());
     for (VkImageView imageView : imageViews) {
       _framebuffers.push_back(Framebuffer::createFromSwapchain(
-          commandBuffer, _renderPass, {presentResources.width, presentResources.height}, imageView,
+          commandBuffer, _renderPass, {presentResources.width, presentResources.height}, presentResources.numLayers, imageView,
           _attachments));
     }
   }

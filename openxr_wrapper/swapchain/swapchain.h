@@ -7,7 +7,6 @@
 #include "lib/buffer/buffer.h"
 #include "openxr_wrapper/graphics_plugin/graphics_plugin.h"
 #include "openxr_wrapper/session/session.h"
-#include "openxr_wrapper/system/system.h"
 
 namespace xrw {
 

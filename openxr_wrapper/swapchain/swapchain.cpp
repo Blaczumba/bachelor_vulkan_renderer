@@ -83,8 +83,17 @@ std::vector<Swapchain> SwapchainBuilder::build(
                                                 &viewCount, configurationViews.data()),
               "Failed to xrEnumerateViewConfigurationViews.");
 
+  std::vector<XrViewConfigurationView> processedConfigViews;
+  if (_arraySize == 2 && configurationViews.size() == 2) {
+    // Multiview feature. Render using 1 swapchain instead of 2.
+    // TODO: Check if configViews have the same properties.
+    processedConfigViews.push_back(configurationViews[0]);
+  } else {
+    processedConfigViews = std::vector<XrViewConfigurationView>(configurationViews.cbegin(), configurationViews.cend());
+  }
+
   std::vector<Swapchain> swapchains;
-  for (const XrViewConfigurationView& configView : configurationViews) {
+  for (const XrViewConfigurationView& configView : processedConfigViews) {
     const XrSwapchainCreateInfo swapchainCreateInfo = {
       .type = XR_TYPE_SWAPCHAIN_CREATE_INFO,
       .usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT,
@@ -93,7 +102,7 @@ std::vector<Swapchain> SwapchainBuilder::build(
       .width = configView.recommendedImageRectWidth,
       .height = configView.recommendedImageRectHeight,
       .faceCount = 1,
-      .arraySize = 1,
+      .arraySize = _arraySize,
       .mipCount = 1};
 
     XrSwapchain swapchain;
@@ -101,7 +110,7 @@ std::vector<Swapchain> SwapchainBuilder::build(
                 "Failed to create XrSwapchain.");
 
     graphicsPlugin.createSwapchainContext(swapchain, *format, configView.recommendedImageRectWidth,
-                                          configView.recommendedImageRectHeight);
+                                          configView.recommendedImageRectHeight, _arraySize);
 
     swapchains.emplace_back(swapchain, _viewConfigType, configView.recommendedImageRectWidth,
                             configView.recommendedImageRectHeight, *format, session);

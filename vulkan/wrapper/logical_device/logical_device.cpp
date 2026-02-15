@@ -151,6 +151,15 @@ LogicalDevice LogicalDevice::wrap(VkDevice device, const PhysicalDevice& physica
   return LogicalDevice(device, physicalDevice, std::move(resourceDestroyer));
 }
 
+std::unique_ptr<LogicalDevice> LogicalDevice::wrapPtr(VkDevice device, const PhysicalDevice& physicalDevice,
+                                              std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) {
+  if (device == VK_NULL_HANDLE) {
+    throw EngineException("Cannot wrap VK_NULL_HANDLE around LogicalDevice.");
+  }
+
+  return std::unique_ptr<LogicalDevice>(new LogicalDevice(device, physicalDevice, std::move(resourceDestroyer)));
+}
+
 VkImageView LogicalDevice::createImageView(const VkImageViewCreateInfo& imageViewCreateInfo) const {
   VkImageView view;
   CHECK_VKCMD(vkCreateImageView(_device, &imageViewCreateInfo, nullptr, &view),
