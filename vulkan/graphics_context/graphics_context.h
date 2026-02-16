@@ -218,7 +218,7 @@ GraphicsContext<SYNCED_OUTSIDE>::GraphicsContext(
     _fileLoader(fileLoader),
     _singleTimeCommandPool(
         CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)),
-    _assetManager(AssetManager::create(*_logicalDevice, fileLoader)),
+    _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::deferred)),
     _gpuBufferManager(GpuBufferManager::create()), _samplerManager(SamplerManager::create()),
     _pipelineManager(PipelineManager::create(fileLoader)),
     _bindlessDescriptorPool(DescriptorPool::create(

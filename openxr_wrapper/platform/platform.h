@@ -12,6 +12,10 @@ public:
 
   virtual std::span<const char* const> getInstanceExtensions() const = 0;
 
+  virtual bool shouldClose() const = 0;
+
+  virtual void pollPlatformEvents(bool applicationRunning) = 0;
+
   virtual ~Platform() = default;
 };
 
