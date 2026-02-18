@@ -37,6 +37,14 @@ private:
 
   void pollActions();
 
+  // TODO: refactor
+  bool renderLayer(
+      XrTime predictedDisplayTime,
+      std::vector<XrCompositionLayerProjectionView> &projectionLayerViews,
+      XrCompositionLayerProjection &layer);
+
+  void draw();
+
   static constexpr inline XrViewConfigurationType VIEW_CONFIG_TYPE =
       XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 

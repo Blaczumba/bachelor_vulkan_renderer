@@ -1,10 +1,15 @@
 #include "openxr_wrapper/presentation/presentation.h"
 
 #include "common/file/file_loader.h"
+#include "common/util/engine_exception.h"
 #include "openxr_wrapper/graphics_plugin/graphics_plugin_vulkan.h"  // Needs to be included before platform.
 #include "openxr_wrapper/platform/android_platform.h"
+#include "openxr_wrapper/util/check.h"
+#include "common/camera/camera.h"
 
 #include <spdlog/spdlog.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace xrw {
 
@@ -15,6 +20,39 @@ std::unique_ptr<GraphicsPlugin> createGraphicsPlugin(common::GraphicsApi graphic
     case common::GraphicsApi::VULKAN:
       return std::make_unique<GraphicsPluginVulkan>(nullptr);
   }
+}
+
+glm::mat4 createProjectionMatrix(const XrFovf &fov, float near, float far) {
+  const float tanLeft = tanf(fov.angleLeft);
+  const float tanRight = tanf(fov.angleRight);
+  const float tanDown = tanf(fov.angleDown);
+  const float tanUp = tanf(fov.angleUp);
+
+  const float tanWidth = tanRight - tanLeft;
+  const float tanHeight = tanDown - tanUp;
+
+  glm::mat4 result(0.0f);
+  result[0][0] = 2.0f / tanWidth;
+  result[1][1] = 2.0f / tanHeight;
+  result[2][0] = (tanRight + tanLeft) / tanWidth;
+  result[2][1] = (tanUp + tanDown) / tanHeight;
+  result[2][2] = -far / (far - near);
+  result[2][3] = -1.0f;
+  result[3][2] = -(far * near) / (far - near);
+
+  return result;
+}
+
+glm::mat4 createViewMatrix(const XrPosef &pose) {
+  const glm::quat orientation =
+      glm::quat(pose.orientation.w, pose.orientation.x, pose.orientation.y,
+                pose.orientation.z);
+
+  const glm::vec3 position =
+      glm::vec3(pose.position.x, pose.position.y, pose.position.z);
+
+  return glm::translate(glm::mat4_cast(glm::conjugate(orientation)),
+                        -position);
 }
 
 }  // namespace
@@ -55,7 +93,7 @@ void Presentation::run() {
     }
 
     pollActions();
-    // render
+    draw();
   }
 }
 
@@ -152,6 +190,131 @@ void Presentation::pollActions() {
     // TODO: CHECK_XRCMD
     xrRequestExitSession(_session->getXrSession());
   }
+}
+
+bool Presentation::renderLayer(
+    XrTime predictedDisplayTime,
+    std::vector<XrCompositionLayerProjectionView> &projectionLayerViews,
+    XrCompositionLayerProjection &layer) {
+  XrViewState viewState = {.type = XR_TYPE_VIEW_STATE};
+
+  const XrViewLocateInfo viewLocateInfo = {
+      .type = XR_TYPE_VIEW_LOCATE_INFO,
+      .viewConfigurationType = VIEW_CONFIG_TYPE,
+      .displayTime = predictedDisplayTime,
+      .space = _space->getXrSpace()};
+
+  uint32_t viewCountOutput;
+  // Not sure if it needs to remain (not local)
+  // Create 2 XrViews per eye.
+  lib::Buffer<XrView> views(2, {.type = XR_TYPE_VIEW});
+  CHECK_XRCMD(xrLocateViews(_session->getXrSession(), &viewLocateInfo,
+                            &viewState, views.size(), &viewCountOutput,
+                            views.data()),
+              "Failed to xrLocateViews.");
+  if ((viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) == 0 ||
+      (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) == 0) {
+    return false; // There is no valid tracking poses
+    // for the views.
+  }
+
+  const xrw::Swapchain &viewSwapchain = _swapchains[0];
+  std::vector<common::CameraContext> cameraContexts;
+  for (uint32_t i = 0; i < views.size(); i++) {
+    const XrCompositionLayerProjectionView &projectionLayerView =
+        projectionLayerViews.emplace_back(XrCompositionLayerProjectionView{
+            .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+            .pose = views[i].pose,
+            .fov = views[i].fov,
+            .subImage.swapchain = viewSwapchain.getSwapchain(),
+            .subImage.imageRect.offset = {0, 0},
+            .subImage.imageRect.extent = viewSwapchain.getXrExtent2Di(),
+            .subImage.imageArrayIndex = i});
+    cameraContexts.push_back(common::CameraContext{createViewMatrix(projectionLayerView.pose),
+                                                   createProjectionMatrix(projectionLayerView.fov, 0.01f, 50.0f)});
+  }
+
+  const XrSwapchainImageAcquireInfo acquireInfo = {
+      .type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+
+  uint32_t swapchainImageIndex;
+  CHECK_XRCMD(xrAcquireSwapchainImage(viewSwapchain.getSwapchain(),
+                                      &acquireInfo, &swapchainImageIndex),
+              "Failed to xrAcquireSwapchainImage.");
+
+  const XrSwapchainImageWaitInfo imageWaitInfo = {
+      .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
+      .timeout = XR_INFINITE_DURATION};
+
+  CHECK_XRCMD(
+      xrWaitSwapchainImage(viewSwapchain.getSwapchain(), &imageWaitInfo),
+      "Failed to xrWaitSwapchainImage.");
+
+  common::DrawingContext drawingContext = {
+      .imageIndex = swapchainImageIndex,
+      .camera = Camera(PerspectiveProjection{}, glm::vec3(0.0f), 0.0f, 0.0f),
+      .cameraContexts = std::move(cameraContexts)
+  };
+  _graphicsContext->draw(drawingContext);
+
+  const XrSwapchainImageReleaseInfo releaseInfo = {
+      .type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+  CHECK_XRCMD(
+      xrReleaseSwapchainImage(viewSwapchain.getSwapchain(), &releaseInfo),
+      "Failed to xrReleaseSwapchainImage.");
+
+  layer.space = _space->getXrSpace();
+  layer.viewCount = static_cast<uint32_t>(projectionLayerViews.size());
+  layer.views = projectionLayerViews.data();
+  return true;
+}
+
+void Presentation::draw() {
+  if (_session->getXrSession() == XR_NULL_HANDLE) {
+    throw EngineException(
+        "XrSession cannot be XR_NULL_HANDLE when rendering a frame.");
+  }
+
+  const XrFrameWaitInfo frameWaitInfo{
+      .type = XR_TYPE_FRAME_WAIT_INFO,
+  };
+
+  XrFrameState frameState{
+      .type = XR_TYPE_FRAME_STATE,
+  };
+  CHECK_XRCMD(
+      xrWaitFrame(_session->getXrSession(), &frameWaitInfo, &frameState),
+      "Failed to xrWaitFrame.");
+
+  const XrFrameBeginInfo frameBeginInfo{
+      .type = XR_TYPE_FRAME_BEGIN_INFO,
+  };
+  CHECK_XRCMD(xrBeginFrame(_session->getXrSession(), &frameBeginInfo),
+              "Failed to xrBeginFrame.");
+
+  std::vector<XrCompositionLayerBaseHeader *> layers{};
+  XrCompositionLayerProjection layer{
+      .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
+  };
+  std::vector<XrCompositionLayerProjectionView>
+      projectionLayerViews;
+  if (frameState.shouldRender == XR_TRUE) {
+    if (renderLayer(frameState.predictedDisplayTime, projectionLayerViews,
+                    layer)) {
+      layers.push_back(
+          reinterpret_cast<XrCompositionLayerBaseHeader *>(&layer));
+    }
+  }
+
+  const XrFrameEndInfo frameEndInfo = {
+      .type = XR_TYPE_FRAME_END_INFO,
+      .displayTime = frameState.predictedDisplayTime,
+      .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+      .layerCount = static_cast<uint32_t>(layers.size()),
+      .layers = layers.data()};
+
+  CHECK_XRCMD(xrEndFrame(_session->getXrSession(), &frameEndInfo),
+              "Failed to xrEndFrame.");
 }
 
 }  // namespace xrw
