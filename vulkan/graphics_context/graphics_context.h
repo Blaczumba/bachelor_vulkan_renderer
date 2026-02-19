@@ -70,7 +70,7 @@ struct SwapchainContext {
   bool multiview;
 };
 
-template <bool SYNCED_OUTSIDE>
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 class GraphicsContext final : public common::GraphicsContext {
   GraphicsContext(std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
                   std::unique_ptr<PhysicalDevice>&& physicalDevice,
@@ -173,7 +173,6 @@ private:
   std::vector<Object> objects;
   Pipeline* _graphicsPipeline;
 
-  UniformBufferCamera _ubCamera;
   UniformBufferLight _ubLight;
   Buffer _dynamicUniformBuffersCamera;
   Buffer _lightBuffer;
@@ -196,7 +195,8 @@ private:
   void createOctreeScene();
   void recordShadowCommandBuffer(VkCommandBuffer commandBuffer);
   void recordEnvMappingCommandBuffer(VkCommandBuffer commandBuffer);
-  void updateUniformBuffer(Camera camera, uint32_t currentFrame);
+  void updateUniformBuffer(
+      const std::vector<common::CameraContext>& cameraContexts, uint32_t currentFrame);
   void recordOctreeSecondaryCommandBuffer(
       const VkCommandBuffer commandBuffer, const OctreeNode* rootNode,
       std::span<const glm::vec4> planes);
@@ -208,8 +208,8 @@ private:
 
 namespace vlkn {
 
-template <bool SYNCED_OUTSIDE>
-GraphicsContext<SYNCED_OUTSIDE>::GraphicsContext(
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
     std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
     std::unique_ptr<PhysicalDevice>&& physicalDevice,
     std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader)
@@ -228,55 +228,65 @@ GraphicsContext<SYNCED_OUTSIDE>::GraphicsContext(
     _bindlessWriter(BindlessDescriptorSetWriter::create(_bindlessDescriptorSet)),
     _dynamicDescriptorPool(DescriptorPool::create(*_logicalDevice, 1)),
     _dynamicDescriptorSet(_dynamicDescriptorPool->createDesriptorSet(
-        _pipelineManager->getOrCreateCameraLayout(*_logicalDevice))) {}
+        _pipelineManager->getOrCreateCameraLayout(*_logicalDevice, MULTIVIEW_PRESENTATION))) {}
 
-template <bool SYNCED_OUTSIDE>
-std::unique_ptr<common::GraphicsContext> GraphicsContext<SYNCED_OUTSIDE>::create(
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+std::unique_ptr<common::GraphicsContext>
+GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::create(
     std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
     std::unique_ptr<PhysicalDevice>&& physicalDevice,
     std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader) {
-  return std::unique_ptr<GraphicsContext<SYNCED_OUTSIDE>>(new GraphicsContext<SYNCED_OUTSIDE>(
+  return std::unique_ptr<GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>>(new GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>(
       std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
       std::move(logicalDevice), fileLoader));
 }
 
-template <bool SYNCED_OUTSIDE>
-GraphicsContext<SYNCED_OUTSIDE>::~GraphicsContext() {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::~GraphicsContext() {
   const VkDevice device = _logicalDevice->getVkDevice();
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vkDestroySemaphore(device, _synchContext.renderFinishedSemaphores[i], nullptr);
-    vkDestroySemaphore(device, _synchContext.imageAvailableSemaphores[i], nullptr);
+    if constexpr (!SYNCED_OUTSIDE) {
+      vkDestroySemaphore(device, _synchContext.renderFinishedSemaphores[i], nullptr);
+      vkDestroySemaphore(device, _synchContext.imageAvailableSemaphores[i], nullptr);
+    }
     vkDestroyFence(device, _frameFences[i], nullptr);
   }
 }
 
-template <bool SYNCED_OUTSIDE>
-common::UpdateContextResponse GraphicsContext<SYNCED_OUTSIDE>::update(
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+common::UpdateContextResponse GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::update(
     const common::UpdateContext& updateContext) {
   return {};
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::draw(const common::DrawingContext& drawingContext) {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
+    const common::DrawingContext& drawingContext) {
   vkWaitForFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame],
                   VK_TRUE, UINT64_MAX);
 
-  updateUniformBuffer(drawingContext.camera, _synchContext.currentFrame);
+  updateUniformBuffer(drawingContext.cameraContexts, _synchContext.currentFrame);
+
+  _primaryCommandBuffer[_synchContext.currentFrame].resetCommandBuffer();
+  for (int i = 0; i < MAX_THREADS_IN_POOL; i++) {
+    _secondaryCommandBuffers[i][_synchContext.currentFrame].resetCommandBuffer();
+  }
 
   vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame]);
 
-  const glm::mat4 cameraView = drawingContext.camera.getViewMatrix();
-  const glm::mat4 cameraProj = drawingContext.camera.getProjectionMatrix();
-  recordCommandBuffer(cameraProj, cameraView, drawingContext.imageIndex);
+  const common::CameraContext& cameraContext = drawingContext.cameraContexts[0];
+  recordCommandBuffer(cameraContext.proj, cameraContext.view, drawingContext.imageIndex);
 
   VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
 
-  VkSemaphore waitSemaphores[] = {
-    _synchContext.imageAvailableSemaphores[_synchContext.currentFrame]};
   VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
   submitInfo.waitSemaphoreCount = 1;
-  submitInfo.pWaitSemaphores = waitSemaphores;
+  VkSemaphore waitSemaphore;
+  if constexpr (!SYNCED_OUTSIDE) {
+    waitSemaphore = _synchContext.imageAvailableSemaphores[_synchContext.currentFrame];
+    submitInfo.pWaitSemaphores = &waitSemaphore;
+  }
   submitInfo.pWaitDstStageMask = waitStages;
 
   VkCommandBuffer submitCommands[] = {
@@ -284,10 +294,12 @@ void GraphicsContext<SYNCED_OUTSIDE>::draw(const common::DrawingContext& drawing
   submitInfo.commandBufferCount = static_cast<uint32_t>(std::size(submitCommands));
   submitInfo.pCommandBuffers = submitCommands;
 
-  VkSemaphore signalSemaphores[] = {
-    _synchContext.renderFinishedSemaphores[drawingContext.imageIndex]};
-  submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = signalSemaphores;
+  VkSemaphore signalSemaphore;
+  if constexpr (!SYNCED_OUTSIDE) {
+    signalSemaphore = _synchContext.renderFinishedSemaphores[drawingContext.imageIndex];
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &signalSemaphore;
+  }
 
   if (vkQueueSubmit(_logicalDevice->getGraphicsVkQueue(), 1, &submitInfo,
                     _frameFences[_synchContext.currentFrame])
@@ -300,19 +312,19 @@ void GraphicsContext<SYNCED_OUTSIDE>::draw(const common::DrawingContext& drawing
   }
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::initializeResources() {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::initializeResources() {
   setup();
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::waitCompleteExecution() const {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::waitCompleteExecution() const {
   vkWaitForFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame],
                   VK_TRUE, UINT64_MAX);
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::createPresentingResources(
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingResources(
     const common::PresentResources& presentResources) {
   static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
   const VkFormat swapchainImageFormat = static_cast<VkFormat>(presentResources.imageFormat);
@@ -334,7 +346,7 @@ void GraphicsContext<SYNCED_OUTSIDE>::createPresentingResources(
               | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
       .addSubpass({0, 1, 2});
-  if (presentResources.multiview && presentResources.numLayers != 1) {
+  if constexpr (MULTIVIEW_PRESENTATION) {
     auto mask = lib::setNLeastSignificantBits<uint32_t>(presentResources.numLayers);
     renderpassBuilder.withMultiView({mask}, {mask});
   }
@@ -355,13 +367,14 @@ void GraphicsContext<SYNCED_OUTSIDE>::createPresentingResources(
   }
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::waitDeviceIdle() const {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::waitDeviceIdle() const {
   vkDeviceWaitIdle(_logicalDevice->getVkDevice());
 }
 
-template <bool SYNCED_OUTSIDE>
-std::any GraphicsContext<SYNCED_OUTSIDE>::getSynchronizationContext() const {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+std::any
+GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::getSynchronizationContext() const {
   return std::make_any<const SynchronizationContext*>(&_synchContext);
 }
 

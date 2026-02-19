@@ -63,17 +63,18 @@ VkDescriptorSetLayout PipelineManager::getOrCreateBindlessLayout(
   return vkLayout;
 }
 
-VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(const LogicalDevice& logicalDevice) {
+VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(
+    const LogicalDevice& logicalDevice, bool multiview) {
   static constexpr DescriptorSetType layoutType = DescriptorSetType::CAMERA;
   if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
     return it->second.getVkDescriptorSetLayout();
   }
 
-  static constexpr VkDescriptorSetLayoutBinding bindings[] = {
+  static VkDescriptorSetLayoutBinding bindings[] = {
     {
      .binding = 0,
      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-     .descriptorCount = 1,
+     .descriptorCount = 1 + static_cast<uint32_t>(multiview),
      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
      },
   };
@@ -157,16 +158,17 @@ constexpr VkPushConstantRange getPushConstantRange(
 
 }  // namespace
 
-PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(const Renderpass& renderpass) {
+PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(
+    const Renderpass& renderpass, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
-      addShader(logicalDevice, "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+      addShader(logicalDevice, multiview ? "shader_pbr_multiview.vert.spv" : "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
-      addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+      addShader(logicalDevice, multiview ? "shader_pbr_multiview.frag.spv" : "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
+        {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice, multiview)},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
   },
@@ -259,16 +261,16 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
 }
 
 PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
-    const Renderpass& renderpass) {
+    const Renderpass& renderpass, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
-      addShader(logicalDevice, "env_mapping_phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+      addShader(logicalDevice, multiview ? "env_mapping_phong_multiview.vert.spv" : "env_mapping_phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
       addShader(logicalDevice, "env_mapping_phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice)},
+        {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice, multiview)},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
   },

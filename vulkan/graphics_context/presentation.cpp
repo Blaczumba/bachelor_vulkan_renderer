@@ -13,12 +13,9 @@ namespace vlkn {
 
 Presentation::Presentation(
     std::shared_ptr<Window>&& window, Surface&& surface, Swapchain&& swapchain,
-    std::unique_ptr<GraphicsContext<false>>&& graphicsContext, const FileLoader& fileLoader)
+    std::unique_ptr<GraphicsContext<false, false>>&& graphicsContext, const FileLoader& fileLoader)
   : _window(std::move(window)), _surface(std::move(surface)), _swapchain(std::move(swapchain)),
     _graphicsContext(std::move(graphicsContext)),
-    _drawingContext{
-      .camera = Camera(PerspectiveProjection{glm::radians(45.0f), 1920.0f / 1080.f, 0.01f, 50.0f},
-                       glm::vec3(0.0f), 5.5f, 0.01f)},
     _mouseKeyboardManager(_window->createMouseKeyboardManager()) {}
 
 std::unique_ptr<common::Presentation> Presentation::create(
@@ -47,7 +44,7 @@ std::unique_ptr<common::Presentation> Presentation::create(
           .build(*logicalDevice, surface.getVkSurface(), VkExtent2D{width, height});
 
   auto graphicsContext =
-      lib::dynamicUniqueCast<GraphicsContext<false>>(GraphicsContext<false>::create(
+      lib::dynamicUniqueCast<GraphicsContext<false, false>>(GraphicsContext<false, false>::create(
           std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
           std::move(logicalDevice), fileLoader));
   return std::unique_ptr<Presentation>(
@@ -93,17 +90,26 @@ void Presentation::run() {
   });
 
   _graphicsContext->initializeResources();
+  Camera camera(PerspectiveProjection{glm::radians(45.0f), 1920.0f / 1080.f, 0.01f, 50.0f},
+                glm::vec3(0.0f), 5.5f, 0.01f);
   while (_window->open()) {
     current = std::chrono::steady_clock::now();
     deltaTime = std::chrono::duration<float>(current - previous).count();
     previous = current;
     _window->pollEvents();
     // This should be handled outside by engine but for now it is ok here:
-    _drawingContext.camera.updateFromKeyboard(*_mouseKeyboardManager, deltaTime);
+    camera.updateFromKeyboard(*_mouseKeyboardManager, deltaTime);
     /////////////////////////
     _graphicsContext->waitCompleteExecution();
     _swapchain.acquireNextImage(synchContext->imageAvailableSemaphores[synchContext->currentFrame],
                                 &_drawingContext.imageIndex);
+    _drawingContext.cameraContexts = {
+      {
+       camera.getPosition(),
+       camera.getViewMatrix(),
+       camera.getProjectionMatrix(),
+      }
+    };
     _graphicsContext->draw(_drawingContext);
     _swapchain.present(_drawingContext.imageIndex,
                        synchContext->renderFinishedSemaphores[_drawingContext.imageIndex]);

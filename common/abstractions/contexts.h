@@ -13,14 +13,13 @@
 namespace common {
 
 struct CameraContext {
+  glm::vec3 position;
   glm::mat4 view;
   glm::mat4 proj;
 };
 
 struct DrawingContext {
   uint32_t imageIndex;
-  Camera camera;
-
   std::vector<CameraContext> cameraContexts;
 
   std::mutex _mu;

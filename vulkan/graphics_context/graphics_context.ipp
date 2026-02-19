@@ -78,8 +78,8 @@ Texture createTexture2D(
 
 }  // namespace
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::setup() {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::setup() {
   std::string data = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
   VertexData cubeData = loadObj(*_assetManager, "cube.obj", data);
   const std::vector<VertexData> sceneData =
@@ -96,7 +96,6 @@ void GraphicsContext<SYNCED_OUTSIDE>::setup() {
   createSyncObjects();
   loadObjects(sceneData);
   createOctreeScene();
-
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     recordShadowCommandBuffer(handle.getCommandBuffer());
@@ -104,8 +103,9 @@ void GraphicsContext<SYNCED_OUTSIDE>::setup() {
   }
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::loadCubemap(const VertexData& cubeData) {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::loadCubemap(
+    const VertexData& cubeData) {
   SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
   const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
@@ -135,10 +135,11 @@ void GraphicsContext<SYNCED_OUTSIDE>::loadCubemap(const VertexData& cubeData) {
   }
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::createDescriptorSets() {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createDescriptorSets() {
+  // If VR presentation is enabled then multiply times 2 otherwise times 1.
   const uint32_t size =
-      _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera));
+      _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera) * (1 + MULTIVIEW_PRESENTATION));
   _dynamicUniformBuffersCamera =
       Buffer::createUniformBuffer(*_logicalDevice, MAX_FRAMES_IN_FLIGHT * size);
   Sampler sampler = SamplerBuilder()
@@ -163,8 +164,8 @@ void GraphicsContext<SYNCED_OUTSIDE>::createDescriptorSets() {
   _lightBuffer.copyData(_ubLight, 0);
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::createEnvMappingResources() {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createEnvMappingResources() {
   // First pass for rendering the environment map.
   const float samplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
   {
@@ -231,8 +232,8 @@ void GraphicsContext<SYNCED_OUTSIDE>::createEnvMappingResources() {
   _samplerManager->transferSampler(std::move(sampler));
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::createShadowResources() {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createShadowResources() {
   {
     // TODO: Should not be in this function.
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
@@ -260,22 +261,22 @@ void GraphicsContext<SYNCED_OUTSIDE>::createShadowResources() {
       Framebuffer::createFromTextures(_shadowRenderPass, std::span(&_shadowMap, 1));
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::createGraphicsPipelines() {
-  _graphicsPipeline =
-      _pipelineManager->getPipeline(_pipelineManager->createPBRProgram(_renderPass));
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createGraphicsPipelines() {
+  _graphicsPipeline = _pipelineManager->getPipeline(
+      _pipelineManager->createPBRProgram(_renderPass, MULTIVIEW_PRESENTATION));
   _skyboxPipeline =
       _pipelineManager->getPipeline(_pipelineManager->createSkyboxProgram(_renderPass));
-  _phongEnvMappingPipeline =
-      _pipelineManager->getPipeline(_pipelineManager->createEnvMappingProgram(_renderPass));
+  _phongEnvMappingPipeline = _pipelineManager->getPipeline(
+      _pipelineManager->createEnvMappingProgram(_renderPass, MULTIVIEW_PRESENTATION));
   _shadowPipeline =
       _pipelineManager->getPipeline(_pipelineManager->createShadowProgram(_shadowRenderPass));
   _envMappingPipeline = _pipelineManager->getPipeline(
       _pipelineManager->createPbrEnvMappingProgram(_envMappingRenderPass));
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::createCommandBuffers() {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createCommandBuffers() {
   for (int i = 0; i <= MAX_THREADS_IN_POOL; i++) {
     _commandPools[i] =
         CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -289,29 +290,34 @@ void GraphicsContext<SYNCED_OUTSIDE>::createCommandBuffers() {
   }
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::createSyncObjects() {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createSyncObjects() {
   static constexpr VkSemaphoreCreateInfo semaphoreInfo = {
     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
   static constexpr VkFenceCreateInfo fenceInfo = {
     .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
 
-  _synchContext.renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  if constexpr (!SYNCED_OUTSIDE) {
+    // TODO: Swapchain images count.
+    _synchContext.renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  }
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    CHECK_VKCMD(vkCreateSemaphore(_logicalDevice->getVkDevice(), &semaphoreInfo, nullptr,
-                                  &_synchContext.imageAvailableSemaphores[i]),
-                "Failed to create VkSemaphore.");
-    CHECK_VKCMD(vkCreateSemaphore(_logicalDevice->getVkDevice(), &semaphoreInfo, nullptr,
-                                  &_synchContext.renderFinishedSemaphores[i]),
-                "Failed to create VkSemaphore.");
+    if constexpr (!SYNCED_OUTSIDE) {
+      CHECK_VKCMD(vkCreateSemaphore(_logicalDevice->getVkDevice(), &semaphoreInfo, nullptr,
+                                    &_synchContext.imageAvailableSemaphores[i]),
+                  "Failed to create VkSemaphore.");
+      CHECK_VKCMD(vkCreateSemaphore(_logicalDevice->getVkDevice(), &semaphoreInfo, nullptr,
+                                    &_synchContext.renderFinishedSemaphores[i]),
+                  "Failed to create VkSemaphore.");
+    }
     CHECK_VKCMD(vkCreateFence(_logicalDevice->getVkDevice(), &fenceInfo, nullptr, &_frameFences[i]),
                 "Failed to create VkFence.");
   }
 }
 
-template <bool SYNCED_OUTSIDE>
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 std::tuple<UniformTextureHandle, GpuTextureHandle>
-GraphicsContext<SYNCED_OUTSIDE>::getOrLoadTexture(
+GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::getOrLoadTexture(
     std::unordered_map<StagingImageDataResourceHandle,
                        std::pair<UniformTextureHandle, GpuTextureHandle>>& textureCache,
     StagingImageDataResourceHandle textureID, VkFormat format, VkCommandBuffer commandBuffer,
@@ -336,8 +342,9 @@ GraphicsContext<SYNCED_OUTSIDE>::getOrLoadTexture(
   return result;
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::loadObjects(std::span<const VertexData> sceneData) {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::loadObjects(
+    std::span<const VertexData> sceneData) {
   const float maxSamplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
   _objects.reserve(sceneData.size());
 
@@ -400,8 +407,8 @@ void GraphicsContext<SYNCED_OUTSIDE>::loadObjects(std::span<const VertexData> sc
   }
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::createOctreeScene() {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createOctreeScene() {
   AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;
 
   for (int i = 1; i < _objects.size(); ++i) {
@@ -414,8 +421,9 @@ void GraphicsContext<SYNCED_OUTSIDE>::createOctreeScene() {
   }
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::recordShadowCommandBuffer(VkCommandBuffer commandBuffer) {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::recordShadowCommandBuffer(
+    VkCommandBuffer commandBuffer) {
   const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
 
   VkExtent2D extent = _shadowMap.getVkExtent2D();
@@ -478,8 +486,9 @@ void GraphicsContext<SYNCED_OUTSIDE>::recordShadowCommandBuffer(VkCommandBuffer 
   vkCmdEndRenderPass(commandBuffer);
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::recordEnvMappingCommandBuffer(VkCommandBuffer commandBuffer) {
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::recordEnvMappingCommandBuffer(
+    VkCommandBuffer commandBuffer) {
   const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
 
   VkExtent2D extent = _envMappingAttachments[0].getVkExtent2D();
@@ -556,17 +565,34 @@ void GraphicsContext<SYNCED_OUTSIDE>::recordEnvMappingCommandBuffer(VkCommandBuf
   vkCmdEndRenderPass(commandBuffer);
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::updateUniformBuffer(Camera camera, uint32_t currentFrame) {
-  _ubCamera.view = camera.getViewMatrix();
-  _ubCamera.proj = camera.getProjectionMatrix();
-  _ubCamera.pos = camera.getPosition();
-  _dynamicUniformBuffersCamera.copyData(
-      _ubCamera, currentFrame * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::updateUniformBuffer(
+    const std::vector<common::CameraContext>& cameraContexts, uint32_t currentFrame) {
+  if constexpr (MULTIVIEW_PRESENTATION) {
+    UniformBufferCamera _ubCamera[2];
+    for (size_t i = 0; i < cameraContexts.size(); ++i) {
+      _ubCamera[i].view = cameraContexts[i].view;
+      _ubCamera[i].proj = cameraContexts[i].proj;
+      _ubCamera[i].pos = cameraContexts[i].position;
+      _dynamicUniformBuffersCamera.copyData(
+          _ubCamera,
+          currentFrame * _physicalDevice->getMemoryAlignment(2 * sizeof(UniformBufferCamera)));
+    }
+
+  } else {
+    UniformBufferCamera _ubCamera;
+    _ubCamera.view = cameraContexts[0].view;
+    _ubCamera.proj = cameraContexts[0].proj;
+    _ubCamera.pos = cameraContexts[0].position;
+    _dynamicUniformBuffersCamera.copyData(
+        _ubCamera,
+        currentFrame * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
+  }
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::recordOctreeSecondaryCommandBuffer(
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
+    recordOctreeSecondaryCommandBuffer(
     const VkCommandBuffer commandBuffer, const OctreeNode* rootNode,
     std::span<const glm::vec4> planes) {
   if (!rootNode || !rootNode->getVolume().intersectsFrustum(planes)) {
@@ -625,8 +651,8 @@ void GraphicsContext<SYNCED_OUTSIDE>::recordOctreeSecondaryCommandBuffer(
   }
 }
 
-template <bool SYNCED_OUTSIDE>
-void GraphicsContext<SYNCED_OUTSIDE>::recordCommandBuffer(
+template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::recordCommandBuffer(
     const glm::mat4& cameraProj, const glm::mat4& cameraView, uint32_t imageIndex) {
   const Framebuffer& framebuffer = _framebuffers[imageIndex];
   const CommandBuffer& primaryCommandBuffer = _primaryCommandBuffer[_synchContext.currentFrame];

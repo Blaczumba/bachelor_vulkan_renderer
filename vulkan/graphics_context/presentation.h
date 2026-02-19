@@ -15,7 +15,7 @@ namespace vlkn {
 
 class Presentation final : public common::Presentation {
   Presentation(std::shared_ptr<Window>&& window, Surface&& surface, Swapchain&& swapchain,
-               std::unique_ptr<GraphicsContext<false>>&& graphicsContext,
+               std::unique_ptr<GraphicsContext<false, false>>&& graphicsContext,
                const FileLoader& fileLoader);
 
 public:
@@ -32,7 +32,7 @@ private:
   // TODO: Change to unique_ptr.
   std::shared_ptr<Window> _window;
 
-  std::unique_ptr<GraphicsContext<false>> _graphicsContext;
+  std::unique_ptr<GraphicsContext<false, false>> _graphicsContext;
   Surface _surface;
   Swapchain _swapchain;
 
