@@ -275,16 +275,17 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
 
   vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame]);
 
-  const common::CameraContext& cameraContext = drawingContext.cameraContexts[0];
+  const common::CameraContext& cameraContext = drawingContext.cameraContexts[1];
   recordCommandBuffer(cameraContext.proj, cameraContext.view, drawingContext.imageIndex);
 
   VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
 
   VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-  submitInfo.waitSemaphoreCount = 1;
+
   VkSemaphore waitSemaphore;
   if constexpr (!SYNCED_OUTSIDE) {
     waitSemaphore = _synchContext.imageAvailableSemaphores[_synchContext.currentFrame];
+    submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = &waitSemaphore;
   }
   submitInfo.pWaitDstStageMask = waitStages;

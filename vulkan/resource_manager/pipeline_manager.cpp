@@ -74,7 +74,7 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(
     {
      .binding = 0,
      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-     .descriptorCount = 1 + static_cast<uint32_t>(multiview),
+     .descriptorCount = 1,
      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
      },
   };
@@ -164,7 +164,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(
   const Shader& vertex =
       addShader(logicalDevice, multiview ? "shader_pbr_multiview.vert.spv" : "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
-      addShader(logicalDevice, multiview ? "shader_pbr_multiview.frag.spv" : "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+      addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{

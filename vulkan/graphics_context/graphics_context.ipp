@@ -751,8 +751,8 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::recordCommandBuffe
         commandBuffer, _skyboxPipeline->getVkPipelineBindPoint(),
         _skyboxPipeline->getVkPipelineLayout(), 0, 1, descriptorSets, 0, nullptr);
 
-    vkCmdDrawIndexed(
-        commandBuffer, indexBuffer.getSize() / getIndexSize(_indexBufferCubeType), 1, 0, 0, 0);
+//    vkCmdDrawIndexed(
+//        commandBuffer, indexBuffer.getSize() / getIndexSize(_indexBufferCubeType), 1, 0, 0, 0);
 
     // Env mapping
     vkCmdBindPipeline(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),

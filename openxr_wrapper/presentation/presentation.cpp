@@ -230,7 +230,8 @@ bool Presentation::renderLayer(
             .subImage.imageRect.offset = {0, 0},
             .subImage.imageRect.extent = viewSwapchain.getXrExtent2Di(),
             .subImage.imageArrayIndex = i});
-    cameraContexts.push_back(common::CameraContext{createViewMatrix(projectionLayerView.pose),
+    const auto [x, y, z] = projectionLayerView.pose.position;
+    cameraContexts.push_back(common::CameraContext{glm::vec3(x, y, z), createViewMatrix(projectionLayerView.pose),
                                                    createProjectionMatrix(projectionLayerView.fov, 0.01f, 50.0f)});
   }
 
@@ -252,7 +253,6 @@ bool Presentation::renderLayer(
 
   common::DrawingContext drawingContext = {
       .imageIndex = swapchainImageIndex,
-      .camera = Camera(PerspectiveProjection{}, glm::vec3(0.0f), 0.0f, 0.0f),
       .cameraContexts = std::move(cameraContexts)
   };
   _graphicsContext->draw(drawingContext);

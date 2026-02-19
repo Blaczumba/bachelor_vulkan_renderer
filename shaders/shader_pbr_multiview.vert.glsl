@@ -56,6 +56,5 @@ void main() {
     lightFragPosition = BiasMat * GetResource(Light, lightBufferHandle).projView * gl_Position;
 
     gl_Position = camera[gl_ViewIndex].proj * camera[gl_ViewIndex].view * gl_Position;
-    
     fragTexCoord = inTexCoord;
 }
