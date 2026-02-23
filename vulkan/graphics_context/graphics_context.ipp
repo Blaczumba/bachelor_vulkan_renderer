@@ -139,16 +139,16 @@ template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createDescriptorSets() {
   // If VR presentation is enabled then multiply times 2 otherwise times 1.
   const uint32_t size =
-      _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera) * (1 + MULTIVIEW_PRESENTATION));
+      _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera));
   _dynamicUniformBuffersCamera =
-      Buffer::createUniformBuffer(*_logicalDevice, MAX_FRAMES_IN_FLIGHT * size);
+      Buffer::createUniformBuffer(*_logicalDevice, (1 + static_cast<uint32_t>(MULTIVIEW_PRESENTATION)) * MAX_FRAMES_IN_FLIGHT * size);
   Sampler sampler = SamplerBuilder()
                         .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
                         .build(*_logicalDevice);
   _skyboxHandle = _bindlessWriter->storeTexture(_textureCubemap, sampler);
   _samplerManager->transferSampler(std::move(sampler));
 
-  _dynamicDescriptorSetWriter.storeDynamicBuffer(_dynamicUniformBuffersCamera, size);
+  _dynamicDescriptorSetWriter.storeDynamicBuffer(_dynamicUniformBuffersCamera, size, 1 + static_cast<uint32_t>(MULTIVIEW_PRESENTATION));
   _dynamicDescriptorSetWriter.writeDescriptorSet(
       _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
 
@@ -569,16 +569,15 @@ template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::updateUniformBuffer(
     const std::vector<common::CameraContext>& cameraContexts, uint32_t currentFrame) {
   if constexpr (MULTIVIEW_PRESENTATION) {
-    UniformBufferCamera _ubCamera[2];
-    for (size_t i = 0; i < cameraContexts.size(); ++i) {
-      _ubCamera[i].view = cameraContexts[i].view;
-      _ubCamera[i].proj = cameraContexts[i].proj;
-      _ubCamera[i].pos = cameraContexts[i].position;
+    UniformBufferCamera _ubCamera;
+    for (size_t i = 0; i < 2; ++i) {
+      _ubCamera.view = cameraContexts[i].view;
+      _ubCamera.proj = cameraContexts[i].proj;
+      _ubCamera.pos = cameraContexts[i].position;
       _dynamicUniformBuffersCamera.copyData(
           _ubCamera,
-          currentFrame * _physicalDevice->getMemoryAlignment(2 * sizeof(UniformBufferCamera)));
+          (2 * currentFrame + i) * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
     }
-
   } else {
     UniformBufferCamera _ubCamera;
     _ubCamera.view = cameraContexts[0].view;
@@ -696,15 +695,24 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::recordCommandBuffe
     VkDescriptorSet descriptorSets[] = {
       _bindlessDescriptorSet.getVkDescriptorSet(), _dynamicDescriptorSet.getVkDescriptorSet()};
 
-    uint32_t offset;
+    if constexpr (MULTIVIEW_PRESENTATION) {
+      uint32_t offset[2];
+      _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
+          offset, {2u * _synchContext.currentFrame, 2u * _synchContext.currentFrame});
+      vkCmdBindDescriptorSets(
+          commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
+          _graphicsPipeline->getVkPipelineLayout(), 0,
+          static_cast<uint32_t>(std::size(descriptorSets)), descriptorSets, 2, offset);
 
-    _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-        &offset, {_synchContext.currentFrame});
-
-    vkCmdBindDescriptorSets(
-        commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
-        _graphicsPipeline->getVkPipelineLayout(), 0,
-        static_cast<uint32_t>(std::size(descriptorSets)), descriptorSets, 1, &offset);
+    } else {
+      uint32_t offset;
+      _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
+          &offset, {_synchContext.currentFrame});
+      vkCmdBindDescriptorSets(
+          commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
+          _graphicsPipeline->getVkPipelineLayout(), 0,
+          static_cast<uint32_t>(std::size(descriptorSets)), descriptorSets, 1, &offset);
+    }
 
     recordOctreeSecondaryCommandBuffer(commandBuffer, root, planes);
 
@@ -758,14 +766,23 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::recordCommandBuffe
     vkCmdBindPipeline(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
                       _phongEnvMappingPipeline->getVkPipeline());
 
-    uint32_t offset;
 
-    _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-        &offset, {_synchContext.currentFrame});
 
-    vkCmdBindDescriptorSets(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
-                            _phongEnvMappingPipeline->getVkPipelineLayout(), 0,
-                            std::size(descriptorSets), descriptorSets, 1, &offset);
+    if constexpr (MULTIVIEW_PRESENTATION) {
+      uint32_t offset[2];
+      _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
+          offset, {2u * _synchContext.currentFrame, 2u * _synchContext.currentFrame});
+      vkCmdBindDescriptorSets(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
+                              _phongEnvMappingPipeline->getVkPipelineLayout(), 0,
+                              std::size(descriptorSets), descriptorSets, 2, offset);
+    } else {
+      uint32_t offset;
+      _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
+          &offset, {_synchContext.currentFrame});
+      vkCmdBindDescriptorSets(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
+                              _phongEnvMappingPipeline->getVkPipelineLayout(), 0,
+                              std::size(descriptorSets), descriptorSets, 1, &offset);
+    }
 
     const PushConstantsModelDescriptorHandles32Bit envMapPc = {
       .model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f))
