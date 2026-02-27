@@ -7,16 +7,36 @@
 
 namespace xrw {
 
-Swapchain::Swapchain(XrSwapchain swapchain, XrViewConfigurationType configType, uint32_t width,
-                     uint32_t height, int64_t format, const Session& session)
-  : _swapchain(swapchain), _configType(configType), _width(width), _height(height), _format(format),
-    _session(session) {}
+Swapchain::Swapchain(XrSwapchain swapchain, uint32_t width, uint32_t height) noexcept
+    : _swapchain(swapchain), _width(width), _height(height) {}
 
-XrSwapchain Swapchain::getSwapchain() const {
+Swapchain::Swapchain(Swapchain&& swapchain) noexcept
+    : _swapchain(std::exchange(swapchain._swapchain, XR_NULL_HANDLE)),
+    _width(swapchain._width), _height(swapchain._height) {}
+
+Swapchain& Swapchain::operator=(Swapchain&& swapchain) noexcept {
+  if (this == &swapchain) {
+    return *this;
+  }
+
+  _swapchain = std::exchange(swapchain._swapchain, XR_NULL_HANDLE);
+  _width = swapchain._width;
+  _height = swapchain._height;
+  return *this;
+}
+
+
+Swapchain::~Swapchain() {
+  if (_swapchain != XR_NULL_HANDLE) {
+    xrDestroySwapchain(_swapchain);
+  }
+}
+
+XrSwapchain Swapchain::getSwapchain() const noexcept {
   return _swapchain;
 }
 
-XrExtent2Di Swapchain::getXrExtent2Di() const {
+XrExtent2Di Swapchain::getXrExtent2Di() const noexcept {
   return {static_cast<int32_t>(_width), static_cast<int32_t>(_height)};
 }
 
@@ -113,8 +133,8 @@ std::vector<Swapchain> SwapchainBuilder::build(
     graphicsPlugin.createSwapchainContext(swapchain, *format, configView.recommendedImageRectWidth,
                                           configView.recommendedImageRectHeight, _arraySize);
 
-    swapchains.emplace_back(swapchain, _viewConfigType, configView.recommendedImageRectWidth,
-                            configView.recommendedImageRectHeight, *format, session);
+    swapchains.push_back(Swapchain(swapchain, configView.recommendedImageRectWidth,
+                            configView.recommendedImageRectHeight));
   }
   return swapchains;
 }

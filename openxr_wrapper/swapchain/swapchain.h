@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <openxr/openxr.h>
 #include <vector>
 
@@ -11,23 +10,28 @@
 namespace xrw {
 
 class Swapchain {
+  Swapchain(XrSwapchain swapchain, uint32_t width, uint32_t height) noexcept;
+
 public:
-  Swapchain(XrSwapchain swapchain, XrViewConfigurationType configType, uint32_t width,
-            uint32_t height, int64_t format, const Session& session);
+  Swapchain() noexcept = default;
 
-  XrSwapchain getSwapchain() const;
+  Swapchain(Swapchain&& swapchain) noexcept;
 
-  XrExtent2Di getXrExtent2Di() const;
+  Swapchain& operator=(Swapchain&& swapchain) noexcept;
+
+  ~Swapchain();
+
+  XrSwapchain getSwapchain() const noexcept;
+
+  XrExtent2Di getXrExtent2Di() const noexcept;
 
 private:
-  XrSwapchain _swapchain;
-  XrViewConfigurationType _configType;
+  XrSwapchain _swapchain = XR_NULL_HANDLE;
 
-  const Session& _session;
-
-  int64_t _format;
   uint32_t _width;
   uint32_t _height;
+
+  friend class SwapchainBuilder;
 };
 
 class SwapchainBuilder {

@@ -129,8 +129,8 @@ void Presentation::handleSessionStateChangedEvent(
     spdlog::error("XrEventDataSessionStateChanged for unknown session");
     return;
   }
-  _sessionState = stateChangedEvent.state;
-  switch (_sessionState) {
+
+  switch (stateChangedEvent.state) {
     case XR_SESSION_STATE_READY:
       {
         const XrSessionBeginInfo sessionBeginInfo = {

@@ -59,7 +59,6 @@ private:
   std::unique_ptr<Space> _space;
 
   bool _sessionRunning = false;
-  XrSessionState _sessionState;  // TODO: Change to automatic var.
   XrEventDataBuffer _eventDataBuffer;
 
   struct InputState {
