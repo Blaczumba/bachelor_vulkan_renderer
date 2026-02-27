@@ -64,18 +64,18 @@ AndroidPlatform::AndroidPlatform(struct android_app* app) : _app(app) {
   if (XR_SUCCEEDED(xrGetInstanceProcAddr(
           XR_NULL_HANDLE, "xrInitializeLoaderKHR",
           reinterpret_cast<PFN_xrVoidFunction*>(&initialize_loader)))) [[likely]] {
-    XrLoaderInitInfoAndroidKHR loader_init_info_android;
-    loader_init_info_android.type = XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR;
-    loader_init_info_android.next = nullptr;
-    loader_init_info_android.applicationVM = _app->activity->vm;
-    loader_init_info_android.applicationContext = _app->activity->clazz;
+    XrLoaderInitInfoAndroidKHR loader_init_info_android = {
+      .type = XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR,
+      .applicationVM = _app->activity->vm,
+      .applicationContext = _app->activity->clazz};
     initialize_loader(
         reinterpret_cast<const XrLoaderInitInfoBaseHeaderKHR*>(&loader_init_info_android));
   }
 
-  _instance_create_info_android = {XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR};
-  _instance_create_info_android.applicationVM = _app->activity->vm;
-  _instance_create_info_android.applicationActivity = _app->activity->clazz;
+  _instance_create_info_android = XrInstanceCreateInfoAndroidKHR {
+    .type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR,
+    .applicationVM = _app->activity->vm,
+    .applicationActivity = _app->activity->clazz};
 }
 
 std::span<const char* const> AndroidPlatform::getInstanceExtensions() const {

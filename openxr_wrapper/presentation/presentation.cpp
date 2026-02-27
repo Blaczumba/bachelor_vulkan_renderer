@@ -18,7 +18,7 @@ namespace {
 std::unique_ptr<GraphicsPlugin> createGraphicsPlugin(common::GraphicsApi graphicsApi) {
   switch (graphicsApi) {
     case common::GraphicsApi::VULKAN:
-      return std::make_unique<GraphicsPluginVulkan>(nullptr);
+      return std::make_unique<GraphicsPluginVulkan>();
   }
 }
 
@@ -83,8 +83,10 @@ std::unique_ptr<common::Presentation> Presentation::create(
 }
 
 void Presentation::run() {
-  _graphicsContext->createPresentingResources(
-      _graphicsPlugin->getSwapchainContext(_swapchains[0].getSwapchain()));
+  for (const Swapchain& swapchain : _swapchains) {
+    _graphicsContext->createPresentingResources(
+        _graphicsPlugin->getSwapchainContext(swapchain.getSwapchain()));
+  }
   _graphicsContext->initializeResources();
   _space = Space::create(_session->getXrSession(), XR_REFERENCE_SPACE_TYPE_LOCAL);
   while (!_platform->shouldClose()) {

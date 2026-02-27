@@ -26,8 +26,6 @@ public:
 
   virtual common::PresentResources getSwapchainContext(XrSwapchain swapchain) = 0;
 
-  virtual XrSwapchainImageBaseHeader* getSwapchainImages(XrSwapchain swapchain) = 0;
-
   virtual void initialize(XrInstance xrInstance, XrSystemId systemId) = 0;
 
   virtual void createResources() = 0;

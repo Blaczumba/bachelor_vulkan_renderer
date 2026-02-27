@@ -24,9 +24,6 @@
 
 namespace xrw {
 
-GraphicsPluginVulkan::GraphicsPluginVulkan(PFN_vkDebugUtilsMessengerCallbackEXT debugCallback)
-  : _debugCallback(debugCallback) {}
-
 GraphicsPluginVulkan::~GraphicsPluginVulkan() {
   for (const auto& [swapchain, views] : _swapchainViews) {
     for (VkImageView view : views) {
@@ -106,14 +103,6 @@ common::PresentResources GraphicsPluginVulkan::getSwapchainContext(XrSwapchain s
   }
 
   return it->second;
-}
-
-XrSwapchainImageBaseHeader* GraphicsPluginVulkan::getSwapchainImages(XrSwapchain swapchain) {
-  //  if (auto it = _swapchainImageContexts.find(swapchain); it != _swapchainImageContexts.cend())
-  //      [[likely]] {
-  //    return reinterpret_cast<XrSwapchainImageBaseHeader*>(it->second.images.data());
-  //  }
-  return nullptr;
 }
 
 namespace {
@@ -263,12 +252,10 @@ std::unique_ptr<LogicalDevice> createLogicalDevice(
   std::transform(uniqueQueueFamilies.cbegin(), uniqueQueueFamilies.cend(), queueCreateInfos.begin(),
                  [&queuePriority](uint32_t queueFamilyIndex) {
                    return VkDeviceQueueCreateInfo{
-                     VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                     nullptr,
-                     0,
-                     queueFamilyIndex,
-                     1,
-                     &queuePriority};
+                     .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                     .queueFamilyIndex = queueFamilyIndex,
+                     .queueCount = 1,
+                     .pQueuePriorities= &queuePriority};
                  });
 
   ExtensionsConnector extensionsConnector(physicalDevice);

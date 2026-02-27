@@ -27,7 +27,7 @@ namespace xrw {
 
 class GraphicsPluginVulkan final : public GraphicsPlugin {
 public:
-  GraphicsPluginVulkan(PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
+  GraphicsPluginVulkan() noexcept = default;
 
   ~GraphicsPluginVulkan() override;
 
@@ -43,8 +43,6 @@ public:
 
   common::PresentResources getSwapchainContext(XrSwapchain swapchain) override;
 
-  XrSwapchainImageBaseHeader* getSwapchainImages(XrSwapchain swapchain) override;
-
   void initialize(XrInstance xrInstance, XrSystemId systemId) override;
 
   void createResources() override;
@@ -56,7 +54,6 @@ private:
   const LogicalDevice* _logicalDevice;
 
   XrGraphicsBindingVulkanKHR _graphicsBinding;
-  PFN_vkDebugUtilsMessengerCallbackEXT _debugCallback;
 
   std::unordered_map<XrSwapchain, common::PresentResources> _presentResources;
   std::unordered_map<XrSwapchain, lib::Buffer<VkImageView>> _swapchainViews;
