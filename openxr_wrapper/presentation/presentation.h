@@ -7,15 +7,17 @@
 #include "openxr_wrapper/graphics_plugin/graphics_plugin.h"
 #include "openxr_wrapper/instance/instance.h"
 #include "openxr_wrapper/session/session.h"
-#include "openxr_wrapper/swapchain/swapchain.h"
 #include "openxr_wrapper/space/space.h"
+#include "openxr_wrapper/swapchain/swapchain.h"
 
 namespace xrw {
 
 class Presentation final : public common::Presentation {
-  Presentation(std::unique_ptr<Platform>&& platform, std::unique_ptr<GraphicsPlugin>&& graphicsPlugin,
-               std::unique_ptr<common::GraphicsContext>&& graphicsContext, std::unique_ptr<Instance>&& instance,
-               std::unique_ptr<System>&& system, std::unique_ptr<Session>&& session, std::vector<Swapchain>&& swapchains) noexcept;
+  Presentation(
+      std::unique_ptr<Platform>&& platform, std::unique_ptr<GraphicsPlugin>&& graphicsPlugin,
+      std::unique_ptr<common::GraphicsContext>&& graphicsContext,
+      std::unique_ptr<Instance>&& instance, std::unique_ptr<System>&& system,
+      std::unique_ptr<Session>&& session, std::vector<Swapchain>&& swapchains) noexcept;
 
 public:
   static std::unique_ptr<common::Presentation> create(
@@ -38,10 +40,9 @@ private:
   void pollActions();
 
   // TODO: refactor
-  bool renderLayer(
-      XrTime predictedDisplayTime,
-      std::vector<XrCompositionLayerProjectionView> &projectionLayerViews,
-      XrCompositionLayerProjection &layer);
+  bool renderLayer(XrTime predictedDisplayTime,
+                   std::vector<XrCompositionLayerProjectionView>& projectionLayerViews,
+                   XrCompositionLayerProjection& layer);
 
   void draw();
 
@@ -58,7 +59,7 @@ private:
   std::unique_ptr<Space> _space;
 
   bool _sessionRunning = false;
-  XrSessionState _sessionState; // TODO: Change to automatic var.
+  XrSessionState _sessionState;  // TODO: Change to automatic var.
   XrEventDataBuffer _eventDataBuffer;
 
   struct InputState {

@@ -231,14 +231,14 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
         _pipelineManager->getOrCreateCameraLayout(*_logicalDevice, MULTIVIEW_PRESENTATION))) {}
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
-std::unique_ptr<common::GraphicsContext>
-GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::create(
-    std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
-    std::unique_ptr<PhysicalDevice>&& physicalDevice,
-    std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader) {
-  return std::unique_ptr<GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>>(new GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>(
-      std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
-      std::move(logicalDevice), fileLoader));
+std::unique_ptr<common::GraphicsContext> GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
+    create(std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
+           std::unique_ptr<PhysicalDevice>&& physicalDevice,
+           std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader) {
+  return std::unique_ptr<GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>>(
+      new GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>(
+          std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
+          std::move(logicalDevice), fileLoader));
 }
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>

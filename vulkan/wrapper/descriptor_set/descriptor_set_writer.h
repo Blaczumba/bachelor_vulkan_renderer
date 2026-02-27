@@ -21,7 +21,8 @@ public:
 
   DescriptorSetWriter& storeBuffer(const Buffer& buffer);
 
-  DescriptorSetWriter& storeDynamicBuffer(const Buffer& buffer, uint32_t dynamicElementSize, uint32_t descriptorCount = 1);
+  DescriptorSetWriter& storeDynamicBuffer(
+      const Buffer& buffer, uint32_t dynamicElementSize, uint32_t descriptorCount = 1);
 
   DescriptorSetWriter& storeBufferArrayElement(const Buffer& buffer);
 

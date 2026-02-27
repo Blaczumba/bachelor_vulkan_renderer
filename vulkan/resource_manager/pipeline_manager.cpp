@@ -162,13 +162,15 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(
     const Renderpass& renderpass, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
-      addShader(logicalDevice, multiview ? "shader_pbr_multiview.vert.spv" : "shader_pbr.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+      addShader(logicalDevice, multiview ? "shader_pbr_multiview.vert.spv" : "shader_pbr.vert.spv",
+                VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
       addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice, multiview)},
+        {getOrCreateBindlessLayout(logicalDevice),
+         getOrCreateCameraLayout(logicalDevice, multiview)},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
   },
@@ -264,13 +266,16 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
     const Renderpass& renderpass, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
-      addShader(logicalDevice, multiview ? "env_mapping_phong_multiview.vert.spv" : "env_mapping_phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+      addShader(logicalDevice,
+                multiview ? "env_mapping_phong_multiview.vert.spv" : "env_mapping_phong.vert.spv",
+                VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
       addShader(logicalDevice, "env_mapping_phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice, multiview)},
+        {getOrCreateBindlessLayout(logicalDevice),
+         getOrCreateCameraLayout(logicalDevice, multiview)},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
   },

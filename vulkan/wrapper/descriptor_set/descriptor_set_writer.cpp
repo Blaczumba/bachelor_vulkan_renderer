@@ -38,19 +38,18 @@ DescriptorSetWriter& DescriptorSetWriter::storeDynamicBuffer(
     const Buffer& buffer, uint32_t dynamicElementSize, uint32_t descriptorCount) {
   _arrayElement = 0;
   for (uint32_t i = 0; i < descriptorCount; i++) {
-    _bufferInfos.push_back(
-        VkDescriptorBufferInfo{
-          .buffer = buffer.getVkBuffer(),
-          .offset = i * dynamicElementSize,
-          .range = dynamicElementSize});
+    _bufferInfos.push_back(VkDescriptorBufferInfo{
+      .buffer = buffer.getVkBuffer(),
+      .offset = i * dynamicElementSize,
+      .range = dynamicElementSize});
     _dynamicBuffersBaseSizes.push_back(dynamicElementSize);
     _descriptorWrites.push_back(VkWriteDescriptorSet{
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstBinding = _binding,
-        .dstArrayElement = _arrayElement++,
-        .descriptorCount = 1,
-        .descriptorType = getDescriptorTypeDynamic(buffer.getUsage()),
-        .pBufferInfo = &_bufferInfos.back()});
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .dstBinding = _binding,
+      .dstArrayElement = _arrayElement++,
+      .descriptorCount = 1,
+      .descriptorType = getDescriptorTypeDynamic(buffer.getUsage()),
+      .pBufferInfo = &_bufferInfos.back()});
   }
   _binding++;
 

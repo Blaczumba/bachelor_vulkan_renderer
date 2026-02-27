@@ -28,11 +28,11 @@ GraphicsPluginVulkan::GraphicsPluginVulkan(PFN_vkDebugUtilsMessengerCallbackEXT 
   : _debugCallback(debugCallback) {}
 
 GraphicsPluginVulkan::~GraphicsPluginVulkan() {
-    for (const auto& [swapchain, views] : _swapchainViews) {
-      for (VkImageView view : views) {
-        vkDestroyImageView(_logicalDevice->getVkDevice(), view, nullptr);
-      }
+  for (const auto& [swapchain, views] : _swapchainViews) {
+    for (VkImageView view : views) {
+      vkDestroyImageView(_logicalDevice->getVkDevice(), view, nullptr);
     }
+  }
 }
 
 std::span<const char* const> GraphicsPluginVulkan::getOpenXrInstanceExtensions() const {

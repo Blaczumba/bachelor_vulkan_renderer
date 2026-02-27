@@ -5,7 +5,7 @@
 #include <android_native_app_glue.h>
 #include <jni.h>
 #ifdef XR_USE_GRAPHICS_API_VULKAN
-#include <vulkan/vulkan.h>
+  #include <vulkan/vulkan.h>
 #endif
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
@@ -34,7 +34,7 @@ public:
 
 private:
   struct android_app* _app;
-  JNIEnv *_env;
+  JNIEnv* _env;
 
   AndroidAppState _appState;
 

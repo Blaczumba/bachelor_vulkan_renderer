@@ -8,43 +8,50 @@
 
 namespace {
 
-void AppHandleCmd(struct android_app *app, int32_t cmd) {
-  auto *appState = reinterpret_cast<xrw::AndroidAppState *>(app->userData);
+void AppHandleCmd(struct android_app* app, int32_t cmd) {
+  auto* appState = reinterpret_cast<xrw::AndroidAppState*>(app->userData);
   switch (cmd) {
-    case APP_CMD_START: {
-      spdlog::info("APP_CMD_START onStart()");
-      break;
-    }
-    case APP_CMD_RESUME: {
-      spdlog::info("APP_CMD_RESUME onResume()");
-      appState->resumed = true;
-      break;
-    }
-    case APP_CMD_PAUSE: {
-      spdlog::info("APP_CMD_PAUSE onPause()");
-      appState->resumed = false;
-      break;
-    }
-    case APP_CMD_STOP: {
-      spdlog::info("APP_CMD_STOP onStop()");
-      break;
-    }
-    case APP_CMD_DESTROY: {
-      spdlog::info("APP_CMD_DESTROY onDestroy()");
-      break;
-    }
-    case APP_CMD_INIT_WINDOW: {
-      spdlog::info("APP_CMD_INIT_WINDOW surfaceCreated()");
-      break;
-    }
-    case APP_CMD_TERM_WINDOW: {
-      spdlog::info("APP_CMD_TERM_WINDOW surfaceDestroyed()");
-      break;
-    }
+    case APP_CMD_START:
+      {
+        spdlog::info("APP_CMD_START onStart()");
+        break;
+      }
+    case APP_CMD_RESUME:
+      {
+        spdlog::info("APP_CMD_RESUME onResume()");
+        appState->resumed = true;
+        break;
+      }
+    case APP_CMD_PAUSE:
+      {
+        spdlog::info("APP_CMD_PAUSE onPause()");
+        appState->resumed = false;
+        break;
+      }
+    case APP_CMD_STOP:
+      {
+        spdlog::info("APP_CMD_STOP onStop()");
+        break;
+      }
+    case APP_CMD_DESTROY:
+      {
+        spdlog::info("APP_CMD_DESTROY onDestroy()");
+        break;
+      }
+    case APP_CMD_INIT_WINDOW:
+      {
+        spdlog::info("APP_CMD_INIT_WINDOW surfaceCreated()");
+        break;
+      }
+    case APP_CMD_TERM_WINDOW:
+      {
+        spdlog::info("APP_CMD_TERM_WINDOW surfaceDestroyed()");
+        break;
+      }
   }
 }
 
-} // namespace
+}  // namespace
 
 namespace xrw {
 
@@ -87,7 +94,7 @@ bool AndroidPlatform::shouldClose() const {
 void AndroidPlatform::pollPlatformEvents(bool applicationRunning) {
   int events, timeout;
   struct android_poll_source* source;
-  while(true) {
+  while (true) {
     timeout = (!_appState.resumed && !applicationRunning && !shouldClose()) ? -1 : 0;
     if (ALooper_pollOnce(timeout, nullptr, &events, (void**)&source) < 0) {
       break;

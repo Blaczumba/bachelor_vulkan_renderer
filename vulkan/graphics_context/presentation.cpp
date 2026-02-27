@@ -108,7 +108,7 @@ void Presentation::run() {
        camera.getPosition(),
        camera.getViewMatrix(),
        camera.getProjectionMatrix(),
-      }
+       }
     };
     _graphicsContext->draw(_drawingContext);
     _swapchain.present(_drawingContext.imageIndex,
