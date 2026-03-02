@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <numeric>
 #include <ranges>
 
 #include "common/util/engine_exception.h"
@@ -48,7 +49,7 @@ Pipeline GraphicsPipelineBuilder::createPipeline(
     .pDynamicState = &_dynamicState,
     .layout = pipelineLayout.getVkPipelineLayout(),
     .renderPass = renderpass.getVkRenderPass()};
-  return Pipeline::create(renderpass.getLogicalDevice(), createInfo);
+  return Pipeline::create(renderpass.getLogicalDevice(), createInfo, _shaderStageFlags);
 }
 
 std::vector<Pipeline> GraphicsPipelineBuilder::createPipelines(
@@ -267,5 +268,11 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::withDepthStencilStateCreateInf
     .back = frontBack.has_value() ? frontBack->second : VkStencilOpState{},
     .minDepthBounds = depthBounds.has_value() ? depthBounds->first : 0.0f,
     .maxDepthBounds = depthBounds.has_value() ? depthBounds->second : 1.0f};
+  return *this;
+}
+
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::withPushConstantShaderStages(
+    VkShaderStageFlags shaderStageFlags) {
+  _shaderStageFlags = shaderStageFlags;
   return *this;
 }

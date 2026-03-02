@@ -5,13 +5,14 @@
 
 class Pipeline {
   Pipeline(const LogicalDevice& logicalDevice, VkPipeline pipeline, VkPipelineBindPoint bindPoint,
-           VkPipelineLayout layout) noexcept;
+           VkShaderStageFlags shaderStageFlags, VkPipelineLayout layout) noexcept;
 
 public:
   Pipeline() noexcept = default;
 
   static Pipeline create(
-      const LogicalDevice& logicalDevice, const VkGraphicsPipelineCreateInfo& createInfo);
+      const LogicalDevice& logicalDevice, const VkGraphicsPipelineCreateInfo& createInfo,
+      VkShaderStageFlags pushConstantShaderStages);
 
   static std::vector<Pipeline> create(const LogicalDevice& logicalDevice,
                                       std::span<const VkGraphicsPipelineCreateInfo> createInfos);
@@ -28,6 +29,8 @@ public:
 
   VkPipelineBindPoint getVkPipelineBindPoint() const noexcept;
 
+  VkShaderStageFlags getPushConstantVkShaderStageFlags() const noexcept;
+
   VkPipelineLayout getVkPipelineLayout() const noexcept;
 
   bool isValid() const noexcept;
@@ -37,6 +40,7 @@ private:
 
   VkPipeline _pipeline = VK_NULL_HANDLE;
   VkPipelineBindPoint _bindPoint;
+  VkShaderStageFlags _pushConstantShaderStages;
 
   VkPipelineLayout _layout = VK_NULL_HANDLE;
 

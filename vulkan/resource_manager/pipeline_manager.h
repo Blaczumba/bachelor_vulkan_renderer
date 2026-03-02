@@ -56,6 +56,8 @@ public:
 
   PipelineMapIndex createPBRProgram(const Renderpass& renderpass, bool multiview);
 
+  PipelineMapIndex createPbrTesselationProgram(const Renderpass& renderpass, bool multiview);
+
   PipelineMapIndex createPbrEnvMappingProgram(const Renderpass& renderpass);
 
   PipelineMapIndex createEnvMappingProgram(const Renderpass& renderpass, bool multiview);

@@ -41,13 +41,13 @@ VkDescriptorSetLayout PipelineManager::getOrCreateBindlessLayout(
      .binding = 0,
      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
      .descriptorCount = 200,
-     .stageFlags = VK_SHADER_STAGE_ALL,
+     .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
      },
     {
      .binding = 1,
      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
      .descriptorCount = 200,
-     .stageFlags = VK_SHADER_STAGE_ALL,
+     .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
      }
   };
 
@@ -75,7 +75,7 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(
      .binding = 0,
      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
      .descriptorCount = 1 + static_cast<uint32_t>(multiview),
-     .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+     .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
      },
   };
 
@@ -167,12 +167,13 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(
   const Shader& fragment =
       addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
+  const VkShaderStageFlags shaderStageFlags =
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
         {getOrCreateBindlessLayout(logicalDevice),
          getOrCreateCameraLayout(logicalDevice, multiview)},
-        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
+        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}
   },
       logicalDevice);
 
@@ -201,12 +202,75 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
             .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
             .withShaderStageCreateInfo(shaderStages)
+            .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
             .withMultisampleStateCreateInfo(
                 renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
+            .createPipeline(renderpass, *pipelineLayout),
+        pipelineLayoutIndex});
+  return pipelineIndex;
+}
+
+PipelineManager::PipelineMapIndex PipelineManager::createPbrTesselationProgram(
+    const Renderpass& renderpass, bool multiview) {
+  const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
+  const Shader& vertex =
+      addShader(logicalDevice, "shader_pbr_tesselation.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+  const Shader& tesselationControl = addShader(
+      logicalDevice, "shader_pbr_tesselation.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+  const Shader& tesselationEvaluation = addShader(
+      logicalDevice, "shader_pbr_tesselation.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+  const Shader& fragment =
+      addShader(logicalDevice, "shader_pbr_tesselation.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+  const VkShaderStageFlags shaderStageFlags =
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
+      | VK_SHADER_STAGE_FRAGMENT_BIT;
+  const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
+      PipelineLayoutKey{
+        {getOrCreateBindlessLayout(logicalDevice),
+         getOrCreateCameraLayout(logicalDevice, multiview)},
+        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}
+  },
+      logicalDevice);
+
+  lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
+      renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
+      VkPipelineColorBlendAttachmentState{
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                          | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
+
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec2>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
+
+  const VkPipelineShaderStageCreateInfo shaderStages[] = {
+    vertex.getVkPipelineStageCreateInfo(), tesselationControl.getVkPipelineStageCreateInfo(),
+    tesselationEvaluation.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
+
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  _pipelines.insertUnsafe(
+      *pipelineIndex,
+      PipelineResource{
+        GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+            .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
+            .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
+            .withShaderStageCreateInfo(shaderStages)
+            .withPushConstantShaderStages(shaderStageFlags)
+            .withViewportStateCreateInfo()
+            .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
+            .withMultisampleStateCreateInfo(
+                renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
+            .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
+            .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
+            .withTessellationStateCreateInfo(3)
             .createPipeline(renderpass, *pipelineLayout),
         pipelineLayoutIndex});
   return pipelineIndex;
@@ -220,10 +284,12 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
   const Shader& fragment =
       addShader(logicalDevice, "shader_pbr.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
+  const VkShaderStageFlags shaderStageFlags =
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
-      PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
-                        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
-                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
+      PipelineLayoutKey{
+        {getOrCreateBindlessLayout(logicalDevice)},
+        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}},
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
@@ -251,6 +317,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
             .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
             .withShaderStageCreateInfo(shaderStages)
+            .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT)
             .withMultisampleStateCreateInfo(
@@ -272,12 +339,13 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
   const Shader& fragment =
       addShader(logicalDevice, "env_mapping_phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
+  const VkShaderStageFlags shaderStageFlags =
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
         {getOrCreateBindlessLayout(logicalDevice),
          getOrCreateCameraLayout(logicalDevice, multiview)},
-        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}
+        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}
   },
       logicalDevice);
 
@@ -304,6 +372,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
             .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
             .withShaderStageCreateInfo(shaderStages)
+            .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
             .withMultisampleStateCreateInfo(
@@ -322,10 +391,11 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
   const Shader& fragment =
       addShader(logicalDevice, "skybox.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
+  const VkShaderStageFlags shaderStageFlags =
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
-                        {getPushConstantRange<PushConstantsSkybox>(
-                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)}},
+                        {getPushConstantRange<PushConstantsSkybox>(shaderStageFlags)}},
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
@@ -349,6 +419,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
             .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
             .withShaderStageCreateInfo(shaderStages)
+            .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT)
             .withMultisampleStateCreateInfo(
@@ -367,9 +438,9 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
   const Shader& fragment =
       addShader(logicalDevice, "shadow.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
+  const VkShaderStageFlags shaderStageFlags = VK_SHADER_STAGE_VERTEX_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
-      PipelineLayoutKey{
-        {}, {getPushConstantRange<PushConstantsShadow>(VK_SHADER_STAGE_VERTEX_BIT)}},
+      PipelineLayoutKey{{}, {getPushConstantRange<PushConstantsShadow>(shaderStageFlags)}},
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
@@ -391,6 +462,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
             .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
             .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
             .withShaderStageCreateInfo(shaderStages)
+            .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(
                 VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, std::pair{0.7f, 2.0f})
