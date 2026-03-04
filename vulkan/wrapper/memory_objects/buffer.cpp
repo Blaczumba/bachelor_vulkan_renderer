@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <iterator>
 #include <numeric>
+#include <ranges>
 
 #include "vulkan/wrapper/memory_objects/buffers.h"
 
@@ -202,8 +203,8 @@ void Buffer::copyDataInterleaving(std::span<const AttributeDescription> attribut
                     return attribute.count != first;
                   })) {
     throw EngineException(
-        "When copying buffers in an interleaving manner the buffers must have equal number of "
-        "elements.");
+        "Buffers must have equal number of elements when copying buffers in an interleaving "
+        "manner.");
   }
 
   std::vector<uint8_t*> offsetMemory;
@@ -219,9 +220,8 @@ void Buffer::copyDataInterleaving(std::span<const AttributeDescription> attribut
   stride += attributes.back().size;
 
   for (size_t j = 0, running_stride = 0; j < attributes[0].count; j++, running_stride += stride) {
-    for (size_t i = 0; i < attributes.size(); i++) {
-      const AttributeDescription& attribute = attributes[i];
-      std::memcpy(offsetMemory[i] + running_stride,
+    for (const auto& [offset, attribute] : std::views::zip(offsetMemory, attributes)) {
+      std::memcpy(offset + running_stride,
                   static_cast<uint8_t*>(attribute.data) + j * attribute.size, attribute.size);
     }
   }

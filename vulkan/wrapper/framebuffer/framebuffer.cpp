@@ -99,21 +99,20 @@ Framebuffer Framebuffer::createFromSwapchain(
     .pAttachments = imageViews.data(),
     .width = swapchainExtent.width,
     .height = swapchainExtent.height,
-    .layers = 1,
-  };
+    .layers = 1};
 
   VkFramebuffer framebuffer;
   CHECK_VKCMD(vkCreateFramebuffer(renderpass.getLogicalDevice().getVkDevice(), &framebufferInfo,
                                   nullptr, &framebuffer),
               "Failed to create VkFramebuffer.");
 
-  const VkViewport viewport = {
-    .width = static_cast<float>(swapchainExtent.width),
-    .height = static_cast<float>(swapchainExtent.height),
-    .minDepth = 0.0f,
-    .maxDepth = 1.0f};
-  const VkRect2D scissor = {.extent = swapchainExtent};
-  return Framebuffer(framebuffer, renderpass, viewport, scissor);
+  return Framebuffer(
+      framebuffer, renderpass,
+      VkViewport{.width = static_cast<float>(swapchainExtent.width),
+                 .height = static_cast<float>(swapchainExtent.height),
+                 .minDepth = 0.0f,
+                 .maxDepth = 1.0f},
+      VkRect2D{.extent = swapchainExtent});
 }
 
 Framebuffer Framebuffer::createFromTextures(
@@ -150,14 +149,13 @@ Framebuffer Framebuffer::createFromTextures(
                                   nullptr, &framebuffer),
               "Failed to create VkFramebuffer.");
 
-  const VkViewport viewport = {
-    .width = static_cast<float>(extent->width),
-    .height = static_cast<float>(extent->height),
-    .minDepth = 0.0f,
-    .maxDepth = 1.0f};
-
-  const VkRect2D scissor = {.extent = *extent};
-  return Framebuffer(framebuffer, renderpass, viewport, scissor);
+  return Framebuffer(
+      framebuffer, renderpass,
+      VkViewport{.width = static_cast<float>(extent->width),
+                 .height = static_cast<float>(extent->height),
+                 .minDepth = 0.0f,
+                 .maxDepth = 1.0f},
+      VkRect2D{.extent = *extent});
 }
 
 Framebuffer::Framebuffer(VkFramebuffer framebuffer, const Renderpass& renderpass,

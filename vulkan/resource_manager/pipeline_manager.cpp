@@ -74,7 +74,7 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(
     {
      .binding = 0,
      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-     .descriptorCount = 1 + static_cast<uint32_t>(multiview),
+     .descriptorCount = multiview ? 2u : 1u,
      .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
      },
   };
@@ -222,7 +222,9 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrTesselationProgram(
   const Shader& tesselationControl = addShader(
       logicalDevice, "shader_pbr_tesselation.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
   const Shader& tesselationEvaluation = addShader(
-      logicalDevice, multiview ? "shader_pbr_tesselation_multiview.tse.spv" : "shader_pbr_tesselation.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+      logicalDevice,
+      multiview ? "shader_pbr_tesselation_multiview.tse.spv" : "shader_pbr_tesselation.tse.spv",
+      VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
   const Shader& fragment =
       addShader(logicalDevice, "shader_pbr_tesselation.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 

@@ -258,8 +258,7 @@ private:
     const uint32_t size =
         _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera));
     _dynamicUniformBuffersCamera = Buffer::createUniformBuffer(
-        *_logicalDevice,
-        (1 + static_cast<uint32_t>(MULTIVIEW_PRESENTATION)) * MAX_FRAMES_IN_FLIGHT * size);
+        *_logicalDevice, (MULTIVIEW_PRESENTATION ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size);
     Sampler sampler = SamplerBuilder()
                           .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
                           .build(*_logicalDevice);
@@ -267,7 +266,7 @@ private:
     _samplerManager->transferSampler(std::move(sampler));
 
     _dynamicDescriptorSetWriter.storeDynamicBuffer(
-        _dynamicUniformBuffersCamera, size, 1 + static_cast<uint32_t>(MULTIVIEW_PRESENTATION));
+        _dynamicUniformBuffersCamera, size, MULTIVIEW_PRESENTATION ? 2 : 1);
     _dynamicDescriptorSetWriter.writeDescriptorSet(
         _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
 
@@ -809,24 +808,19 @@ private:
       VkDescriptorSet descriptorSets[] = {
         _bindlessDescriptorSet.getVkDescriptorSet(), _dynamicDescriptorSet.getVkDescriptorSet()};
 
+      uint32_t dynamicUniformBufferOffsets[MULTIVIEW_PRESENTATION ? 2 : 1];
       if constexpr (MULTIVIEW_PRESENTATION) {
-        uint32_t offset[2];
+        const uint32_t baseOffset = 2u * _synchContext.currentFrame;
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-            offset, {2u * _synchContext.currentFrame, 2u * _synchContext.currentFrame});
-        vkCmdBindDescriptorSets(
-            commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
-            _graphicsPipeline->getVkPipelineLayout(), 0,
-            static_cast<uint32_t>(std::size(descriptorSets)), descriptorSets, 2, offset);
-
+            dynamicUniformBufferOffsets, {baseOffset, baseOffset});
       } else {
-        uint32_t offset;
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-            &offset, {_synchContext.currentFrame});
-        vkCmdBindDescriptorSets(
-            commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
-            _graphicsPipeline->getVkPipelineLayout(), 0,
-            static_cast<uint32_t>(std::size(descriptorSets)), descriptorSets, 1, &offset);
+            dynamicUniformBufferOffsets, {_synchContext.currentFrame});
       }
+      vkCmdBindDescriptorSets(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
+                              _graphicsPipeline->getVkPipelineLayout(), 0,
+                              static_cast<uint32_t>(std::size(descriptorSets)), descriptorSets,
+                              std::size(dynamicUniformBufferOffsets), dynamicUniformBufferOffsets);
 
       recordOctreeSecondaryCommandBuffer(commandBuffer, root, planes);
 
@@ -879,21 +873,19 @@ private:
       vkCmdBindPipeline(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
                         _phongEnvMappingPipeline->getVkPipeline());
 
+      uint32_t dynamicUniformBufferOffsets[MULTIVIEW_PRESENTATION ? 2 : 1];
       if constexpr (MULTIVIEW_PRESENTATION) {
-        uint32_t offset[2];
+        const uint32_t baseOffset = 2u * _synchContext.currentFrame;
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-            offset, {2u * _synchContext.currentFrame, 2u * _synchContext.currentFrame});
-        vkCmdBindDescriptorSets(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
-                                _phongEnvMappingPipeline->getVkPipelineLayout(), 0,
-                                std::size(descriptorSets), descriptorSets, 2, offset);
+            dynamicUniformBufferOffsets, {baseOffset, baseOffset});
       } else {
-        uint32_t offset;
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-            &offset, {_synchContext.currentFrame});
-        vkCmdBindDescriptorSets(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
-                                _phongEnvMappingPipeline->getVkPipelineLayout(), 0,
-                                std::size(descriptorSets), descriptorSets, 1, &offset);
+            dynamicUniformBufferOffsets, {_synchContext.currentFrame});
       }
+      vkCmdBindDescriptorSets(
+          commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
+          _phongEnvMappingPipeline->getVkPipelineLayout(), 0, std::size(descriptorSets),
+          descriptorSets, std::size(dynamicUniformBufferOffsets), dynamicUniformBufferOffsets);
 
       const PushConstantsModelDescriptorHandles32Bit envMapPc = {
         .model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f))

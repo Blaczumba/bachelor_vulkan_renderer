@@ -75,8 +75,7 @@ ExtensionsConnector& ExtensionsConnector::withDescriptorIndexingExtension() {
 
 ExtensionsConnector& ExtensionsConnector::withMultiviewExtension() {
   _multiview = VkPhysicalDeviceMultiviewFeatures{
-    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
-    .multiview = VK_TRUE};
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES, .multiview = VK_TRUE};
 
   chainExtensionFeature(&_next, _multiview, VK_KHR_MULTIVIEW_EXTENSION_NAME, _physicalDevice);
   return *this;
