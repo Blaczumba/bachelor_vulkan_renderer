@@ -222,7 +222,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrTesselationProgram(
   const Shader& tesselationControl = addShader(
       logicalDevice, "shader_pbr_tesselation.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
   const Shader& tesselationEvaluation = addShader(
-      logicalDevice, "shader_pbr_tesselation.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+      logicalDevice, multiview ? "shader_pbr_tesselation_multiview.tse.spv" : "shader_pbr_tesselation.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
   const Shader& fragment =
       addShader(logicalDevice, "shader_pbr_tesselation.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 

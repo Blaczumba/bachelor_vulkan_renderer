@@ -37,6 +37,7 @@ DescriptorSetWriter& DescriptorSetWriter::storeBuffer(const Buffer& buffer) {
 DescriptorSetWriter& DescriptorSetWriter::storeDynamicBuffer(
     const Buffer& buffer, uint32_t dynamicElementSize, uint32_t descriptorCount) {
   _arrayElement = 0;
+  _bufferInfos.reserve(descriptorCount);
   for (uint32_t i = 0; i < descriptorCount; i++) {
     _bufferInfos.push_back(VkDescriptorBufferInfo{
       .buffer = buffer.getVkBuffer(),

@@ -192,7 +192,6 @@ private:
   // PBR objects.
   std::vector<Object> objects;
   Pipeline* _graphicsPipeline;
-  Pipeline* _graphicsTesselationPipeline;
 
   UniformBufferLight _ubLight;
   Buffer _dynamicUniformBuffersCamera;
@@ -390,8 +389,6 @@ private:
   void createGraphicsPipelines() {
     _graphicsPipeline = _pipelineManager->getPipeline(
         _pipelineManager->createPBRProgram(_renderPass, MULTIVIEW_PRESENTATION));
-    _graphicsTesselationPipeline = _pipelineManager->getPipeline(
-        _pipelineManager->createPbrTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION));
     _skyboxPipeline =
         _pipelineManager->getPipeline(_pipelineManager->createSkyboxProgram(_renderPass));
     _phongEnvMappingPipeline = _pipelineManager->getPipeline(
@@ -740,8 +737,8 @@ private:
         };
 
         vkCmdPushConstants(
-            commandBuffer, _graphicsTesselationPipeline->getVkPipelineLayout(),
-            _graphicsTesselationPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
+            commandBuffer, _graphicsPipeline->getVkPipelineLayout(),
+            _graphicsPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
 
         const auto& meshComponent = _registry.getComponent<MeshComponent>(object->getEntity());
         const Buffer& indexBuffer = _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
@@ -803,8 +800,8 @@ private:
         vkCmdSetViewport(commandBuffer, 0, 1, &framebuffer.getViewport());
         vkCmdSetScissor(commandBuffer, 0, 1, &framebuffer.getScissor());
       }
-      vkCmdBindPipeline(commandBuffer, _graphicsTesselationPipeline->getVkPipelineBindPoint(),
-                        _graphicsTesselationPipeline->getVkPipeline());
+      vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
+                        _graphicsPipeline->getVkPipeline());
 
       const OctreeNode* root = _octree->getRoot();
       const auto& planes = extractFrustumPlanes(cameraProj * cameraView);
@@ -817,8 +814,8 @@ private:
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
             offset, {2u * _synchContext.currentFrame, 2u * _synchContext.currentFrame});
         vkCmdBindDescriptorSets(
-            commandBuffer, _graphicsTesselationPipeline->getVkPipelineBindPoint(),
-            _graphicsTesselationPipeline->getVkPipelineLayout(), 0,
+            commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
+            _graphicsPipeline->getVkPipelineLayout(), 0,
             static_cast<uint32_t>(std::size(descriptorSets)), descriptorSets, 2, offset);
 
       } else {
@@ -826,8 +823,8 @@ private:
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
             &offset, {_synchContext.currentFrame});
         vkCmdBindDescriptorSets(
-            commandBuffer, _graphicsTesselationPipeline->getVkPipelineBindPoint(),
-            _graphicsTesselationPipeline->getVkPipelineLayout(), 0,
+            commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
+            _graphicsPipeline->getVkPipelineLayout(), 0,
             static_cast<uint32_t>(std::size(descriptorSets)), descriptorSets, 1, &offset);
       }
 
