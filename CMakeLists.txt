@@ -96,17 +96,21 @@ if(Vulkan_FOUND)
             Swapchain Buffer CommandBuffer
             Framebuffer Pipeline Sampler
             DescriptorSet VulkanWrapperUtil
+            VulkanLayer
     )
     target_link_libraries(${ENGINE_NAME} INTERFACE ${VULKAN_ENGINE_NAME})
 endif()
 
 if (ANDROID)
+    add_library(NativeAppGlue STATIC ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
+    target_include_directories(NativeAppGlue PUBLIC ${ANDROID_NDK}/sources/android/native_app_glue)
+
     add_subdirectory(openxr_wrapper)
     # target_compile_definitions(${ENGINE_NAME} INTERFACE XR_USE_PLATFORM_ANDROID)
     target_link_libraries(${ENGINE_NAME} INTERFACE
             OpenxrGraphicsPlugin OpenxrPlatform OpenxrInstance
             OpenxrSystem OpenxrSession OpenxrSwapchain
-            OpenxrSpace
+            OpenxrSpace OpenxrPresentation
 
             OpenXR::headers
 

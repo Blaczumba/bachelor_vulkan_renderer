@@ -2,16 +2,19 @@
 
 #include <algorithm>
 #include <array>
+#include <format>
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 #include <optional>
 #include <span>
+#include <spdlog/spdlog.h>
 #include <unordered_set>
 #include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
 #include "lib/buffer/buffer.h"
 #include "openxr_wrapper/util/check.h"
+#include "vulkan/graphics_context/graphics_context.h"
 #include "vulkan/wrapper/command_buffer/command_buffer.h"
 #include "vulkan/wrapper/debug_messenger/debug_messenger.h"
 #include "vulkan/wrapper/debug_messenger/debug_messenger_utils.h"
@@ -21,13 +24,10 @@
 
 namespace xrw {
 
-GraphicsPluginVulkan::GraphicsPluginVulkan(PFN_vkDebugUtilsMessengerCallbackEXT debugCallback)
-  : _debugCallback(debugCallback) {}
-
 GraphicsPluginVulkan::~GraphicsPluginVulkan() {
-  for (const auto& [swapchain, context] : _swapchainImageContexts) {
-    for (VkImageView view : context.views) {
-      vkDestroyImageView(_logicalDevice.getVkDevice(), view, nullptr);
+  for (const auto& [swapchain, views] : _swapchainViews) {
+    for (VkImageView view : views) {
+      vkDestroyImageView(_logicalDevice->getVkDevice(), view, nullptr);
     }
   }
 }
@@ -56,36 +56,53 @@ std::optional<int64_t> GraphicsPluginVulkan::selectSwapchainFormat(
 }
 
 void GraphicsPluginVulkan::createSwapchainContext(
-    XrSwapchain swapchain, int64_t format, uint32_t width, uint32_t height) {
-  SwapchainContext& context = _swapchainImageContexts[swapchain];
+    XrSwapchain swapchain, int64_t format, uint32_t width, uint32_t height, uint32_t layerCount) {
   uint32_t imageCount;
   CHECK_XRCMD(xrEnumerateSwapchainImages(swapchain, 0, &imageCount, nullptr),
               "Failed to xrEnumerateSwapchainImages.");
-  context.images = lib::Buffer<XrSwapchainImageVulkanKHR>(
+  lib::Buffer<XrSwapchainImageVulkanKHR> images(
       imageCount, {.type = XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR});
-  CHECK_XRCMD(xrEnumerateSwapchainImages(
-                  swapchain, imageCount, &imageCount,
-                  reinterpret_cast<XrSwapchainImageBaseHeader*>(context.images.data())),
-              "Failed to xrEnumerateSwapchainImages.");
+  CHECK_XRCMD(
+      xrEnumerateSwapchainImages(swapchain, imageCount, &imageCount,
+                                 reinterpret_cast<XrSwapchainImageBaseHeader*>(images.data())),
+      "Failed to xrEnumerateSwapchainImages.");
 
-  context.views = lib::Buffer<VkImageView>(imageCount);
-  std::transform(context.images.cbegin(), context.images.cend(), context.views.begin(),
-                 [logicalDevice = &_logicalDevice, format](const XrSwapchainImageVulkanKHR& image) {
-                   return logicalDevice->createImageView(
-                       image.image, VK_IMAGE_VIEW_TYPE_2D, static_cast<VkFormat>(format),
-                       VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
-                 });
-  context.format = static_cast<VkFormat>(format);
-  context.width = width;
-  context.height = height;
+  lib::Buffer<VkImageView>& imageViews = _swapchainViews[swapchain] =
+      lib::Buffer<VkImageView>(imageCount);
+  std::transform(
+      images.cbegin(), images.cend(), imageViews.begin(),
+      [&](const XrSwapchainImageVulkanKHR& image) {
+        const VkImageViewCreateInfo imageViewCreateInfo = {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+          .image = image.image,
+          .viewType = (layerCount >= 2) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D,
+          .format = static_cast<VkFormat>(format),
+          .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                               .baseMipLevel = 0,
+                               .levelCount = 1,
+                               .baseArrayLayer = 0,
+                               .layerCount = layerCount}
+        };
+        return _logicalDevice->createImageView(imageViewCreateInfo);
+      });
+
+  _presentResources[swapchain] = common::PresentResources{
+    .imageFormat = format,
+    .width = width,
+    .height = height,
+    .numLayers = layerCount,
+    .imageViews =
+        std::span(reinterpret_cast<const std::byte*>(imageViews.data()), imageViews.size()),
+    .multiview = (layerCount == 2)};
 }
 
-XrSwapchainImageBaseHeader* GraphicsPluginVulkan::getSwapchainImages(XrSwapchain swapchain) {
-  if (auto it = _swapchainImageContexts.find(swapchain); it != _swapchainImageContexts.cend())
-      [[likely]] {
-    return reinterpret_cast<XrSwapchainImageBaseHeader*>(it->second.images.data());
+common::PresentResources GraphicsPluginVulkan::getSwapchainContext(XrSwapchain swapchain) {
+  auto it = _presentResources.find(swapchain);
+  if (it == _presentResources.cend()) {
+    throw EngineException(std::format("XrSwapchain {} does not exist.", (size_t)swapchain));
   }
-  return nullptr;
+
+  return it->second;
 }
 
 namespace {
@@ -124,7 +141,7 @@ lib::Buffer<VkExtensionProperties> GetAvailableInstanceExtensions(std::string_vi
   return available_extensions;
 }
 
-Instance createInstance(
+std::unique_ptr<Instance> createInstance(
     std::string_view engineName, std::span<const char* const> requiredExtensions,
     PFN_vkDebugUtilsMessengerCallbackEXT debugCallback, XrInstance xrInstance,
     XrSystemId systemId) {
@@ -196,7 +213,7 @@ Instance createInstance(
                   xrInstance, &vkInstanceCreateInfoKhr, &vkInstance, &instanceCreateResult),
               "Failed to xrCreateVulkanInstanceKHR.");
   CHECK_VKCMD(instanceCreateResult, "Failed to crete VkInstance.");
-  return Instance::wrap(vkInstance);
+  return Instance::wrapPtr(vkInstance);
 }
 
 std::unique_ptr<PhysicalDevice> createPhysicalDevice(
@@ -224,7 +241,7 @@ std::unique_ptr<PhysicalDevice> createPhysicalDevice(
   return PhysicalDevice::wrap(physicalDevice, instance);
 }
 
-LogicalDevice createLogicalDevice(
+std::unique_ptr<LogicalDevice> createLogicalDevice(
     XrInstance xrInstance, XrSystemId systemId, const PhysicalDevice& physicalDevice) {
   const QueueFamilyIndices& indices = physicalDevice.getQueueFamilyIndices();
   const std::set<uint32_t> uniqueQueueFamilies = {*indices.graphicsFamily, *indices.presentFamily,
@@ -235,12 +252,10 @@ LogicalDevice createLogicalDevice(
   std::transform(uniqueQueueFamilies.cbegin(), uniqueQueueFamilies.cend(), queueCreateInfos.begin(),
                  [&queuePriority](uint32_t queueFamilyIndex) {
                    return VkDeviceQueueCreateInfo{
-                     VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                     nullptr,
-                     0,
-                     queueFamilyIndex,
-                     1,
-                     &queuePriority};
+                     .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                     .queueFamilyIndex = queueFamilyIndex,
+                     .queueCount = 1,
+                     .pQueuePriorities= &queuePriority};
                  });
 
   ExtensionsConnector extensionsConnector(physicalDevice);
@@ -295,35 +310,49 @@ LogicalDevice createLogicalDevice(
                                          &vulkanDeviceCreateResult),
               "Failed to xrCreateVulkanDeviceKHR.");
   CHECK_VKCMD(vulkanDeviceCreateResult, "Failed to create VkDevice.");
-  return LogicalDevice::wrap(logicalDevice, physicalDevice);
+  return LogicalDevice::wrapPtr(logicalDevice, physicalDevice);
 }
 
 }  // namespace
 
-void GraphicsPluginVulkan::initialize(XrInstance xrInstance, XrSystemId systemId) {
-  static constexpr const char* extensions[] = {
-    VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME};
-  _instance = createInstance("VR BejzakEngine", extensions, _debugCallback, xrInstance, systemId);
-#ifdef VALIDATION_LAYERS_ENABLED
-  _debugMessenger = DebugMessenger::create(_instance, _debugCallback);
-#endif
-  _physicalDevice = createPhysicalDevice(xrInstance, systemId, _instance);
-  _logicalDevice = createLogicalDevice(xrInstance, systemId, *_physicalDevice);
-
-  _graphicsBinding = XrGraphicsBindingVulkanKHR{
-    .type = XR_TYPE_GRAPHICS_BINDING_VULKAN2_KHR,
-    .instance = _instance.getVkInstance(),
-    .physicalDevice = _physicalDevice->getVkPhysicalDevice(),
-    .device = _logicalDevice.getVkDevice(),
-    .queueFamilyIndex = *_physicalDevice->getQueueFamilyIndices().graphicsFamily};
-
-  _singleTimeCommandPool =
-      CommandPool::create(_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-}
+void GraphicsPluginVulkan::initialize(XrInstance xrInstance, XrSystemId systemId) {}
 
 void GraphicsPluginVulkan::createResources() {}
 
-void GraphicsPluginVulkan::draw(
-    const XrCompositionLayerProjectionView& projectionLayerView, uint32_t swapchain_image_index) {}
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+  spdlog::warn("[Vulkan Validation] Severity: {}, Type: {}, Message: {}.",
+               (uint32_t)messageSeverity, (uint32_t)messageType, pCallbackData->pMessage);
+  return VK_FALSE;
+}
+
+std::unique_ptr<common::GraphicsContext> GraphicsPluginVulkan::createGraphicsContext(
+    XrInstance xrInstance, XrSystemId systemId, const FileLoader& fileLoader) {
+  static constexpr const char* extensions[] = {
+    VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME};
+  std::unique_ptr<Instance> instance =
+      createInstance("VR BejzakEngine", extensions, debugCallback, xrInstance, systemId);
+#ifdef VALIDATION_LAYERS_ENABLED
+  DebugMessenger debugMessenger = DebugMessenger::create(*instance, debugCallback);
+#endif
+  std::unique_ptr<PhysicalDevice> physicalDevice =
+      createPhysicalDevice(xrInstance, systemId, *instance);
+  std::unique_ptr<LogicalDevice> logicalDevice =
+      createLogicalDevice(xrInstance, systemId, *physicalDevice);
+  _logicalDevice = logicalDevice.get();
+
+  _graphicsBinding = XrGraphicsBindingVulkanKHR{
+    .type = XR_TYPE_GRAPHICS_BINDING_VULKAN2_KHR,
+    .instance = instance->getVkInstance(),
+    .physicalDevice = physicalDevice->getVkPhysicalDevice(),
+    .device = logicalDevice->getVkDevice(),
+    .queueFamilyIndex = *physicalDevice->getQueueFamilyIndices().graphicsFamily};
+
+  return vlkn::GraphicsContext<true, true>::create(
+      std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
+      std::move(logicalDevice), fileLoader);
+}
 
 }  // namespace xrw

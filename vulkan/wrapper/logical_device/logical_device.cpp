@@ -65,8 +65,9 @@ void LogicalDevice::destroyResource(ResourceDestroyer::Job destroyResource) cons
   _resourceDestroyer->destroyResource(std::move(destroyResource));
 }
 
-LogicalDevice LogicalDevice::create(
-    const PhysicalDevice& physicalDevice, std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) {
+namespace {
+
+VkDevice createVkDevice(const PhysicalDevice& physicalDevice) {
   const QueueFamilyIndices& indices = physicalDevice.getQueueFamilyIndices();
   const std::set<uint32_t> uniqueQueueFamilies = {*indices.graphicsFamily, *indices.presentFamily,
                                                   *indices.computeFamily, *indices.transferFamily};
@@ -124,8 +125,21 @@ LogicalDevice LogicalDevice::create(
   CHECK_VKCMD(
       vkCreateDevice(physicalDevice.getVkPhysicalDevice(), &createInfo, nullptr, &logicalDevice),
       "Failed to create LogicalDevice!");
+  return logicalDevice;
+}
 
-  return LogicalDevice(logicalDevice, physicalDevice, std::move(resourceDestroyer));
+}  // namespace
+
+LogicalDevice LogicalDevice::create(
+    const PhysicalDevice& physicalDevice, std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) {
+  return LogicalDevice(
+      createVkDevice(physicalDevice), physicalDevice, std::move(resourceDestroyer));
+}
+
+std::unique_ptr<LogicalDevice> LogicalDevice::createPtr(
+    const PhysicalDevice& physicalDevice, std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) {
+  return std::unique_ptr<LogicalDevice>(new LogicalDevice(
+      createVkDevice(physicalDevice), physicalDevice, std::move(resourceDestroyer)));
 }
 
 LogicalDevice LogicalDevice::wrap(VkDevice device, const PhysicalDevice& physicalDevice,
@@ -135,6 +149,17 @@ LogicalDevice LogicalDevice::wrap(VkDevice device, const PhysicalDevice& physica
   }
 
   return LogicalDevice(device, physicalDevice, std::move(resourceDestroyer));
+}
+
+std::unique_ptr<LogicalDevice> LogicalDevice::wrapPtr(
+    VkDevice device, const PhysicalDevice& physicalDevice,
+    std::unique_ptr<ResourceDestroyer>&& resourceDestroyer) {
+  if (device == VK_NULL_HANDLE) {
+    throw EngineException("Cannot wrap VK_NULL_HANDLE around LogicalDevice.");
+  }
+
+  return std::unique_ptr<LogicalDevice>(
+      new LogicalDevice(device, physicalDevice, std::move(resourceDestroyer)));
 }
 
 VkImageView LogicalDevice::createImageView(const VkImageViewCreateInfo& imageViewCreateInfo) const {

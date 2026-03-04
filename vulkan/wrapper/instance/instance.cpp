@@ -53,9 +53,7 @@ bool checkValidationLayerSupport() {
   return true;
 }
 
-}  // namespace
-
-Instance Instance::create(
+VkInstance createVkInstance(
     std::string_view engineName, std::span<const char* const> requiredExtensions,
     PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
 #ifdef VALIDATION_LAYERS_ENABLED
@@ -94,7 +92,22 @@ Instance Instance::create(
 
   VkInstance instance;
   CHECK_VKCMD(vkCreateInstance(&createInfo, nullptr, &instance), "Failed to create VkInstance.");
-  return Instance(instance);
+  return instance;
+}
+
+}  // namespace
+
+Instance Instance::create(
+    std::string_view engineName, std::span<const char* const> requiredExtensions,
+    PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
+  return Instance(createVkInstance(engineName, requiredExtensions, debugCallback));
+}
+
+std::unique_ptr<Instance> Instance::createPtr(
+    std::string_view engineName, std::span<const char* const> requiredExtensions,
+    PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) {
+  return std::unique_ptr<Instance>(
+      new Instance(createVkInstance(engineName, requiredExtensions, debugCallback)));
 }
 
 Instance Instance::wrap(VkInstance instance) {
@@ -103,6 +116,14 @@ Instance Instance::wrap(VkInstance instance) {
   }
 
   return Instance(instance);
+}
+
+std::unique_ptr<Instance> Instance::wrapPtr(VkInstance instance) {
+  if (instance == VK_NULL_HANDLE) {
+    throw EngineException("Cannot wrap VK_NULL_HANDLE around Instance.");
+  }
+
+  return std::unique_ptr<Instance>(new Instance(instance));
 }
 
 VkInstance Instance::getVkInstance() const noexcept {

@@ -1,2 +1,3 @@
 add_subdirectory(wrapper)
 add_subdirectory(resource_manager)
+add_subdirectory(graphics_context)

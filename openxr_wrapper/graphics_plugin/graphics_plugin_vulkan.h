@@ -1,5 +1,8 @@
 #pragma once
 
+#if ANDROID
+  #include <jni.h>
+#endif
 #include <memory>
 #include <openxr/openxr.h>
 #include <vulkan/vulkan.h>  // Vulkan needs to be included before openxr_platform.h
@@ -9,6 +12,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "common/abstractions/contexts.h"
+#include "common/abstractions/graphics_context.h"
 #include "graphics_plugin.h"
 #include "vulkan/wrapper/command_buffer/command_buffer.h"
 #include "vulkan/wrapper/debug_messenger/debug_messenger.h"
@@ -20,9 +25,9 @@
 
 namespace xrw {
 
-class GraphicsPluginVulkan : public GraphicsPlugin {
+class GraphicsPluginVulkan final : public GraphicsPlugin {
 public:
-  GraphicsPluginVulkan(PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
+  GraphicsPluginVulkan() noexcept = default;
 
   ~GraphicsPluginVulkan() override;
 
@@ -33,46 +38,25 @@ public:
   std::optional<int64_t> selectSwapchainFormat(
       std::span<const int64_t> runtimeFormats) const override;
 
-  void createSwapchainContext(
-      XrSwapchain swapchain, int64_t format, uint32_t width, uint32_t height) override;
+  void createSwapchainContext(XrSwapchain swapchain, int64_t format, uint32_t width,
+                              uint32_t height, uint32_t layerCount) override;
 
-  XrSwapchainImageBaseHeader* getSwapchainImages(XrSwapchain swapchain) override;
+  common::PresentResources getSwapchainContext(XrSwapchain swapchain) override;
 
   void initialize(XrInstance xrInstance, XrSystemId systemId) override;
 
   void createResources() override;
 
-  void draw(const XrCompositionLayerProjectionView& projectionLayerView,
-            uint32_t swapchain_image_index) override;
+  std::unique_ptr<common::GraphicsContext> createGraphicsContext(
+      XrInstance xrInstance, XrSystemId systemId, const FileLoader& fileLoader) override;
 
-protected:
+private:
+  const LogicalDevice* _logicalDevice;
+
   XrGraphicsBindingVulkanKHR _graphicsBinding;
 
-  Instance _instance;
-  PFN_vkDebugUtilsMessengerCallbackEXT _debugCallback;
-  DebugMessenger _debugMessenger;
-  std::unique_ptr<PhysicalDevice> _physicalDevice;
-  LogicalDevice _logicalDevice;
-
-  static constexpr size_t MAX_FRAMES_IN_FLIGHT = 3;
-  static constexpr size_t MAX_THREADS_IN_POOL = 2;
-
-  struct SwapchainContext {
-    VkFormat format;
-    uint32_t width;
-    uint32_t height;
-    lib::Buffer<XrSwapchainImageVulkanKHR> images;
-    lib::Buffer<VkImageView> views;
-    lib::Buffer<Framebuffer> framebuffers;
-    std::vector<Texture> attachments;
-    std::array<VkFence, MAX_FRAMES_IN_FLIGHT> fences;
-    std::array<std::shared_ptr<CommandPool>, MAX_THREADS_IN_POOL + 1> commandPools;
-    std::array<CommandBuffer, MAX_FRAMES_IN_FLIGHT> primaryCommandBuffer;
-    std::array<std::array<CommandBuffer, MAX_FRAMES_IN_FLIGHT>, MAX_THREADS_IN_POOL> commandBuffers;
-  };
-
-  std::unordered_map<XrSwapchain, SwapchainContext> _swapchainImageContexts;
-  std::unique_ptr<CommandPool> _singleTimeCommandPool;
+  std::unordered_map<XrSwapchain, common::PresentResources> _presentResources;
+  std::unordered_map<XrSwapchain, lib::Buffer<VkImageView>> _swapchainViews;
 };
 
 }  // namespace xrw

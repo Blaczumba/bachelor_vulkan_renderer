@@ -71,6 +71,10 @@ uint32_t Swapchain::getImagesCount() const noexcept {
   return _images.size();
 }
 
+std::span<const VkImageView> Swapchain::getImageViews() const noexcept {
+  return _views;
+}
+
 const VkImageView Swapchain::getSwapchainVkImageView(size_t index) const noexcept {
   if (index < _views.size()) {
     return _views[index];

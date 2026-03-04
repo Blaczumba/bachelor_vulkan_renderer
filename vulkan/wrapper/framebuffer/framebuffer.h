@@ -17,7 +17,7 @@ public:
 
   static Framebuffer createFromSwapchain(
       VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent,
-      VkImageView swapchainImageView, std::vector<Texture>& attachments);
+      uint32_t numLayers, VkImageView swapchainImageView, std::vector<Texture>& attachments);
 
   static Framebuffer createFromTextures(
       const Renderpass& renderpass, std::span<const Texture> textures);

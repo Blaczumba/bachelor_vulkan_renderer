@@ -97,9 +97,12 @@ public:
       std::optional<std::pair<VkStencilOpState, VkStencilOpState>> frontBack = std::nullopt,
       VkPipelineDepthStencilStateCreateFlags flags = 0);
 
+  GraphicsPipelineBuilder& withPushConstantShaderStages(VkShaderStageFlags shaderStageFlags);
+
 private:
   SpecializationData _specializationData;
   lib::Buffer<VkPipelineShaderStageCreateInfo> _shaderStages;
+  VkShaderStageFlags _shaderStageFlags = 0;
 
   lib::Buffer<VkVertexInputBindingDescription> _vertexBindingDescriptions;
   lib::Buffer<VkVertexInputAttributeDescription> _vertexAttributeDescriptions;

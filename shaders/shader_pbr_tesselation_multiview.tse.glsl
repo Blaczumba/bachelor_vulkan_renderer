@@ -1,5 +1,7 @@
 #version 450
 
+#extension GL_EXT_multiview : enable
+
 #include "bindless.glsl"
 #include "32bit_push_constants.glsl"
 
@@ -26,7 +28,7 @@ layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which
     mat4 proj;
     vec3 viewPos;
 
-} camera;
+} camera[2];
 
 const mat4 BiasMat = mat4(
 	0.5, 0, 0, 0,
@@ -84,7 +86,7 @@ void main() {
                     outPatch.WorldPos_B102 * 3.0 * w * vPow2 +
                     outPatch.WorldPos_B012 * 3.0 * u * vPow2 +
                     outPatch.WorldPos_B111 * 6.0 * w * u * v;
-    gl_Position = camera.proj * camera.view * vec4(teTbnfragPosition, 1.0);
+    gl_Position = camera[gl_ViewIndex].proj * camera[gl_ViewIndex].view * vec4(teTbnfragPosition, 1.0);
     teLightFragPosition = BiasMat * GetResource(Light, lightBufferHandle).projView * vec4(teTbnfragPosition, 1.0);
 
     vec3 teNormal = interpolate3D(outPatch.Normal[0], outPatch.Normal[1], outPatch.Normal[2]);
@@ -96,5 +98,5 @@ void main() {
     teFragTexCoord = interpolate2D(outPatch.TexCoord[0], outPatch.TexCoord[1], outPatch.TexCoord[2]);
 
     TbnLightPos = TbnMat * GetResource(Light, lightBufferHandle).pos;
-    TbnViewPos = TbnMat * camera.viewPos;
+    TbnViewPos = TbnMat * camera[gl_ViewIndex].viewPos;
 }

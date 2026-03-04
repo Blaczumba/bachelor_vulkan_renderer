@@ -23,7 +23,13 @@ public:
       std::string_view engineName, std::span<const char* const> requiredExtensions,
       PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
 
+  static std::unique_ptr<Instance> createPtr(
+      std::string_view engineName, std::span<const char* const> requiredExtensions,
+      PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
+
   static Instance wrap(VkInstance instance);
+
+  static std::unique_ptr<Instance> wrapPtr(VkInstance instance);
 
   VkInstance getVkInstance() const noexcept;
 

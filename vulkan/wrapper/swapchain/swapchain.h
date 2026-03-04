@@ -27,6 +27,8 @@ public:
 
   uint32_t getImagesCount() const noexcept;
 
+  std::span<const VkImageView> getImageViews() const noexcept;
+
   const VkImageView getSwapchainVkImageView(size_t index) const noexcept;
 
   VkResult acquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t* imageIndex) const;

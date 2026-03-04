@@ -48,17 +48,19 @@ public:
 
   VkDescriptorSetLayout getOrCreateBindlessLayout(const LogicalDevice& logicalDevice);
 
-  VkDescriptorSetLayout getOrCreateCameraLayout(const LogicalDevice& logicalDevice);
+  VkDescriptorSetLayout getOrCreateCameraLayout(const LogicalDevice& logicalDevice, bool multiview);
 
   Pipeline* getPipeline(PipelineMapIndex index);
 
   bool removePipeline(PipelineMapIndex index);
 
-  PipelineMapIndex createPBRProgram(const Renderpass& renderpass);
+  PipelineMapIndex createPBRProgram(const Renderpass& renderpass, bool multiview);
+
+  PipelineMapIndex createPbrTesselationProgram(const Renderpass& renderpass, bool multiview);
 
   PipelineMapIndex createPbrEnvMappingProgram(const Renderpass& renderpass);
 
-  PipelineMapIndex createEnvMappingProgram(const Renderpass& renderpass);
+  PipelineMapIndex createEnvMappingProgram(const Renderpass& renderpass, bool multiview);
 
   PipelineMapIndex createSkyboxProgram(const Renderpass& renderpass);
 
