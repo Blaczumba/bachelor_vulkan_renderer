@@ -48,12 +48,15 @@ public:
 private:
   const AttachmentLayout& _attachmentLayout;
 
+  void* _pNext = nullptr;
+
   struct MultiViewInfo {
     VkRenderPassMultiviewCreateInfo multiviewCreateInfo;
     std::vector<uint32_t> viewMasks;
     std::vector<uint32_t> correlationMasks;
   };
   std::optional<MultiViewInfo> _multiViewInfo;
+  VkRenderPassFragmentDensityMapCreateInfoEXT _fragmentDensityMapCreateInfo;
 
   std::vector<VkSubpassDependency> _subpassDepencies;
   std::vector<Subpass> _subpasses;

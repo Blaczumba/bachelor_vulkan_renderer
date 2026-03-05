@@ -92,7 +92,8 @@ VkDevice createVkDevice(const PhysicalDevice& physicalDevice) {
       .withInheritedViewportScissorExtension()
       .withMultiviewExtension()
       .withStorage8BitExtension()
-      .withStorage16BitExtension();
+      .withStorage16BitExtension()
+      .withFragmentDensityMapExtension();
 
   const VkPhysicalDeviceFeatures2 deviceFeaturesInfo = {
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,

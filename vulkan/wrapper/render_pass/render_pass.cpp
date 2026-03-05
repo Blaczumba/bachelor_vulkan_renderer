@@ -7,6 +7,16 @@
 #include "vulkan/wrapper/render_pass/attachment_layout.h"
 #include "vulkan/wrapper/util/check.h"
 
+namespace {
+
+template <typename T>
+void chainExtendedField(void** next, T& feature) {
+  feature.pNext = *next;
+  *next = (void*)&feature;
+}
+
+}  // namespace
+
 RenderpassBuilder::RenderpassBuilder(const AttachmentLayout& attachmentLayout)
   : _attachmentLayout(attachmentLayout) {}
 
@@ -44,28 +54,25 @@ RenderpassBuilder& RenderpassBuilder::withMultiView(
     .viewMasks = std::move(viewMask),
     .correlationMasks = std::move(correlationMask)
   };
+
+  chainExtendedField(&_pNext, _multiViewInfo->multiviewCreateInfo);
   return *this;
 }
 
 void RenderpassBuilder::Subpass::addOutputAttachment(
     const AttachmentLayout& layout, uint32_t attachmentBinding) {
-  std::span<const AttachmentType> attachmentTypes = layout.getAttachmentsTypes();
-  if (attachmentTypes.size() <= attachmentBinding) [[unlikely]] {
-    throw EngineException("Attachment binding exceeds the total number of attachments.");
-  }
-
-  switch (attachmentTypes[attachmentBinding]) {
+  switch (layout.getAttachmentType(attachmentBinding)) {
     case AttachmentType::COLOR:
       _colorAttachmentRefs.emplace_back(
-          attachmentBinding, layout.getVkSubpassLayouts()[attachmentBinding]);
+          attachmentBinding, layout.getAttachmentVkImageLayout(attachmentBinding));
       break;
     case AttachmentType::COLOR_RESOLVE:
       _colorAttachmentResolveRefs.emplace_back(
-          attachmentBinding, layout.getVkSubpassLayouts()[attachmentBinding]);
+          attachmentBinding, layout.getAttachmentVkImageLayout(attachmentBinding));
       break;
     case AttachmentType::DEPTH:
       _depthAttachmentRefs.emplace_back(
-          attachmentBinding, layout.getVkSubpassLayouts()[attachmentBinding]);
+          attachmentBinding, layout.getAttachmentVkImageLayout(attachmentBinding));
       break;
     default:
       throw EngineException("Failed to recognize attachment type.");
@@ -74,7 +81,7 @@ void RenderpassBuilder::Subpass::addOutputAttachment(
 
 void RenderpassBuilder::Subpass::addInputAttachment(
     const AttachmentLayout& layout, uint32_t attachmentBinding, VkImageLayout imageLayout) {
-  if (layout.getAttachmentsTypes().size() <= attachmentBinding) [[unlikely]] {
+  if (layout.getAttachmentsCount() <= attachmentBinding) [[unlikely]] {
     throw EngineException("Input binding attachment index cannot exceed number of attachments.");
   }
 
@@ -108,9 +115,21 @@ Renderpass RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
         static_cast<uint32_t>(subpassDescriptions.size());
   }
 
+  for (uint32_t i = 0; i < _attachmentLayout.getAttachmentsCount(); i++) {
+    if (_attachmentLayout.getAttachmentType(i) == AttachmentType::FRAGMENT_DENSITY_MAP) {
+      _fragmentDensityMapCreateInfo = VkRenderPassFragmentDensityMapCreateInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT,
+        .fragmentDensityMapAttachment =
+            VkAttachmentReference{i, _attachmentLayout.getAttachmentVkImageLayout(i)}
+      };
+      chainExtendedField(&_pNext, _fragmentDensityMapCreateInfo);
+      break;
+    }
+  }
+
   const VkRenderPassCreateInfo renderPassInfo = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-    .pNext = _multiViewInfo.has_value() ? &_multiViewInfo->multiviewCreateInfo : nullptr,
+    .pNext = _pNext,
     .attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size()),
     .pAttachments = attachmentDescriptions.data(),
     .subpassCount = static_cast<uint32_t>(subpassDescriptions.size()),

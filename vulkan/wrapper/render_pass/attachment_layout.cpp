@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "common/util/engine_exception.h"
+
 AttachmentLayout::AttachmentLayout(VkSampleCountFlagBits numMsaaSamples)
   : _numMsaaSamples(numMsaaSamples) {}
 
@@ -18,12 +20,22 @@ AttachmentLayout::getVkAttachmentDescriptions() const noexcept {
   return _attachmentDescriptions;
 }
 
-std::span<const VkImageLayout> AttachmentLayout::getVkSubpassLayouts() const noexcept {
-  return _subpassImageLayouts;
+size_t AttachmentLayout::getAttachmentsCount() const noexcept {
+  return _attachmentDescriptions.size();
 }
 
-std::span<const AttachmentType> AttachmentLayout::getAttachmentsTypes() const noexcept {
-  return _attachmentTypes;
+VkImageLayout AttachmentLayout::getAttachmentVkImageLayout(uint32_t index) const {
+  if (_attachmentImageLayouts.size() <= index) [[unlikely]] {
+    throw EngineException("Attachment index cannot exceed number of attachments.");
+  }
+  return _attachmentImageLayouts[index];
+}
+
+AttachmentType AttachmentLayout::getAttachmentType(uint32_t index) const {
+  if (_attachmentTypes.size() <= index) [[unlikely]] {
+    throw EngineException("Attachment index cannot exceed number of attachments.");
+  }
+  return _attachmentTypes[index];
 }
 
 uint32_t AttachmentLayout::getColorAttachmentsCount() const noexcept {
@@ -59,7 +71,7 @@ AttachmentLayout& AttachmentLayout::addColorAttachment(
   _attachmentDescriptions.push_back(
       createDescription(format, _numMsaaSamples, loadOp, storeOp, VK_IMAGE_LAYOUT_UNDEFINED,
                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
-  _subpassImageLayouts.push_back(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  _attachmentImageLayouts.push_back(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
   _attachmentTypes.push_back(AttachmentType::COLOR);
   return *this;
 }
@@ -72,7 +84,7 @@ AttachmentLayout& AttachmentLayout::addColorPresentAttachment(
   _attachmentDescriptions.push_back(
       createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, VK_ATTACHMENT_STORE_OP_STORE,
                         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR));
-  _subpassImageLayouts.push_back(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  _attachmentImageLayouts.push_back(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
   _attachmentTypes.push_back(AttachmentType::COLOR);
   return *this;
 }
@@ -86,7 +98,7 @@ AttachmentLayout& AttachmentLayout::addDepthAttachment(
   _attachmentDescriptions.push_back(createDescription(
       format, _numMsaaSamples, VK_ATTACHMENT_LOAD_OP_CLEAR, storeOp, VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, stencilLoadOp, stencilStoreOp));
-  _subpassImageLayouts.push_back(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+  _attachmentImageLayouts.push_back(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
   _attachmentTypes.push_back(AttachmentType::DEPTH);
   return *this;
 }
@@ -100,7 +112,7 @@ AttachmentLayout& AttachmentLayout::addShadowAttachment(
   _attachmentDescriptions.push_back(
       createDescription(format, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR,
                         VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_LAYOUT_UNDEFINED, finalLayout));
-  _subpassImageLayouts.push_back(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+  _attachmentImageLayouts.push_back(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
   _attachmentTypes.push_back(AttachmentType::DEPTH);
   return *this;
 }
@@ -113,7 +125,7 @@ AttachmentLayout& AttachmentLayout::addColorResolveAttachment(
   _attachmentDescriptions.push_back(
       createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, storeOp, VK_IMAGE_LAYOUT_UNDEFINED,
                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
-  _subpassImageLayouts.push_back(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  _attachmentImageLayouts.push_back(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
   _attachmentTypes.push_back(AttachmentType::COLOR_RESOLVE);
   return *this;
 }
@@ -126,7 +138,17 @@ AttachmentLayout& AttachmentLayout::addColorResolvePresentAttachment(
   _attachmentDescriptions.push_back(
       createDescription(format, VK_SAMPLE_COUNT_1_BIT, loadOp, VK_ATTACHMENT_STORE_OP_STORE,
                         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR));
-  _subpassImageLayouts.push_back(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  _attachmentImageLayouts.push_back(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
   _attachmentTypes.push_back(AttachmentType::COLOR_RESOLVE);
+  return *this;
+}
+
+AttachmentLayout& AttachmentLayout::addFragmentDensityMapAttachment() {
+  _attachmentDescriptions.push_back(createDescription(
+      VK_FORMAT_R8G8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_LOAD,
+      VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT,
+      VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT));
+  _attachmentImageLayouts.push_back(VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT);
+  _attachmentTypes.push_back(AttachmentType::FRAGMENT_DENSITY_MAP);
   return *this;
 }

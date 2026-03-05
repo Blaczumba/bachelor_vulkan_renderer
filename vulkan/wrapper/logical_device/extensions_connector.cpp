@@ -104,6 +104,17 @@ ExtensionsConnector& ExtensionsConnector::withStorage16BitExtension() {
   return *this;
 }
 
+ExtensionsConnector& ExtensionsConnector::withFragmentDensityMapExtension() {
+  _fragmentDensityMap = VkPhysicalDeviceFragmentDensityMapFeaturesEXT{
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT,
+    .fragmentDensityMap = VK_TRUE,
+    .fragmentDensityMapDynamic = VK_TRUE};
+
+  chainExtensionFeature(
+      &_next, _fragmentDensityMap, VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME, _physicalDevice);
+  return *this;
+}
+
 void* ExtensionsConnector::getNext() const {
   return _next;
 }

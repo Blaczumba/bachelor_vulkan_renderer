@@ -7,7 +7,8 @@
 enum class AttachmentType : uint8_t {
   COLOR = 0,
   COLOR_RESOLVE,
-  DEPTH
+  DEPTH,
+  FRAGMENT_DENSITY_MAP
 };
 
 class AttachmentLayout {
@@ -18,9 +19,11 @@ public:
 
   std::span<const VkAttachmentDescription> getVkAttachmentDescriptions() const noexcept;
 
-  std::span<const VkImageLayout> getVkSubpassLayouts() const noexcept;
+  size_t getAttachmentsCount() const noexcept;
 
-  std::span<const AttachmentType> getAttachmentsTypes() const noexcept;
+  VkImageLayout getAttachmentVkImageLayout(uint32_t index) const;
+
+  AttachmentType getAttachmentType(uint32_t index) const;
 
   uint32_t getColorAttachmentsCount() const noexcept;
 
@@ -43,10 +46,12 @@ public:
 
   AttachmentLayout& addColorResolvePresentAttachment(VkFormat format, VkAttachmentLoadOp loadOp);
 
+  AttachmentLayout& addFragmentDensityMapAttachment();
+
 private:
   VkSampleCountFlagBits _numMsaaSamples;
   std::vector<VkClearValue> _clearValues;
   std::vector<VkAttachmentDescription> _attachmentDescriptions;
-  std::vector<VkImageLayout> _subpassImageLayouts;
+  std::vector<VkImageLayout> _attachmentImageLayouts;
   std::vector<AttachmentType> _attachmentTypes;
 };

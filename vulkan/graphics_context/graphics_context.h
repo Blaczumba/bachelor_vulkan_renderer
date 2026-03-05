@@ -300,6 +300,7 @@ private:
     attachmentLayout.addColorAttachment(
         VK_FORMAT_R8G8B8A8_SRGB, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
     attachmentLayout.addDepthAttachment(VK_FORMAT_D16_UNORM, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+    attachmentLayout.addFragmentDensityMapAttachment();
 
     _envMappingRenderPass =
         RenderpassBuilder(attachmentLayout)
@@ -925,10 +926,6 @@ private:
   }
 };
 
-}  // namespace vlkn
-
-namespace vlkn {
-
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
     std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
@@ -939,7 +936,7 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
     _fileLoader(fileLoader),
     _singleTimeCommandPool(
         CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)),
-    _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::deferred)),
+    _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::async)),
     _gpuBufferManager(GpuBufferManager::create()), _samplerManager(SamplerManager::create()),
     _pipelineManager(PipelineManager::create(fileLoader)),
     _bindlessDescriptorPool(DescriptorPool::create(
