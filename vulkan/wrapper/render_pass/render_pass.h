@@ -10,26 +10,34 @@
 
 class Renderpass;
 
+class Subpass {
+public:
+  Subpass(const AttachmentLayout& attachmentLayout) noexcept;
+
+  ~Subpass() = default;
+
+  Subpass& addOutputAttachment(uint32_t attachmentBinding);
+
+  Subpass& addInputAttachment(uint32_t attachmentBinding);
+
+  Subpass& withShadingRateAttachment();
+
+  VkSubpassDescription2 getVkSubpassDescription(uint32_t viewMask = 0) const;
+
+private:
+  const AttachmentLayout& _attachmentLayout;
+
+  void* _pNext = nullptr;
+
+  std::vector<VkAttachmentReference2> _inputAttachmentRefs;
+  std::vector<VkAttachmentReference2> _colorAttachmentRefs;
+  std::vector<VkAttachmentReference2> _depthAttachmentRefs;
+  std::vector<VkAttachmentReference2> _colorAttachmentResolveRefs;
+
+  VkFragmentShadingRateAttachmentInfoKHR _shadingRateAttachmentInfo;
+};
+
 class RenderpassBuilder {
-  class Subpass {
-    std::vector<VkAttachmentReference> _inputAttachmentRefs;
-    std::vector<VkAttachmentReference> _colorAttachmentRefs;
-    std::vector<VkAttachmentReference> _depthAttachmentRefs;
-    std::vector<VkAttachmentReference> _colorAttachmentResolveRefs;
-
-  public:
-    Subpass() noexcept = default;
-
-    ~Subpass() = default;
-
-    void addOutputAttachment(const AttachmentLayout& layout, uint32_t attachmentBinding);
-
-    void addInputAttachment(
-        const AttachmentLayout& layout, uint32_t attachmentBinding, VkImageLayout imageLayout);
-
-    VkSubpassDescription getVkSubpassDescription() const;
-  };
-
 public:
   RenderpassBuilder(const AttachmentLayout& attachmentLayout);
 
@@ -37,8 +45,7 @@ public:
       uint32_t srcSubpassIndex, uint32_t dstSubpassIndex, VkPipelineStageFlags srcStageMask,
       VkAccessFlags srcAccessMask, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask);
 
-  RenderpassBuilder& addSubpass(std::initializer_list<uint8_t> outputAttachments,
-                                std::initializer_list<uint8_t> inputAttachments = {});
+  Subpass& createSubpass();
 
   RenderpassBuilder& withMultiView(
       std::vector<uint32_t>&& viewMask, std::vector<uint32_t>&& correlationMask);
@@ -58,7 +65,7 @@ private:
   std::optional<MultiViewInfo> _multiViewInfo;
   VkRenderPassFragmentDensityMapCreateInfoEXT _fragmentDensityMapCreateInfo;
 
-  std::vector<VkSubpassDependency> _subpassDepencies;
+  std::vector<VkSubpassDependency2> _subpassDepencies;
   std::vector<Subpass> _subpasses;
 };
 

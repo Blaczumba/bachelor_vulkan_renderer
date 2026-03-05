@@ -59,12 +59,12 @@ Framebuffer Framebuffer::createFromSwapchain(
     VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent,
     uint32_t numLayers, VkImageView swapchainImageView, std::vector<Texture>& attachments) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
-  std::span<const VkAttachmentDescription> attachmentDescriptions =
+  std::span<const VkAttachmentDescription2> attachmentDescriptions =
       renderpass.getAttachmentsLayout().getVkAttachmentDescriptions();
 
   std::vector<VkImageView> imageViews;
   imageViews.reserve(attachmentDescriptions.size());
-  for (const VkAttachmentDescription& description : attachmentDescriptions) {
+  for (const VkAttachmentDescription2& description : attachmentDescriptions) {
     switch (description.finalLayout) {
       case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
         imageViews.push_back(swapchainImageView);

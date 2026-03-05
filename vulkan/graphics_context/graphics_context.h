@@ -300,11 +300,11 @@ private:
     attachmentLayout.addColorAttachment(
         VK_FORMAT_R8G8B8A8_SRGB, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
     attachmentLayout.addDepthAttachment(VK_FORMAT_D16_UNORM, VK_ATTACHMENT_STORE_OP_DONT_CARE);
-    attachmentLayout.addFragmentDensityMapAttachment();
 
+    RenderpassBuilder renderpassBuilder(attachmentLayout);
+    renderpassBuilder.createSubpass().addOutputAttachment(0).addOutputAttachment(1);
     _envMappingRenderPass =
-        RenderpassBuilder(attachmentLayout)
-            .withMultiView({0b111111}, {0b111111})
+        renderpassBuilder.withMultiView({0b111111}, {0b111111})
             .addDependency(
                 VK_SUBPASS_EXTERNAL, 0,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -313,7 +313,6 @@ private:
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
                     | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-            .addSubpass({0, 1})
             .build(*_logicalDevice);
 
     _envMappingFramebuffer =
@@ -381,7 +380,9 @@ private:
     attachmentLayout.addShadowAttachment(
         VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    _shadowRenderPass = RenderpassBuilder(attachmentLayout).addSubpass({0}).build(*_logicalDevice);
+    RenderpassBuilder builder(attachmentLayout);
+    builder.createSubpass().addOutputAttachment(0);
+    _shadowRenderPass = builder.build(*_logicalDevice);
     _shadowFramebuffer =
         Framebuffer::createFromTextures(_shadowRenderPass, std::span(&_shadowMap, 1));
   }
@@ -1056,21 +1057,26 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
       .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE);
 
   RenderpassBuilder renderpassBuilder(attachmentsLayout);
-  renderpassBuilder
-      .addDependency(
-          VK_SUBPASS_EXTERNAL, 0,
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-              | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-      .addSubpass({0, 1, 2});
   if constexpr (MULTIVIEW_PRESENTATION) {
     auto mask = lib::setNLeastSignificantBits<uint32_t>(presentResources.numLayers);
     renderpassBuilder.withMultiView({mask}, {mask});
   }
 
-  _renderPass = renderpassBuilder.build(*_logicalDevice);
+  renderpassBuilder.createSubpass()
+      .addOutputAttachment(0)
+      .addOutputAttachment(1)
+      .addOutputAttachment(2);
+  _renderPass =
+      renderpassBuilder
+          .addDependency(
+              VK_SUBPASS_EXTERNAL, 0,
+              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                  | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                  | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+          .build(*_logicalDevice);
 
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
