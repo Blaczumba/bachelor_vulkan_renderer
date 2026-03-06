@@ -2,7 +2,7 @@ add_library(Renderpass
 	render_pass.h render_pass.cpp
 	attachment_layout.h attachment_layout.cpp
 )
-target_link_libraries(Renderpass PUBLIC LogicalDevice)
+target_link_libraries(Renderpass PUBLIC LogicalDevice VulkanWrapperUtil)
 target_link_libraries(Renderpass PUBLIC Vulkan::Vulkan)
 
 target_include_directories(Renderpass PUBLIC ${PROJECT_SOURCE_DIR})

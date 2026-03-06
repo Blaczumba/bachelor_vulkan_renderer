@@ -7,6 +7,7 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/util/check.h"
+#include "vulkan/wrapper/util/util.h"
 
 namespace {
 
@@ -25,12 +26,6 @@ Texture createColorAttachment(
           .buildAttachment(logicalDevice, commandBuffer);
   texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
-}
-
-bool hasStencil(VkFormat format) {
-  static constexpr VkFormat formats[] = {VK_FORMAT_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT,
-                                         VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT_S8_UINT};
-  return std::find(std::cbegin(formats), std::cend(formats), format) != std::cend(formats);
 }
 
 Texture createDepthAttachment(

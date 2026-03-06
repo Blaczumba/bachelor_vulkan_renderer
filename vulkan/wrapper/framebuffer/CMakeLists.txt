@@ -1,6 +1,6 @@
 add_library(Framebuffer framebuffer.h framebuffer.cpp)
 
-target_link_libraries(Framebuffer PUBLIC LogicalDevice Renderpass)
+target_link_libraries(Framebuffer PUBLIC LogicalDevice Renderpass VulkanWrapperUtil)
 target_link_libraries(Framebuffer PUBLIC Vulkan::Vulkan)
 
 target_include_directories(Framebuffer PUBLIC ${PROJECT_SOURCE_DIR})

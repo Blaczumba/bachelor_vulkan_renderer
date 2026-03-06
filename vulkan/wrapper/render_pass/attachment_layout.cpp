@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "common/util/engine_exception.h"
+#include "vulkan/wrapper/util/util.h"
 
 AttachmentLayout::AttachmentLayout(VkSampleCountFlagBits numMsaaSamples)
   : _numMsaaSamples(numMsaaSamples) {}
@@ -110,7 +111,9 @@ AttachmentLayout& AttachmentLayout::addDepthAttachment(
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, stencilLoadOp, stencilStoreOp));
   _attachmentImageLayouts.push_back(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
   _attachmentTypes.push_back(AttachmentType::DEPTH);
-  _aspectFlags.push_back(VK_IMAGE_ASPECT_DEPTH_BIT);
+  _aspectFlags.push_back(
+      hasStencil(format) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
+                           VK_IMAGE_ASPECT_DEPTH_BIT);
   return *this;
 }
 

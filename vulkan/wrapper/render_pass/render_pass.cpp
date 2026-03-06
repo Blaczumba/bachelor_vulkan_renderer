@@ -34,30 +34,25 @@ RenderpassBuilder& RenderpassBuilder::addDependency(
   return *this;
 }
 
-Subpass& RenderpassBuilder::createSubpass() {
-  return _subpasses.emplace_back(_attachmentLayout);
+RenderpassBuilder::Subpass& RenderpassBuilder::createSubpass() {
+  return *_subpasses.emplace_back(std::make_unique<Subpass>(_attachmentLayout));
 }
 
 RenderpassBuilder& RenderpassBuilder::withMultiView(
     std::vector<uint32_t>&& viewMask, std::vector<uint32_t>&& correlationMask) {
   _multiViewInfo = MultiViewInfo{
-    .multiviewCreateInfo = {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO,
-                            .pViewMasks = viewMask.data(),
-                            .correlationMaskCount = static_cast<uint32_t>(correlationMask.size()),
-                            .pCorrelationMasks = correlationMask.data()},
-    .viewMasks = std::move(viewMask),
-    .correlationMasks = std::move(correlationMask)
-  };
+    .viewMasks = std::move(viewMask), .correlationMasks = std::move(correlationMask)};
 
   // vkCreateRenderPass2KHR does not extend this structure.
   // chainExtendedField(&_pNext, _multiViewInfo->multiviewCreateInfo);
   return *this;
 }
 
-Subpass::Subpass(const AttachmentLayout& attachmentLayout) noexcept
+RenderpassBuilder::Subpass::Subpass(const AttachmentLayout& attachmentLayout) noexcept
   : _attachmentLayout(attachmentLayout) {}
 
-Subpass& Subpass::addOutputAttachment(uint32_t attachmentBinding) {
+RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::addOutputAttachment(
+    uint32_t attachmentBinding) {
   const VkAttachmentReference2 attachmentRef{
     .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
     .attachment = attachmentBinding,
@@ -79,7 +74,8 @@ Subpass& Subpass::addOutputAttachment(uint32_t attachmentBinding) {
   return *this;
 }
 
-Subpass& Subpass::addInputAttachment(uint32_t attachmentBinding) {
+RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::addInputAttachment(
+    uint32_t attachmentBinding) {
   _inputAttachmentRefs.push_back(VkAttachmentReference2{
     .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
     .attachment = attachmentBinding,
@@ -88,7 +84,7 @@ Subpass& Subpass::addInputAttachment(uint32_t attachmentBinding) {
   return *this;
 }
 
-Subpass& Subpass::withShadingRateAttachment() {
+RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::withShadingRateAttachment() {
   _shadingRateAttachmentInfo = {
     .sType = VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR,
   };
@@ -97,7 +93,7 @@ Subpass& Subpass::withShadingRateAttachment() {
   return *this;
 }
 
-VkSubpassDescription2 Subpass::getVkSubpassDescription(uint32_t viewMask) const {
+VkSubpassDescription2 RenderpassBuilder::Subpass::getVkSubpassDescription(uint32_t viewMask) const {
   return VkSubpassDescription2{
     .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
     .pNext = _pNext,
@@ -117,14 +113,15 @@ Renderpass RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
   std::span<const VkAttachmentDescription2> attachmentDescriptions =
       _attachmentLayout.getVkAttachmentDescriptions();
   lib::Buffer<VkSubpassDescription2> subpassDescriptions(_subpasses.size());
-  for (int i = 0; i < _subpasses.size(); i++) {
-    subpassDescriptions[i] = _subpasses[i].getVkSubpassDescription(
-        _multiViewInfo.has_value() ? _multiViewInfo->viewMasks[i] : 0);
+  if (_multiViewInfo.has_value() && _multiViewInfo->viewMasks.size() != _subpasses.size()) {
+    throw EngineException(
+        "The number of view masks must be the same as the number of subpasses when using multiview "
+        "feature.");
   }
 
-  if (_multiViewInfo.has_value()) {
-    _multiViewInfo->multiviewCreateInfo.subpassCount =
-        static_cast<uint32_t>(subpassDescriptions.size());
+  for (int i = 0; i < _subpasses.size(); i++) {
+    subpassDescriptions[i] = _subpasses[i]->getVkSubpassDescription(
+        _multiViewInfo.has_value() ? _multiViewInfo->viewMasks[i] : 0);
   }
 
   for (uint32_t i = 0; i < _attachmentLayout.getAttachmentsCount(); i++) {

@@ -1,4 +1,4 @@
-add_library(VulkanWrapperUtil vertex_input_description_builder.h vertex_input_description_builder.cpp)
+add_library(VulkanWrapperUtil vertex_input_description_builder.h vertex_input_description_builder.cpp util.h util.cpp)
 
 target_link_libraries(VulkanWrapperUtil PUBLIC Vulkan::Vulkan)
 

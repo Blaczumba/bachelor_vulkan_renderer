@@ -10,34 +10,34 @@
 
 class Renderpass;
 
-class Subpass {
-public:
-  Subpass(const AttachmentLayout& attachmentLayout) noexcept;
-
-  ~Subpass() = default;
-
-  Subpass& addOutputAttachment(uint32_t attachmentBinding);
-
-  Subpass& addInputAttachment(uint32_t attachmentBinding);
-
-  Subpass& withShadingRateAttachment();
-
-  VkSubpassDescription2 getVkSubpassDescription(uint32_t viewMask = 0) const;
-
-private:
-  const AttachmentLayout& _attachmentLayout;
-
-  void* _pNext = nullptr;
-
-  std::vector<VkAttachmentReference2> _inputAttachmentRefs;
-  std::vector<VkAttachmentReference2> _colorAttachmentRefs;
-  std::vector<VkAttachmentReference2> _depthAttachmentRefs;
-  std::vector<VkAttachmentReference2> _colorAttachmentResolveRefs;
-
-  VkFragmentShadingRateAttachmentInfoKHR _shadingRateAttachmentInfo;
-};
-
 class RenderpassBuilder {
+  class Subpass {
+  public:
+    Subpass(const AttachmentLayout& attachmentLayout) noexcept;
+
+    ~Subpass() = default;
+
+    Subpass& addOutputAttachment(uint32_t attachmentBinding);
+
+    Subpass& addInputAttachment(uint32_t attachmentBinding);
+
+    Subpass& withShadingRateAttachment();
+
+    VkSubpassDescription2 getVkSubpassDescription(uint32_t viewMask = 0) const;
+
+  private:
+    const AttachmentLayout& _attachmentLayout;
+
+    void* _pNext = nullptr;
+
+    std::vector<VkAttachmentReference2> _inputAttachmentRefs;
+    std::vector<VkAttachmentReference2> _colorAttachmentRefs;
+    std::vector<VkAttachmentReference2> _depthAttachmentRefs;
+    std::vector<VkAttachmentReference2> _colorAttachmentResolveRefs;
+
+    VkFragmentShadingRateAttachmentInfoKHR _shadingRateAttachmentInfo;
+  };
+
 public:
   RenderpassBuilder(const AttachmentLayout& attachmentLayout);
 
@@ -58,7 +58,6 @@ private:
   void* _pNext = nullptr;
 
   struct MultiViewInfo {
-    VkRenderPassMultiviewCreateInfo multiviewCreateInfo;
     std::vector<uint32_t> viewMasks;
     std::vector<uint32_t> correlationMasks;
   };
@@ -66,7 +65,8 @@ private:
   VkRenderPassFragmentDensityMapCreateInfoEXT _fragmentDensityMapCreateInfo;
 
   std::vector<VkSubpassDependency2> _subpassDepencies;
-  std::vector<Subpass> _subpasses;
+  // For reference stability use unique_ptr.
+  std::vector<std::unique_ptr<Subpass>> _subpasses;
 };
 
 class Renderpass {
