@@ -104,6 +104,18 @@ ExtensionsConnector& ExtensionsConnector::withStorage16BitExtension() {
   return *this;
 }
 
+ExtensionsConnector& ExtensionsConnector::withFragmentShadingRateExtension() {
+  _fragmentShadingRate = VkPhysicalDeviceFragmentShadingRateFeaturesKHR{
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR,
+    .pipelineFragmentShadingRate = VK_TRUE,
+    .primitiveFragmentShadingRate = VK_TRUE,
+    .attachmentFragmentShadingRate = VK_TRUE};
+
+  chainExtensionFeature(
+      &_next, _fragmentShadingRate, VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, _physicalDevice);
+  return *this;
+}
+
 ExtensionsConnector& ExtensionsConnector::withFragmentDensityMapExtension() {
   _fragmentDensityMap = VkPhysicalDeviceFragmentDensityMapFeaturesEXT{
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT,

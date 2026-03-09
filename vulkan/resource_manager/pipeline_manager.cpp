@@ -7,6 +7,7 @@
 
 #include "lib/buffer/buffer.h"
 #include "vulkan/resource_manager/util.h"
+#include "vulkan/wrapper/pipeline/compute_pipeline_builder.h"
 #include "vulkan/wrapper/pipeline/graphics_pipeline_builder.h"
 #include "vulkan/wrapper/util/vertex_input_description_builder.h"
 
@@ -76,6 +77,28 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(
      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
      .descriptorCount = multiview ? 2u : 1u,
      .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
+     },
+  };
+
+  DescriptorSetLayout layout = DescriptorSetLayout::create(logicalDevice, bindings);
+  const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
+  _descriptorSetLayouts.emplace(layoutType, std::move(layout));
+  return vkLayout;
+}
+
+VkDescriptorSetLayout PipelineManager::getOrCreateComputeLayout(
+    const LogicalDevice& logicalDevice) {
+  static constexpr DescriptorSetType layoutType = DescriptorSetType::COMPUTE;
+  if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
+    return it->second.getVkDescriptorSetLayout();
+  }
+
+  static constexpr VkDescriptorSetLayoutBinding bindings[] = {
+    {
+     .binding = 0,
+     .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+     .descriptorCount = 1u,
+     .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
      },
   };
 
@@ -209,6 +232,9 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(
                 renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
+            .withFragmentShadingRateStateCreateInfo(
+                {1, 1}, VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR,
+                VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR)
             .createPipeline(renderpass, *pipelineLayout),
         pipelineLayoutIndex});
   return pipelineIndex;
@@ -473,5 +499,24 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
             .createPipeline(renderpass, *pipelineLayout),
         pipelineLayoutIndex});
+  return pipelineIndex;
+}
+
+PipelineManager::PipelineMapIndex PipelineManager::createFragmentShadingRateProgram(
+    const LogicalDevice& logicalDevice) {
+  const Shader& compute =
+      addShader(logicalDevice, "fov_fragment_shading_rate.comp.spv", VK_SHADER_STAGE_COMPUTE_BIT);
+  static constexpr VkShaderStageFlags shaderStageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+  const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
+      PipelineLayoutKey{{getOrCreateComputeLayout(logicalDevice)},
+                        {getPushConstantRange<PushConstantFov>(shaderStageFlags)}},
+      logicalDevice);
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  _pipelines.insertUnsafe(
+      *pipelineIndex,
+      PipelineResource{ComputePipelineBuilder()
+                           .withShaderStageCreateInfo(compute.getVkPipelineStageCreateInfo())
+                           .createPipeline(*pipelineLayout),
+                       pipelineLayoutIndex});
   return pipelineIndex;
 }

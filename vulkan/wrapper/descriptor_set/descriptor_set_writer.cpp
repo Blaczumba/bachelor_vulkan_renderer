@@ -2,20 +2,30 @@
 
 #include "vulkan/wrapper/descriptor_set/descriptor_set_writer_lib.h"
 
-DescriptorSetWriter& DescriptorSetWriter::storeTexture(
-    const Texture& texture, const Sampler& sampler) {
-  _imageInfos.push_back(VkDescriptorImageInfo{
-    .sampler = sampler.getVkSampler(),
-    .imageView = texture.getVkImageView(),
-    .imageLayout = texture.getVkImageLayout()});
+void DescriptorSetWriter::storeImage(
+    VkImageView view, VkImageLayout layout, VkSampler sampler, VkDescriptorType type) {
+  _imageInfos.push_back(
+      VkDescriptorImageInfo{.sampler = sampler, .imageView = view, .imageLayout = layout});
   _arrayElement = 0;
   _descriptorWrites.push_back(VkWriteDescriptorSet{
     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
     .dstBinding = _binding++,
     .dstArrayElement = _arrayElement++,
     .descriptorCount = 1,
-    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+    .descriptorType = type,
     .pImageInfo = &_imageInfos.back()});
+}
+
+DescriptorSetWriter& DescriptorSetWriter::storeTexture(
+    const Texture& texture, const Sampler& sampler) {
+  storeImage(texture.getVkImageView(), texture.getVkImageLayout(), sampler.getVkSampler(),
+             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+  return *this;
+}
+
+DescriptorSetWriter& DescriptorSetWriter::storeImageStorage(const Texture& texture) {
+  storeImage(texture.getVkImageView(), texture.getVkImageLayout(), nullptr,
+             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
   return *this;
 }
 

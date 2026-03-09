@@ -88,6 +88,9 @@ Texture createTexture2D(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy);
 
+void createFsrContents(
+    Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool);
+
 }  // namespace
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
@@ -147,6 +150,10 @@ private:
   DescriptorSet _dynamicDescriptorSet;
   DescriptorSetWriter _dynamicDescriptorSetWriter;
 
+  std::shared_ptr<DescriptorPool> _computeDescriptorPool;
+  DescriptorSet _computeDescriptorSet;
+  DescriptorSetWriter _computeDescriptorSetWriter;
+
   // Temporal objects for demonstration:
   std::array<std::shared_ptr<CommandPool>, MAX_THREADS_IN_POOL + 1> _commandPools;
   std::array<CommandBuffer, MAX_FRAMES_IN_FLIGHT> _primaryCommandBuffer;
@@ -197,6 +204,9 @@ private:
   Buffer _dynamicUniformBuffersCamera;
   Buffer _lightBuffer;
   UniformBufferHandle _lightHandle;
+
+  // Fragment rate shading.
+  Pipeline* _fsrPipeline;
 
   void setup() {
     std::string data = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
@@ -269,6 +279,16 @@ private:
         _dynamicUniformBuffersCamera, size, MULTIVIEW_PRESENTATION ? 2 : 1);
     _dynamicDescriptorSetWriter.writeDescriptorSet(
         _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
+
+    for (Texture& texture : _attachments) {
+      //_computeDescriptorSetWriter.storeImageStorage(*it);
+      //_computeDescriptorSetWriter.writeDescriptorSet(
+      //    _logicalDevice->getVkDevice(), _computeDescriptorSet.getVkDescriptorSet());
+
+      if (texture.getVkImageLayout() == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+        createFsrContents(texture, *_logicalDevice, *_singleTimeCommandPool);
+      }
+    }
 
     _lightBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(UniformBufferLight));
     _lightHandle = _bindlessWriter->storeBuffer(_lightBuffer);
@@ -398,6 +418,9 @@ private:
         _pipelineManager->getPipeline(_pipelineManager->createShadowProgram(_shadowRenderPass));
     _envMappingPipeline = _pipelineManager->getPipeline(
         _pipelineManager->createPbrEnvMappingProgram(_envMappingRenderPass));
+
+    _fsrPipeline = _pipelineManager->getPipeline(
+        _pipelineManager->createFragmentShadingRateProgram(*_logicalDevice));
   }
 
   void createCommandBuffers() {
@@ -801,6 +824,7 @@ private:
         vkCmdSetViewport(commandBuffer, 0, 1, &framebuffer.getViewport());
         vkCmdSetScissor(commandBuffer, 0, 1, &framebuffer.getScissor());
       }
+
       vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
                         _graphicsPipeline->getVkPipeline());
 
@@ -947,7 +971,10 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
     _bindlessWriter(BindlessDescriptorSetWriter::create(_bindlessDescriptorSet)),
     _dynamicDescriptorPool(DescriptorPool::create(*_logicalDevice, 1)),
     _dynamicDescriptorSet(_dynamicDescriptorPool->createDesriptorSet(
-        _pipelineManager->getOrCreateCameraLayout(*_logicalDevice, MULTIVIEW_PRESENTATION))) {}
+        _pipelineManager->getOrCreateCameraLayout(*_logicalDevice, MULTIVIEW_PRESENTATION))),
+    _computeDescriptorPool(DescriptorPool::create(*_logicalDevice, 1)),
+    _computeDescriptorSet(_computeDescriptorPool->createDesriptorSet(
+        _pipelineManager->getOrCreateComputeLayout(*_logicalDevice))) {}
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 std::unique_ptr<common::GraphicsContext> GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
@@ -1046,15 +1073,13 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::waitCompleteExecut
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingResources(
     const common::PresentResources& presentResources) {
-  static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+  static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
   const VkFormat swapchainImageFormat = static_cast<VkFormat>(presentResources.imageFormat);
 
   AttachmentLayout attachmentsLayout(msaaSamples);
-  attachmentsLayout
-      .addColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE)
-      .addColorAttachment(
-          swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
-      .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+  attachmentsLayout.addColorPresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+      .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE)
+      .addFragmentShadingRateAttachment();
 
   RenderpassBuilder renderpassBuilder(attachmentsLayout);
   if constexpr (MULTIVIEW_PRESENTATION) {
@@ -1062,10 +1087,13 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
     renderpassBuilder.withMultiView({mask}, {mask});
   }
 
+  const VkExtent2D fsrTexelSize =
+      _physicalDevice->getFragmentShadingRateProperties().maxFragmentShadingRateAttachmentTexelSize;
   renderpassBuilder.createSubpass()
       .addOutputAttachment(0)
       .addOutputAttachment(1)
-      .addOutputAttachment(2);
+      // .addOutputAttachment(2)
+      .withShadingRateAttachment(fsrTexelSize.width, fsrTexelSize.height);
   _renderPass =
       renderpassBuilder
           .addDependency(
@@ -1169,6 +1197,38 @@ Texture createTexture2D(
                             imageData.copyRegions);
   texture.addCreateVkImageView(0, imageData.mipLevels, 0, 1);
   return texture;
+}
+
+void createFsrContents(
+    Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool) {
+  const VkExtent2D extent = texture.getVkExtent2D();
+  lib::Buffer<std::byte> buffer(
+      static_cast<size_t>(extent.width * extent.height), (std::byte)(2 >> 1) | (std::byte)(2 << 1));
+  for (size_t i = 0; i < buffer.size(); i++) {
+    buffer[i] = (i % 2 == 0) ? std::byte(2 >> 1) | std::byte(2 << 1) :
+                               std::byte(4 >> 1) | std::byte(4 << 1);
+  }
+  Buffer stagingBuffer =
+      Buffer::createStagingBuffer(logicalDevice, buffer.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  stagingBuffer.copyData(std::span(static_cast<const std::byte*>(buffer.data()), buffer.size()));
+  {
+    VkBufferImageCopy imageCopy[] = {
+      {
+       .imageSubresource =
+            {
+              .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+              .mipLevel = 0,
+              .baseArrayLayer = 0,
+              .layerCount = 1,
+            }, .imageExtent = {extent.width, extent.height, 1},
+       }
+    };
+    SingleTimeCommandBuffer handle(commandPool);
+    texture.copyFromStagingBuffer(
+        handle.getCommandBuffer(), stagingBuffer.getVkBuffer(), imageCopy);
+    texture.transitionLayout(
+        handle.getCommandBuffer(), VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR);
+  }
 }
 
 }  // namespace

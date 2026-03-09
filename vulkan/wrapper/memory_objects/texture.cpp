@@ -174,6 +174,15 @@ VkImageView Texture::addCreateVkImageView(
   return view;
 }
 
+void Texture::copyFromStagingBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
+                                    std::span<const VkBufferImageCopy> copyRegions) {
+  const VkImageLayout layout = _layout;
+  // transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  vkCmdCopyBufferToImage(commandBuffer, copyBuffer, _image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                         static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
+  // transitionLayout(commandBuffer, layout);
+}
+
 void Texture::transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) {
   transitionImageLayout(
       commandBuffer, _image, _layout, newLayout, _imageAspect, _mipLevels, _layerCount);
@@ -264,6 +273,9 @@ TextureBuilder& TextureBuilder::withAdditionalCreateInfoFlags(VkImageCreateFlags
   _imageCreateInfo.flags |= flags;
   return *this;
 }
+
+void copyFromStagingBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
+                           std::span<const VkBufferImageCopy> copyRegions) {}
 
 Texture TextureBuilder::buildAttachment(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const {

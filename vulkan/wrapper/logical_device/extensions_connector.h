@@ -26,6 +26,8 @@ public:
 
   ExtensionsConnector& withStorage16BitExtension();
 
+  ExtensionsConnector& withFragmentShadingRateExtension();
+
   ExtensionsConnector& withFragmentDensityMapExtension();
 
   void* getNext() const;
@@ -41,5 +43,6 @@ private:
   VkPhysicalDeviceMultiviewFeatures _multiview;
   VkPhysicalDevice8BitStorageFeatures _storage8Bit;
   VkPhysicalDevice16BitStorageFeatures _storage16Bit;
+  VkPhysicalDeviceFragmentShadingRateFeaturesKHR _fragmentShadingRate;
   VkPhysicalDeviceFragmentDensityMapFeaturesEXT _fragmentDensityMap;
 };

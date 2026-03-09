@@ -14,7 +14,8 @@
 
 enum class DescriptorSetType : uint8_t {
   BINDLESS,
-  CAMERA
+  CAMERA,
+  COMPUTE
 };
 
 class PipelineManager {
@@ -50,6 +51,8 @@ public:
 
   VkDescriptorSetLayout getOrCreateCameraLayout(const LogicalDevice& logicalDevice, bool multiview);
 
+  VkDescriptorSetLayout getOrCreateComputeLayout(const LogicalDevice& logicalDevice);
+
   Pipeline* getPipeline(PipelineMapIndex index);
 
   bool removePipeline(PipelineMapIndex index);
@@ -65,6 +68,8 @@ public:
   PipelineMapIndex createSkyboxProgram(const Renderpass& renderpass);
 
   PipelineMapIndex createShadowProgram(const Renderpass& renderpass);
+
+  PipelineMapIndex createFragmentShadingRateProgram(const LogicalDevice& logicalDevice);
 
 private:
   PipelineLayoutMap _pipelineLayouts;
@@ -99,6 +104,10 @@ struct PushConstantsModelDescriptorHandles16bit {
 struct PushConstantsModelDescriptorHandles32Bit {
   glm::mat4 model;
   uint32_t descriptorHandles[16];
+};
+
+struct PushConstantFov {
+  glm::vec2 pixelSpaceViewDir;
 };
 
 struct PushConstantsShadow {

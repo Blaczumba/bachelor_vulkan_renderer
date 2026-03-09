@@ -8,6 +8,7 @@ enum class AttachmentType : uint8_t {
   COLOR = 0,
   COLOR_RESOLVE,
   DEPTH,
+  FRAGMENT_SHADING_RATE,
   FRAGMENT_DENSITY_MAP
 };
 
@@ -47,6 +48,8 @@ public:
       VkFormat format, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp);
 
   AttachmentLayout& addColorResolvePresentAttachment(VkFormat format, VkAttachmentLoadOp loadOp);
+
+  AttachmentLayout& addFragmentShadingRateAttachment();
 
   AttachmentLayout& addFragmentDensityMapAttachment();
 

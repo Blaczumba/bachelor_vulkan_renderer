@@ -42,9 +42,6 @@ RenderpassBuilder& RenderpassBuilder::withMultiView(
     std::vector<uint32_t>&& viewMask, std::vector<uint32_t>&& correlationMask) {
   _multiViewInfo = MultiViewInfo{
     .viewMasks = std::move(viewMask), .correlationMasks = std::move(correlationMask)};
-
-  // vkCreateRenderPass2KHR does not extend this structure.
-  // chainExtendedField(&_pNext, _multiViewInfo->multiviewCreateInfo);
   return *this;
 }
 
@@ -84,9 +81,35 @@ RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::addInputAttachment(
   return *this;
 }
 
-RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::withShadingRateAttachment() {
-  _shadingRateAttachmentInfo = {
+RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::withShadingRateAttachment(
+    uint32_t texelWidth, uint32_t texelHeight) {
+  for (uint32_t binding = 0; binding < _attachmentLayout.getAttachmentsCount(); binding++) {
+    if (_attachmentLayout.getAttachmentType(binding) == AttachmentType::FRAGMENT_SHADING_RATE) {
+      return withShadingRateAttachment(binding, texelWidth, texelHeight);
+    }
+  }
+
+  throw EngineException(
+      "The attachment layout does not contain a fragment shading rate attachment.");
+}
+
+RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::withShadingRateAttachment(
+    uint32_t binding, uint32_t texelWidth, uint32_t texelHeight) {
+  if (_attachmentLayout.getAttachmentType(binding) != AttachmentType::FRAGMENT_SHADING_RATE) {
+    throw EngineException(
+        "The specified attachment binding does not correspond to a fragment shading rate "
+        "attachment.");
+  }
+
+  _fragmentShadingRateAttachmentRef = VkAttachmentReference2{
+    .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+    .attachment = binding,
+    .layout = _attachmentLayout.getAttachmentVkImageLayout(binding)};
+
+  _shadingRateAttachmentInfo = VkFragmentShadingRateAttachmentInfoKHR{
     .sType = VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR,
+    .pFragmentShadingRateAttachment = &_fragmentShadingRateAttachmentRef.value(),
+    .shadingRateAttachmentTexelSize = VkExtent2D{texelWidth, texelHeight}
   };
 
   chainExtendedField(&_pNext, _shadingRateAttachmentInfo);

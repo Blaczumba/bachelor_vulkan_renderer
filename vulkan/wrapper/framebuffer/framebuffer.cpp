@@ -1,5 +1,6 @@
 #include "framebuffer.h"
 
+#include <cmath>
 #include <optional>
 
 #include "common/util/engine_exception.h"
@@ -48,6 +49,30 @@ Texture createDepthAttachment(
   return texture;
 }
 
+Texture createFragmentShadingRateAttachment(
+    const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkFormat format,
+    VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers) {
+  const VkPhysicalDeviceFragmentShadingRatePropertiesKHR& fsrProperties =
+      logicalDevice.getPhysicalDevice().getFragmentShadingRateProperties();
+  const VkExtent2D fsrTexelExtent = fsrProperties.maxFragmentShadingRateAttachmentTexelSize;
+  Texture texture =
+      TextureBuilder()
+          .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
+          .withExtent(static_cast<uint32_t>(
+                          std::ceil(extent.width / static_cast<float>(fsrTexelExtent.width))),
+                      static_cast<uint32_t>(
+                          std::ceil(extent.height / static_cast<float>(fsrTexelExtent.height))))
+          .withFormat(format)
+          .withLayerCount(numLayers)
+          .withNumSamples(samples)
+          .withUsage(VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR
+                     | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+          .withLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+          .buildAttachment(logicalDevice, commandBuffer);
+  texture.addCreateVkImageView(0, 1, 0, numLayers);
+  return texture;
+}
+
 }  // namespace
 
 Framebuffer Framebuffer::createFromSwapchain(
@@ -76,6 +101,16 @@ Framebuffer Framebuffer::createFromSwapchain(
       case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
         {
           Texture attachment = createDepthAttachment(
+              logicalDevice, commandBuffer, description.format, description.samples,
+              swapchainExtent, numLayers);
+          imageViews.push_back(attachment.getVkImageView());
+          attachments.push_back(std::move(attachment));
+          break;
+        }
+      case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+      case VK_IMAGE_LAYOUT_GENERAL:
+        {
+          Texture attachment = createFragmentShadingRateAttachment(
               logicalDevice, commandBuffer, description.format, description.samples,
               swapchainExtent, numLayers);
           imageViews.push_back(attachment.getVkImageView());

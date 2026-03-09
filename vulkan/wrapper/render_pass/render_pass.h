@@ -21,7 +21,9 @@ class RenderpassBuilder {
 
     Subpass& addInputAttachment(uint32_t attachmentBinding);
 
-    Subpass& withShadingRateAttachment();
+    Subpass& withShadingRateAttachment(uint32_t texelWidth, uint32_t texelHeight);
+
+    Subpass& withShadingRateAttachment(uint32_t binding, uint32_t texelWidth, uint32_t texelHeight);
 
     VkSubpassDescription2 getVkSubpassDescription(uint32_t viewMask = 0) const;
 
@@ -34,6 +36,7 @@ class RenderpassBuilder {
     std::vector<VkAttachmentReference2> _colorAttachmentRefs;
     std::vector<VkAttachmentReference2> _depthAttachmentRefs;
     std::vector<VkAttachmentReference2> _colorAttachmentResolveRefs;
+    std::optional<VkAttachmentReference2> _fragmentShadingRateAttachmentRef;
 
     VkFragmentShadingRateAttachmentInfoKHR _shadingRateAttachmentInfo;
   };

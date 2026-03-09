@@ -26,6 +26,9 @@ public:
   VkImageView addCreateVkImageView(
       uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
 
+  void copyFromStagingBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
+                             std::span<const VkBufferImageCopy> copyRegions);
+
   void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
 
   VkImage getVkImage() const noexcept;

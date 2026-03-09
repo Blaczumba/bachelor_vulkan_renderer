@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+#include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/wrapper/logical_device/logical_device.h>
 
@@ -10,12 +12,16 @@ class Pipeline {
 public:
   Pipeline() noexcept = default;
 
-  static Pipeline create(
+  static Pipeline createGraphicsPipeline(
       const LogicalDevice& logicalDevice, const VkGraphicsPipelineCreateInfo& createInfo,
       VkShaderStageFlags pushConstantShaderStages);
 
-  static std::vector<Pipeline> create(const LogicalDevice& logicalDevice,
-                                      std::span<const VkGraphicsPipelineCreateInfo> createInfos);
+  static std::vector<Pipeline> createGraphicsPipelines(
+      const LogicalDevice& logicalDevice,
+      std::span<const VkGraphicsPipelineCreateInfo> createInfos);
+
+  static Pipeline createComputePipeline(
+      const LogicalDevice& logicalDevice, const VkComputePipelineCreateInfo& createInfo);
 
   // TODO: Create with other types of create infos.
 
@@ -45,4 +51,10 @@ private:
   VkPipelineLayout _layout = VK_NULL_HANDLE;
 
   const LogicalDevice* _logicalDevice = nullptr;
+};
+
+struct SpecializationData {
+  void* data;
+  size_t dataSize;
+  std::map<VkShaderStageFlagBits, std::vector<VkSpecializationMapEntry>> mapEntries;
 };

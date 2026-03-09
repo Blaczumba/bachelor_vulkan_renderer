@@ -93,6 +93,7 @@ VkDevice createVkDevice(const PhysicalDevice& physicalDevice) {
       .withMultiviewExtension()
       .withStorage8BitExtension()
       .withStorage16BitExtension()
+      .withFragmentShadingRateExtension()
       .withFragmentDensityMapExtension();
 
   const VkPhysicalDeviceFeatures2 deviceFeaturesInfo = {
