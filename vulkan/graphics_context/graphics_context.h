@@ -1073,11 +1073,14 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::waitCompleteExecut
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingResources(
     const common::PresentResources& presentResources) {
-  static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+  static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_2_BIT;
   const VkFormat swapchainImageFormat = static_cast<VkFormat>(presentResources.imageFormat);
 
   AttachmentLayout attachmentsLayout(msaaSamples);
-  attachmentsLayout.addColorPresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+  attachmentsLayout
+      .addColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+      .addColorAttachment(
+          swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
       .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE)
       .addFragmentShadingRateAttachment();
 
@@ -1092,7 +1095,7 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
   renderpassBuilder.createSubpass()
       .addOutputAttachment(0)
       .addOutputAttachment(1)
-      // .addOutputAttachment(2)
+      .addOutputAttachment(2)
       .withShadingRateAttachment(fsrTexelSize.width, fsrTexelSize.height);
   _renderPass =
       renderpassBuilder
@@ -1202,11 +1205,9 @@ Texture createTexture2D(
 void createFsrContents(
     Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool) {
   const VkExtent2D extent = texture.getVkExtent2D();
-  lib::Buffer<std::byte> buffer(
-      static_cast<size_t>(extent.width * extent.height), (std::byte)(2 >> 1) | (std::byte)(2 << 1));
+  lib::Buffer<std::byte> buffer(static_cast<size_t>(extent.width * extent.height));
   for (size_t i = 0; i < buffer.size(); i++) {
-    buffer[i] = (i % 2 == 0) ? std::byte(2 >> 1) | std::byte(2 << 1) :
-                               std::byte(4 >> 1) | std::byte(4 << 1);
+    buffer[i] = i < buffer.size() / 2 ? static_cast<std::byte>(0) : static_cast<std::byte>(5);
   }
   Buffer stagingBuffer =
       Buffer::createStagingBuffer(logicalDevice, buffer.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);

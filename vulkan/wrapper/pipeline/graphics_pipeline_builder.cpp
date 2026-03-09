@@ -227,14 +227,13 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::withRasterizationStateCreateIn
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withMultisampleStateCreateInfo(
     VkSampleCountFlagBits numMsaaSamples, std::optional<float> minSampleShading,
     std::span<const VkSampleMask> sampleMasks, VkPipelineMultisampleStateCreateFlags flags) {
-  _sampleMasks = lib::Buffer<VkSampleMask>(sampleMasks);
   _multisampleState = VkPipelineMultisampleStateCreateInfo{
     .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
     .flags = flags,
     .rasterizationSamples = numMsaaSamples,
-    .sampleShadingEnable = minSampleShading.has_value(),
+    .sampleShadingEnable = minSampleShading.has_value() ? VK_TRUE : VK_FALSE,
     .minSampleShading = minSampleShading.value_or(0.0f),
-    .pSampleMask = _sampleMasks.size() > 0 ? _sampleMasks.data() : nullptr};
+    .pSampleMask = sampleMasks.size() > 0 ? sampleMasks.data() : nullptr};
   return *this;
 }
 

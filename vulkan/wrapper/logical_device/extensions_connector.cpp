@@ -107,8 +107,8 @@ ExtensionsConnector& ExtensionsConnector::withStorage16BitExtension() {
 ExtensionsConnector& ExtensionsConnector::withFragmentShadingRateExtension() {
   _fragmentShadingRate = VkPhysicalDeviceFragmentShadingRateFeaturesKHR{
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR,
-    .pipelineFragmentShadingRate = VK_TRUE,
-    .primitiveFragmentShadingRate = VK_TRUE,
+    .pipelineFragmentShadingRate = VK_FALSE,
+    .primitiveFragmentShadingRate = VK_FALSE,
     .attachmentFragmentShadingRate = VK_TRUE};
 
   chainExtensionFeature(
