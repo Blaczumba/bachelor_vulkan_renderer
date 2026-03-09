@@ -230,6 +230,24 @@ PhysicalDevice::getFragmentShadingRateProperties() const noexcept {
   return _fsrProperties;
 }
 
+lib::Buffer<VkPhysicalDeviceFragmentShadingRateKHR>
+PhysicalDevice::getFragmentShadingRates() const noexcept {
+  static PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR vkGetPhysicalDeviceFragmentShadingRatesKHR =
+      (PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR)vkGetInstanceProcAddr(
+          _instance.getVkInstance(), "vkGetPhysicalDeviceFragmentShadingRatesKHR");
+  if (vkGetPhysicalDeviceFragmentShadingRatesKHR == nullptr) {
+    return lib::Buffer<VkPhysicalDeviceFragmentShadingRateKHR>{};
+  }
+
+  uint32_t fsRates;
+  vkGetPhysicalDeviceFragmentShadingRatesKHR(_device, &fsRates, nullptr);
+  lib::Buffer<VkPhysicalDeviceFragmentShadingRateKHR> fragmentShadingrates(
+      fsRates, VkPhysicalDeviceFragmentShadingRateKHR{
+                 VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR});
+  vkGetPhysicalDeviceFragmentShadingRatesKHR(_device, &fsRates, fragmentShadingrates.data());
+  return fragmentShadingrates;
+}
+
 size_t PhysicalDevice::getMemoryAlignment(size_t size) const noexcept {
   const size_t minUboAlignment = _properties.properties.limits.minUniformBufferOffsetAlignment;
   return minUboAlignment > 0 ? (size + minUboAlignment - 1) & ~(minUboAlignment - 1) : size;

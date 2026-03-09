@@ -45,6 +45,8 @@ public:
   const VkPhysicalDeviceFragmentShadingRatePropertiesKHR&
   getFragmentShadingRateProperties() const noexcept;
 
+  lib::Buffer<VkPhysicalDeviceFragmentShadingRateKHR> getFragmentShadingRates() const noexcept;
+
   size_t getMemoryAlignment(size_t size) const noexcept;
 
   lib::Buffer<const char*> getAvailableExtensions() const;
