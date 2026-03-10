@@ -3,6 +3,7 @@
 #include <any>
 #include <array>
 #include <iostream>
+#include <ranges>
 #include <vector>
 
 #include "common/abstractions/contexts.h"
@@ -16,6 +17,7 @@
 #include "vulkan/graphics_context/graphics_context.h"
 #include "vulkan/resource_manager/asset_manager.h"
 #include "vulkan/resource_manager/bindless_descriptor_set_writer.h"
+#include "vulkan/resource_manager/framebuffer_attachments_manager.h"
 #include "vulkan/resource_manager/gpu_buffer_manager.h"
 #include "vulkan/resource_manager/pipeline_manager.h"
 #include "vulkan/resource_manager/sampler_manager.h"
@@ -88,8 +90,12 @@ Texture createTexture2D(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy);
 
+Texture createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                         VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent,
+                         uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage);
+
 void createFsrContents(
-    Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool);
+    VkCommandBuffer commandBuffer, Texture& texture, const LogicalDevice& logicalDevice);
 
 }  // namespace
 
@@ -141,6 +147,7 @@ private:
   std::unique_ptr<GpuBufferManager> _gpuBufferManager;
   std::unique_ptr<SamplerManager> _samplerManager;
   std::unique_ptr<PipelineManager> _pipelineManager;
+  std::unique_ptr<FramebufferAttachmentManager> _framebufferAttachmentManager;
 
   std::shared_ptr<DescriptorPool> _bindlessDescriptorPool;
   DescriptorSet _bindlessDescriptorSet;
@@ -284,10 +291,6 @@ private:
       //_computeDescriptorSetWriter.storeImageStorage(*it);
       //_computeDescriptorSetWriter.writeDescriptorSet(
       //    _logicalDevice->getVkDevice(), _computeDescriptorSet.getVkDescriptorSet());
-
-      if (texture.getVkImageLayout() == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-        createFsrContents(texture, *_logicalDevice, *_singleTimeCommandPool);
-      }
     }
 
     _lightBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(UniformBufferLight));
@@ -964,6 +967,8 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
     _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::async)),
     _gpuBufferManager(GpuBufferManager::create()), _samplerManager(SamplerManager::create()),
     _pipelineManager(PipelineManager::create(fileLoader)),
+    _framebufferAttachmentManager(
+        std::make_unique<FramebufferAttachmentManager>(*_gpuBufferManager)),
     _bindlessDescriptorPool(DescriptorPool::create(
         *_logicalDevice, 1, VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT)),
     _bindlessDescriptorSet(_bindlessDescriptorPool->createDesriptorSet(
@@ -1078,6 +1083,7 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
 
   static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
   const VkFormat swapchainImageFormat = static_cast<VkFormat>(presentResources.imageFormat);
+  const VkExtent2D extent = VkExtent2D{presentResources.width, presentResources.height};
 
   AttachmentLayout attachmentsLayout(msaaSamples);
   attachmentsLayout
@@ -1086,6 +1092,39 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
           swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
       .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE)
       .addFragmentShadingRateAttachment();
+
+  lib::Buffer<GpuTextureHandle> attachmentHandles;
+  {
+    SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
+    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+    GpuTextureHandle collorAttachmentHandle = _gpuBufferManager->transferTexture(createAttachment(
+        *_logicalDevice, commandBuffer, swapchainImageFormat, msaaSamples, extent,
+        presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+    GpuTextureHandle depthAttachmentHandle = _gpuBufferManager->transferTexture(createAttachment(
+        *_logicalDevice, commandBuffer, VK_FORMAT_D24_UNORM_S8_UINT, msaaSamples, extent,
+        presentResources.numLayers, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT));
+
+    const VkPhysicalDeviceFragmentShadingRatePropertiesKHR& fsrProperties =
+        _physicalDevice->getFragmentShadingRateProperties();
+    const VkExtent2D fsrTexelExtent = fsrProperties.maxFragmentShadingRateAttachmentTexelSize;
+    const VkExtent2D fsrExtent = VkExtent2D{
+      static_cast<uint32_t>(std::ceil(extent.width / static_cast<float>(fsrTexelExtent.width))),
+      static_cast<uint32_t>(std::ceil(extent.height / static_cast<float>(fsrTexelExtent.height)))};
+    Texture fsrTexture = createAttachment(
+        *_logicalDevice, commandBuffer, VK_FORMAT_R8_UINT, VK_SAMPLE_COUNT_1_BIT, fsrExtent,
+        presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+            | VK_IMAGE_USAGE_STORAGE_BIT);
+    createFsrContents(commandBuffer, fsrTexture, *_logicalDevice);
+
+    GpuTextureHandle fsrAttachmentHandle =
+        _gpuBufferManager->transferTexture(std::move(fsrTexture));
+
+    attachmentHandles = lib::Buffer<GpuTextureHandle>{
+      collorAttachmentHandle, depthAttachmentHandle, fsrAttachmentHandle};
+  }
 
   RenderpassBuilder renderpassBuilder(attachmentsLayout);
   if constexpr (MULTIVIEW_PRESENTATION) {
@@ -1112,17 +1151,12 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
               VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
           .build(*_logicalDevice);
 
-  {
-    SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-    auto imageViews = std::span<const VkImageView>(
-        reinterpret_cast<const VkImageView*>(presentResources.imageViews.data()),
-        presentResources.imageViews.size());
-    for (VkImageView imageView : imageViews) {
-      _framebuffers.push_back(Framebuffer::createFromSwapchain(
-          commandBuffer, _renderPass, {presentResources.width, presentResources.height},
-          presentResources.numLayers, imageView, _attachments));
-    }
+  auto imageViews = std::span<const VkImageView>(
+      reinterpret_cast<const VkImageView*>(presentResources.imageViews.data()),
+      presentResources.imageViews.size());
+  for (VkImageView imageView : imageViews) {
+    _framebuffers.push_back(_framebufferAttachmentManager->createFramebuffer(
+        _renderPass, attachmentHandles, extent, imageView));
   }
 }
 
@@ -1204,8 +1238,24 @@ Texture createTexture2D(
   return texture;
 }
 
+Texture createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                         VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent,
+                         uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage) {
+  Texture texture =
+      TextureBuilder()
+          .withFormat(format)
+          .withNumSamples(samples)
+          .withExtent(extent)
+          .withLayerCount(numLayers)
+          .withAspect(aspect)
+          .withUsage(usage)
+          .buildImage(logicalDevice, commandBuffer);
+  texture.addCreateVkImageView(0, 1, 0, numLayers);
+  return texture;
+}
+
 void createFsrContents(
-    Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool) {
+    VkCommandBuffer commandBuffer, Texture& texture, const LogicalDevice& logicalDevice) {
   const VkExtent2D extent = texture.getVkExtent2D();
   lib::Buffer<std::byte> buffer(static_cast<size_t>(extent.width * extent.height));
   for (size_t i = 0; i < buffer.size(); i++) {
@@ -1226,11 +1276,9 @@ void createFsrContents(
             }, .imageExtent = {extent.width, extent.height, 1},
        }
     };
-    SingleTimeCommandBuffer handle(commandPool);
-    texture.copyFromStagingBuffer(
-        handle.getCommandBuffer(), stagingBuffer.getVkBuffer(), imageCopy);
-    texture.transitionLayout(
-        handle.getCommandBuffer(), VK_IMAGE_LAYOUT_GENERAL);
+    texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    texture.copyFromStagingBuffer(commandBuffer, stagingBuffer.getVkBuffer(), imageCopy);
+    texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_GENERAL);
   }
 }
 

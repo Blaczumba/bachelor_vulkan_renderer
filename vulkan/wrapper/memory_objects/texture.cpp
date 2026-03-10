@@ -113,6 +113,10 @@ VkExtent3D Texture::getVkExtent3D() const noexcept {
   return _imageExtent;
 }
 
+uint32_t Texture::getLayersCount() const noexcept {
+  return _layerCount;
+}
+
 VkImageLayout Texture::getVkImageLayout() const noexcept {
   return _layout;
 }
@@ -287,8 +291,7 @@ Texture TextureBuilder::buildImage(
 
 Texture TextureBuilder::buildImage(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
-    const std::span<const VkBufferImageCopy> copyRegions,
-    VkImageLayout layout) const {
+    const std::span<const VkBufferImageCopy> copyRegions, VkImageLayout layout) const {
   Allocation allocation;
   const VkImage image = allocate(allocation, _imageCreateInfo, logicalDevice.getMemoryAllocator());
   transitionImageLayout(
@@ -298,7 +301,7 @@ Texture TextureBuilder::buildImage(
                          static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
   if (layout != VK_IMAGE_LAYOUT_UNDEFINED) {
     transitionImageLayout(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layout,
-                        _aspect, _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
+                          _aspect, _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
   } else {
     layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   }
@@ -309,8 +312,7 @@ Texture TextureBuilder::buildImage(
 
 Texture TextureBuilder::buildMipmapImage(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
-    std::span<const VkBufferImageCopy> copyRegions,
-    VkImageLayout layout) const {
+    std::span<const VkBufferImageCopy> copyRegions, VkImageLayout layout) const {
   Allocation allocation;
   const VkImage image = allocate(allocation, _imageCreateInfo, logicalDevice.getMemoryAllocator());
   transitionImageLayout(
@@ -319,11 +321,9 @@ Texture TextureBuilder::buildMipmapImage(
   vkCmdCopyBufferToImage(commandBuffer, copyBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                          static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
   generateImageMipmaps(
-      commandBuffer, image, _imageCreateInfo.format, layout,
-      _imageCreateInfo.extent.width, _imageCreateInfo.extent.height, _imageCreateInfo.mipLevels,
-      _imageCreateInfo.arrayLayers);
-  return Texture(
-      logicalDevice, image, allocation, _imageCreateInfo.imageType, _imageCreateInfo.format,
-      _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags, _imageCreateInfo.mipLevels,
-      _imageCreateInfo.arrayLayers, layout);
+      commandBuffer, image, _imageCreateInfo.format, layout, _imageCreateInfo.extent.width,
+      _imageCreateInfo.extent.height, _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers);
+  return Texture(logicalDevice, image, allocation, _imageCreateInfo.imageType,
+                 _imageCreateInfo.format, _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags,
+                 _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers, layout);
 }

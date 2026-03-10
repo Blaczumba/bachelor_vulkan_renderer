@@ -42,8 +42,8 @@ Texture createDepthAttachment(
           .withUsage(
               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)
           .buildImage(logicalDevice, commandBuffer,
-                           hasStencil(format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
-                                                VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+                      hasStencil(format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
+                                           VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
 }
@@ -65,13 +65,38 @@ Texture createFragmentShadingRateAttachment(
           .withLayerCount(numLayers)
           .withNumSamples(samples)
           .withUsage(VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR
-               | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT)
+                     | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT)
           .buildImage(logicalDevice, commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
 }
 
 }  // namespace
+
+Framebuffer Framebuffer::create(const Renderpass& renderpass, VkExtent2D extent, uint32_t numLayers,
+                                std::span<const VkImageView> attachments) {
+  const VkFramebufferCreateInfo framebufferInfo = {
+    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+    .renderPass = renderpass.getVkRenderPass(),
+    .attachmentCount = static_cast<uint32_t>(attachments.size()),
+    .pAttachments = attachments.data(),
+    .width = extent.width,
+    .height = extent.height,
+    .layers = 1};
+
+  VkFramebuffer framebuffer;
+  CHECK_VKCMD(vkCreateFramebuffer(renderpass.getLogicalDevice().getVkDevice(), &framebufferInfo,
+                                  nullptr, &framebuffer),
+              "Failed to create VkFramebuffer.");
+
+  return Framebuffer(
+      framebuffer, renderpass,
+      VkViewport{.width = static_cast<float>(extent.width),
+                 .height = static_cast<float>(extent.height),
+                 .minDepth = 0.0f,
+                 .maxDepth = 1.0f},
+      VkRect2D{.extent = extent});
+}
 
 Framebuffer Framebuffer::createFromSwapchain(
     VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent,

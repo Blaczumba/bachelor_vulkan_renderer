@@ -39,6 +39,8 @@ public:
 
   VkExtent3D getVkExtent3D() const noexcept;
 
+  uint32_t getLayersCount() const noexcept;
+
   VkImageLayout getVkImageLayout() const noexcept;
 
 private:
@@ -91,14 +93,15 @@ public:
 
   TextureBuilder& withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept;
 
-  Texture buildImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED) const;
-
-  Texture buildImage(
-      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer, const std::span<const VkBufferImageCopy> copyRegions,
+  Texture buildImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
                      VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED) const;
 
-  Texture buildMipmapImage(
-      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer, std::span<const VkBufferImageCopy> copyRegions,
+  Texture buildImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                     VkBuffer copyBuffer, const std::span<const VkBufferImageCopy> copyRegions,
+                     VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED) const;
+
+  Texture buildMipmapImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                           VkBuffer copyBuffer, std::span<const VkBufferImageCopy> copyRegions,
                            VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED) const;
 
 private:

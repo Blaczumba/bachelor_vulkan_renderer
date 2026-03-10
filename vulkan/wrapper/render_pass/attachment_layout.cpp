@@ -165,8 +165,7 @@ AttachmentLayout& AttachmentLayout::addFragmentShadingRateAttachment() {
   });
   _attachmentDescriptions.push_back(createDescription(
       VK_FORMAT_R8_UINT, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_LOAD,
-      VK_ATTACHMENT_STORE_OP_DONT_CARE,
-      VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+      VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
       VK_ATTACHMENT_LOAD_OP_CLEAR));
   _attachmentImageLayouts.push_back(VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR);
   _attachmentTypes.push_back(AttachmentType::FRAGMENT_SHADING_RATE);
