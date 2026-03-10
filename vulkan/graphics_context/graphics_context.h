@@ -1151,9 +1151,8 @@ Texture createSkybox(
           .withUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
           .withLayerCount(6)
           .withAdditionalCreateInfoFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-          .withLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
           .buildImage(logicalDevice, commandBuffer, imageData.stagingBuffer.getVkBuffer(),
-                      imageData.copyRegions);
+                      imageData.copyRegions, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, imageData.mipLevels, 0, 6);
   return texture;
 }
@@ -1170,7 +1169,7 @@ Texture createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer comman
           .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | additionalUsage)
           .withLayerCount(6)
           .withAdditionalCreateInfoFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-          .buildAttachment(logicalDevice, commandBuffer);
+          .buildImage(logicalDevice, commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, 6);
   return texture;
 }
@@ -1183,7 +1182,7 @@ Texture createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer comm
           .withExtent(width, height)
           .withFormat(format)
           .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-          .buildImageSampler(logicalDevice, commandBuffer);
+          .buildImage(logicalDevice, commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, 1);
   return texture;
 }
@@ -1200,7 +1199,7 @@ Texture createTexture2D(
           .withUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
                      | VK_IMAGE_USAGE_SAMPLED_BIT)
           .buildMipmapImage(logicalDevice, commandBuffer, imageData.stagingBuffer.getVkBuffer(),
-                            imageData.copyRegions);
+                            imageData.copyRegions, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, imageData.mipLevels, 0, 1);
   return texture;
 }
@@ -1231,7 +1230,7 @@ void createFsrContents(
     texture.copyFromStagingBuffer(
         handle.getCommandBuffer(), stagingBuffer.getVkBuffer(), imageCopy);
     texture.transitionLayout(
-        handle.getCommandBuffer(), VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR);
+        handle.getCommandBuffer(), VK_IMAGE_LAYOUT_GENERAL);
   }
 }
 

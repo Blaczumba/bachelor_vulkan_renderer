@@ -23,8 +23,7 @@ Texture createColorAttachment(
           .withLayerCount(numLayers)
           .withNumSamples(samples)
           .withUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-          .withLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-          .buildAttachment(logicalDevice, commandBuffer);
+          .buildImage(logicalDevice, commandBuffer, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
 }
@@ -42,9 +41,9 @@ Texture createDepthAttachment(
           .withNumSamples(samples)
           .withUsage(
               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)
-          .withLayout(hasStencil(format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
-                                           VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
-          .buildAttachment(logicalDevice, commandBuffer);
+          .buildImage(logicalDevice, commandBuffer,
+                           hasStencil(format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
+                                                VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
 }
@@ -66,9 +65,8 @@ Texture createFragmentShadingRateAttachment(
           .withLayerCount(numLayers)
           .withNumSamples(samples)
           .withUsage(VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR
-                     | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-          .withLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-          .buildAttachment(logicalDevice, commandBuffer);
+               | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT)
+          .buildImage(logicalDevice, commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
 }

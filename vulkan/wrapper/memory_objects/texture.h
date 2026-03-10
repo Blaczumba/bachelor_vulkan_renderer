@@ -65,8 +65,6 @@ class TextureBuilder {
 public:
   TextureBuilder& withType(VkImageType type) noexcept;
 
-  TextureBuilder& withLayout(VkImageLayout layout) noexcept;
-
   TextureBuilder& withFormat(VkFormat format) noexcept;
 
   TextureBuilder& withExtent(uint32_t width) noexcept;
@@ -93,18 +91,15 @@ public:
 
   TextureBuilder& withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept;
 
-  Texture buildAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const;
+  Texture buildImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED) const;
 
   Texture buildImage(
-      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
-      const std::span<const VkBufferImageCopy> copyRegions) const;
-
-  Texture buildImageSampler(
-      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const;
+      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer, const std::span<const VkBufferImageCopy> copyRegions,
+                     VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED) const;
 
   Texture buildMipmapImage(
-      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
-      std::span<const VkBufferImageCopy> copyRegions) const;
+      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer, std::span<const VkBufferImageCopy> copyRegions,
+                           VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED) const;
 
 private:
   VkImageCreateInfo _imageCreateInfo = {
@@ -121,5 +116,4 @@ private:
     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
   };
   VkImageAspectFlags _aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-  VkImageLayout _imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 };
