@@ -173,7 +173,6 @@ private:
 
   Renderpass _renderPass;
   std::vector<Framebuffer> _framebuffers;
-  std::vector<Texture> _attachments;
 
   // Shadowmap
   Renderpass _shadowRenderPass;
@@ -286,12 +285,6 @@ private:
         _dynamicUniformBuffersCamera, size, MULTIVIEW_PRESENTATION ? 2 : 1);
     _dynamicDescriptorSetWriter.writeDescriptorSet(
         _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
-
-    for (Texture& texture : _attachments) {
-      //_computeDescriptorSetWriter.storeImageStorage(*it);
-      //_computeDescriptorSetWriter.writeDescriptorSet(
-      //    _logicalDevice->getVkDevice(), _computeDescriptorSet.getVkDescriptorSet());
-    }
 
     _lightBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(UniformBufferLight));
     _lightHandle = _bindlessWriter->storeBuffer(_lightBuffer);
@@ -797,6 +790,45 @@ private:
     const Framebuffer& framebuffer = _framebuffers[imageIndex];
     const CommandBuffer& primaryCommandBuffer = _primaryCommandBuffer[_synchContext.currentFrame];
     primaryCommandBuffer.beginAsPrimary();
+
+    const VkCommandBuffer commandBuffer = primaryCommandBuffer.getVkCommandBuffer();
+
+    const PushConstantFov fsrPc = {
+      {0.0f, 0.0f}
+    };
+    vkCmdPushConstants(commandBuffer, _fsrPipeline->getVkPipelineLayout(),
+                       VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, &fsrPc);
+    vkCmdBindPipeline(
+        commandBuffer, _fsrPipeline->getVkPipelineBindPoint(),
+                      _fsrPipeline->getVkPipeline());
+    const VkDescriptorSet fsrDescriptorSets[] = {_computeDescriptorSet.getVkDescriptorSet()};
+    vkCmdBindDescriptorSets(
+        commandBuffer, _fsrPipeline->getVkPipelineBindPoint(),
+        _fsrPipeline->getVkPipelineLayout(), 0, 1, fsrDescriptorSets, 0, nullptr);
+    vkCmdDispatch(commandBuffer, 16, 16, 1);
+
+    // VkImageMemoryBarrier2 barrier = {
+    //   .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+    //   .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+    //   .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+    //   .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
+    //   .dstAccessMask = VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
+    //   .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+    //   .newLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
+    //   .image = shadingRateImage,
+    //   .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+    //                        .baseMipLevel = 0,
+    //                        .levelCount = 1,
+    //                        .baseArrayLayer = 0,
+    //                        .layerCount = 1}
+    // };
+
+    // VkDependencyInfo depenencyInfo = {
+    //     .
+    // }
+
+    // vkCmdPipelineBarrier2(primaryCommandBuffer, )
+
     primaryCommandBuffer.beginRenderPass(framebuffer);
 
     static const bool viewportScissorInheritance =
@@ -1118,6 +1150,10 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
         VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | VK_IMAGE_USAGE_TRANSFER_DST_BIT
             | VK_IMAGE_USAGE_STORAGE_BIT);
     createFsrContents(commandBuffer, fsrTexture, *_logicalDevice);
+
+    _computeDescriptorSetWriter.storeImageStorage(fsrTexture);
+    _computeDescriptorSetWriter.writeDescriptorSet(_logicalDevice->getVkDevice(),
+        _computeDescriptorSet.getVkDescriptorSet());
 
     GpuTextureHandle fsrAttachmentHandle =
         _gpuBufferManager->transferTexture(std::move(fsrTexture));

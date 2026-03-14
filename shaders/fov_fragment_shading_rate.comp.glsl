@@ -9,9 +9,9 @@ layout(push_constant) uniform Constants {
 } pcs;
 
 uint get_rate(float dist) {
-    if (dist < 100.0) return 0; // 1x1 pixels
-    if (dist < 300.0) return 1; // 1x2 pixels
-    return 4;                   // 2x2 pixels
+    if (dist < 50.0) return 0; // 1x1 pixels
+    if (dist < 100.0) return 5; // 1x2 pixels
+    return 10;                   // 2x2 pixels
 }
 
 void main() {
