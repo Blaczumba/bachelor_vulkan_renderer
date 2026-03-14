@@ -12,7 +12,7 @@ class WindowGlfw : public Window, public std::enable_shared_from_this<const Wind
   GLFWwindow* _window;
 
 public:
-  WindowGlfw(std::string_view windowName, uint32_t width, uint32_t height);
+  WindowGlfw(std::string_view windowName, uint32_t width, uint32_t height, bool fullscreen);
 
   ~WindowGlfw() override;
 

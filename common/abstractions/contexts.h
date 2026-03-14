@@ -21,6 +21,7 @@ struct CameraContext {
 struct DrawingContext {
   uint32_t imageIndex;
   std::vector<CameraContext> cameraContexts;
+  glm::u32vec2 screenSpaceViewPos;
 
   std::mutex _mu;
 };

@@ -107,7 +107,7 @@ struct PushConstantsModelDescriptorHandles32Bit {
 };
 
 struct PushConstantFov {
-  glm::vec2 pixelSpaceViewDir;
+  glm::u32vec2 pixelSpaceViewDir;
 };
 
 struct PushConstantsShadow {

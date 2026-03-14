@@ -213,6 +213,7 @@ private:
 
   // Fragment rate shading.
   Pipeline* _fsrPipeline;
+  GpuTextureHandle _fsrTextureHandle;
 
   void setup() {
     std::string data = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
@@ -785,8 +786,8 @@ private:
     }
   }
 
-  void recordCommandBuffer(
-      const glm::mat4& cameraProj, const glm::mat4& cameraView, uint32_t imageIndex) {
+  void recordCommandBuffer(const glm::mat4& cameraProj, const glm::mat4& cameraView,
+                           uint32_t imageIndex, glm::u32vec2 screenPos) {
     const Framebuffer& framebuffer = _framebuffers[imageIndex];
     const CommandBuffer& primaryCommandBuffer = _primaryCommandBuffer[_synchContext.currentFrame];
     primaryCommandBuffer.beginAsPrimary();
@@ -794,7 +795,7 @@ private:
     const VkCommandBuffer commandBuffer = primaryCommandBuffer.getVkCommandBuffer();
 
     const PushConstantFov fsrPc = {
-      {0.0f, 0.0f}
+        screenPos
     };
     vkCmdPushConstants(commandBuffer, _fsrPipeline->getVkPipelineLayout(),
                        VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, &fsrPc);
@@ -807,27 +808,27 @@ private:
         _fsrPipeline->getVkPipelineLayout(), 0, 1, fsrDescriptorSets, 0, nullptr);
     vkCmdDispatch(commandBuffer, 16, 16, 1);
 
-    // VkImageMemoryBarrier2 barrier = {
-    //   .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-    //   .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-    //   .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-    //   .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
-    //   .dstAccessMask = VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
-    //   .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-    //   .newLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
-    //   .image = shadingRateImage,
-    //   .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-    //                        .baseMipLevel = 0,
-    //                        .levelCount = 1,
-    //                        .baseArrayLayer = 0,
-    //                        .layerCount = 1}
-    // };
-
-    // VkDependencyInfo depenencyInfo = {
-    //     .
-    // }
-
-    // vkCmdPipelineBarrier2(primaryCommandBuffer, )
+    const Texture& fsrTexture = _gpuBufferManager->getTexture(_fsrTextureHandle);
+    VkImageMemoryBarrier fsrBarrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
+        .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .newLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = fsrTexture.getVkImage(),
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        }};
+    vkCmdPipelineBarrier(commandBuffer,
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
+                         0, 0, nullptr, 0, nullptr, 1, &fsrBarrier);
 
     primaryCommandBuffer.beginRenderPass(framebuffer);
 
@@ -1059,7 +1060,7 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
   vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame]);
 
   const common::CameraContext& cameraContext = drawingContext.cameraContexts[0];
-  recordCommandBuffer(cameraContext.proj, cameraContext.view, drawingContext.imageIndex);
+  recordCommandBuffer(cameraContext.proj, cameraContext.view, drawingContext.imageIndex, drawingContext.screenSpaceViewPos);
 
   VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
 
@@ -1155,7 +1156,7 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
     _computeDescriptorSetWriter.writeDescriptorSet(_logicalDevice->getVkDevice(),
         _computeDescriptorSet.getVkDescriptorSet());
 
-    GpuTextureHandle fsrAttachmentHandle =
+    GpuTextureHandle fsrAttachmentHandle = _fsrTextureHandle =
         _gpuBufferManager->transferTexture(std::move(fsrTexture));
 
     attachmentHandles = lib::Buffer<GpuTextureHandle>{
@@ -1293,10 +1294,7 @@ Texture createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer com
 void createFsrContents(
     VkCommandBuffer commandBuffer, Texture& texture, const LogicalDevice& logicalDevice) {
   const VkExtent2D extent = texture.getVkExtent2D();
-  lib::Buffer<std::byte> buffer(static_cast<size_t>(extent.width * extent.height));
-  for (size_t i = 0; i < buffer.size(); i++) {
-    buffer[i] = i < buffer.size() / 2 ? static_cast<std::byte>(0) : static_cast<std::byte>(5);
-  }
+  lib::Buffer<std::byte> buffer(static_cast<size_t>(extent.width * extent.height), std::byte{0});
   Buffer stagingBuffer =
       Buffer::createStagingBuffer(logicalDevice, buffer.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   stagingBuffer.copyData(std::span(static_cast<const std::byte*>(buffer.data()), buffer.size()));

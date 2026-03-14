@@ -2,11 +2,11 @@
 
 #include "common/input_manager/mouse_keyboard_manager_glfw.h"
 
-WindowGlfw::WindowGlfw(std::string_view windowName, uint32_t width, uint32_t height) {
+WindowGlfw::WindowGlfw(std::string_view windowName, uint32_t width, uint32_t height, bool fullscreen) {
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   _window = glfwCreateWindow(
-      width, height, windowName.data(), /*glfwGetPrimaryMonitor()*/ nullptr, nullptr);
+      width, height, windowName.data(), fullscreen ? glfwGetPrimaryMonitor() : nullptr, nullptr);
 
   glfwSetWindowUserPointer(_window, this);
 }
