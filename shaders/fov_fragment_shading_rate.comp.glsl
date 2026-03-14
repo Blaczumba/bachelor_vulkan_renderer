@@ -11,16 +11,16 @@ layout(push_constant) uniform Constants {
 
 uint getRate(float dist, bool preferVertical) {
     // Tier 1: High Quality (1x1)
-    if (dist < 30.0) return 0; 
+    if (dist < 20.0) return 0; 
 
     // Tier 2: Slight Reduction (1x2 or 2x1)
-    if (dist < 60.0) return preferVertical ? 1 : 4;
+    if (dist < 40.0) return preferVertical ? 1 : 4;
 
     // Tier 3: Balanced Medium (2x2)
-    if (dist < 90.0) return 5;
+    if (dist < 60.0) return 5;
 
     // Tier 4: Significant Reduction (2x4 or 4x2)
-    if (dist < 120.0) return preferVertical ? 6 : 9;
+    if (dist < 95.0) return preferVertical ? 6 : 9;
 
     // Tier 5: Low Quality (4x4)
     return 10;
@@ -36,7 +36,8 @@ void main() {
     vec2 mouseTilePos = vec2(pcs.mousePos) / 16.0; 
     float d = distance(vec2(texelCoord), mouseTilePos);
 
-    uint rate = getRate(d, texelCoord.x > texelCoord.y);
+    vec2 diff = abs(texelCoord - mouseTilePos);
+    uint rate = getRate(d, diff.x > diff.y);
     
     // Store the rate in the red channel
     imageStore(shadingRateImage, texelCoord, uvec4(rate, 0, 0, 0));

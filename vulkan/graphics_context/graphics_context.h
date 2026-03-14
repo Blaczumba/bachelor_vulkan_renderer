@@ -1114,7 +1114,7 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
   lib::Buffer<VkPhysicalDeviceFragmentShadingRateKHR> fragmentShadingRates =
       _physicalDevice->getFragmentShadingRates();
 
-  static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+  static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_2_BIT;
   const VkFormat swapchainImageFormat = static_cast<VkFormat>(presentResources.imageFormat);
   const VkExtent2D extent = VkExtent2D{presentResources.width, presentResources.height};
 
