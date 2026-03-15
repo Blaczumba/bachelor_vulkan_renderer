@@ -220,9 +220,31 @@ private:
 
   void setup() {
     std::string data = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
+    const std::vector<VertexData> sponzaData =
+        LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
+    std::vector<VertexData> antiqueCandleStickData =
+        LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
+    std::for_each(
+        antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](VertexData& data) {
+          data.model = data.model
+                       * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
+                           * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
+        });
+    std::vector<VertexData> lanternData =
+        LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_lantern_3d_model/scene.gltf");
+    std::for_each(lanternData.begin(), lanternData.end(), [](VertexData& data) {
+          data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(8.5f, 4.25f, 0.0f))
+                       * glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
+        });
+    std::vector<VertexData> spartanData =
+        LoadGltfFromFile(*_assetManager, MODELS_PATH "pbr_spartan_helmet/scene.gltf");
+    std::for_each(spartanData.begin(), spartanData.end(), [](VertexData& data) {
+      data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(1000.0f, 16.0f, -250.0f))
+                   * glm::rotate(glm::mat4(1.0f),
+                                 glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
+                   * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
+    });
     VertexData cubeData = loadObj(*_assetManager, "cube.obj", data);
-    const std::vector<VertexData> sceneData =
-        LoadGltfFromFile(*_assetManager, MODELS_PATH "low_poly_night_city_building_skyline/scene.gltf");
     cubeData.diffuseTexture = {
       _assetManager->loadImageAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx"),
       TEXTURES_PATH "cubemap_yokohama_rgba.ktx"};
@@ -233,7 +255,11 @@ private:
     createGraphicsPipelines();
     createCommandBuffers();
     createSyncObjects();
-    loadObjects(sceneData);
+    loadObjects(sponzaData);
+    loadObjects(antiqueCandleStickData);
+    loadObjects(lanternData);
+    loadObjects(spartanData);
+
     createOctreeScene();
     {
       SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
@@ -490,7 +516,6 @@ private:
 
   void loadObjects(std::span<const VertexData> sceneData) {
     const float maxSamplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
-    _objects.reserve(sceneData.size());
 
     std::unordered_map<StagingImageDataResourceHandle,
                        std::pair<UniformTextureHandle, GpuTextureHandle>>
@@ -936,7 +961,7 @@ private:
           commandBuffer, indexBuffer.getSize() / getIndexSize(_indexBufferCubeType), 1, 0, 0, 0);
 
       // Env mapping
-      vkCmdBindPipeline(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
+      /*vkCmdBindPipeline(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
                         _phongEnvMappingPipeline->getVkPipeline());
 
       uint32_t dynamicUniformBufferOffsets[MULTIVIEW_PRESENTATION ? 2 : 1];
@@ -971,7 +996,7 @@ private:
       vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getVkBuffer(), 0, _indexBufferCubeType);
 
       vkCmdDrawIndexed(
-          commandBuffer, indexBuffer.getSize() / getIndexSize(_indexBufferCubeType), 1, 0, 0, 0);
+          commandBuffer, indexBuffer.getSize() / getIndexSize(_indexBufferCubeType), 1, 0, 0, 0);*/
 
       CHECK_VKCMD(vkEndCommandBuffer(commandBuffer), "Failed to vkEndCommandBuffer.");
     });
