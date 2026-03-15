@@ -294,6 +294,71 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrTesselationProgram(
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
             .withMultisampleStateCreateInfo(
+                renderpass.getAttachmentsLayout().getNumMsaaSamples())
+            .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
+            .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
+            .withFragmentShadingRateStateCreateInfo(
+                {1, 1}, VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
+                VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR)
+            .withTessellationStateCreateInfo(3)
+            .createPipeline(renderpass, *pipelineLayout),
+        pipelineLayoutIndex});
+  return pipelineIndex;
+}
+
+PipelineManager::PipelineMapIndex PipelineManager::createBlinnPhongTesselationProgram(
+    const Renderpass& renderpass) {
+  const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
+  const Shader& vertex =
+      addShader(logicalDevice, "shader_blinn_phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+  const Shader& tesselationControl = addShader(
+      logicalDevice, "shader_blinn_phong.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+  const Shader& tesselationEvaluation = addShader(
+      logicalDevice, "shader_blinn_phong.tse.spv",
+      VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+  const Shader& fragment =
+      addShader(logicalDevice, "shader_blinn_phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+  const VkShaderStageFlags shaderStageFlags =
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
+      | VK_SHADER_STAGE_FRAGMENT_BIT;
+  const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
+      PipelineLayoutKey{
+        {getOrCreateBindlessLayout(logicalDevice),
+         getOrCreateCameraLayout(logicalDevice, false)},
+        {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}
+  },
+      logicalDevice);
+
+  lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
+      renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
+      VkPipelineColorBlendAttachmentState{
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                          | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
+
+  VertexInputDescriptionBuilder builder;
+  builder.addVertexAttributeDescription<glm::vec3>()
+      .addVertexAttributeDescription<glm::vec2>()
+      .addVertexAttributeDescription<glm::vec3>()
+      .finishBinding(VK_VERTEX_INPUT_RATE_VERTEX);
+  auto [bindingDescriptions, attributeDescriptions] = builder.getDescription();
+
+  const VkPipelineShaderStageCreateInfo shaderStages[] = {
+    vertex.getVkPipelineStageCreateInfo(), tesselationControl.getVkPipelineStageCreateInfo(),
+    tesselationEvaluation.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
+
+  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  _pipelines.insertUnsafe(
+      *pipelineIndex,
+      PipelineResource{
+        GraphicsPipelineBuilder({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+            .withInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
+            .withVertexInputStateCreateInfo(bindingDescriptions, attributeDescriptions)
+            .withShaderStageCreateInfo(shaderStages)
+            .withPushConstantShaderStages(shaderStageFlags)
+            .withViewportStateCreateInfo()
+            .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
+            .withMultisampleStateCreateInfo(
                 renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)

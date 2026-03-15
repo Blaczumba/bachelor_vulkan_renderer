@@ -90,7 +90,7 @@ void Presentation::run() {
   });
 
   _graphicsContext->initializeResources();
-  Camera camera(PerspectiveProjection{glm::radians(45.0f), 1920.0f / 1080.f, 0.01f, 50.0f},
+  Camera camera(PerspectiveProjection{glm::radians(45.0f), 1920.0f / 1080.f, 0.01f, 500.0f},
                 glm::vec3(0.0f), 5.5f, 0.01f);
   glm::mat4 tempViewPos(1.0f);
   while (_window->open()) {

@@ -1,9 +1,9 @@
 set "SCRIPT_DIR=%~dp0"
 
-glslc.exe -fshader-stage=vertex "%SCRIPT_DIR%\shader_blinn_phong.vert.glsl" -O -o "%SCRIPT_DIR%\shader_blinn_phong.vert.spv"
+glslc.exe -I "%SCRIPT_DIR%\32bit_push_constants.glsl" -fshader-stage=vertex "%SCRIPT_DIR%\shader_blinn_phong.vert.glsl" -O -o "%SCRIPT_DIR%\shader_blinn_phong.vert.spv"
 glslc.exe -fshader-stage=tesscontrol "%SCRIPT_DIR%\shader_blinn_phong.tsc.glsl" -O -o "%SCRIPT_DIR%\shader_blinn_phong.tsc.spv"
-glslc.exe -fshader-stage=tesseval "%SCRIPT_DIR%\shader_blinn_phong.tse.glsl" -O -o "%SCRIPT_DIR%\shader_blinn_phong.tse.spv"
-glslc.exe -fshader-stage=fragment "%SCRIPT_DIR%\shader_blinn_phong.frag.glsl" -O -o "%SCRIPT_DIR%\shader_blinn_phong.frag.spv"
+glslc.exe -I "%SCRIPT_DIR%\bindless.glsl" -I "%SCRIPT_DIR%\32bit_push_constants.glsl" -fshader-stage=tesseval "%SCRIPT_DIR%\shader_blinn_phong.tse.glsl" -O -o "%SCRIPT_DIR%\shader_blinn_phong.tse.spv"
+glslc.exe -I "%SCRIPT_DIR%\bindless.glsl" -I "%SCRIPT_DIR%\32bit_push_constants.glsl" -fshader-stage=fragment "%SCRIPT_DIR%\shader_blinn_phong.frag.glsl" -O -o "%SCRIPT_DIR%\shader_blinn_phong.frag.spv"
 
 glslc.exe -fshader-stage=vertex "%SCRIPT_DIR%\skybox.vert.glsl" -O -o "%SCRIPT_DIR%\skybox.vert.spv"
 glslc.exe -I "%SCRIPT_DIR%\bindless.glsl" -fshader-stage=fragment "%SCRIPT_DIR%\skybox.frag.glsl" -O -o "%SCRIPT_DIR%\skybox.frag.spv"

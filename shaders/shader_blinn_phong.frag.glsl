@@ -1,26 +1,24 @@
 #version 450
 
-layout(binding=0) uniform CameraUniform {
+#include "bindless.glsl"
+#include "32bit_push_constants.glsl"
+
+RegisterUniform(Light, { \
+    mat4 projView; \
+    vec3 pos; \
+});
+
+#define lightBufferHandle pushConstants.handles[0]
+#define diffuseMapHandle pushConstants.handles[1]
+
+layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which depends on frame in flight
     mat4 view;
     mat4 proj;
-    vec3 pos;
+    vec3 viewPos;
+
 } camera;
 
-
-layout(binding = 1) uniform Light {
-    mat4 projView;
-
-    vec3 pos;
-
-} light;
-
-layout(binding = 2) uniform ObjectUniform {
-    mat4 model;
-
-} object;
-
-layout(binding = 3) uniform sampler2D texSampler;
-layout(binding = 4) uniform sampler2DShadow shadowMap;
+#define shadowMapHandle pushConstants.handles[4]
 
 layout(location = 0) in vec3 fragPosition;
 layout(location = 1) in vec2 fragTexCoord;
@@ -41,32 +39,32 @@ float calculateShadow() {
     if(lightFrag.z >= 1.0)
         return 1.0;
 
-    float sum = textureOffset(shadowMap, lightFrag.xyz, offsets[0])
-        + textureOffset(shadowMap, lightFrag.xyz, offsets[1])
-        + textureOffset(shadowMap, lightFrag.xyz, offsets[2])
-        + textureOffset(shadowMap, lightFrag.xyz, offsets[3])
-        + textureOffset(shadowMap, lightFrag.xyz, offsets[4])
-        + textureOffset(shadowMap, lightFrag.xyz, offsets[5])
-        + textureOffset(shadowMap, lightFrag.xyz, offsets[6])
-        + textureOffset(shadowMap, lightFrag.xyz, offsets[7])
-        + textureOffset(shadowMap, lightFrag.xyz, offsets[8]);
+    float sum = textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[0])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[1])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[2])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[3])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[4])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[5])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[6])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[7])
+        + textureOffset(uGlobalTexturesShadow[nonuniformEXT(shadowMapHandle)], lightFrag.xyz, offsets[8]);
 
     return sum / KELNER_SIZE;
 }
 
 void main() {
-    vec3 color = texture(texSampler, fragTexCoord).rgb;
+    vec3 color = texture(uGlobalTextures2D[nonuniformEXT(diffuseMapHandle)], fragTexCoord).rgb;
     // vec3 color = 0.6 * vec3(1.0, 1.0, 1.0);
     const bool blinn = true;
 
     vec3 ambient = 0.05 * color;
     // diffuse
-    vec3 lightDir = normalize(light.pos - fragPosition);
+    vec3 lightDir = normalize(GetResource(Light, lightBufferHandle).pos - fragPosition);
     vec3 normal = normalize(fragNormal);
     float diff = max(dot(lightDir, normal), 0.0);
     vec3 diffuse = diff * color;
     // specular
-    vec3 viewDir = normalize(camera.pos - fragPosition);
+    vec3 viewDir = normalize(camera.viewPos - fragPosition);
     float spec = 0.0;
     if(blinn)
     {

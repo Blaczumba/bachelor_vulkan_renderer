@@ -215,11 +215,14 @@ private:
   Pipeline* _fsrPipeline;
   GpuTextureHandle _fsrTextureHandle;
 
+  // Blinn phong tesselation.
+  Pipeline* _blinnPhongTesselationPipeline;
+
   void setup() {
     std::string data = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
     VertexData cubeData = loadObj(*_assetManager, "cube.obj", data);
     const std::vector<VertexData> sceneData =
-        LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
+        LoadGltfFromFile(*_assetManager, MODELS_PATH "low_poly_night_city_building_skyline/scene.gltf");
     cubeData.diffuseTexture = {
       _assetManager->loadImageAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx"),
       TEXTURES_PATH "cubemap_yokohama_rgba.ktx"};
@@ -407,6 +410,8 @@ private:
   void createGraphicsPipelines() {
     _graphicsPipeline = _pipelineManager->getPipeline(
         _pipelineManager->createPBRProgram(_renderPass, MULTIVIEW_PRESENTATION));
+    _blinnPhongTesselationPipeline = _pipelineManager->getPipeline(
+        _pipelineManager->createBlinnPhongTesselationProgram(_renderPass));
     _skyboxPipeline =
         _pipelineManager->getPipeline(_pipelineManager->createSkyboxProgram(_renderPass));
     _phongEnvMappingPipeline = _pipelineManager->getPipeline(
@@ -415,7 +420,6 @@ private:
         _pipelineManager->getPipeline(_pipelineManager->createShadowProgram(_shadowRenderPass));
     _envMappingPipeline = _pipelineManager->getPipeline(
         _pipelineManager->createPbrEnvMappingProgram(_envMappingRenderPass));
-
     _fsrPipeline = _pipelineManager->getPipeline(
         _pipelineManager->createFragmentShadingRateProgram(*_logicalDevice));
   }
@@ -464,9 +468,9 @@ private:
                          std::pair<UniformTextureHandle, GpuTextureHandle>>& textureCache,
       StagingImageDataResourceHandle textureID, VkFormat format, VkCommandBuffer commandBuffer,
       float maxSamplerAnisotropy, SamplerHandle samplerHandle) {
-    auto it = textureCache.find(textureID);
+    auto [it, inserted] = textureCache.try_emplace(textureID);
 
-    if (it != textureCache.end()) {
+    if (!inserted) {
       _gpuBufferManager->increaseRefCount(it->second.second);
       return it->second;
     }
@@ -479,7 +483,7 @@ private:
     const GpuTextureHandle index = _gpuBufferManager->transferTexture(std::move(texture));
 
     const auto result = std::make_tuple(handle, index);
-    textureCache.emplace(textureID, result);
+    it->second = result;
 
     return result;
   }
@@ -809,7 +813,7 @@ private:
     vkCmdDispatch(commandBuffer, 16, 16, 1);
 
     const Texture& fsrTexture = _gpuBufferManager->getTexture(_fsrTextureHandle);
-    VkImageMemoryBarrier fsrBarrier = {
+    const VkImageMemoryBarrier fsrBarrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,

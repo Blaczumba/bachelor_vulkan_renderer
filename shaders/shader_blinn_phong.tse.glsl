@@ -1,5 +1,8 @@
 #version 450
 
+#include "bindless.glsl"
+#include "32bit_push_constants.glsl"
+
 // Define the type of tessellation - triangles and equal spacing
 layout(triangles, equal_spacing, cw) in;
 
@@ -9,19 +12,19 @@ layout(location = 1) out vec2 teFragTexCoord;
 layout(location = 2) out vec4 teLightFragPosition;
 layout(location = 3) out vec3 teNormal;
 
-layout(binding=0) uniform CameraUniform {
+RegisterUniform(Light, { \
+    mat4 projView; \
+    vec3 pos; \
+});
+
+#define lightBufferHandle pushConstants.handles[0]
+
+layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which depends on frame in flight
     mat4 view;
     mat4 proj;
     vec3 viewPos;
 
 } camera;
-
-layout(binding = 1) uniform Light {
-    mat4 projView;
-
-    vec3 pos;
-
-} light;
 
 const mat4 BiasMat = mat4(
 	0.5, 0, 0, 0,
@@ -81,6 +84,6 @@ void main() {
     gl_Position = camera.proj * camera.view * vec4(tefragPosition, 1.0);
     teFragTexCoord = interpolate2D(outPatch.TexCoord[0], outPatch.TexCoord[1], outPatch.TexCoord[2]);
 
-    teLightFragPosition = BiasMat * light.projView * vec4(tefragPosition, 1.0);
+    teLightFragPosition = BiasMat * GetResource(Light, lightBufferHandle).projView * vec4(tefragPosition, 1.0);
     teNormal = interpolate3D(outPatch.Normal[0], outPatch.Normal[1], outPatch.Normal[2]);
 }
