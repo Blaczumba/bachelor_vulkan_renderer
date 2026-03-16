@@ -151,7 +151,7 @@ bool PipelineManager::removePipelineLayout(PipelineLayoutMapIndex index) {
   return true;
 }
 
-Pipeline* PipelineManager::getPipeline(PipelineMapIndex index) {
+Pipeline* PipelineManager::getPipeline(PipelineHandle index) {
   if (!_pipelines.exists(*index)) {
     return nullptr;
   }
@@ -159,7 +159,7 @@ Pipeline* PipelineManager::getPipeline(PipelineMapIndex index) {
   return &_pipelines.getValue(*index).pipeline;
 }
 
-bool PipelineManager::removePipeline(PipelineManager::PipelineMapIndex index) {
+bool PipelineManager::removePipeline(PipelineHandle index) {
   if (!_pipelines.exists(*index)) {
     return false;
   }
@@ -181,8 +181,7 @@ constexpr VkPushConstantRange getPushConstantRange(
 
 }  // namespace
 
-PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(
-    const Renderpass& renderpass, bool multiview) {
+PipelineHandle PipelineManager::createPBRProgram(const Renderpass& renderpass, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice, multiview ? "shader_pbr_multiview.vert.spv" : "shader_pbr.vert.spv",
@@ -217,7 +216,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  const PipelineHandle pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -239,7 +238,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPBRProgram(
   return pipelineIndex;
 }
 
-PipelineManager::PipelineMapIndex PipelineManager::createPbrTesselationProgram(
+PipelineHandle PipelineManager::createPbrTesselationProgram(
     const Renderpass& renderpass, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
@@ -282,7 +281,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrTesselationProgram(
     vertex.getVkPipelineStageCreateInfo(), tesselationControl.getVkPipelineStageCreateInfo(),
     tesselationEvaluation.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  const PipelineHandle pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -293,8 +292,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrTesselationProgram(
             .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
-            .withMultisampleStateCreateInfo(
-                renderpass.getAttachmentsLayout().getNumMsaaSamples())
+            .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples())
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
             .withFragmentShadingRateStateCreateInfo(
@@ -306,16 +304,14 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrTesselationProgram(
   return pipelineIndex;
 }
 
-PipelineManager::PipelineMapIndex PipelineManager::createBlinnPhongTesselationProgram(
-    const Renderpass& renderpass) {
+PipelineHandle PipelineManager::createBlinnPhongTesselationProgram(const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice, "shader_blinn_phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& tesselationControl = addShader(
       logicalDevice, "shader_blinn_phong.tsc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
   const Shader& tesselationEvaluation = addShader(
-      logicalDevice, "shader_blinn_phong.tse.spv",
-      VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+      logicalDevice, "shader_blinn_phong.tse.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
   const Shader& fragment =
       addShader(logicalDevice, "shader_blinn_phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
@@ -324,8 +320,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createBlinnPhongTesselationPr
       | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice),
-         getOrCreateCameraLayout(logicalDevice, false)},
+        {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice, false)},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}
   },
       logicalDevice);
@@ -347,7 +342,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createBlinnPhongTesselationPr
     vertex.getVkPipelineStageCreateInfo(), tesselationControl.getVkPipelineStageCreateInfo(),
     tesselationEvaluation.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  const PipelineHandle pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -368,8 +363,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createBlinnPhongTesselationPr
   return pipelineIndex;
 }
 
-PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
-    const Renderpass& renderpass) {
+PipelineHandle PipelineManager::createPbrEnvMappingProgram(const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice, "pbr_env_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -401,7 +395,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  const PipelineHandle pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -421,7 +415,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createPbrEnvMappingProgram(
   return pipelineIndex;
 }
 
-PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
+PipelineHandle PipelineManager::createEnvMappingProgram(
     const Renderpass& renderpass, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
@@ -456,7 +450,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  const PipelineHandle pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -476,8 +470,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createEnvMappingProgram(
   return pipelineIndex;
 }
 
-PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
-    const Renderpass& renderpass) {
+PipelineHandle PipelineManager::createSkyboxProgram(const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex = addShader(logicalDevice, "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
@@ -503,7 +496,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  const PipelineHandle pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -523,8 +516,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createSkyboxProgram(
   return pipelineIndex;
 }
 
-PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
-    const Renderpass& renderpass) {
+PipelineHandle PipelineManager::createShadowProgram(const Renderpass& renderpass) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex = addShader(logicalDevice, "shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
@@ -546,7 +538,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
   const VkPipelineShaderStageCreateInfo shaderStages[] = {
     vertex.getVkPipelineStageCreateInfo(), fragment.getVkPipelineStageCreateInfo()};
 
-  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  const PipelineHandle pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{
@@ -566,7 +558,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createShadowProgram(
   return pipelineIndex;
 }
 
-PipelineManager::PipelineMapIndex PipelineManager::createFragmentShadingRateProgram(
+PipelineHandle PipelineManager::createFragmentShadingRateProgram(
     const LogicalDevice& logicalDevice) {
   const Shader& compute =
       addShader(logicalDevice, "fov_fragment_shading_rate.comp.spv", VK_SHADER_STAGE_COMPUTE_BIT);
@@ -575,7 +567,7 @@ PipelineManager::PipelineMapIndex PipelineManager::createFragmentShadingRateProg
       PipelineLayoutKey{{getOrCreateComputeLayout(logicalDevice)},
                         {getPushConstantRange<PushConstantFov>(shaderStageFlags)}},
       logicalDevice);
-  const PipelineMapIndex pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
+  const PipelineHandle pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);
   _pipelines.insertUnsafe(
       *pipelineIndex,
       PipelineResource{ComputePipelineBuilder()

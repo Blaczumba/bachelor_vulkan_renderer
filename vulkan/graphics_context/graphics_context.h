@@ -205,6 +205,9 @@ private:
   // PBR objects.
   std::vector<Object> objects;
   Pipeline* _graphicsPipeline;
+  PipelineHandle _graphicsPipelineHandle;
+  Pipeline* _graphicsTesselationPipeline;
+  PipelineHandle _graphicsTesselationPipelineHandle;
 
   UniformBufferLight _ubLight;
   Buffer _dynamicUniformBuffersCamera;
@@ -215,9 +218,6 @@ private:
   Pipeline* _fsrPipeline;
   GpuTextureHandle _fsrTextureHandle;
 
-  // Blinn phong tesselation.
-  Pipeline* _blinnPhongTesselationPipeline;
-
   void setup() {
     std::string data = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
     const std::vector<VertexData> sponzaData =
@@ -226,22 +226,20 @@ private:
         LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
     std::for_each(
         antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](VertexData& data) {
-          data.model = data.model
-                       * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
-                           * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
+          data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
+                       * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
         });
     std::vector<VertexData> lanternData =
         LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_lantern_3d_model/scene.gltf");
     std::for_each(lanternData.begin(), lanternData.end(), [](VertexData& data) {
-          data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(8.5f, 4.25f, 0.0f))
-                       * glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
-        });
+      data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(8.5f, 4.25f, 0.0f))
+                   * glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
+    });
     std::vector<VertexData> spartanData =
         LoadGltfFromFile(*_assetManager, MODELS_PATH "pbr_spartan_helmet/scene.gltf");
     std::for_each(spartanData.begin(), spartanData.end(), [](VertexData& data) {
       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(1000.0f, 16.0f, -250.0f))
-                   * glm::rotate(glm::mat4(1.0f),
-                                 glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
+                   * glm::rotate(glm::mat4(1.0f), glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
                    * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
     });
     VertexData cubeData = loadObj(*_assetManager, "cube.obj", data);
@@ -255,10 +253,10 @@ private:
     createGraphicsPipelines();
     createCommandBuffers();
     createSyncObjects();
-    loadObjects(sponzaData);
-    loadObjects(antiqueCandleStickData);
-    loadObjects(lanternData);
-    loadObjects(spartanData);
+    loadObjects(sponzaData, _graphicsPipelineHandle);
+    loadObjects(antiqueCandleStickData, _graphicsTesselationPipelineHandle);
+    loadObjects(lanternData, _graphicsTesselationPipelineHandle);
+    loadObjects(spartanData, _graphicsTesselationPipelineHandle);
 
     createOctreeScene();
     {
@@ -434,10 +432,13 @@ private:
   }
 
   void createGraphicsPipelines() {
-    _graphicsPipeline = _pipelineManager->getPipeline(
-        _pipelineManager->createPBRProgram(_renderPass, MULTIVIEW_PRESENTATION));
-    _blinnPhongTesselationPipeline = _pipelineManager->getPipeline(
-        _pipelineManager->createBlinnPhongTesselationProgram(_renderPass));
+    _graphicsPipelineHandle =
+        _pipelineManager->createPBRProgram(_renderPass, MULTIVIEW_PRESENTATION);
+    _graphicsPipeline = _pipelineManager->getPipeline(_graphicsPipelineHandle);
+    _graphicsTesselationPipelineHandle =
+        _pipelineManager->createPbrTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION);
+    _graphicsTesselationPipeline =
+        _pipelineManager->getPipeline(_graphicsTesselationPipelineHandle);
     _skyboxPipeline =
         _pipelineManager->getPipeline(_pipelineManager->createSkyboxProgram(_renderPass));
     _phongEnvMappingPipeline = _pipelineManager->getPipeline(
@@ -514,7 +515,7 @@ private:
     return result;
   }
 
-  void loadObjects(std::span<const VertexData> sceneData) {
+  void loadObjects(std::span<const VertexData> sceneData, PipelineHandle pipelineHandle) {
     const float maxSamplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
 
     std::unordered_map<StagingImageDataResourceHandle,
@@ -545,7 +546,8 @@ private:
       Entity e = _registry.createEntity();
       _objects.emplace_back("", e);
       _registry.addComponent<MaterialComponent>(
-          e, MaterialComponent{diffuseHandle, normalHandle, metallicRoughnessHandle});
+          e,
+          MaterialComponent{diffuseHandle, normalHandle, metallicRoughnessHandle, pipelineHandle});
       MeshComponent msh;
       if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
         AssetManager::VertexData vData =
@@ -758,11 +760,14 @@ private:
 
   void recordOctreeSecondaryCommandBuffer(
       const VkCommandBuffer commandBuffer, const OctreeNode* rootNode,
-      std::span<const glm::vec4> planes) {
+      std::span<const glm::vec4> planes, std::span<VkDescriptorSet> descriptorSets,
+      std::span<uint32_t> dynamicUniformBufferOffsets) {
     if (!rootNode || !rootNode->getVolume().intersectsFrustum(planes)) {
       return;
     }
 
+    std::optional<PipelineHandle> globalPipelineHandle;
+    Pipeline* pipeline;
     static std::queue<const OctreeNode*> nodeQueue;  // Keep it static to preserve
     // capacity
     nodeQueue.push(rootNode);
@@ -786,9 +791,21 @@ private:
                                 static_cast<uint32_t>(*_shadowHandle)}
         };
 
-        vkCmdPushConstants(
-            commandBuffer, _graphicsPipeline->getVkPipelineLayout(),
-            _graphicsPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
+        if (!globalPipelineHandle.has_value()
+            || materialComponent.pipelineHandle != *globalPipelineHandle) {
+          globalPipelineHandle = materialComponent.pipelineHandle;
+          pipeline = _pipelineManager->getPipeline(*globalPipelineHandle);
+          vkCmdBindPipeline(
+              commandBuffer, pipeline->getVkPipelineBindPoint(), pipeline->getVkPipeline());
+          vkCmdBindDescriptorSets(
+              commandBuffer, pipeline->getVkPipelineBindPoint(), pipeline->getVkPipelineLayout(), 0,
+              static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(),
+              static_cast<uint32_t>(dynamicUniformBufferOffsets.size()),
+              dynamicUniformBufferOffsets.data());
+        }
+
+        vkCmdPushConstants(commandBuffer, pipeline->getVkPipelineLayout(),
+                           pipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
 
         const auto& meshComponent = _registry.getComponent<MeshComponent>(object->getEntity());
         const Buffer& indexBuffer = _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
@@ -823,41 +840,38 @@ private:
 
     const VkCommandBuffer commandBuffer = primaryCommandBuffer.getVkCommandBuffer();
 
-    const PushConstantFov fsrPc = {
-        screenPos
-    };
+    const PushConstantFov fsrPc = {screenPos};
     vkCmdPushConstants(commandBuffer, _fsrPipeline->getVkPipelineLayout(),
                        VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, &fsrPc);
     vkCmdBindPipeline(
-        commandBuffer, _fsrPipeline->getVkPipelineBindPoint(),
-                      _fsrPipeline->getVkPipeline());
+        commandBuffer, _fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipeline());
     const VkDescriptorSet fsrDescriptorSets[] = {_computeDescriptorSet.getVkDescriptorSet()};
     vkCmdBindDescriptorSets(
-        commandBuffer, _fsrPipeline->getVkPipelineBindPoint(),
-        _fsrPipeline->getVkPipelineLayout(), 0, 1, fsrDescriptorSets, 0, nullptr);
+        commandBuffer, _fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipelineLayout(),
+        0, 1, fsrDescriptorSets, 0, nullptr);
     vkCmdDispatch(commandBuffer, 16, 16, 1);
 
     const Texture& fsrTexture = _gpuBufferManager->getTexture(_fsrTextureHandle);
     const VkImageMemoryBarrier fsrBarrier = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-        .dstAccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
-        .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-        .newLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = fsrTexture.getVkImage(),
-        .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        }};
-    vkCmdPipelineBarrier(commandBuffer,
-                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
-                         0, 0, nullptr, 0, nullptr, 1, &fsrBarrier);
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
+      .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .newLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = fsrTexture.getVkImage(),
+      .subresourceRange = {
+                           .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                           .baseMipLevel = 0,
+                           .levelCount = 1,
+                           .baseArrayLayer = 0,
+                           .layerCount = 1,
+                           }
+    };
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, 0, 0, nullptr,
+                         0, nullptr, 1, &fsrBarrier);
 
     primaryCommandBuffer.beginRenderPass(framebuffer);
 
@@ -890,8 +904,8 @@ private:
         vkCmdSetScissor(commandBuffer, 0, 1, &framebuffer.getScissor());
       }
 
-      vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
-                        _graphicsPipeline->getVkPipeline());
+      // vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
+      //                   _graphicsPipeline->getVkPipeline());
 
       const OctreeNode* root = _octree->getRoot();
       const auto& planes = extractFrustumPlanes(cameraProj * cameraView);
@@ -908,12 +922,9 @@ private:
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
             dynamicUniformBufferOffsets, {_synchContext.currentFrame});
       }
-      vkCmdBindDescriptorSets(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
-                              _graphicsPipeline->getVkPipelineLayout(), 0,
-                              static_cast<uint32_t>(std::size(descriptorSets)), descriptorSets,
-                              std::size(dynamicUniformBufferOffsets), dynamicUniformBufferOffsets);
 
-      recordOctreeSecondaryCommandBuffer(commandBuffer, root, planes);
+      recordOctreeSecondaryCommandBuffer(
+          commandBuffer, root, planes, descriptorSets, dynamicUniformBufferOffsets);
 
       CHECK_VKCMD(vkEndCommandBuffer(commandBuffer), "Failed to vkEndCommandBuffer.");
     });
@@ -982,7 +993,8 @@ private:
         .model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f))
                  * glm::scale(glm::mat4(1.0f), glm::vec3(0.75f, 0.75f, 0.75f)),
         .descriptorHandles = {
-                              static_cast<uint32_t>(*_envMappingHandle), static_cast<uint32_t>(*_lightHandle)}
+                              static_cast<uint32_t>(*_envMappingHandle),
+      static_cast<uint32_t>(*_lightHandle)}
       };
 
       vkCmdPushConstants(commandBuffer, _phongEnvMappingPipeline->getVkPipelineLayout(),
@@ -1089,7 +1101,8 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
   vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame]);
 
   const common::CameraContext& cameraContext = drawingContext.cameraContexts[0];
-  recordCommandBuffer(cameraContext.proj, cameraContext.view, drawingContext.imageIndex, drawingContext.screenSpaceViewPos);
+  recordCommandBuffer(cameraContext.proj, cameraContext.view, drawingContext.imageIndex,
+                      drawingContext.screenSpaceViewPos);
 
   VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
 
@@ -1182,8 +1195,8 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
     createFsrContents(commandBuffer, fsrTexture, *_logicalDevice);
 
     _computeDescriptorSetWriter.storeImageStorage(fsrTexture);
-    _computeDescriptorSetWriter.writeDescriptorSet(_logicalDevice->getVkDevice(),
-        _computeDescriptorSet.getVkDescriptorSet());
+    _computeDescriptorSetWriter.writeDescriptorSet(
+        _logicalDevice->getVkDevice(), _computeDescriptorSet.getVkDescriptorSet());
 
     GpuTextureHandle fsrAttachmentHandle = _fsrTextureHandle =
         _gpuBufferManager->transferTexture(std::move(fsrTexture));

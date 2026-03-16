@@ -1,7 +1,7 @@
 #version 450
 
 // Constants for tessellation levels
-const float tessLevelOuter = 10.0;  // Outer tessellation level
+const float tessLevelOuter = 3.0;  // Outer tessellation level
 const float tessLevelInner = 1.0;  // Inner tessellation level
 
 layout(vertices = 1) out;

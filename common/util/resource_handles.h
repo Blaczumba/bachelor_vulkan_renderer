@@ -30,3 +30,6 @@ DEFINE_STRONG_INT(FramebufferHandle, lib::SmallestIndex<MAX_FRAMEBUFFERS>::type)
 
 constexpr size_t MAX_RENDERPASSES = 32;
 DEFINE_STRONG_INT(RenderpassHandle, lib::SmallestIndex<MAX_RENDERPASSES>::type);
+
+constexpr size_t MAX_PIPELINES = 32;
+DEFINE_STRONG_INT(PipelineHandle, lib::SmallestIndex<MAX_PIPELINES>::type);

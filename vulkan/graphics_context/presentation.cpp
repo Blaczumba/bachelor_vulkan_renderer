@@ -108,8 +108,7 @@ void Presentation::run() {
       {
        camera.getPosition(),
        _mouseKeyboardManager->isPressed(Keyboard::Key::R) ? tempViewPos = camera.getViewMatrix() :
-                                                             tempViewPos,
-       camera.getProjectionMatrix(),
+                                                             tempViewPos, camera.getProjectionMatrix(),
        }
     };
     _drawingContext.screenSpaceViewPos = _mouseKeyboardManager->getMousePosition();

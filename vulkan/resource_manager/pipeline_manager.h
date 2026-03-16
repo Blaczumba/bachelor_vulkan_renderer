@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "common/file/file_loader.h"
+#include "common/util/resource_handles.h"
 #include "lib/sparse/sparse_map.h"
 #include "lib/types/strong_int.h"
 #include "vulkan/resource_manager/hasher.h"
@@ -29,8 +30,6 @@ class PipelineManager {
   using PipelineLayoutMap = lib::SparseMap<PipelineLayoutID, MAX_PIPELINE_LAYOUTS>;
   using PipelineLayoutMapIndex = typename PipelineLayoutMap::IndexType;
 
-  static constexpr size_t MAX_PIPELINES = 32;
-
   struct PipelineResource {
     Pipeline pipeline;
     PipelineLayoutMapIndex layoutIndex;
@@ -41,8 +40,6 @@ class PipelineManager {
   PipelineManager(const FileLoader& fileLoader);
 
 public:
-  DEFINE_STRONG_INT(PipelineMapIndex, typename PipelineMap::IndexType);
-
   static std::unique_ptr<PipelineManager> create(const FileLoader& fileLoader);
 
   ~PipelineManager() = default;
@@ -53,25 +50,25 @@ public:
 
   VkDescriptorSetLayout getOrCreateComputeLayout(const LogicalDevice& logicalDevice);
 
-  Pipeline* getPipeline(PipelineMapIndex index);
+  Pipeline* getPipeline(PipelineHandle index);
 
-  bool removePipeline(PipelineMapIndex index);
+  bool removePipeline(PipelineHandle index);
 
-  PipelineMapIndex createPBRProgram(const Renderpass& renderpass, bool multiview);
+  PipelineHandle createPBRProgram(const Renderpass& renderpass, bool multiview);
 
-  PipelineMapIndex createPbrTesselationProgram(const Renderpass& renderpass, bool multiview);
+  PipelineHandle createPbrTesselationProgram(const Renderpass& renderpass, bool multiview);
 
-  PipelineMapIndex createBlinnPhongTesselationProgram(const Renderpass& renderpass);
+  PipelineHandle createBlinnPhongTesselationProgram(const Renderpass& renderpass);
 
-  PipelineMapIndex createPbrEnvMappingProgram(const Renderpass& renderpass);
+  PipelineHandle createPbrEnvMappingProgram(const Renderpass& renderpass);
 
-  PipelineMapIndex createEnvMappingProgram(const Renderpass& renderpass, bool multiview);
+  PipelineHandle createEnvMappingProgram(const Renderpass& renderpass, bool multiview);
 
-  PipelineMapIndex createSkyboxProgram(const Renderpass& renderpass);
+  PipelineHandle createSkyboxProgram(const Renderpass& renderpass);
 
-  PipelineMapIndex createShadowProgram(const Renderpass& renderpass);
+  PipelineHandle createShadowProgram(const Renderpass& renderpass);
 
-  PipelineMapIndex createFragmentShadingRateProgram(const LogicalDevice& logicalDevice);
+  PipelineHandle createFragmentShadingRateProgram(const LogicalDevice& logicalDevice);
 
 private:
   PipelineLayoutMap _pipelineLayouts;
@@ -82,7 +79,7 @@ private:
   std::unordered_map<PipelineLayoutMapIndex, PipelineLayoutKey> _pipelineLayoutKeys;
 
   PipelineMap _pipelines;
-  std::vector<PipelineMapIndex> _freePipelineIndices;
+  std::vector<PipelineHandle> _freePipelineIndices;
 
   const FileLoader& _fileLoader;
 

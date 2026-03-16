@@ -46,13 +46,17 @@ std::vector<VertexData> LoadGltfFromFile(
     common::AssetManager<AssetManagerImpl>& assetManager, const std::string& filePath) {
   auto sharedData = std::make_shared<SharedData>();
   tinygltf::TinyGLTF loader;
+  if (!std::filesystem::exists(std::filesystem::path(filePath))) {
+    throw EngineException(
+        std::format("{} does not exists in the filesystem.", filePath));
+  }
 
   if (filePath.ends_with(".glb")) {
     loader.LoadBinaryFromFile(&sharedData->model, nullptr, nullptr, filePath);
   } else if (filePath.ends_with(".gltf")) {
     loader.LoadASCIIFromFile(&sharedData->model, nullptr, nullptr, filePath);
   } else {
-    throw EngineException(std::format("Failed to load {}.", filePath));
+    throw EngineException(std::format("GLTF loader cannot load {} which is not .gltf or .glb format.", filePath));
   }
 
   const std::string baseDir = std::filesystem::path(filePath).parent_path().string();
@@ -189,7 +193,6 @@ void processNode(common::AssetManager<AssetManagerImpl>& assetManager,
         processAttribute(sharedData->model, attributes, "POSITION");
     lib::Buffer<glm::vec3> positions(
         reinterpret_cast<const glm::vec3*>(positionsData.data()), positionsData.size());
-
     std::span<const unsigned char> textureCoordsData =
         processAttribute(sharedData->model, attributes, "TEXCOORD_0");
     std::span<const unsigned char> normalsData =

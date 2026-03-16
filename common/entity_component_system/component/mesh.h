@@ -4,7 +4,6 @@
 
 #include "common/entity_component_system/entity/entity.h"
 #include "common/util/geometry.h"
-#include "common/util/resource_handles.h"
 
 class MeshComponent {
   static constexpr ComponentType componentID = 2;
