@@ -63,4 +63,33 @@ void copyDataInterleaving(
   }
 }
 
+std::vector<BufferDescription> analyzeConfig(
+    std::span<const std::pair<std::string, std::string>> orders,
+    std::span<const common::AttributeDescription> descs) {
+  std::vector<BufferDescription> descriptions;
+  descriptions.reserve(descs.size());
+
+  for (const auto& [name, config] : orders) {
+    std::vector<common::AttributeDescription> orderedDescs;
+    orderedDescs.reserve(config.size());
+
+    size_t totalSize = 0;
+    for (const char digit : config) {
+      if (!std::isdigit(digit)) [[unlikely]] {
+        throw EngineException(std::format(
+            "The format of config string in analyzeConfig must contain digits only. Got: {}.",
+            digit));
+      }
+
+      const common::AttributeDescription& description =
+          orderedDescs.emplace_back(descs[static_cast<size_t>(digit - '0')]);
+      totalSize += description.size * description.count;
+    }
+
+    descriptions.emplace_back(name, std::move(orderedDescs), totalSize);
+  }
+
+  return descriptions;
+}
+
 }  // namespace common

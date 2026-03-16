@@ -97,12 +97,9 @@ StagingVertexDataResourceHandle AssetManager::loadVertexDataInterleavingAsync(
           _launchPolicy,
           [this, modelPtr, indices, indexSize, orders, attributes...]() -> VertexData {
             VertexData vertexData;
-            const common::AttributeDescription descs[] = {
-              common::AttributeDescription{(void*)attributes.data(), sizeof(Type), attributes.size()}
-              ...
-            };
+            const std::array descs = common::createAttributeDescriptions(attributes...);
 
-            std::vector<BufferDescription> bufferDescriptions = analyzeConfig(orders, descs);
+            std::vector<common::BufferDescription> bufferDescriptions = common::analyzeConfig(orders, descs);
 
             const VkPhysicalDeviceType deviceType =
                 _logicalDevice.getPhysicalDevice().getPhysicalDeviceType();
@@ -122,7 +119,7 @@ StagingVertexDataResourceHandle AssetManager::loadVertexDataInterleavingAsync(
               additionalFlags.indexBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
             }
 
-            for (BufferDescription& description : bufferDescriptions) {
+            for (common::BufferDescription& description : bufferDescriptions) {
               Buffer vertexBuffer = Buffer::createStagingBuffer(
                   _logicalDevice, description.totalSize, additionalFlags.vertexBufferUsage);
               common::copyDataInterleaving(vertexBuffer.getMappedMemory(), description.attributes);

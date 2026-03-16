@@ -19,6 +19,7 @@
 #include "common/util/geometry.h"
 #include "common/util/primitives.h"
 #include "common/util/resource_handles.h"
+#include "common/buffer/buffer.h"
 #include "lib/buffer/shared_buffer.h"
 
 #ifdef __ANDROID__
@@ -219,16 +220,27 @@ void processNode(common::AssetManager<AssetManagerImpl>& assetManager,
       continue;
     }
 
-    static std::pair<std::string, std::string> orders[] = {
-      {"PTNT", "0123"},
-      {"P",    "0"   }
-    };
-
     sharedData->tangents.push_back(createTangents(
         indexSize, indicesBytes,
         std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()), positionsData.size()),
         std::span(reinterpret_cast<const glm::vec2*>(textureCoordsData.data()),
                   textureCoordsData.size())));
+
+    static std::pair<std::string, std::string> orders[] = {
+      {"PTNT", "0123"},
+      {"P",    "0"   }
+    };
+
+    const std::array attributeDescriptions = common::createAttributeDescriptions(
+        std::span(reinterpret_cast<const glm::vec3*>(positionsData.data()), positionsData.size()),
+        std::span(
+            reinterpret_cast<const glm::vec2*>(textureCoordsData.data()), textureCoordsData.size()),
+        std::span(reinterpret_cast<const glm::vec3*>(normalsData.data()), normalsData.size()),
+        std::span(reinterpret_cast<const glm::vec3*>(sharedData->tangents.back().data()),
+                  sharedData->tangents.back().size()));
+    const std::vector<common::BufferDescription> bufferDescriptions =
+        common::analyzeConfig(orders, attributeDescriptions);
+
     const StagingVertexDataResourceHandle vertexResourceID =
         assetManager.loadVertexDataInterleavingAsync(
             sharedData, indicesBytes, indexSize, orders,
