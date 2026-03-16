@@ -22,7 +22,7 @@ Sampler& Sampler::operator=(Sampler&& other) noexcept {
     return *this;
   }
 
-  if (isValid()) {
+  if (_sampler != VK_NULL_HANDLE) {
     destroy();
   }
 
@@ -32,7 +32,7 @@ Sampler& Sampler::operator=(Sampler&& other) noexcept {
 }
 
 Sampler::~Sampler() {
-  if (isValid()) {
+  if (_sampler != VK_NULL_HANDLE) {
     destroy();
     _sampler = VK_NULL_HANDLE;
   }
@@ -40,10 +40,6 @@ Sampler::~Sampler() {
 
 VkSampler Sampler::getVkSampler() const noexcept {
   return _sampler;
-}
-
-bool Sampler::isValid() const noexcept {
-  return _sampler != VK_NULL_HANDLE;
 }
 
 void Sampler::destroy() {

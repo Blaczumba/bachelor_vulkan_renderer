@@ -1,5 +1,6 @@
 #include "vulkan/graphics_context/presentation.h"
 
+#include "common/math/engine_math.h"
 #include "common/util/engine_exception.h"
 #include "lib/types/util.h"
 #include "vulkan/graphics_context/graphics_context.h"
@@ -92,6 +93,7 @@ void Presentation::run() {
   _graphicsContext->initializeResources();
   Camera camera(PerspectiveProjection{glm::radians(45.0f), 1920.0f / 1080.f, 0.01f, 500.0f},
                 glm::vec3(0.0f), 5.5f, 0.01f);
+  const auto [screenWidth, screenHeight] = _window->getFramebufferSize();
   glm::mat4 tempViewPos(1.0f);
   while (_window->open()) {
     current = std::chrono::steady_clock::now();
@@ -104,6 +106,10 @@ void Presentation::run() {
     _graphicsContext->waitCompleteExecution();
     _swapchain.acquireNextImage(synchContext->imageAvailableSemaphores[synchContext->currentFrame],
                                 &_drawingContext.imageIndex);
+    glm::vec2 mousePos = _mouseKeyboardManager->getMousePosition();
+    const glm::vec3 worldRay = common::getWorldSpaceViewDirection(
+        mousePos.x, mousePos.y, screenWidth, screenHeight, glm::inverse(camera.getViewMatrix()),
+        glm::inverse(camera.getProjectionMatrix()));
     _drawingContext.cameraContexts = {
       {
        camera.getPosition(),

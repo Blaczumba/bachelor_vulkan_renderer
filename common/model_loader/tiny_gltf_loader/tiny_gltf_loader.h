@@ -47,8 +47,7 @@ std::vector<VertexData> LoadGltfFromFile(
   auto sharedData = std::make_shared<SharedData>();
   tinygltf::TinyGLTF loader;
   if (!std::filesystem::exists(std::filesystem::path(filePath))) {
-    throw EngineException(
-        std::format("{} does not exists in the filesystem.", filePath));
+    throw EngineException(std::format("{} does not exists in the filesystem.", filePath));
   }
 
   if (filePath.ends_with(".glb")) {
@@ -56,7 +55,8 @@ std::vector<VertexData> LoadGltfFromFile(
   } else if (filePath.ends_with(".gltf")) {
     loader.LoadASCIIFromFile(&sharedData->model, nullptr, nullptr, filePath);
   } else {
-    throw EngineException(std::format("GLTF loader cannot load {} which is not .gltf or .glb format.", filePath));
+    throw EngineException(
+        std::format("GLTF loader cannot load {} which is not .gltf or .glb format.", filePath));
   }
 
   const std::string baseDir = std::filesystem::path(filePath).parent_path().string();

@@ -18,8 +18,6 @@ public:
 
   VkSampler getVkSampler() const noexcept;
 
-  bool isValid() const noexcept;
-
 private:
   VkSampler _sampler = VK_NULL_HANDLE;
   const LogicalDevice* _logicalDevice = nullptr;

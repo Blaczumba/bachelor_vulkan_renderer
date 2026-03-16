@@ -6,7 +6,6 @@
 
 #include "common/util/engine_exception.h"
 #include "common/util/resource_handles.h"
-#include "lib/buffer/buffer.h"
 #include "vulkan/resource_manager/gpu_buffer_manager.h"
 #include "vulkan/wrapper/framebuffer/framebuffer.h"
 
