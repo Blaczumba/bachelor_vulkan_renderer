@@ -144,6 +144,14 @@ Buffer Buffer::createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t 
                 bufferData.mappedMemory);
 }
 
+std::span<const std::byte> Buffer::getMappedMemory() const noexcept {
+  return std::span(static_cast<const std::byte*>(_mappedMemory), _size);
+}
+
+std::span<std::byte> Buffer::getMappedMemory() noexcept {
+  return std::span(static_cast<std::byte*>(_mappedMemory), _size);
+}
+
 void Buffer::copyBuffer(
     const VkCommandBuffer commandBuffer, const Buffer& srcBuffer,
     std::optional<VkDeviceSize> srcSize, VkDeviceSize srcOffset, VkDeviceSize dstOffset) {
@@ -233,10 +241,6 @@ VkBufferUsageFlags Buffer::getUsage() const noexcept {
 
 uint32_t Buffer::getSize() const noexcept {
   return _size;
-}
-
-void* Buffer::getMappedMemory() const noexcept {
-  return _mappedMemory;
 }
 
 const VkBuffer& Buffer::getVkBuffer() const noexcept {

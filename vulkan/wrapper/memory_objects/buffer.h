@@ -33,6 +33,10 @@ public:
 
   static Buffer createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t size);
 
+  std::span<const std::byte> getMappedMemory() const noexcept;
+
+  std::span<std::byte> getMappedMemory() noexcept;
+
   void copyBuffer(const VkCommandBuffer commandBuffer, const Buffer& srcBuffer,
                   std::optional<VkDeviceSize> size = std::nullopt, VkDeviceSize srcOffset = 0,
                   VkDeviceSize dstOffset = 0);
@@ -58,8 +62,6 @@ public:
   VkBufferUsageFlags getUsage() const noexcept;
 
   uint32_t getSize() const noexcept;
-
-  void* getMappedMemory() const noexcept;
 
   const VkBuffer& getVkBuffer() const noexcept;
 

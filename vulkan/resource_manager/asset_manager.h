@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "common/buffer/buffer.h"
 #include "common/file/file_loader.h"
 #include "common/model_loader/image_loader/image_loader.h"
 #include "common/util/asset_manager.h"
@@ -132,7 +133,8 @@ StagingVertexDataResourceHandle AssetManager::loadVertexDataInterleavingAsync(
             vertexData.indexBuffer = Buffer::createStagingBuffer(
                 _logicalDevice, indices.size() / indexSize * shrunkIndexSize,
                 additionalFlags.indexBufferUsage);
-            vertexData.indexBuffer.copyAndShrinkData(indices, shrunkIndexSize, indexSize);
+            common::copyAndShrinkIndexData(
+                vertexData.indexBuffer.getMappedMemory(), indices, shrunkIndexSize, indexSize);
 
             vertexData.indexType = getIndexType(shrunkIndexSize);
 
