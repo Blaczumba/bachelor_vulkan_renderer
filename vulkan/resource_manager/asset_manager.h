@@ -97,8 +97,8 @@ StagingVertexDataResourceHandle AssetManager::loadVertexDataInterleavingAsync(
           _launchPolicy,
           [this, modelPtr, indices, indexSize, orders, attributes...]() -> VertexData {
             VertexData vertexData;
-            const AttributeDescription descs[] = {
-              AttributeDescription{(void*)attributes.data(), sizeof(Type), attributes.size()}
+            const common::AttributeDescription descs[] = {
+              common::AttributeDescription{(void*)attributes.data(), sizeof(Type), attributes.size()}
               ...
             };
 
@@ -125,7 +125,7 @@ StagingVertexDataResourceHandle AssetManager::loadVertexDataInterleavingAsync(
             for (BufferDescription& description : bufferDescriptions) {
               Buffer vertexBuffer = Buffer::createStagingBuffer(
                   _logicalDevice, description.totalSize, additionalFlags.vertexBufferUsage);
-              vertexBuffer.copyDataInterleaving(description.attributes);
+              common::copyDataInterleaving(vertexBuffer.getMappedMemory(), description.attributes);
               vertexData.buffers.insert({std::move(description.name), std::move(vertexBuffer)});
             }
 

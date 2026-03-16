@@ -41,18 +41,6 @@ public:
                   std::optional<VkDeviceSize> size = std::nullopt, VkDeviceSize srcOffset = 0,
                   VkDeviceSize dstOffset = 0);
 
-  void copyDataInterleaving(
-      std::span<const glm::vec3> positions, std::span<const glm::vec2> texCoords);
-
-  void copyDataInterleaving(
-      std::span<const glm::vec3> positions, std::span<const glm::vec2> texCoords,
-      std::span<const glm::vec3> normals);
-
-  void copyDataInterleaving(std::span<const AttributeDescription> attributes);
-
-  void copyAndShrinkData(std::span<const std::byte> data, size_t dstIndexSize, size_t srcIndexSize,
-                         VkDeviceSize offset = 0);
-
   template <typename T>
   void copyData(std::span<const T> data, VkDeviceSize offset = 0);
 

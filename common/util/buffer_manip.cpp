@@ -52,12 +52,12 @@ size_t getMaxIndex(std::span<const std::byte> indicesBuffer, size_t indexSize) {
  */
 std::vector<BufferDescription> analyzeConfig(
     std::span<const std::pair<std::string, std::string>> orders,
-    std::span<const AttributeDescription> descs) {
+    std::span<const common::AttributeDescription> descs) {
   std::vector<BufferDescription> descriptions;
   descriptions.reserve(descs.size());
 
   for (const auto& [name, config] : orders) {
-    std::vector<AttributeDescription> orderedDescs;
+    std::vector<common::AttributeDescription> orderedDescs;
     orderedDescs.reserve(config.size());
 
     size_t totalSize = 0;
@@ -68,7 +68,7 @@ std::vector<BufferDescription> analyzeConfig(
             digit));
       }
 
-      const AttributeDescription& description =
+      const common::AttributeDescription& description =
           orderedDescs.emplace_back(descs[static_cast<size_t>(digit - '0')]);
       totalSize += description.size * description.count;
     }
@@ -89,16 +89,5 @@ size_t getShrunkIndexSize(std::span<const std::byte> indicesBuffer, size_t index
     return sizeof(uint32_t);
   } else {
     return sizeof(uint64_t);
-  }
-}
-
-void copyAndShrinkIndices(void* dstIndices, size_t dstIndexSize, const void* srcIndices,
-                          size_t srcIndexSize, size_t count) {
-  std::byte* dstData = static_cast<std::byte*>(dstIndices);
-  const std::byte* srcData = static_cast<const std::byte*>(srcIndices);
-  for (size_t i = 0; i < count; i++) {
-    std::memcpy(dstData, srcData, dstIndexSize);
-    dstData += dstIndexSize;
-    srcData += srcIndexSize;
   }
 }

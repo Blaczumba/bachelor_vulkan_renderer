@@ -185,56 +185,6 @@ void Buffer::copyBuffer(
   copyBufferToBuffer(commandBuffer, srcBuffer._buffer, _buffer, srcOffset, dstOffset, size);
 }
 
-void Buffer::copyAndShrinkData(std::span<const std::byte> data, size_t dstIndexSize,
-                               size_t srcIndexSize, VkDeviceSize offset) {
-  if (!_mappedMemory) [[unlikely]] {
-    throw EngineException("Cannot copy raw data to unmapped memory.");
-  }
-
-  if (_size < dstIndexSize * data.size() / srcIndexSize + offset) [[unlikely]] {
-    throw EngineException(std::format(
-        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
-        offset, dstIndexSize * data.size() / srcIndexSize, _size));
-  }
-
-  copyAndShrinkIndices(static_cast<uint8_t*>(_mappedMemory) + offset, dstIndexSize, data.data(),
-                       srcIndexSize, data.size() / srcIndexSize);
-}
-
-void Buffer::copyDataInterleaving(std::span<const AttributeDescription> attributes) {
-  if (!_mappedMemory) [[unlikely]] {
-    throw EngineException("Cannot copy raw data to unmapped memory.");
-  }
-
-  if (std::any_of(std::cbegin(attributes), std::cend(attributes),
-                  [first = attributes[0].count](const AttributeDescription& attribute) {
-                    return attribute.count != first;
-                  })) {
-    throw EngineException(
-        "Buffers must have equal number of elements when copying buffers in an interleaving "
-        "manner.");
-  }
-
-  std::vector<uint8_t*> offsetMemory;
-  offsetMemory.reserve(attributes.size());
-  offsetMemory.push_back(static_cast<uint8_t*>(_mappedMemory));
-  size_t stride = 0;
-  std::transform(
-      std::cbegin(attributes), std::prev(std::cend(attributes)), std::back_inserter(offsetMemory),
-      [this, &stride](const AttributeDescription& attribute) {
-        stride += attribute.size;
-        return static_cast<uint8_t*>(_mappedMemory) + stride;
-      });
-  stride += attributes.back().size;
-
-  for (size_t j = 0, running_stride = 0; j < attributes[0].count; j++, running_stride += stride) {
-    for (const auto& [offset, attribute] : std::views::zip(offsetMemory, attributes)) {
-      std::memcpy(offset + running_stride,
-                  static_cast<uint8_t*>(attribute.data) + j * attribute.size, attribute.size);
-    }
-  }
-}
-
 VkBufferUsageFlags Buffer::getUsage() const noexcept {
   return _usage;
 }
