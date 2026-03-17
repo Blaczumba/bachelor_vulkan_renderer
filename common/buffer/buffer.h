@@ -2,8 +2,8 @@
 
 #include <array>
 #include <span>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace common {
 
@@ -22,11 +22,11 @@ struct BufferDescription {
 void copyAndShrinkIndexData(std::span<std::byte> dst, std::span<const std::byte> src,
                             size_t dstIndexSize, size_t srcIndexSize, size_t offset = 0);
 
-void copyDataInterleaving(std::span<std::byte> dst, std::span<const AttributeDescription> attributes);
+void copyDataInterleaving(
+    std::span<std::byte> dst, std::span<const AttributeDescription> attributes);
 
-template<typename... Type>
-auto createAttributeDescriptions(
-    std::span<const Type>... attributes) {
+template <typename... Type>
+auto createAttributeDescriptions(std::span<const Type>... attributes) {
   return std::array<AttributeDescription, sizeof...(Type)>{
     AttributeDescription{(void*)attributes.data(), sizeof(Type), attributes.size()}
     ...

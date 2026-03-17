@@ -55,6 +55,58 @@ StagingImageDataResourceHandle AssetManager::loadImageAsync(const std::string& f
   return index;
 }
 
+StagingVertexDataResourceHandle AssetManager::loadVertexDataInterleavingAsync(
+    std::shared_ptr<void> modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
+    std::vector<common::BufferDescription>&& bufferDescriptions) {
+  const StagingVertexDataResourceHandle index = _freeVertexDataIndices.back();
+  _freeVertexDataIndices.pop_back();
+  _awaitingVertexDataResources.emplace(
+      index,
+      std::async(
+          _launchPolicy,
+          [this, modelPtr = std::move(modelPtr), indices, indexSize,
+           bufferDescriptions = std::move(bufferDescriptions)]() mutable -> VertexData {
+            VertexData vertexData;
+            const VkPhysicalDeviceType deviceType =
+                _logicalDevice.getPhysicalDevice().getPhysicalDeviceType();
+
+            struct {
+              VkBufferUsageFlags vertexBufferUsage = 0;
+              VkBufferUsageFlags indexBufferUsage = 0;
+            } additionalFlags;
+
+            // For integrated graphics we create buffers properly in place so that they do not need
+            // to be copied to the same memory later.
+            if (deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
+              additionalFlags.vertexBufferUsage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+              additionalFlags.indexBufferUsage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+            } else if (deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+              additionalFlags.vertexBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+              additionalFlags.indexBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+            }
+
+            for (common::BufferDescription& description : bufferDescriptions) {
+              Buffer vertexBuffer = Buffer::createStagingBuffer(
+                  _logicalDevice, description.totalSize, additionalFlags.vertexBufferUsage);
+              common::copyDataInterleaving(vertexBuffer.getMappedMemory(), description.attributes);
+              vertexData.buffers.insert({std::move(description.name), std::move(vertexBuffer)});
+            }
+
+            const size_t shrunkIndexSize = getShrunkIndexSize(indices, indexSize);
+            vertexData.indexBuffer = Buffer::createStagingBuffer(
+                _logicalDevice, indices.size() / indexSize * shrunkIndexSize,
+                additionalFlags.indexBufferUsage);
+            common::copyAndShrinkIndexData(
+                vertexData.indexBuffer.getMappedMemory(), indices, shrunkIndexSize, indexSize);
+
+            vertexData.indexType = getIndexType(shrunkIndexSize);
+
+            return vertexData;
+          }));
+
+  return index;
+}
+
 const ImageData& AssetManager::getImageData(StagingImageDataResourceHandle index) {
   if (_imageDataResources.exists(*index)) [[likely]] {
     return _imageDataResources.getValue(*index);

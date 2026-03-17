@@ -1,17 +1,17 @@
 #include "common/buffer/buffer.h"
 
 #include <algorithm>
-#include <span>
-#include <ranges>
 #include <format>
+#include <ranges>
+#include <span>
 #include <vector>
 
 #include "common/util/engine_exception.h"
 
 namespace common {
 
-void copyAndShrinkIndexData(std::span<std::byte> dst, std::span<const std::byte> src, size_t dstIndexSize,
-                               size_t srcIndexSize, size_t offset) {
+void copyAndShrinkIndexData(std::span<std::byte> dst, std::span<const std::byte> src,
+                            size_t dstIndexSize, size_t srcIndexSize, size_t offset) {
   if (dst.size() < dstIndexSize * src.size() / srcIndexSize + offset) [[unlikely]] {
     throw EngineException(std::format(
         "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
