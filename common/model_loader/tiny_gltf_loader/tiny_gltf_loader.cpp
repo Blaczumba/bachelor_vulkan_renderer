@@ -10,6 +10,9 @@
 #include <string>
 #include <tinygltf/tiny_gltf.h>
 #include <vector>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "common/file/file.h"
 #include "common/model_loader/model_loader.h"

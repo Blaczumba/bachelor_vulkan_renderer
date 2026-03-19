@@ -220,29 +220,29 @@ private:
 
   void setup() {
     std::string data = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
-    const std::vector<VertexData> sponzaData =
+    const std::vector<common::VertexData> sponzaData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
-    std::vector<VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
+    std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
         *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
     std::for_each(
-        antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](VertexData& data) {
+        antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData& data) {
           data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
                        * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
         });
-    std::vector<VertexData> lanternData =
+    std::vector<common::VertexData> lanternData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_lantern_3d_model/scene.gltf");
-    std::for_each(lanternData.begin(), lanternData.end(), [](VertexData& data) {
+    std::for_each(lanternData.begin(), lanternData.end(), [](common::VertexData& data) {
       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(8.5f, 4.25f, 0.0f))
                    * glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
     });
-    std::vector<VertexData> spartanData =
+    std::vector<common::VertexData> spartanData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "pbr_spartan_helmet/scene.gltf");
-    std::for_each(spartanData.begin(), spartanData.end(), [](VertexData& data) {
+    std::for_each(spartanData.begin(), spartanData.end(), [](common::VertexData& data) {
       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(1000.0f, 16.0f, -250.0f))
                    * glm::rotate(glm::mat4(1.0f), glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
                    * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
     });
-    VertexData cubeData = common::loadObj(*_assetManager, "cube.obj", data);
+    common::VertexData cubeData = common::loadObj(*_assetManager, "cube.obj", data);
     cubeData.diffuseTexture = {
       _assetManager->loadImageAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx"),
       TEXTURES_PATH "cubemap_yokohama_rgba.ktx"};
@@ -266,7 +266,7 @@ private:
     }
   }
 
-  void loadCubemap(const VertexData& cubeData) {
+  void loadCubemap(const common::VertexData& cubeData) {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
@@ -515,7 +515,7 @@ private:
     return result;
   }
 
-  void loadObjects(std::span<const VertexData> sceneData, PipelineHandle pipelineHandle) {
+  void loadObjects(std::span<const common::VertexData> sceneData, PipelineHandle pipelineHandle) {
     const float maxSamplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
 
     std::unordered_map<StagingImageDataResourceHandle,
@@ -530,7 +530,7 @@ private:
                           .build(*_logicalDevice);
     SamplerHandle samplerHandle = _samplerManager->transferSampler(std::move(sampler));
 
-    for (const VertexData& sceneObject : sceneData) {
+    for (const common::VertexData& sceneObject : sceneData) {
       const auto [diffuseHandle, diffuseTextureIndex] =
           getOrLoadTexture(textureCache, sceneObject.diffuseTexture.ID, VK_FORMAT_R8G8B8A8_SRGB,
                            commandBuffer, maxSamplerAnisotropy, samplerHandle);
