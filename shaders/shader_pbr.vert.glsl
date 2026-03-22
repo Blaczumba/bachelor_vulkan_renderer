@@ -16,6 +16,7 @@ layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which
     mat4 view;
     mat4 proj;
     vec3 viewPos;
+    vec3 viewDir;
 } camera;
 
 layout(location = 0) in vec3 inPosition;

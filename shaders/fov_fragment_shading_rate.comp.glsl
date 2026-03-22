@@ -10,19 +10,10 @@ layout(push_constant) uniform Constants {
 } pcs;
 
 uint getRate(float dist, bool preferVertical) {
-    // Tier 1: High Quality (1x1)
     if (dist < 20.0) return 0; 
-
-    // Tier 2: Slight Reduction (1x2 or 2x1)
     if (dist < 40.0) return preferVertical ? 1 : 4;
-
-    // Tier 3: Balanced Medium (2x2)
     if (dist < 60.0) return 5;
-
-    // Tier 4: Significant Reduction (2x4 or 4x2)
     if (dist < 95.0) return preferVertical ? 6 : 9;
-
-    // Tier 5: Low Quality (4x4)
     return 10;
 }
 

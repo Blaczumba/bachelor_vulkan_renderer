@@ -5,6 +5,7 @@
 #include <span>
 #include <stb_image/stb_image.h>
 #include <string_view>
+#include <tuple>
 #include <variant>
 
 struct ImageSubresource {
@@ -17,21 +18,35 @@ struct ImageSubresource {
   uint32_t depth;
 };
 
+struct StbiDeleter {
+  void operator()(stbi_uc* p) const {
+    stbi_image_free(p);
+  }
+};
+
+struct KtxDeleter {
+  void operator()(ktxTexture* p) const {
+    ktxTexture_Destroy(p);
+  }
+};
+
+using StbUniquePtr = std::unique_ptr<stbi_uc, StbiDeleter>;
+using KtxUniquePtr = std::unique_ptr<ktxTexture, KtxDeleter>;
+using OwnedImageResources = std::variant<StbUniquePtr, KtxUniquePtr>;
+
 struct ImageResource {
-  std::variant<stbi_uc*, ktxTexture*> libraryResource;
   uint32_t width;
   uint32_t height;
   uint32_t mipLevels;
   uint32_t layerCount;
   lib::Buffer<ImageSubresource> subresources;
-  void* data;
+  const void* data;
   size_t size;
 };
 
-ImageResource loadImageStbi(std::span<const std::byte> imageData);
+std::tuple<ImageResource, OwnedImageResources> loadImageStbi(std::span<const std::byte> imageData);
 
-ImageResource loadImageKtx(std::span<const std::byte> imageData);
+std::tuple<ImageResource, OwnedImageResources> loadImageKtx(std::span<const std::byte> imageData);
 
-ImageResource loadImage(std::span<const std::byte> imageData, std::string_view filePath);
-
-void deallocateResources(ImageResource& resource);
+std::tuple<ImageResource, OwnedImageResources> loadImage(
+    std::span<const std::byte> imageData, std::string_view filePath);

@@ -79,10 +79,9 @@ GpuBufferHandle GpuBufferManager::uploadBuffer(
 GpuBufferHandle GpuBufferManager::transferBuffer(Buffer&& stagingBuffer) {
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(
-        std::format("GpuBufferManager::transferBuffer: Cannot upload more " "buffers, maximum "
-                                                                            "limit " "of {} "
-                                                                                     "reached.",
-                    MAX_GPU_BUFFERS));
+        std::format(
+            "GpuBufferManager::transferBuffer: Cannot upload more " "buffers, maximum " "limit " "o" "f" " " "{" "}" " " "reached.",
+            MAX_GPU_BUFFERS));
   }
 
   GpuBufferHandle index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
@@ -115,10 +114,9 @@ GpuTextureHandle GpuBufferManager::transferTexture(Texture&& texture) {
   GpuTextureHandle index = getNextHandle(_textureMap.size(), _freeTextureIndices);
   if (_textureMap.size() == MAX_GPU_TEXTURES) [[unlikely]] {
     throw EngineException(
-        std::format("GpuBufferManager::transferTexture: Cannot upload more " "textures, maximum "
-                                                                             "limit " "of {} "
-                                                                                      "reached.",
-                    MAX_GPU_TEXTURES));
+        std::format(
+            "GpuBufferManager::transferTexture: Cannot upload more " "textures, maximum " "limit " "of {} " "reached.",
+            MAX_GPU_TEXTURES));
   }
 
   _textureMap.insertUnsafe(*index, TextureResource(std::move(texture), 1));

@@ -5,6 +5,14 @@
 // Push constants definitions:
 #define modelMat pushConstants.model
 
+layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which depends on frame in flight
+    mat4 view;
+    mat4 proj;
+    vec3 viewPos;
+    vec3 viewDir;
+
+} camera;
+
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTexCoord;
 layout(location = 2) in vec3 inNormal;

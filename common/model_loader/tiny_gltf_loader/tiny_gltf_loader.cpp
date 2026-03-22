@@ -6,13 +6,13 @@
 #define TINYGLTF_IMPLEMENTATION
 #include <cstdint>
 #include <filesystem>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <span>
 #include <string>
 #include <tinygltf/tiny_gltf.h>
 #include <vector>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include "common/file/file.h"
 #include "common/model_loader/model_loader.h"
@@ -97,6 +97,46 @@ std::span<const std::byte> getIndices(
       reinterpret_cast<const std::byte*>(&buffer.data[offset]), indicesCount * *indexSize);
 }
 
+ImageID getOrLoadTexture(
+    std::shared_ptr<SharedData>& sharedData, std::string_view baseDir, int textureIndex,
+    AssetManager& assetManager,
+    std::unordered_map<std::string, StagingImageDataResourceHandle>& textureIndexMap) {
+  if (textureIndex < 0) {
+    return ImageID{{}, ""};
+  }
+
+  const tinygltf::Texture& tex = sharedData->model.textures[textureIndex];
+  const tinygltf::Image& img = sharedData->model.images[tex.source];
+
+  std::string key = !img.uri.empty() ? joinPaths(baseDir, img.uri) :
+                                       joinPaths(baseDir, std::to_string(img.bufferView));
+
+  auto [it, inserted] = textureIndexMap.try_emplace(key);
+  if (inserted) {
+    if (!img.image.empty()) {
+      ImageResource imageResource = {
+        .width = static_cast<uint32_t>(img.width),
+        .height = static_cast<uint32_t>(img.height),
+        .mipLevels =
+            static_cast<uint32_t>(std::floor(std::log2(std::max(img.width, img.height)))) + 1,
+        .layerCount = 1,
+        .subresources = lib::Buffer<ImageSubresource>{ImageSubresource{
+          .layerCount = 1,
+          .width = static_cast<uint32_t>(img.width),
+          .height = static_cast<uint32_t>(img.height),
+          .depth = 1,
+        }},
+        .data = img.image.data(),
+        .size = img.image.size(),
+      };
+      it->second = assetManager.loadImageAsync(sharedData, std::move(imageResource));
+    } else if (!img.uri.empty()) {
+      it->second = assetManager.loadImageAsync(joinPaths(baseDir, img.uri));
+    }
+  }
+  return ImageID{it->second, std::move(key)};
+};
+
 std::string getTextureUri(const tinygltf::Model& model, const tinygltf::ParameterMap& values,
                           const std::string& textureType) {
   auto it = values.find(textureType);
@@ -141,18 +181,20 @@ void processNode(common::AssetManager& assetManager, std::shared_ptr<SharedData>
     uint8_t indexSize;
     std::span<const std::byte> indicesBytes = getIndices(sharedData->model, primitive, &indexSize);
 
-    std::string diffuseTexture;
-    std::string metallicRoughnessTexture;
-    std::string normalTexture;
+    ImageID diffuseID, normalID, metallicRoughnessID;
     if (primitive.material >= 0) {
-      const tinygltf::Material& material = sharedData->model.materials[primitive.material];
-      diffuseTexture = getTextureUri(sharedData->model, material.values, "baseColorTexture");
-      metallicRoughnessTexture =
-          getTextureUri(sharedData->model, material.values, "metallicRoughnessTexture");
-      normalTexture = getTextureUri(sharedData->model, material.additionalValues, "normalTexture");
+      const tinygltf::Material& mat = sharedData->model.materials[primitive.material];
+      diffuseID =
+          getOrLoadTexture(sharedData, baseDir, mat.pbrMetallicRoughness.baseColorTexture.index,
+                           assetManager, textureIndexMap);
+      metallicRoughnessID = getOrLoadTexture(
+          sharedData, baseDir, mat.pbrMetallicRoughness.metallicRoughnessTexture.index,
+          assetManager, textureIndexMap);
+      normalID = getOrLoadTexture(
+          sharedData, baseDir, mat.normalTexture.index, assetManager, textureIndexMap);
     }
 
-    if (diffuseTexture.empty() || metallicRoughnessTexture.empty() || normalTexture.empty()) {
+    if (diffuseID.path.empty() || normalID.path.empty() || metallicRoughnessID.path.empty()) {
       continue;
     }
 
@@ -180,24 +222,9 @@ void processNode(common::AssetManager& assetManager, std::shared_ptr<SharedData>
             sharedData, indicesBytes, indexSize,
             common::analyzeConfig(orders, attributeDescriptions));
 
-    auto getOrLoadTexture = [&](const std::string& textureName) -> StagingImageDataResourceHandle {
-      auto [it, inserted] = textureIndexMap.try_emplace(textureName);
-      if (inserted) {
-        it->second = assetManager.loadImageAsync(joinPaths(baseDir, textureName));
-      }
-      return it->second;
-    };
-
-    const StagingImageDataResourceHandle diffuseTextureID = getOrLoadTexture(diffuseTexture);
-    const StagingImageDataResourceHandle normalTextureID = getOrLoadTexture(normalTexture);
-    const StagingImageDataResourceHandle metallicRoughnessTextureID =
-        getOrLoadTexture(metallicRoughnessTexture);
-
     vertexDataList.emplace_back(
-        std::move(positions), indexSize, currentTransform,
-        ImageID{diffuseTextureID, std::move(diffuseTexture)},
-        ImageID{normalTextureID, std::move(normalTexture)},
-        ImageID{metallicRoughnessTextureID, std::move(metallicRoughnessTexture)}, vertexResourceID);
+        std::move(positions), indexSize, currentTransform, std::move(diffuseID),
+        std::move(normalID), std::move(metallicRoughnessID), vertexResourceID);
   }
 
   for (int childIndex : node.children) {
@@ -216,6 +243,7 @@ std::vector<VertexData> LoadGltfFromFile(
     throw EngineException(std::format("{} does not exists in the filesystem.", filePath));
   }
 
+  // loader.SetImageLoader(nullptr, nullptr);
   if (filePath.ends_with(".glb")) {
     loader.LoadBinaryFromFile(&sharedData->model, nullptr, nullptr, filePath);
   } else if (filePath.ends_with(".gltf")) {
@@ -244,6 +272,7 @@ std::vector<VertexData> LoadGltfFromString(
   tinygltf::TinyGLTF loader;
   std::string error, warning;
 
+  loader.SetImageLoader(nullptr, nullptr);
   loader.LoadASCIIFromString(
       &sharedData->model, &error, &warning, dataString.data(), dataString.size(), baseDir);
 

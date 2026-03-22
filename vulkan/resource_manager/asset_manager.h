@@ -6,6 +6,7 @@
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <vulkan/vulkan.h>
 
 #include "common/buffer/buffer.h"
 #include "common/file/file_loader.h"
@@ -15,7 +16,6 @@
 #include "common/util/resource_handles.h"
 #include "lib/association_list/association_list.h"
 #include "lib/sparse/sparse_map.h"
-#include "lib/types/strong_int.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/util/index_buffer_util.h"
@@ -47,6 +47,12 @@ public:
   };
 
   StagingImageDataResourceHandle loadImageAsync(const std::string& filePath) override;
+
+  StagingImageDataResourceHandle loadImageAsync(
+      std::shared_ptr<void> modelPtr, std::span<const std::byte> data) override;
+
+  StagingImageDataResourceHandle loadImageAsync(
+      std::shared_ptr<void> modelPtr, ImageResource&& imageResource) override;
 
   StagingVertexDataResourceHandle loadVertexDataInterleavingAsync(
       std::shared_ptr<void> modelPtr, std::span<const std::byte> indices, uint8_t indexSize,

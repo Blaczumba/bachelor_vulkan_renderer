@@ -229,7 +229,7 @@ private:
           data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
                        * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
         });
-    std::vector<common::VertexData> lanternData =
+    /*std::vector<common::VertexData> lanternData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_lantern_3d_model/scene.gltf");
     std::for_each(lanternData.begin(), lanternData.end(), [](common::VertexData& data) {
       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(8.5f, 4.25f, 0.0f))
@@ -241,7 +241,7 @@ private:
       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(1000.0f, 16.0f, -250.0f))
                    * glm::rotate(glm::mat4(1.0f), glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
                    * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
-    });
+    });*/
     common::VertexData cubeData = common::loadObj(*_assetManager, "cube.obj", data);
     cubeData.diffuseTexture = {
       _assetManager->loadImageAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx"),
@@ -255,8 +255,8 @@ private:
     createSyncObjects();
     loadObjects(sponzaData, _graphicsPipelineHandle);
     loadObjects(antiqueCandleStickData, _graphicsTesselationPipelineHandle);
-    loadObjects(lanternData, _graphicsTesselationPipelineHandle);
-    loadObjects(spartanData, _graphicsTesselationPipelineHandle);
+    /*loadObjects(lanternData, _graphicsTesselationPipelineHandle);
+    loadObjects(spartanData, _graphicsTesselationPipelineHandle);*/
 
     createOctreeScene();
     {
@@ -743,6 +743,7 @@ private:
         _ubCamera.view = cameraContexts[i].view;
         _ubCamera.proj = cameraContexts[i].proj;
         _ubCamera.pos = cameraContexts[i].position;
+        _ubCamera.viewDir = cameraContexts[i].viewDir;
         _dynamicUniformBuffersCamera.copyData(
             _ubCamera, (2 * currentFrame + i)
                            * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
@@ -752,6 +753,7 @@ private:
       _ubCamera.view = cameraContexts[0].view;
       _ubCamera.proj = cameraContexts[0].proj;
       _ubCamera.pos = cameraContexts[0].position;
+      _ubCamera.viewDir = cameraContexts[0].viewDir;
       _dynamicUniformBuffersCamera.copyData(
           _ubCamera,
           currentFrame * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));

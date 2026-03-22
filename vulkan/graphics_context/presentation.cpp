@@ -94,7 +94,7 @@ void Presentation::run() {
   Camera camera(PerspectiveProjection{glm::radians(45.0f), 1920.0f / 1080.f, 0.01f, 500.0f},
                 glm::vec3(0.0f), 5.5f, 0.01f);
   const auto [screenWidth, screenHeight] = _window->getFramebufferSize();
-  glm::mat4 tempViewPos(1.0f);
+  glm::mat4 tempViewMat(1.0f);
   while (_window->open()) {
     current = std::chrono::steady_clock::now();
     deltaTime = std::chrono::duration<float>(current - previous).count();
@@ -107,15 +107,13 @@ void Presentation::run() {
     _swapchain.acquireNextImage(synchContext->imageAvailableSemaphores[synchContext->currentFrame],
                                 &_drawingContext.imageIndex);
     glm::vec2 mousePos = _mouseKeyboardManager->getMousePosition();
-    const glm::vec3 worldRay = common::getWorldSpaceViewDirection(
-        mousePos.x, mousePos.y, screenWidth, screenHeight, glm::inverse(camera.getViewMatrix()),
+    const glm::vec3 viewDir = common::getWorldSpaceViewDirection(
+        mousePos.x, mousePos.y, screenWidth, screenHeight, glm::inverse(tempViewMat),
         glm::inverse(camera.getProjectionMatrix()));
     _drawingContext.cameraContexts = {
-      {
-       camera.getPosition(),
-       _mouseKeyboardManager->isPressed(Keyboard::Key::R) ? tempViewPos = camera.getViewMatrix() :
-                                                             tempViewPos, camera.getProjectionMatrix(),
-       }
+      {camera.getPosition(),
+       _mouseKeyboardManager->isPressed(Keyboard::Key::R) ? tempViewMat = camera.getViewMatrix() :
+                                                            tempViewMat, camera.getProjectionMatrix(), viewDir}
     };
     _drawingContext.screenSpaceViewPos = _mouseKeyboardManager->getMousePosition();
     _graphicsContext->draw(_drawingContext);

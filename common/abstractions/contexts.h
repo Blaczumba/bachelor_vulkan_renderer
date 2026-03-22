@@ -16,6 +16,7 @@ struct CameraContext {
   glm::vec3 position;
   glm::mat4 view;
   glm::mat4 proj;
+  glm::vec3 viewDir;
 };
 
 struct DrawingContext {
