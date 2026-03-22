@@ -22,6 +22,16 @@ struct BufferDescription {
 void copyAndShrinkIndexData(std::span<std::byte> dst, std::span<const std::byte> src,
                             size_t dstIndexSize, size_t srcIndexSize, size_t offset = 0);
 
+void copyData(std::span<std::byte> dst, size_t dstOffset, std::span<const std::byte> src,
+              size_t srcOffset, size_t size);
+
+void copyData(std::span<std::byte> dst, size_t dstOffset, std::span<const std::byte> src);
+
+template <typename T>
+void copyData(std::span<std::byte> dst, size_t dstOffset, const T& data) {
+  copyData(dst, dstOffset, std::span(reinterpret_cast<const std::byte*>(&data), sizeof(data)));
+}
+
 void copyDataInterleaving(
     std::span<std::byte> dst, std::span<const AttributeDescription> attributes);
 

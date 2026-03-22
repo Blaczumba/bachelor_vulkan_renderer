@@ -323,7 +323,7 @@ private:
     _ubLight.projView = _ubLight.projView
                         * glm::lookAt(_ubLight.pos, glm::vec3(-3.82383f, 3.66503f, 1.30751f),
                                       glm::vec3(0.0f, 1.0f, 0.0f));
-    _lightBuffer.copyData(_ubLight, 0);
+    common::copyData(_lightBuffer.getMappedMemory(), 0, _ubLight);
   }
 
   void createEnvMappingResources() {
@@ -394,7 +394,7 @@ private:
     };
 
     _envMappingUniformBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(faceTransform));
-    _envMappingUniformBuffer.copyData(faceTransform);
+    common::copyData(_envMappingUniformBuffer.getMappedMemory(), 0, faceTransform);
     _envMappingHandle = _bindlessWriter->storeBuffer(_envMappingUniformBuffer);
     Sampler sampler = SamplerBuilder().withAnisotropy(samplerAnisotropy).build(*_logicalDevice);
     _envMappingTextureHandle = _bindlessWriter->storeTexture(_envMappingAttachments[0], sampler);
@@ -754,9 +754,10 @@ private:
       _ubCamera.proj = cameraContexts[0].proj;
       _ubCamera.pos = cameraContexts[0].position;
       _ubCamera.viewDir = cameraContexts[0].viewDir;
-      _dynamicUniformBuffersCamera.copyData(
-          _ubCamera,
-          currentFrame * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
+      common::copyData(
+          _dynamicUniformBuffersCamera.getMappedMemory(),
+          currentFrame * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)),
+          _ubCamera);
     }
   }
 
@@ -1341,7 +1342,8 @@ void createFsrContents(
   lib::Buffer<std::byte> buffer(static_cast<size_t>(extent.width * extent.height), std::byte{0});
   Buffer stagingBuffer =
       Buffer::createStagingBuffer(logicalDevice, buffer.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  stagingBuffer.copyData(std::span(static_cast<const std::byte*>(buffer.data()), buffer.size()));
+  common::copyData(stagingBuffer.getMappedMemory(), 0,
+                   std::span(static_cast<const std::byte*>(buffer.data()), buffer.size()));
   {
     VkBufferImageCopy imageCopy[] = {
       {

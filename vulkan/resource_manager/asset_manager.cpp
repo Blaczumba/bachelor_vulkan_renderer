@@ -21,6 +21,29 @@ std::unique_ptr<AssetManager> AssetManager::create(
   return std::unique_ptr<AssetManager>(new AssetManager(logicalDevice, fileLoader, launchPolicy));
 }
 
+namespace {
+
+lib::Buffer<VkBufferImageCopy> translateToVkBufferImageCopy(
+    std::span<const ImageSubresource> imageSubresources) {
+  lib::Buffer<VkBufferImageCopy> vkSubresources(imageSubresources.size());
+  std::transform(imageSubresources.cbegin(), imageSubresources.cend(), vkSubresources.begin(),
+                 [](const ImageSubresource& subresource) {
+                   return VkBufferImageCopy{
+                     .bufferOffset = subresource.offset,
+                     .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                          .mipLevel = subresource.mipLevel,
+                                          .baseArrayLayer = subresource.baseArrayLayer,
+                                          .layerCount = subresource.layerCount},
+                     .imageExtent = {.width = subresource.width,
+                                          .height = subresource.height,
+                                          .depth = subresource.depth},
+                   };
+                 });
+  return vkSubresources;
+}
+
+}  // namespace
+
 StagingImageDataResourceHandle AssetManager::loadImageAsync(const std::string& filePath) {
   const StagingImageDataResourceHandle index = _freeImageDataIndices.back();
   _freeImageDataIndices.pop_back();
@@ -30,28 +53,12 @@ StagingImageDataResourceHandle AssetManager::loadImageAsync(const std::string& f
             loadImage(_fileLoader.loadFileToBuffer(filePath), filePath);
         Buffer stagingBuffer = Buffer::createStagingBuffer(
             _logicalDevice, resource.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-        stagingBuffer.copyData(
-            std::span(static_cast<const std::byte*>(resource.data), resource.size));
-
-        lib::Buffer<VkBufferImageCopy> vkSubresources(resource.subresources.size());
-        std::transform(resource.subresources.cbegin(), resource.subresources.cend(),
-                       vkSubresources.begin(), [](const ImageSubresource& subresource) {
-                         return VkBufferImageCopy{
-                           .bufferOffset = subresource.offset,
-                           .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                                .mipLevel = subresource.mipLevel,
-                                                .baseArrayLayer = subresource.baseArrayLayer,
-                                                .layerCount = subresource.layerCount},
-                           .imageExtent = {.width = subresource.width,
-                                                .height = subresource.height,
-                                                .depth = subresource.depth}
-                         };
-                       });
-
-        return ImageData(std::move(stagingBuffer), resource.width, resource.height,
-                         resource.mipLevels, resource.layerCount, std::move(vkSubresources));
+        common::copyData(stagingBuffer.getMappedMemory(), 0,
+                         std::span(static_cast<const std::byte*>(resource.data), resource.size));
+        return ImageData(
+            std::move(stagingBuffer), resource.width, resource.height, resource.mipLevels,
+            resource.layerCount, translateToVkBufferImageCopy(resource.subresources));
       }));
-
   return index;
 }
 
@@ -64,26 +71,11 @@ StagingImageDataResourceHandle AssetManager::loadImageAsync(
         const auto [resource, dataPtr] = loadImage(data, "");  // TODO: refactor.
         Buffer stagingBuffer = Buffer::createStagingBuffer(
             _logicalDevice, resource.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-        stagingBuffer.copyData(
-            std::span(static_cast<const std::byte*>(resource.data), resource.size));
-
-        lib::Buffer<VkBufferImageCopy> vkSubresources(resource.subresources.size());
-        std::transform(resource.subresources.cbegin(), resource.subresources.cend(),
-                       vkSubresources.begin(), [](const ImageSubresource& subresource) {
-                         return VkBufferImageCopy{
-                           .bufferOffset = subresource.offset,
-                           .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                                .mipLevel = subresource.mipLevel,
-                                                .baseArrayLayer = subresource.baseArrayLayer,
-                                                .layerCount = subresource.layerCount},
-                           .imageExtent = {.width = subresource.width,
-                                                .height = subresource.height,
-                                                .depth = subresource.depth}
-                         };
-                       });
-
-        return ImageData(std::move(stagingBuffer), resource.width, resource.height,
-                         resource.mipLevels, resource.layerCount, std::move(vkSubresources));
+        common::copyData(stagingBuffer.getMappedMemory(), 0,
+                         std::span(static_cast<const std::byte*>(resource.data), resource.size));
+        return ImageData(
+            std::move(stagingBuffer), resource.width, resource.height, resource.mipLevels,
+            resource.layerCount, translateToVkBufferImageCopy(resource.subresources));
       }));
   return index;
 }
@@ -100,27 +92,13 @@ StagingImageDataResourceHandle AssetManager::loadImageAsync(
            imageResource = std::move(imageResource)]() -> ImageData {
             Buffer stagingBuffer = Buffer::createStagingBuffer(
                 _logicalDevice, imageResource.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-            stagingBuffer.copyData(
-                std::span(static_cast<const std::byte*>(imageResource.data), imageResource.size));
-
-            lib::Buffer<VkBufferImageCopy> vkSubresources(imageResource.subresources.size());
-            std::transform(imageResource.subresources.cbegin(), imageResource.subresources.cend(),
-                           vkSubresources.begin(), [](const ImageSubresource& subresource) {
-                             return VkBufferImageCopy{
-                               .bufferOffset = subresource.offset,
-                               .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                                    .mipLevel = subresource.mipLevel,
-                                                    .baseArrayLayer = subresource.baseArrayLayer,
-                                                    .layerCount = subresource.layerCount},
-                               .imageExtent = {.width = subresource.width,
-                                                    .height = subresource.height,
-                                                    .depth = subresource.depth}
-                             };
-                           });
-
-            return ImageData(
-                std::move(stagingBuffer), imageResource.width, imageResource.height,
-                imageResource.mipLevels, imageResource.layerCount, std::move(vkSubresources));
+            common::copyData(
+                stagingBuffer.getMappedMemory(), 0,
+                std::span(static_cast<const std::byte*>(imageResource.data), imageResource.size), 0,
+                imageResource.size);
+            return ImageData(std::move(stagingBuffer), imageResource.width, imageResource.height,
+                             imageResource.mipLevels, imageResource.layerCount,
+                             translateToVkBufferImageCopy(imageResource.subresources));
           }));
   return index;
 }
