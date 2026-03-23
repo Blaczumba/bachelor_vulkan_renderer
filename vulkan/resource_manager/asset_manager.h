@@ -1,7 +1,5 @@
 #pragma once
 
-#include <algorithm>
-#include <functional>
 #include <future>
 #include <span>
 #include <string>
@@ -15,10 +13,10 @@
 #include "common/util/buffer_manip.h"
 #include "common/util/resource_handles.h"
 #include "lib/association_list/association_list.h"
+#include "lib/buffer/buffer.h"
 #include "lib/sparse/sparse_map.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
-#include "vulkan/wrapper/util/index_buffer_util.h"
 
 class AssetManager : public common::AssetManager {
   AssetManager(

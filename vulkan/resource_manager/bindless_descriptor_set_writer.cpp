@@ -2,8 +2,11 @@
 
 #include <format>
 #include <ranges>
+#include <span>
+#include <vector>
 #include <vulkan/vulkan.h>
 
+#include "common/util/engine_exception.h"
 #include "vulkan/resource_manager/util.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_writer_lib.h"

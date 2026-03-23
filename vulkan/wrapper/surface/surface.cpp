@@ -1,6 +1,12 @@
 #include "surface.h"
 
+#include <utility>
+#include <vulkan/vulkan.h>
+
 #include "common/util/engine_exception.h"
+#include "common/window/window.h"
+#include "vulkan/vulkan.h"
+#include "vulkan/wrapper/instance/instance.h"
 #include "vulkan/wrapper/util/check.h"
 
 #if (defined(WIN32) || defined(__unix__)) && !defined(ANDROID)

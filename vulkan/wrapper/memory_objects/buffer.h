@@ -1,18 +1,10 @@
 #pragma once
 
-#include <array>
-#include <cstring>
-#include <format>
-#include <glm/glm.hpp>
-#include <memory>
+#include <cstdint>
 #include <optional>
 #include <span>
-#include <vector>
 #include <vulkan/vulkan.h>
 
-#include "common/util/buffer_manip.h"
-#include "common/util/engine_exception.h"
-#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class Buffer {

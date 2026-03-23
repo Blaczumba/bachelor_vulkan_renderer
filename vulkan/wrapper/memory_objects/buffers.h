@@ -1,6 +1,6 @@
 #pragma once
 
-#include <span>
+#include <cstdint>
 #include <vulkan/vulkan.h>
 
 void copyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer,

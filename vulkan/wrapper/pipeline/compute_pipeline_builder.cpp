@@ -1,6 +1,10 @@
 #include "vulkan/wrapper/pipeline/compute_pipeline_builder.h"
 
+#include <optional>
+#include <vulkan/vulkan.h>
+
 #include "common/util/engine_exception.h"
+#include "vulkan/wrapper/pipeline/pipeline_layout.h"
 
 Pipeline ComputePipelineBuilder::createPipeline(const PipelineLayout& pipelineLayout) {
   if (!_shaderStage.has_value()) [[unlikely]] {

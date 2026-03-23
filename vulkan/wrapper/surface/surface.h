@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vulkan/vulkan.h>
 
 #include "common/window/window.h"
 #include "vulkan/vulkan.h"

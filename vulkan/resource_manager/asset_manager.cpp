@@ -1,6 +1,19 @@
 #include "asset_manager.h"
 
+#include <algorithm>
+#include <format>
+#include <functional>
+#include <future>
+#include <memory>
 #include <numeric>
+#include <span>
+#include <string>
+#include <unordered_map>
+#include <vulkan/vulkan.h>
+
+#include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/memory_objects/buffer.h"
+#include "vulkan/wrapper/util/index_buffer_util.h"
 
 using ImageData = AssetManager::ImageData;
 using VertexData = AssetManager::VertexData;

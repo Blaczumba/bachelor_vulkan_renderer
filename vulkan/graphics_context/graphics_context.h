@@ -8,8 +8,13 @@
 
 #include "common/abstractions/contexts.h"
 #include "common/abstractions/graphics_context.h"
+#include "common/entity_component_system/component/material.h"
+#include "common/entity_component_system/component/mesh.h"
+#include "common/entity_component_system/component/transform.h"
 #include "common/entity_component_system/registry/registry.h"
 #include "common/model_loader/model_loader.h"
+#include "common/model_loader/obj_loader/obj_loader.h"
+#include "common/model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
 #include "common/object/object.h"
 #include "common/scene/octree.h"
 #include "common/util/primitives.h"
@@ -26,23 +31,14 @@
 #include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_writer.h"
+#include "vulkan/wrapper/framebuffer/framebuffer.h"
 #include "vulkan/wrapper/instance/instance.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
-#include "vulkan/wrapper/physical_device/physical_device.h"
-
-///
-#include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
-#include "vulkan/wrapper/framebuffer/framebuffer.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
+#include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
-
-///
-#include "common/entity_component_system/component/material.h"
-#include "common/entity_component_system/component/mesh.h"
-#include "common/entity_component_system/component/transform.h"
-#include "common/model_loader/obj_loader/obj_loader.h"
-#include "common/model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
+#include "vulkan/wrapper/util/index_buffer_util.h"
 
 inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback1(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -1355,6 +1351,7 @@ void createFsrContents(
               .layerCount = 1,
             }, .imageExtent = {extent.width, extent.height, 1},
        }
+      // TODO: for multiview add another here.
     };
     texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     texture.copyFromStagingBuffer(commandBuffer, stagingBuffer.getVkBuffer(), imageCopy);

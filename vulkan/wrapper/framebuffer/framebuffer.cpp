@@ -1,10 +1,13 @@
 #include "framebuffer.h"
 
 #include <cmath>
+#include <cstdint>
 #include <optional>
+#include <span>
+#include <vector>
+#include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
-#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/util/check.h"

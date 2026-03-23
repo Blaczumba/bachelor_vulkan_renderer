@@ -1,9 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
-#include <span>
 #include <vector>
+#include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/render_pass/attachment_layout.h"

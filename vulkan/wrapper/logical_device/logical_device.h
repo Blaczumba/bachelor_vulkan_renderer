@@ -1,6 +1,8 @@
 #pragma once
 
-#include <variant>
+#include <cstdint>
+#include <memory>
+#include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"

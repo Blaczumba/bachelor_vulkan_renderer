@@ -1,12 +1,15 @@
 #include "texture.h"
 
-#include <array>
+#include <cstdint>
+#include <span>
+#include <utility>
+#include <variant>
 #include <vma/vk_mem_alloc.h>
+#include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
-#include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/memory_objects/buffers.h"
 
 Texture::Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,

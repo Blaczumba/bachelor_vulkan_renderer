@@ -1,9 +1,15 @@
 #include "render_pass.h"
 
-#include <algorithm>
-#include <iterator>
+#include <cstdint>
+#include <optional>
+#include <span>
+#include <utility>
+#include <vector>
+#include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
+#include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/render_pass/attachment_layout.h"
 #include "vulkan/wrapper/util/check.h"
 

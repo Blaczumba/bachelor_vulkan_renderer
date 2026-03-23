@@ -1,10 +1,13 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string_view>
 #include <unordered_set>
+#include <vulkan/vulkan.h>
 
+#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/instance/instance.h"
 
 struct QueueFamilyIndices {

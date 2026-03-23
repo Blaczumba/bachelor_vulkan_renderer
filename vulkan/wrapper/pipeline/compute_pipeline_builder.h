@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/pipeline/pipeline.h"
 #include "vulkan/wrapper/pipeline/pipeline_layout.h"

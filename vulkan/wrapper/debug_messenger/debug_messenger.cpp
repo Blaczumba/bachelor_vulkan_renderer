@@ -1,5 +1,8 @@
 #include "debug_messenger.h"
 
+#include <utility>
+#include <vulkan/vulkan.h>
+
 #include "common/util/engine_exception.h"
 #include "debug_messenger_utils.h"
 #include "vulkan/wrapper/instance/instance.h"

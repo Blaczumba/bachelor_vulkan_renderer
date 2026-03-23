@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+// TODO: remove vulkan dependency
+#include <vulkan/vulkan.h>
 
 #include "common/entity_component_system/entity/entity.h"
 #include "common/util/geometry.h"
@@ -15,7 +17,7 @@ public:
   AABB aabb;
   VkIndexType indexType;
 
-  static constexpr std::enable_if_t < componentID<MAX_COMPONENTS, ComponentType> getComponentID() {
+  static constexpr std::enable_if_t<componentID<MAX_COMPONENTS, ComponentType> getComponentID() {
     return componentID;
   }
 };

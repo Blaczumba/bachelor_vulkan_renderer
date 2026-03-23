@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/instance/instance.h"

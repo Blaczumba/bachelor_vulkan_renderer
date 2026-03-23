@@ -1,6 +1,5 @@
 #pragma once
 
-#include <initializer_list>
 #include <vector>
 #include <vulkan/vulkan.h>
 

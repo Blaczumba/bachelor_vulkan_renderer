@@ -2,10 +2,18 @@
 
 #include <algorithm>
 #include <array>
-#include <numeric>
+#include <cstdint>
+#include <optional>
 #include <ranges>
+#include <span>
+#include <vector>
+#include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
+#include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/pipeline/pipeline_layout.h"
+#include "vulkan/wrapper/render_pass/render_pass.h"
 
 namespace {
 

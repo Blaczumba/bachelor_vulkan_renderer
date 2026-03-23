@@ -1,15 +1,19 @@
 #include "logical_device.h"
 
 #include <algorithm>
-#include <cstring>
+#include <cstdint>
+#include <memory>
 #include <set>
-#include <stdexcept>
+#include <utility>
 #include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
-#include "extensions_connector.h"
 #include "lib/buffer/buffer.h"
-#include "vulkan/wrapper/instance/extensions.h"
+#include "vulkan/wrapper/logical_device/extensions_connector.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
+#include "vulkan/wrapper/memory_allocator/allocation.h"
+#include "vulkan/wrapper/memory_allocator/memory_allocator.h"
+#include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/util/check.h"
 
 LogicalDevice::LogicalDevice(VkDevice logicalDevice, const PhysicalDevice& physicalDevice,

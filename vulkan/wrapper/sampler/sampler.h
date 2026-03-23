@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class Sampler {

@@ -1,5 +1,10 @@
 #include "sampler.h"
 
+#include <utility>
+#include <vulkan/vulkan.h>
+
+#include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/util/check.h"
 
 Sampler::Sampler(const LogicalDevice& logicalDevice, VkSampler sampler) noexcept

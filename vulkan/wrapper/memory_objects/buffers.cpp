@@ -1,5 +1,8 @@
 #include "buffers.h"
 
+#include <cstdint>
+#include <vulkan/vulkan.h>
+
 namespace {
 
 struct PipelineStageInfo {

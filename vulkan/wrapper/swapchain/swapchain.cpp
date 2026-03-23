@@ -1,11 +1,16 @@
 #include "swapchain.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <span>
+#include <utility>
+#include <vulkan/vulkan.h>
 
+#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/util/check.h"
 

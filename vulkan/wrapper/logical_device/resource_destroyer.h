@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <vulkan/vulkan.h>
 
 #include "lib/thread/worker.h"

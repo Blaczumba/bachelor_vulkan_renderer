@@ -1,11 +1,12 @@
 #include "buffer.h"
 
 #include <format>
-#include <glm/glm.hpp>
-#include <iterator>
-#include <numeric>
-#include <ranges>
+#include <optional>
+#include <span>
+#include <variant>
+#include <vulkan/vulkan.h>
 
+#include "common/util/engine_exception.h"
 #include "vulkan/wrapper/memory_objects/buffers.h"
 
 Buffer::Buffer(

@@ -1,8 +1,15 @@
 #include "pipeline.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <iterator>
+#include <span>
+#include <vector>
+#include <vulkan/vulkan.h>
 
+#include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/util/check.h"
 
 Pipeline::Pipeline(

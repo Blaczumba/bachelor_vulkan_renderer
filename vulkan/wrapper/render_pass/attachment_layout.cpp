@@ -1,6 +1,8 @@
 #include "attachment_layout.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <vector>
 
 #include "common/util/engine_exception.h"
 #include "vulkan/wrapper/util/util.h"
