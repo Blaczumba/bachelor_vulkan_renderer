@@ -80,5 +80,5 @@ void main() {
 
     vec3 specular = vec3(0.3) * spec; // assuming bright white light color
 
-    outColor = vec4(ambient + calculateShadow()*(diffuse + specular), 1.0);
+    outColor = vec4(ambient + calculateShadow()*(diffuse + 0.05 * specular), 1.0);
 }

@@ -178,13 +178,11 @@ private:
   UniformTextureHandle _shadowHandle;
 
   // Skybox.
-  GpuBufferHandle _vertexBufferCubeHandle;
-  GpuBufferHandle _vertexBufferCubeNormalsHandle;
-  GpuBufferHandle _indexBufferCubeHandle;
-  Texture _textureCubemap;
-  VkIndexType _indexBufferCubeType;
+  Entity _skyboxEntity;
   Pipeline* _skyboxPipeline;
-  UniformTextureHandle _skyboxHandle;
+
+  // Raziel.
+  Entity _razielEntity;
 
   // Mirror cubemap
   // First pass.
@@ -206,7 +204,7 @@ private:
   PipelineHandle _graphicsTesselationPipelineHandle;
 
   // Blinn Phong Tesselation.
-  Pipeline* _blinnPhongTesselationPipeline;
+  PipelineHandle _blinnPhongTesselationPipelineHandle;
 
   UniformBufferLight _ubLight;
   Buffer _dynamicUniformBuffersCamera;
@@ -241,12 +239,7 @@ private:
                    * glm::rotate(glm::mat4(1.0f), glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
                    * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
     });
-    std::string cubeFileContents = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
-    common::VertexData cubeData = common::loadObj(*_assetManager, "cube.obj", cubeFileContents);
-    cubeData.diffuseTexture = {
-      _assetManager->loadImageAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx"),
-      TEXTURES_PATH "cubemap_yokohama_rgba.ktx"};
-    loadObject(cubeData);
+
     createDescriptorSets();
     createEnvMappingResources();
     createShadowResources();
@@ -256,7 +249,44 @@ private:
     loadObjects(sponzaData, _graphicsPipelineHandle);
     // loadObjects(antiqueCandleStickData, _graphicsTesselationPipelineHandle);
     // loadObjects(lanternData, _graphicsTesselationPipelineHandle);
-    loadObjects(spartanData, _graphicsTesselationPipelineHandle);
+    // loadObjects(spartanData, _graphicsTesselationPipelineHandle);
+
+    {
+      SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
+      const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+
+      std::string cubeFileContents = _fileLoader.loadFileToString(MODELS_PATH "cube.obj");
+      common::VertexData cubeData = common::loadObj(*_assetManager, "cube.obj", cubeFileContents);
+      cubeData.diffuseTexture = {
+        _assetManager->loadImageAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx"),
+        TEXTURES_PATH "cubemap_yokohama_rgba.ktx"};
+      const AssetManager::ImageData& imageData =
+          _assetManager->getImageData(cubeData.diffuseTexture.ID);
+
+      Texture skyboxTexture =
+          createSkybox(*_logicalDevice, commandBuffer, imageData, VK_FORMAT_R8G8B8A8_SRGB,
+                       _physicalDevice->getMaxSamplerAnisotropy());
+      _skyboxEntity =
+          loadObject(commandBuffer, cubeData, PipelineHandle(0), std::move(skyboxTexture));
+
+      std::string razielFileContents = _fileLoader.loadFileToString(MODELS_PATH "Raziel.obj");
+      common::VertexData razielData =
+          common::loadObj(*_assetManager, "Raziel.obj", razielFileContents);
+      razielData.model =
+          glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))
+          * glm::scale(glm::mat4(1.0f), glm::vec3(3.0f, 3.0f, 3.0f));
+      razielData.diffuseTexture = {
+        _assetManager->loadImageAsync(TEXTURES_PATH "Raziel.png"), TEXTURES_PATH "Raziel.png"};
+      const AssetManager::ImageData& razielImageData =
+          _assetManager->getImageData(razielData.diffuseTexture.ID);
+
+      Texture razielTexture =
+          createTexture2D(*_logicalDevice, commandBuffer, razielImageData, VK_FORMAT_R8G8B8A8_SRGB,
+                          _physicalDevice->getMaxSamplerAnisotropy());
+      _razielEntity = loadObject(commandBuffer, razielData, _blinnPhongTesselationPipelineHandle,
+                                 std::move(razielTexture));
+      _objects.push_back(Object("Raziel", _razielEntity));
+    }
 
     createOctreeScene();
     {
@@ -266,35 +296,43 @@ private:
     }
   }
 
-  void loadObject(const common::VertexData& cubeData) {
-    SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+  Entity loadObject(VkCommandBuffer commandBuffer, const common::VertexData& cubeData,
+                    PipelineHandle pipelineHandle, Texture&& texture) {
+    Entity entity = _registry.createEntity();
 
-    const AssetManager::ImageData& imageData =
-        _assetManager->getImageData(cubeData.diffuseTexture.ID);
+    Sampler sampler = SamplerBuilder()
+                          .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
+                          .build(*_logicalDevice);
+    _registry.addComponent<MaterialComponent>(
+        entity, MaterialComponent{
+                  .diffuse = _bindlessWriter->writeTexture(
+                      texture.getVkImageView(), texture.getVkImageLayout(), sampler.getVkSampler()),
+                  .pipelineHandle = pipelineHandle});
+    _samplerManager->transferSampler(std::move(sampler));
+    _gpuBufferManager->transferTexture(std::move(texture));
 
-    _textureCubemap =
-        createSkybox(*_logicalDevice, commandBuffer, imageData, VK_FORMAT_R8G8B8A8_UNORM,
-                     _physicalDevice->getMaxSamplerAnisotropy());
-
+    MeshComponent msh = {.aabb = createAABBfromVertices(cubeData.positions, glm::mat4(1.0f))};
     if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
       AssetManager::VertexData vData = _assetManager->releaseVertexData(cubeData.vertexResourceID);
-      _vertexBufferCubeHandle = _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("P")));
-      _vertexBufferCubeNormalsHandle =
-          _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("PN")));
-      _indexBufferCubeHandle = _gpuBufferManager->transferBuffer(std::move(vData.indexBuffer));
-      _indexBufferCubeType = vData.indexType;
+      msh.vertexBufferPrimitiveHandle =
+          _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("P")));
+      msh.vertexBufferHandle = _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("PN")));
+      msh.indexBufferHandle = _gpuBufferManager->transferBuffer(std::move(vData.indexBuffer));
+      msh.indexType = vData.indexType;
     } else if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
       const AssetManager::VertexData& vData =
           _assetManager->getVertexData(cubeData.vertexResourceID);
-      _vertexBufferCubeHandle = _gpuBufferManager->uploadBuffer(
+      msh.vertexBufferPrimitiveHandle = _gpuBufferManager->uploadBuffer(
           commandBuffer, vData.buffers.at("P"), GpuBufferManager::BufferType::VERTEX);
-      _vertexBufferCubeNormalsHandle = _gpuBufferManager->uploadBuffer(
-          commandBuffer, vData.buffers.at("PN"), GpuBufferManager::BufferType::VERTEX);
-      _indexBufferCubeHandle = _gpuBufferManager->uploadBuffer(
+      msh.vertexBufferHandle = _gpuBufferManager->uploadBuffer(
+          commandBuffer, vData.buffers.at("PTN"), GpuBufferManager::BufferType::VERTEX);
+      msh.indexBufferHandle = _gpuBufferManager->uploadBuffer(
           commandBuffer, vData.indexBuffer, GpuBufferManager::BufferType::INDEX);
-      _indexBufferCubeType = vData.indexType;
+      msh.indexType = vData.indexType;
     }
+    _registry.addComponent(entity, std::move(msh));
+    _registry.addComponent(entity, TransformComponent{.model = cubeData.model});
+    return entity;
   }
 
   void createDescriptorSets() {
@@ -303,13 +341,6 @@ private:
         _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera));
     _dynamicUniformBuffersCamera = Buffer::createUniformBuffer(
         *_logicalDevice, (MULTIVIEW_PRESENTATION ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size);
-    Sampler sampler = SamplerBuilder()
-                          .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
-                          .build(*_logicalDevice);
-    _skyboxHandle = _bindlessWriter->writeTexture(
-        _textureCubemap.getVkImageView(), _textureCubemap.getVkImageLayout(),
-        sampler.getVkSampler());
-    _samplerManager->transferSampler(std::move(sampler));
 
     _dynamicDescriptorSetWriter.storeDynamicBuffer(
         _dynamicUniformBuffersCamera, size, MULTIVIEW_PRESENTATION ? 2 : 1);
@@ -442,8 +473,8 @@ private:
     _graphicsPipeline = _pipelineManager->getPipeline(_graphicsPipelineHandle);
     _graphicsTesselationPipelineHandle =
         _pipelineManager->createPbrTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION);
-    _blinnPhongTesselationPipeline = _pipelineManager->getPipeline(
-        _pipelineManager->createBlinnPhongTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION));
+    _blinnPhongTesselationPipelineHandle =
+        _pipelineManager->createBlinnPhongTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION);
     _graphicsTesselationPipeline =
         _pipelineManager->getPipeline(_graphicsTesselationPipelineHandle);
     _skyboxPipeline =
@@ -587,6 +618,10 @@ private:
   }
 
   void createOctreeScene() {
+    if (_objects.empty()) {
+      return;
+    }
+
     AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;
 
     for (int i = 1; i < _objects.size(); ++i) {
@@ -960,15 +995,20 @@ private:
 
       static constexpr VkDeviceSize offsets[] = {0};
 
+      const MeshComponent& cubeMeshComponent = _registry.getComponent<MeshComponent>(_skyboxEntity);
+      const MaterialComponent& cubeMaterialComponent =
+          _registry.getComponent<MaterialComponent>(_skyboxEntity);
       const VkBuffer vertexBuffer =
-          _gpuBufferManager->getBuffer(_vertexBufferCubeHandle).getVkBuffer();
-      const Buffer& indexBuffer = _gpuBufferManager->getBuffer(_indexBufferCubeHandle);
+          _gpuBufferManager->getBuffer(cubeMeshComponent.vertexBufferPrimitiveHandle).getVkBuffer();
+      const Buffer& indexBuffer = _gpuBufferManager->getBuffer(cubeMeshComponent.indexBufferHandle);
       vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
-      vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getVkBuffer(), 0, _indexBufferCubeType);
+      vkCmdBindIndexBuffer(
+          commandBuffer, indexBuffer.getVkBuffer(), 0, cubeMeshComponent.indexType);
 
-      const PushConstantsSkybox pc = {.proj = cameraProj,
-                                      .view = cameraView,
-                                      .skyboxHandle = static_cast<uint32_t>(*_skyboxHandle)};
+      const PushConstantsSkybox pc = {
+        .proj = cameraProj,
+        .view = cameraView,
+        .skyboxHandle = static_cast<uint32_t>(*cubeMaterialComponent.diffuse)};
       vkCmdPushConstants(commandBuffer, _skyboxPipeline->getVkPipelineLayout(),
                          _skyboxPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
 
@@ -980,7 +1020,8 @@ private:
           _skyboxPipeline->getVkPipelineLayout(), 0, 1, descriptorSets, 0, nullptr);
 
       vkCmdDrawIndexed(
-          commandBuffer, indexBuffer.getSize() / getIndexSize(_indexBufferCubeType), 1, 0, 0, 0);
+          commandBuffer, indexBuffer.getSize() / getIndexSize(cubeMeshComponent.indexType), 1, 0, 0,
+          0);
 
       // Env mapping
       /*vkCmdBindPipeline(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),

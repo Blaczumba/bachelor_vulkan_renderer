@@ -355,10 +355,12 @@ PipelineHandle PipelineManager::createBlinnPhongTesselationProgram(
             .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
-            .withMultisampleStateCreateInfo(
-                renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
+            .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples())
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
+            .withFragmentShadingRateStateCreateInfo(
+                {1, 1}, VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
+                VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR)
             .withTessellationStateCreateInfo(3)
             .createPipeline(renderpass, *pipelineLayout),
         pipelineLayoutIndex});
