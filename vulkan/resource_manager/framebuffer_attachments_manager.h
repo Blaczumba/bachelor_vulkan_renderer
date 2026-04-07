@@ -19,7 +19,7 @@ public:
       const Renderpass& renderpass, std::span<const GpuTextureHandle> attachments,
       VkExtent2D extent, VkImageView swapchainView = VK_NULL_HANDLE);
 
-  std::span<const GpuTextureHandle> getAttachments(const Framebuffer& framebuffer);
+  std::span<const GpuTextureHandle> getAttachments(VkFramebuffer framebuffer);
 
 private:
   GpuBufferManager& _gpuBufferManager;

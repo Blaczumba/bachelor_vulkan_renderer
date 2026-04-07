@@ -2,8 +2,8 @@
 
 #include <any>
 #include <array>
+#include <chrono>
 #include <iostream>
-#include <ranges>
 #include <vector>
 
 #include "common/abstractions/contexts.h"
@@ -91,7 +91,7 @@ Texture createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer com
                          uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage);
 
 void createFsrContents(
-    VkCommandBuffer commandBuffer, Texture& texture, const LogicalDevice& logicalDevice);
+    Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool);
 
 }  // namespace
 
@@ -205,6 +205,9 @@ private:
   Pipeline* _graphicsTesselationPipeline;
   PipelineHandle _graphicsTesselationPipelineHandle;
 
+  // Blinn Phong Tesselation.
+  Pipeline* _blinnPhongTesselationPipeline;
+
   UniformBufferLight _ubLight;
   Buffer _dynamicUniformBuffersCamera;
   Buffer _lightBuffer;
@@ -215,34 +218,35 @@ private:
   GpuTextureHandle _fsrTextureHandle;
 
   void setup() {
-    std::string data = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
     const std::vector<common::VertexData> sponzaData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
-    std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
-        *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
-    std::for_each(
-        antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData& data) {
-          data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
-                       * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
-        });
+    // std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
+    //     *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
+    // std::for_each(
+    //     antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData&
+    //     data) {
+    //       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
+    //                    * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
+    //     });
     /*std::vector<common::VertexData> lanternData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_lantern_3d_model/scene.gltf");
     std::for_each(lanternData.begin(), lanternData.end(), [](common::VertexData& data) {
       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(8.5f, 4.25f, 0.0f))
                    * glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
-    });
+    });*/
     std::vector<common::VertexData> spartanData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "pbr_spartan_helmet/scene.gltf");
     std::for_each(spartanData.begin(), spartanData.end(), [](common::VertexData& data) {
       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(1000.0f, 16.0f, -250.0f))
                    * glm::rotate(glm::mat4(1.0f), glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
                    * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
-    });*/
-    common::VertexData cubeData = common::loadObj(*_assetManager, "cube.obj", data);
+    });
+    std::string cubeFileContents = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
+    common::VertexData cubeData = common::loadObj(*_assetManager, "cube.obj", cubeFileContents);
     cubeData.diffuseTexture = {
       _assetManager->loadImageAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx"),
       TEXTURES_PATH "cubemap_yokohama_rgba.ktx"};
-    loadCubemap(cubeData);
+    loadObject(cubeData);
     createDescriptorSets();
     createEnvMappingResources();
     createShadowResources();
@@ -250,9 +254,9 @@ private:
     createCommandBuffers();
     createSyncObjects();
     loadObjects(sponzaData, _graphicsPipelineHandle);
-    loadObjects(antiqueCandleStickData, _graphicsTesselationPipelineHandle);
-    /*loadObjects(lanternData, _graphicsTesselationPipelineHandle);
-    loadObjects(spartanData, _graphicsTesselationPipelineHandle);*/
+    // loadObjects(antiqueCandleStickData, _graphicsTesselationPipelineHandle);
+    // loadObjects(lanternData, _graphicsTesselationPipelineHandle);
+    loadObjects(spartanData, _graphicsTesselationPipelineHandle);
 
     createOctreeScene();
     {
@@ -262,7 +266,7 @@ private:
     }
   }
 
-  void loadCubemap(const common::VertexData& cubeData) {
+  void loadObject(const common::VertexData& cubeData) {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
 
@@ -302,7 +306,9 @@ private:
     Sampler sampler = SamplerBuilder()
                           .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
                           .build(*_logicalDevice);
-    _skyboxHandle = _bindlessWriter->storeTexture(_textureCubemap, sampler);
+    _skyboxHandle = _bindlessWriter->writeTexture(
+        _textureCubemap.getVkImageView(), _textureCubemap.getVkImageLayout(),
+        sampler.getVkSampler());
     _samplerManager->transferSampler(std::move(sampler));
 
     _dynamicDescriptorSetWriter.storeDynamicBuffer(
@@ -311,7 +317,7 @@ private:
         _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
 
     _lightBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(UniformBufferLight));
-    _lightHandle = _bindlessWriter->storeBuffer(_lightBuffer);
+    _lightHandle = _bindlessWriter->writeBuffer(_lightBuffer);
 
     _ubLight.pos = glm::vec3(15.1891f, 2.66408f, -0.841221f);
     _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.1f, 40.0f);
@@ -391,9 +397,11 @@ private:
 
     _envMappingUniformBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(faceTransform));
     common::copyData(_envMappingUniformBuffer.getMappedMemory(), 0, faceTransform);
-    _envMappingHandle = _bindlessWriter->storeBuffer(_envMappingUniformBuffer);
+    _envMappingHandle = _bindlessWriter->writeBuffer(_envMappingUniformBuffer);
     Sampler sampler = SamplerBuilder().withAnisotropy(samplerAnisotropy).build(*_logicalDevice);
-    _envMappingTextureHandle = _bindlessWriter->storeTexture(_envMappingAttachments[0], sampler);
+    _envMappingTextureHandle = _bindlessWriter->writeTexture(
+        _envMappingAttachments[0].getVkImageView(), _envMappingAttachments[0].getVkImageLayout(),
+        sampler.getVkSampler());
     _samplerManager->transferSampler(std::move(sampler));
   }
 
@@ -413,7 +421,8 @@ private:
                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
             .withBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
             .build(*_logicalDevice);
-    _shadowHandle = _bindlessWriter->storeTexture(_shadowMap, std::move(sampler));
+    _shadowHandle = _bindlessWriter->writeTexture(
+        _shadowMap.getVkImageView(), _shadowMap.getVkImageLayout(), sampler.getVkSampler());
     _samplerManager->transferSampler(std::move(sampler));
 
     AttachmentLayout attachmentLayout;
@@ -433,6 +442,8 @@ private:
     _graphicsPipeline = _pipelineManager->getPipeline(_graphicsPipelineHandle);
     _graphicsTesselationPipelineHandle =
         _pipelineManager->createPbrTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION);
+    _blinnPhongTesselationPipeline = _pipelineManager->getPipeline(
+        _pipelineManager->createBlinnPhongTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION));
     _graphicsTesselationPipeline =
         _pipelineManager->getPipeline(_graphicsTesselationPipelineHandle);
     _skyboxPipeline =
@@ -501,8 +512,9 @@ private:
     const AssetManager::ImageData& imgData = _assetManager->getImageData(textureID);
     Texture texture =
         createTexture2D(*_logicalDevice, commandBuffer, imgData, format, maxSamplerAnisotropy);
-    UniformTextureHandle handle =
-        _bindlessWriter->storeTexture(texture, _samplerManager->getSampler(samplerHandle));
+    UniformTextureHandle handle = _bindlessWriter->writeTexture(
+        texture.getVkImageView(), texture.getVkImageLayout(),
+        _samplerManager->getSampler(samplerHandle).getVkSampler());
     const GpuTextureHandle index = _gpuBufferManager->transferTexture(std::move(texture));
 
     const auto result = std::make_tuple(handle, index);
@@ -1191,7 +1203,7 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
         presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
         VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | VK_IMAGE_USAGE_TRANSFER_DST_BIT
             | VK_IMAGE_USAGE_STORAGE_BIT);
-    createFsrContents(commandBuffer, fsrTexture, *_logicalDevice);
+    createFsrContents(fsrTexture, *_logicalDevice, *_singleTimeCommandPool);
 
     _computeDescriptorSetWriter.storeImageStorage(fsrTexture);
     _computeDescriptorSetWriter.writeDescriptorSet(
@@ -1263,8 +1275,10 @@ Texture createSkybox(
           .withUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
           .withLayerCount(6)
           .withAdditionalCreateInfoFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-          .buildImage(logicalDevice, commandBuffer, imageData.stagingBuffer.getVkBuffer(),
-                      imageData.copyRegions, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+          .buildImage(logicalDevice);
+  texture.copyFromStagingBuffer(
+      commandBuffer, imageData.stagingBuffer.getVkBuffer(), imageData.copyRegions);
+  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, imageData.mipLevels, 0, 6);
   return texture;
 }
@@ -1281,7 +1295,8 @@ Texture createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer comman
           .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | additionalUsage)
           .withLayerCount(6)
           .withAdditionalCreateInfoFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-          .buildImage(logicalDevice, commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+          .buildImage(logicalDevice);
+  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, 6);
   return texture;
 }
@@ -1294,7 +1309,8 @@ Texture createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer comm
           .withExtent(width, height)
           .withFormat(format)
           .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-          .buildImage(logicalDevice, commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+          .buildImage(logicalDevice);
+  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, 1);
   return texture;
 }
@@ -1310,9 +1326,12 @@ Texture createTexture2D(
           .withMipLevels(imageData.mipLevels)
           .withUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
                      | VK_IMAGE_USAGE_SAMPLED_BIT)
-          .buildMipmapImage(logicalDevice, commandBuffer, imageData.stagingBuffer.getVkBuffer(),
-                            imageData.copyRegions, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+          .buildImage(logicalDevice);
+  texture.copyFromStagingBuffer(
+      commandBuffer, imageData.stagingBuffer.getVkBuffer(), imageData.copyRegions);
+  texture.generateMipmaps(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, imageData.mipLevels, 0, 1);
+
   return texture;
 }
 
@@ -1327,36 +1346,32 @@ Texture createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer com
           .withLayerCount(numLayers)
           .withAspect(aspect)
           .withUsage(usage)
-          .buildImage(logicalDevice, commandBuffer);
+          .buildImage(logicalDevice);
   texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
 }
 
 void createFsrContents(
-    VkCommandBuffer commandBuffer, Texture& texture, const LogicalDevice& logicalDevice) {
+    Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool) {
   const VkExtent2D extent = texture.getVkExtent2D();
-  lib::Buffer<std::byte> buffer(static_cast<size_t>(extent.width * extent.height), std::byte{0});
+  const lib::Buffer<std::byte> buffer(
+      static_cast<size_t>(extent.width * extent.height), std::byte{0});
   Buffer stagingBuffer =
       Buffer::createStagingBuffer(logicalDevice, buffer.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  common::copyData(stagingBuffer.getMappedMemory(), 0,
-                   std::span(static_cast<const std::byte*>(buffer.data()), buffer.size()));
-  {
-    VkBufferImageCopy imageCopy[] = {
-      {
-       .imageSubresource =
-            {
-              .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-              .mipLevel = 0,
-              .baseArrayLayer = 0,
-              .layerCount = 1,
-            }, .imageExtent = {extent.width, extent.height, 1},
-       }
-      // TODO: for multiview add another here.
+  common::copyData(stagingBuffer.getMappedMemory(), 0, std::span(buffer));
+  lib::Buffer<VkBufferImageCopy> imageCopy(texture.getLayersCount());
+  for (uint32_t layer = 0; layer < imageCopy.size(); layer++) {
+    imageCopy[layer] = VkBufferImageCopy{
+      .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                           .mipLevel = layer,
+                           .baseArrayLayer = 0,
+                           .layerCount = 1},
+      .imageExtent = VkExtent3D{extent.width, extent.height, 1},
     };
-    texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    texture.copyFromStagingBuffer(commandBuffer, stagingBuffer.getVkBuffer(), imageCopy);
-    texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_GENERAL);
   }
+  SingleTimeCommandBuffer handle(commandPool);
+  texture.copyFromStagingBuffer(handle.getCommandBuffer(), stagingBuffer.getVkBuffer(), imageCopy);
+  texture.transitionLayout(handle.getCommandBuffer(), VK_IMAGE_LAYOUT_GENERAL);
 }
 
 }  // namespace

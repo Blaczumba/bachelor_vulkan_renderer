@@ -58,7 +58,7 @@ public:
 
   PipelineHandle createPbrTesselationProgram(const Renderpass& renderpass, bool multiview);
 
-  PipelineHandle createBlinnPhongTesselationProgram(const Renderpass& renderpass);
+  PipelineHandle createBlinnPhongTesselationProgram(const Renderpass& renderpass, bool multiview);
 
   PipelineHandle createPbrEnvMappingProgram(const Renderpass& renderpass);
 

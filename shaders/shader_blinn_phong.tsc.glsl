@@ -29,10 +29,7 @@ struct OutputPatch
 layout(location = 0) out patch OutputPatch outPatch;
 
 vec3 ProjectToPlane(vec3 Point, vec3 PlanePoint, vec3 PlaneNormal) {
-    vec3 v = Point - PlanePoint;
-    float Len = dot(v, PlaneNormal);
-    vec3 d = Len * PlaneNormal;
-    return (Point - d);
+    return Point - dot(Point - PlanePoint, PlaneNormal) * PlaneNormal;
 }
 
 void CalcPositions() {

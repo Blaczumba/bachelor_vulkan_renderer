@@ -26,10 +26,16 @@ public:
   VkImageView addCreateVkImageView(
       uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
 
+  void generateMipmaps(VkCommandBuffer commandBuffer, VkImageLayout dstLayout);
+
   void copyFromStagingBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
                              std::span<const VkBufferImageCopy> copyRegions);
 
   void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
+
+  void transitionLayout(
+      VkCommandBuffer commandBuffer, VkImageLayout newLayout, uint32_t baseMipLevel,
+      uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
 
   VkImage getVkImage() const noexcept;
 
@@ -93,16 +99,7 @@ public:
 
   TextureBuilder& withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept;
 
-  Texture buildImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                     VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED) const;
-
-  Texture buildImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                     VkBuffer copyBuffer, const std::span<const VkBufferImageCopy> copyRegions,
-                     VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED) const;
-
-  Texture buildMipmapImage(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                           VkBuffer copyBuffer, std::span<const VkBufferImageCopy> copyRegions,
-                           VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED) const;
+  Texture buildImage(const LogicalDevice& logicalDevice) const;
 
 private:
   VkImageCreateInfo _imageCreateInfo = {

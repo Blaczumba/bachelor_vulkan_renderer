@@ -39,10 +39,7 @@ struct OutputPatch
 layout(location = 0) out patch OutputPatch outPatch;
 
 vec3 ProjectToPlane(vec3 Point, vec3 PlanePoint, vec3 PlaneNormal) {
-    vec3 v = Point - PlanePoint;
-    float Len = dot(v, PlaneNormal);
-    vec3 d = Len * PlaneNormal;
-    return (Point - d);
+    return Point - dot(Point - PlanePoint, PlaneNormal) * PlaneNormal;
 }
 
 void CalcPositions() {
@@ -90,7 +87,7 @@ const float MAX_TESS = 3.0;
 const float MAX_DIST = 10.0;
 const float MIN_DIST = 0.1;
 
-float GetLevelForPoint(vec3 pos) {
+float getLevelForPoint(vec3 pos) {
     float dist = distance(camera.viewPos, pos);
     float dFactor = clamp((MAX_DIST - dist) / (MAX_DIST - MIN_DIST), 0.0, 1.0);
     vec3 patchDir = normalize(pos - camera.viewPos);
@@ -111,9 +108,9 @@ void main() {
 
     CalcPositions();
 
-    float v0Level = GetLevelForPoint(gl_in[0].gl_Position.xyz);
-    float v1Level = GetLevelForPoint(gl_in[1].gl_Position.xyz);
-    float v2Level = GetLevelForPoint(gl_in[2].gl_Position.xyz);
+    float v0Level = getLevelForPoint(gl_in[0].gl_Position.xyz);
+    float v1Level = getLevelForPoint(gl_in[1].gl_Position.xyz);
+    float v2Level = getLevelForPoint(gl_in[2].gl_Position.xyz);
     gl_TessLevelOuter[0] = (v1Level + v2Level) / 2.0;
     gl_TessLevelOuter[1] = (v2Level + v0Level) / 2.0;
     gl_TessLevelOuter[2] = (v0Level + v1Level) / 2.0;

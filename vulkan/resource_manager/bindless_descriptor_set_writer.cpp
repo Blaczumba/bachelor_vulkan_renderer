@@ -29,8 +29,8 @@ std::unique_ptr<BindlessDescriptorSetWriter> BindlessDescriptorSetWriter::create
       new BindlessDescriptorSetWriter(descriptorSet));
 }
 
-UniformTextureHandle BindlessDescriptorSetWriter::storeTexture(
-    const Texture& texture, const Sampler& sampler) {
+UniformTextureHandle BindlessDescriptorSetWriter::writeTexture(
+    VkImageView view, VkImageLayout layout, VkSampler sampler) {
   const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
   if (!_texturesMap.insert(*handle)) [[unlikely]] {
     throw EngineException(std::format(
@@ -38,10 +38,14 @@ UniformTextureHandle BindlessDescriptorSetWriter::storeTexture(
         *handle));
   }
 
+  overwriteTexture(handle, view, layout, sampler);
+  return handle;
+}
+
+void BindlessDescriptorSetWriter::overwriteTexture(
+    UniformTextureHandle handle, VkImageView view, VkImageLayout layout, VkSampler sampler) {
   const VkDescriptorImageInfo imageInfo = {
-    .sampler = sampler.getVkSampler(),
-    .imageView = texture.getVkImageView(),
-    .imageLayout = texture.getVkImageLayout()};
+    .sampler = sampler, .imageView = view, .imageLayout = layout};
 
   const VkWriteDescriptorSet write = {
     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -54,7 +58,6 @@ UniformTextureHandle BindlessDescriptorSetWriter::storeTexture(
 
   vkUpdateDescriptorSets(
       _descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(), 1, &write, 0, nullptr);
-  return handle;
 }
 
 std::vector<UniformTextureHandle> BindlessDescriptorSetWriter::storeTextures(
@@ -103,15 +106,24 @@ void BindlessDescriptorSetWriter::removeTexture(UniformTextureHandle handle) {
   _texturesMap.erase(*handle);
 }
 
-UniformBufferHandle BindlessDescriptorSetWriter::storeBuffer(const Buffer& buffer) {
+UniformBufferHandle BindlessDescriptorSetWriter::writeBuffer(
+    const Buffer& buffer, std::optional<size_t> size, size_t offset) {
   const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
   if (!_buffersMap.insert(*handle)) [[unlikely]] {
     throw EngineException(std::format(
         "BindlessDescriptorSetWriter::storeBuffer: Failed to insert Buffer Handle = {}.", *handle));
   }
 
+  size_t range = size.value_or(buffer.getSize());
+  if (range + offset > buffer.getSize()) [[unlikely]] {
+    throw EngineException(
+        std::format(
+            "BindlessDescriptorSetWriter::storeBuffer: Buffer range " "(offset = {}, size " "= " "{" "}" ")" " " "e" "x" "c" "e" "e" "d" "s" " " "buffer size " "({}).",
+            offset, range, buffer.getSize()));
+  }
+
   const VkDescriptorBufferInfo bufferInfo = {
-    .buffer = buffer.getVkBuffer(), .range = buffer.getSize()};
+    .buffer = buffer.getVkBuffer(), .offset = offset, .range = range};
 
   const VkWriteDescriptorSet write = {
     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

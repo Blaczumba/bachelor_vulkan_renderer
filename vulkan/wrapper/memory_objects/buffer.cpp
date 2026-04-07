@@ -25,7 +25,9 @@ Buffer& Buffer::operator=(Buffer&& buffer) noexcept {
     return *this;
   }
 
-  destroy();
+  if (_buffer != VK_NULL_HANDLE) {
+    destroy();
+  }
 
   _buffer = std::exchange(buffer._buffer, VK_NULL_HANDLE);
   _allocation = buffer._allocation;
@@ -51,17 +53,17 @@ struct BufferDeallocator {
 }  // namespace
 
 void Buffer::destroy() {
-  if (_buffer != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource(
-        [buffer = _buffer, allocation = _allocation](DestroyerContext context) {
-          std::visit(BufferDeallocator{buffer}, *context.memoryAllocator, allocation);
-        });
-  }
+  _logicalDevice->destroyResource(
+      [buffer = _buffer, allocation = _allocation](DestroyerContext context) {
+        std::visit(BufferDeallocator{buffer}, *context.memoryAllocator, allocation);
+      });
 }
 
 Buffer::~Buffer() {
-  destroy();
-  _buffer = VK_NULL_HANDLE;
+  if (_buffer != VK_NULL_HANDLE) {
+    destroy();
+    _buffer = VK_NULL_HANDLE;
+  }
 }
 
 namespace {

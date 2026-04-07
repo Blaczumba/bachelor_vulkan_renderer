@@ -60,7 +60,8 @@ constexpr PipelineStageInfo destinationStageAndAccessMask(VkImageLayout layout) 
 
 void transitionImageLayout(
     VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
-    VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t layerCount) {
+    VkImageAspectFlags aspectFlags, uint32_t baseMipLevel, uint32_t levelCount,
+    uint32_t baseArrayLayer, uint32_t layerCount) {
   const PipelineStageInfo srcStageInfo = sourceStageAndAccessMask(oldLayout);
   const PipelineStageInfo dstStageInfo = sourceStageAndAccessMask(newLayout);
 
@@ -75,9 +76,9 @@ void transitionImageLayout(
     .image = image,
     .subresourceRange = VkImageSubresourceRange{
                                                 .aspectMask = aspectFlags,
-                                                .baseMipLevel = 0,
-                                                .levelCount = mipLevels,
-                                                .baseArrayLayer = 0,
+                                                .baseMipLevel = baseMipLevel,
+                                                .levelCount = levelCount,
+                                                .baseArrayLayer = baseArrayLayer,
                                                 .layerCount = layerCount}
   };
 

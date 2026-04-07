@@ -9,7 +9,35 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/render_pass/attachment_layout.h"
 
-class Renderpass;
+class Renderpass {
+  Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass,
+             const AttachmentLayout& attachmentLayout) noexcept;
+
+public:
+  Renderpass() noexcept = default;
+
+  Renderpass(Renderpass&& renderpass) noexcept;
+
+  Renderpass& operator=(Renderpass&& renderpass) noexcept;
+
+  ~Renderpass();
+
+  VkRenderPass getVkRenderPass() const noexcept;
+
+  const AttachmentLayout& getAttachmentsLayout() const noexcept;
+
+  const LogicalDevice& getLogicalDevice() const;
+
+private:
+  void destroy();
+
+  VkRenderPass _renderpass = VK_NULL_HANDLE;
+
+  const LogicalDevice* _logicalDevice = nullptr;
+  AttachmentLayout _attachmentsLayout;
+
+  friend class RenderpassBuilder;
+};
 
 class RenderpassBuilder {
   class Subpass {
@@ -71,34 +99,4 @@ private:
   std::vector<VkSubpassDependency2> _subpassDepencies;
   // For reference stability use unique_ptr.
   std::vector<std::unique_ptr<Subpass>> _subpasses;
-};
-
-class Renderpass {
-public:
-  Renderpass() noexcept = default;
-
-  Renderpass(Renderpass&& renderpass) noexcept;
-
-  Renderpass& operator=(Renderpass&& renderpass) noexcept;
-
-  ~Renderpass();
-
-  VkRenderPass getVkRenderPass() const noexcept;
-
-  const AttachmentLayout& getAttachmentsLayout() const noexcept;
-
-  const LogicalDevice& getLogicalDevice() const;
-
-private:
-  Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass,
-             const AttachmentLayout& attachmentLayout) noexcept;
-
-  void destroy();
-
-  VkRenderPass _renderpass = VK_NULL_HANDLE;
-
-  const LogicalDevice* _logicalDevice = nullptr;
-  AttachmentLayout _attachmentsLayout;
-
-  friend class RenderpassBuilder;
 };

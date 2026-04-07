@@ -9,6 +9,7 @@
 
 #include "common/util/engine_exception.h"
 #include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/instance/extensions.h"
 #include "vulkan/wrapper/logical_device/extensions_connector.h"
 #include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"

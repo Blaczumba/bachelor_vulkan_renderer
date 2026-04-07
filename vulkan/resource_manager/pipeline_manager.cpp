@@ -304,7 +304,8 @@ PipelineHandle PipelineManager::createPbrTesselationProgram(
   return pipelineIndex;
 }
 
-PipelineHandle PipelineManager::createBlinnPhongTesselationProgram(const Renderpass& renderpass) {
+PipelineHandle PipelineManager::createBlinnPhongTesselationProgram(
+    const Renderpass& renderpass, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice, "shader_blinn_phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -320,7 +321,8 @@ PipelineHandle PipelineManager::createBlinnPhongTesselationProgram(const Renderp
       | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice), getOrCreateCameraLayout(logicalDevice, false)},
+        {getOrCreateBindlessLayout(logicalDevice),
+         getOrCreateCameraLayout(logicalDevice, multiview)},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}
   },
       logicalDevice);

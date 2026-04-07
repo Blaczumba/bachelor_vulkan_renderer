@@ -42,8 +42,8 @@ Framebuffer FramebufferAttachmentManager::createFramebuffer(
 }
 
 std::span<const GpuTextureHandle> FramebufferAttachmentManager::getAttachments(
-    const Framebuffer& framebuffer) {
-  auto it = _framebuffers.find(framebuffer.getVkFramebuffer());
+    VkFramebuffer framebuffer) {
+  auto it = _framebuffers.find(framebuffer);
   if (it == _framebuffers.end()) [[unlikely]] {
     throw EngineException("Framebuffer not found in FramebufferAttachmentManager.");
   }
