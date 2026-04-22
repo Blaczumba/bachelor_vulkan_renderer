@@ -121,6 +121,10 @@ uint32_t Texture::getLayersCount() const noexcept {
   return _layerCount;
 }
 
+uint32_t Texture::getMipLevelsCount() const noexcept {
+  return _mipLevels;
+}
+
 VkImageLayout Texture::getVkImageLayout() const noexcept {
   return _layout;
 }

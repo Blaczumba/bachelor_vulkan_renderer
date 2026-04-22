@@ -218,14 +218,14 @@ private:
   void setup() {
     const std::vector<common::VertexData> sponzaData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
-    // std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
-    //     *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
-    // std::for_each(
-    //     antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData&
-    //     data) {
-    //       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
-    //                    * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
-    //     });
+     std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
+         *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
+     std::for_each(
+         antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData&
+         data) {
+           data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
+                        * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
+         });
     /*std::vector<common::VertexData> lanternData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_lantern_3d_model/scene.gltf");
     std::for_each(lanternData.begin(), lanternData.end(), [](common::VertexData& data) {
@@ -247,7 +247,7 @@ private:
     createCommandBuffers();
     createSyncObjects();
     loadObjects(sponzaData, _graphicsPipelineHandle);
-    // loadObjects(antiqueCandleStickData, _graphicsTesselationPipelineHandle);
+    loadObjects(antiqueCandleStickData, _graphicsTesselationPipelineHandle);
     // loadObjects(lanternData, _graphicsTesselationPipelineHandle);
     // loadObjects(spartanData, _graphicsTesselationPipelineHandle);
 
@@ -910,9 +910,9 @@ private:
       .subresourceRange = {
                            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                            .baseMipLevel = 0,
-                           .levelCount = 1,
-                           .baseArrayLayer = 0,
-                           .layerCount = 1,
+                           .levelCount = fsrTexture.getMipLevelsCount(),
+                           .baseArrayLayer = 0, 
+                           .layerCount = fsrTexture.getLayersCount(),
                            }
     };
     vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,

@@ -89,7 +89,7 @@ float getLevelForPoint(vec3 pos) {
     float dist = distance(camera.viewPos, pos);
     float dFactor = clamp((MAX_DIST - dist) / (MAX_DIST - MIN_DIST), 0.0, 1.0);
     vec3 patchDir = normalize(pos - camera.viewPos);
-    float vFactor = clamp(dot(camera.viewDir, patchDir) * 6.0 - 5.0, 0.0, 1.0);
+    float vFactor = clamp(dot(camera.viewDir, patchDir) * 25.0 - 24.0, 0.0, 1.0);
     return mix(MIN_TESS, MAX_TESS, dFactor * vFactor);
 }
 

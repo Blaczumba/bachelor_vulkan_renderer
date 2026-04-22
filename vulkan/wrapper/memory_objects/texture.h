@@ -47,6 +47,8 @@ public:
 
   uint32_t getLayersCount() const noexcept;
 
+  uint32_t getMipLevelsCount() const noexcept;
+
   VkImageLayout getVkImageLayout() const noexcept;
 
 private:

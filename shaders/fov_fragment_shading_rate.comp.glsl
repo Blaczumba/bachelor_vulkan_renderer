@@ -10,10 +10,10 @@ layout(push_constant) uniform Constants {
 } pcs;
 
 uint getRate(float dist, bool preferVertical) {
-    if (dist < 20.0) return 0; 
-    if (dist < 40.0) return preferVertical ? 1 : 4;
-    if (dist < 60.0) return 5;
-    if (dist < 95.0) return preferVertical ? 6 : 9;
+    if (dist < 5.0) return 0; 
+    if (dist < 10.0) return preferVertical ? 1 : 4;
+    if (dist < 15.0) return 5;
+    if (dist < 24.0) return preferVertical ? 6 : 9;
     return 10;
 }
 
