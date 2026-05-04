@@ -20,7 +20,7 @@ using VertexData = AssetManager::VertexData;
 
 AssetManager::AssetManager(
     const LogicalDevice& logicalDevice, const FileLoader& fileLoader, std::launch launchPolicy)
-  : _logicalDevice(logicalDevice), _fileLoader(fileLoader), _launchPolicy(std::launch::deferred),
+  : _logicalDevice(logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy),
     _freeImageDataIndices(MAX_STAGING_IMAGE_DATA_RESOURCES),
     _freeVertexDataIndices(MAX_STAGING_VERTEX_DATA_RESOURCES) {
   std::iota(_freeImageDataIndices.rbegin(), _freeImageDataIndices.rend(),

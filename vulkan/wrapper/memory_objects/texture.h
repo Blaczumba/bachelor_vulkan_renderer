@@ -28,7 +28,7 @@ public:
 
   void generateMipmaps(VkCommandBuffer commandBuffer, VkImageLayout dstLayout);
 
-  void copyFromStagingBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
+  void copyFromBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
                              std::span<const VkBufferImageCopy> copyRegions);
 
   void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);

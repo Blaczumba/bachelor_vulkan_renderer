@@ -193,7 +193,7 @@ void Texture::generateMipmaps(VkCommandBuffer commandBuffer, VkImageLayout dstLa
   _layout = dstLayout;
 }
 
-void Texture::copyFromStagingBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
+void Texture::copyFromBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
                                     std::span<const VkBufferImageCopy> copyRegions) {
   transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   vkCmdCopyBufferToImage(commandBuffer, copyBuffer, _image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,

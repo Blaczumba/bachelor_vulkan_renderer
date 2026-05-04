@@ -34,7 +34,7 @@ Framebuffer FramebufferAttachmentManager::createFramebuffer(
     views.push_back(_gpuBufferManager.getTexture(textureHandle).getVkImageView());
   }
 
-  Framebuffer framebuffer = Framebuffer::create(renderpass, extent, 1, views);
+  Framebuffer framebuffer = Framebuffer::create(renderpass, extent, views);
   _framebuffers.emplace(
       framebuffer.getVkFramebuffer(),
       Attachments{.attachments = attachments, .swapchainImageView = swapchainView});

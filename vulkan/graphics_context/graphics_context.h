@@ -70,6 +70,28 @@ struct SwapchainContext {
 
 namespace {
 
+Framebuffer createFramebufferFromTextures(
+    const Renderpass& renderpass, std::span<const Texture> textures) {
+  std::vector<VkImageView> imageViews;
+  imageViews.reserve(textures.size());
+  std::optional<VkExtent2D> extent;
+  for (const Texture& texture : textures) {
+    imageViews.push_back(texture.getVkImageView());
+    if (!extent.has_value()) {
+      extent = texture.getVkExtent2D();
+    } else if (VkExtent2D tmpExtent = texture.getVkExtent2D();
+               extent->width != tmpExtent.width || extent->height != tmpExtent.height) {
+      throw EngineException("All images must have the same size to create a Framebuffer.");
+    }
+  }
+
+  if (!extent.has_value()) {
+    throw EngineException("Framebuffer must have an attachment.");
+  }
+
+  return Framebuffer::create(renderpass, *extent, imageViews);
+}
+
 Texture createSkybox(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy);
@@ -393,7 +415,7 @@ private:
             .build(*_logicalDevice);
 
     _envMappingFramebuffer =
-        Framebuffer::createFromTextures(_envMappingRenderPass, _envMappingAttachments);
+        createFramebufferFromTextures(_envMappingRenderPass, _envMappingAttachments);
 
     const glm::vec3 pos = glm::vec3(0.0f, 2.0f, 0.0f);
     glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 50.0f);
@@ -464,7 +486,7 @@ private:
     builder.createSubpass().addOutputAttachment(0);
     _shadowRenderPass = builder.build(*_logicalDevice);
     _shadowFramebuffer =
-        Framebuffer::createFromTextures(_shadowRenderPass, std::span(&_shadowMap, 1));
+        createFramebufferFromTextures(_shadowRenderPass, std::span(&_shadowMap, 1));
   }
 
   void createGraphicsPipelines() {
@@ -1319,7 +1341,7 @@ Texture createSkybox(
           .withLayerCount(6)
           .withAdditionalCreateInfoFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
           .buildImage(logicalDevice);
-  texture.copyFromStagingBuffer(
+  texture.copyFromBuffer(
       commandBuffer, imageData.stagingBuffer.getVkBuffer(), imageData.copyRegions);
   texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, imageData.mipLevels, 0, 6);
@@ -1370,7 +1392,7 @@ Texture createTexture2D(
           .withUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
                      | VK_IMAGE_USAGE_SAMPLED_BIT)
           .buildImage(logicalDevice);
-  texture.copyFromStagingBuffer(
+  texture.copyFromBuffer(
       commandBuffer, imageData.stagingBuffer.getVkBuffer(), imageData.copyRegions);
   texture.generateMipmaps(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, imageData.mipLevels, 0, 1);
@@ -1413,7 +1435,7 @@ void createFsrContents(
     };
   }
   SingleTimeCommandBuffer handle(commandPool);
-  texture.copyFromStagingBuffer(handle.getCommandBuffer(), stagingBuffer.getVkBuffer(), imageCopy);
+  texture.copyFromBuffer(handle.getCommandBuffer(), stagingBuffer.getVkBuffer(), imageCopy);
   texture.transitionLayout(handle.getCommandBuffer(), VK_IMAGE_LAYOUT_GENERAL);
 }
 
