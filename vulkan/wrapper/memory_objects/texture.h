@@ -26,7 +26,16 @@ public:
   VkImageView addCreateVkImageView(
       uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
 
+  void generateMipmaps(VkCommandBuffer commandBuffer, VkImageLayout dstLayout);
+
+  void copyFromStagingBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
+                             std::span<const VkBufferImageCopy> copyRegions);
+
   void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
+
+  void transitionLayout(
+      VkCommandBuffer commandBuffer, VkImageLayout newLayout, uint32_t baseMipLevel,
+      uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
 
   VkImage getVkImage() const noexcept;
 
@@ -35,6 +44,10 @@ public:
   VkExtent2D getVkExtent2D() const noexcept;
 
   VkExtent3D getVkExtent3D() const noexcept;
+
+  uint32_t getLayersCount() const noexcept;
+
+  uint32_t getMipLevelsCount() const noexcept;
 
   VkImageLayout getVkImageLayout() const noexcept;
 
@@ -62,8 +75,6 @@ class TextureBuilder {
 public:
   TextureBuilder& withType(VkImageType type) noexcept;
 
-  TextureBuilder& withLayout(VkImageLayout layout) noexcept;
-
   TextureBuilder& withFormat(VkFormat format) noexcept;
 
   TextureBuilder& withExtent(uint32_t width) noexcept;
@@ -90,18 +101,7 @@ public:
 
   TextureBuilder& withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept;
 
-  Texture buildAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const;
-
-  Texture buildImage(
-      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
-      const std::span<const VkBufferImageCopy> copyRegions) const;
-
-  Texture buildImageSampler(
-      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer) const;
-
-  Texture buildMipmapImage(
-      const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
-      std::span<const VkBufferImageCopy> copyRegions) const;
+  Texture buildImage(const LogicalDevice& logicalDevice) const;
 
 private:
   VkImageCreateInfo _imageCreateInfo = {
@@ -118,5 +118,4 @@ private:
     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
   };
   VkImageAspectFlags _aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-  VkImageLayout _imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 };

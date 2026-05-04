@@ -177,8 +177,8 @@ std::unique_ptr<Instance> createInstance(
     .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
     .pApplicationName = "VrApp",
     .pEngineName = "BejzakEngine",
-    .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-    .apiVersion = VK_API_VERSION_1_0};
+    .engineVersion = VK_MAKE_VERSION(1, 2, 0),
+    .apiVersion = VK_API_VERSION_1_2};
 
 #ifdef VALIDATION_LAYERS_ENABLED
   const VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo =
@@ -263,7 +263,8 @@ std::unique_ptr<LogicalDevice> createLogicalDevice(
       .withBufferDeviceAddressExtension()
       .withIndexTypeUint8Extension()
       .withInheritedViewportScissorExtension()
-      .withMultiviewExtension();
+      .withMultiviewExtension()
+      .withFragmentShadingRateExtension();
 
   const VkPhysicalDeviceFeatures2 deviceFeaturesInfo = {
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,

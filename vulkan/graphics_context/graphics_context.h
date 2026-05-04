@@ -2,13 +2,19 @@
 
 #include <any>
 #include <array>
+#include <chrono>
 #include <iostream>
 #include <vector>
 
 #include "common/abstractions/contexts.h"
 #include "common/abstractions/graphics_context.h"
+#include "common/entity_component_system/component/material.h"
+#include "common/entity_component_system/component/mesh.h"
+#include "common/entity_component_system/component/transform.h"
 #include "common/entity_component_system/registry/registry.h"
 #include "common/model_loader/model_loader.h"
+#include "common/model_loader/obj_loader/obj_loader.h"
+#include "common/model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
 #include "common/object/object.h"
 #include "common/scene/octree.h"
 #include "common/util/primitives.h"
@@ -16,6 +22,7 @@
 #include "vulkan/graphics_context/graphics_context.h"
 #include "vulkan/resource_manager/asset_manager.h"
 #include "vulkan/resource_manager/bindless_descriptor_set_writer.h"
+#include "vulkan/resource_manager/framebuffer_attachments_manager.h"
 #include "vulkan/resource_manager/gpu_buffer_manager.h"
 #include "vulkan/resource_manager/pipeline_manager.h"
 #include "vulkan/resource_manager/sampler_manager.h"
@@ -24,23 +31,14 @@
 #include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set_writer.h"
+#include "vulkan/wrapper/framebuffer/framebuffer.h"
 #include "vulkan/wrapper/instance/instance.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
-#include "vulkan/wrapper/physical_device/physical_device.h"
-
-///
-#include "vulkan/wrapper/descriptor_set/descriptor_set_layout.h"
-#include "vulkan/wrapper/framebuffer/framebuffer.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
+#include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
-
-///
-#include "common/entity_component_system/component/material.h"
-#include "common/entity_component_system/component/mesh.h"
-#include "common/entity_component_system/component/transform.h"
-#include "common/model_loader/obj_loader/obj_loader.h"
-#include "common/model_loader/tiny_gltf_loader/tiny_gltf_loader.h"
+#include "vulkan/wrapper/util/index_buffer_util.h"
 
 inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback1(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -87,6 +85,13 @@ Texture createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer comm
 Texture createTexture2D(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy);
+
+Texture createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                         VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent,
+                         uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage);
+
+void createFsrContents(
+    Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool);
 
 }  // namespace
 
@@ -138,6 +143,7 @@ private:
   std::unique_ptr<GpuBufferManager> _gpuBufferManager;
   std::unique_ptr<SamplerManager> _samplerManager;
   std::unique_ptr<PipelineManager> _pipelineManager;
+  std::unique_ptr<FramebufferAttachmentManager> _framebufferAttachmentManager;
 
   std::shared_ptr<DescriptorPool> _bindlessDescriptorPool;
   DescriptorSet _bindlessDescriptorSet;
@@ -146,6 +152,10 @@ private:
   std::shared_ptr<DescriptorPool> _dynamicDescriptorPool;
   DescriptorSet _dynamicDescriptorSet;
   DescriptorSetWriter _dynamicDescriptorSetWriter;
+
+  std::shared_ptr<DescriptorPool> _computeDescriptorPool;
+  DescriptorSet _computeDescriptorSet;
+  DescriptorSetWriter _computeDescriptorSetWriter;
 
   // Temporal objects for demonstration:
   std::array<std::shared_ptr<CommandPool>, MAX_THREADS_IN_POOL + 1> _commandPools;
@@ -159,7 +169,6 @@ private:
 
   Renderpass _renderPass;
   std::vector<Framebuffer> _framebuffers;
-  std::vector<Texture> _attachments;
 
   // Shadowmap
   Renderpass _shadowRenderPass;
@@ -169,13 +178,11 @@ private:
   UniformTextureHandle _shadowHandle;
 
   // Skybox.
-  GpuBufferHandle _vertexBufferCubeHandle;
-  GpuBufferHandle _vertexBufferCubeNormalsHandle;
-  GpuBufferHandle _indexBufferCubeHandle;
-  Texture _textureCubemap;
-  VkIndexType _indexBufferCubeType;
+  Entity _skyboxEntity;
   Pipeline* _skyboxPipeline;
-  UniformTextureHandle _skyboxHandle;
+
+  // Raziel.
+  Entity _razielEntity;
 
   // Mirror cubemap
   // First pass.
@@ -192,28 +199,95 @@ private:
   // PBR objects.
   std::vector<Object> objects;
   Pipeline* _graphicsPipeline;
+  PipelineHandle _graphicsPipelineHandle;
+  Pipeline* _graphicsTesselationPipeline;
+  PipelineHandle _graphicsTesselationPipelineHandle;
+
+  // Blinn Phong Tesselation.
+  PipelineHandle _blinnPhongTesselationPipelineHandle;
 
   UniformBufferLight _ubLight;
   Buffer _dynamicUniformBuffersCamera;
   Buffer _lightBuffer;
   UniformBufferHandle _lightHandle;
 
+  // Fragment rate shading.
+  Pipeline* _fsrPipeline;
+  GpuTextureHandle _fsrTextureHandle;
+
   void setup() {
-    std::string data = _fileLoader.loadFileToString(MODELS_PATH "cone.obj");
-    VertexData cubeData = loadObj(*_assetManager, "cube.obj", data);
-    const std::vector<VertexData> sceneData =
-        LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
-    cubeData.diffuseTexture = {
-      _assetManager->loadImageAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx"),
-      TEXTURES_PATH "cubemap_yokohama_rgba.ktx"};
-    loadCubemap(cubeData);
+    const std::vector<common::VertexData> sponzaData =
+        common::LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
+//     std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
+//         *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
+//     std::for_each(
+//         antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData&
+//         data) {
+//           data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
+//                        * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
+//         });
+    /*std::vector<common::VertexData> lanternData =
+        common::LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_lantern_3d_model/scene.gltf");
+    std::for_each(lanternData.begin(), lanternData.end(), [](common::VertexData& data) {
+      data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(8.5f, 4.25f, 0.0f))
+                   * glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
+    });*/
+    //std::vector<common::VertexData> spartanData =
+    //    common::LoadGltfFromFile(*_assetManager, MODELS_PATH "pbr_spartan_helmet/scene.gltf");
+    //std::for_each(spartanData.begin(), spartanData.end(), [](common::VertexData& data) {
+    //  data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(1000.0f, 16.0f, -250.0f))
+    //               * glm::rotate(glm::mat4(1.0f), glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
+    //               * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
+    //});
+
     createDescriptorSets();
     createEnvMappingResources();
     createShadowResources();
     createGraphicsPipelines();
     createCommandBuffers();
     createSyncObjects();
-    loadObjects(sceneData);
+    loadObjects(sponzaData, _graphicsPipelineHandle);
+    // loadObjects(antiqueCandleStickData, _graphicsPipelineHandle);
+    // loadObjects(lanternData, _graphicsTesselationPipelineHandle);
+    // loadObjects(spartanData, _graphicsTesselationPipelineHandle);
+
+    {
+      SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
+      const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+
+      std::string cubeFileContents = _fileLoader.loadFileToString(MODELS_PATH "cube.obj");
+      common::VertexData cubeData = common::loadObj(*_assetManager, "cube.obj", cubeFileContents);
+      cubeData.diffuseTexture = {
+        _assetManager->loadImageAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx"),
+        TEXTURES_PATH "cubemap_yokohama_rgba.ktx"};
+      const AssetManager::ImageData& imageData =
+          _assetManager->getImageData(cubeData.diffuseTexture.ID);
+
+      Texture skyboxTexture =
+          createSkybox(*_logicalDevice, commandBuffer, imageData, VK_FORMAT_R8G8B8A8_SRGB,
+                       _physicalDevice->getMaxSamplerAnisotropy());
+      _skyboxEntity =
+          loadObject(commandBuffer, cubeData, PipelineHandle(0), std::move(skyboxTexture));
+
+      //std::string razielFileContents = _fileLoader.loadFileToString(MODELS_PATH "Raziel.obj");
+      //common::VertexData razielData =
+      //    common::loadObj(*_assetManager, "Raziel.obj", razielFileContents);
+      //razielData.model =
+      //    glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))
+      //    * glm::scale(glm::mat4(1.0f), glm::vec3(3.0f, 3.0f, 3.0f));
+      //razielData.diffuseTexture = {
+      //  _assetManager->loadImageAsync(TEXTURES_PATH "Raziel.png"), TEXTURES_PATH "Raziel.png"};
+      //const AssetManager::ImageData& razielImageData =
+      //    _assetManager->getImageData(razielData.diffuseTexture.ID);
+
+      //Texture razielTexture =
+      //    createTexture2D(*_logicalDevice, commandBuffer, razielImageData, VK_FORMAT_R8G8B8A8_SRGB,
+      //                    _physicalDevice->getMaxSamplerAnisotropy());
+      //_razielEntity = loadObject(commandBuffer, razielData, _blinnPhongTesselationPipelineHandle,
+      //                           std::move(razielTexture));
+      //_objects.push_back(Object("Raziel", _razielEntity));
+    }
+
     createOctreeScene();
     {
       SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
@@ -222,35 +296,43 @@ private:
     }
   }
 
-  void loadCubemap(const VertexData& cubeData) {
-    SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+  Entity loadObject(VkCommandBuffer commandBuffer, const common::VertexData& cubeData,
+                    PipelineHandle pipelineHandle, Texture&& texture) {
+    Entity entity = _registry.createEntity();
 
-    const AssetManager::ImageData& imageData =
-        _assetManager->getImageData(cubeData.diffuseTexture.ID);
+    Sampler sampler = SamplerBuilder()
+                          .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
+                          .build(*_logicalDevice);
+    _registry.addComponent<MaterialComponent>(
+        entity, MaterialComponent{
+                  .diffuse = _bindlessWriter->writeTexture(
+                      texture.getVkImageView(), texture.getVkImageLayout(), sampler.getVkSampler()),
+                  .pipelineHandle = pipelineHandle});
+    _samplerManager->transferSampler(std::move(sampler));
+    _gpuBufferManager->transferTexture(std::move(texture));
 
-    _textureCubemap =
-        createSkybox(*_logicalDevice, commandBuffer, imageData, VK_FORMAT_R8G8B8A8_UNORM,
-                     _physicalDevice->getMaxSamplerAnisotropy());
-
+    MeshComponent msh = {.aabb = createAABBfromVertices(cubeData.positions, glm::mat4(1.0f))};
     if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
       AssetManager::VertexData vData = _assetManager->releaseVertexData(cubeData.vertexResourceID);
-      _vertexBufferCubeHandle = _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("P")));
-      _vertexBufferCubeNormalsHandle =
-          _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("PN")));
-      _indexBufferCubeHandle = _gpuBufferManager->transferBuffer(std::move(vData.indexBuffer));
-      _indexBufferCubeType = vData.indexType;
+      msh.vertexBufferPrimitiveHandle =
+          _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("P")));
+      msh.vertexBufferHandle = _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("PN")));
+      msh.indexBufferHandle = _gpuBufferManager->transferBuffer(std::move(vData.indexBuffer));
+      msh.indexType = vData.indexType;
     } else if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
       const AssetManager::VertexData& vData =
           _assetManager->getVertexData(cubeData.vertexResourceID);
-      _vertexBufferCubeHandle = _gpuBufferManager->uploadBuffer(
+      msh.vertexBufferPrimitiveHandle = _gpuBufferManager->uploadBuffer(
           commandBuffer, vData.buffers.at("P"), GpuBufferManager::BufferType::VERTEX);
-      _vertexBufferCubeNormalsHandle = _gpuBufferManager->uploadBuffer(
-          commandBuffer, vData.buffers.at("PN"), GpuBufferManager::BufferType::VERTEX);
-      _indexBufferCubeHandle = _gpuBufferManager->uploadBuffer(
+      msh.vertexBufferHandle = _gpuBufferManager->uploadBuffer(
+          commandBuffer, vData.buffers.at("PTN"), GpuBufferManager::BufferType::VERTEX);
+      msh.indexBufferHandle = _gpuBufferManager->uploadBuffer(
           commandBuffer, vData.indexBuffer, GpuBufferManager::BufferType::INDEX);
-      _indexBufferCubeType = vData.indexType;
+      msh.indexType = vData.indexType;
     }
+    _registry.addComponent(entity, std::move(msh));
+    _registry.addComponent(entity, TransformComponent{.model = cubeData.model});
+    return entity;
   }
 
   void createDescriptorSets() {
@@ -259,11 +341,6 @@ private:
         _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera));
     _dynamicUniformBuffersCamera = Buffer::createUniformBuffer(
         *_logicalDevice, (MULTIVIEW_PRESENTATION ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size);
-    Sampler sampler = SamplerBuilder()
-                          .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
-                          .build(*_logicalDevice);
-    _skyboxHandle = _bindlessWriter->storeTexture(_textureCubemap, sampler);
-    _samplerManager->transferSampler(std::move(sampler));
 
     _dynamicDescriptorSetWriter.storeDynamicBuffer(
         _dynamicUniformBuffersCamera, size, MULTIVIEW_PRESENTATION ? 2 : 1);
@@ -271,7 +348,7 @@ private:
         _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
 
     _lightBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(UniformBufferLight));
-    _lightHandle = _bindlessWriter->storeBuffer(_lightBuffer);
+    _lightHandle = _bindlessWriter->writeBuffer(_lightBuffer);
 
     _ubLight.pos = glm::vec3(15.1891f, 2.66408f, -0.841221f);
     _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.1f, 40.0f);
@@ -279,7 +356,7 @@ private:
     _ubLight.projView = _ubLight.projView
                         * glm::lookAt(_ubLight.pos, glm::vec3(-3.82383f, 3.66503f, 1.30751f),
                                       glm::vec3(0.0f, 1.0f, 0.0f));
-    _lightBuffer.copyData(_ubLight, 0);
+    common::copyData(_lightBuffer.getMappedMemory(), 0, _ubLight);
   }
 
   void createEnvMappingResources() {
@@ -301,9 +378,10 @@ private:
         VK_FORMAT_R8G8B8A8_SRGB, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
     attachmentLayout.addDepthAttachment(VK_FORMAT_D16_UNORM, VK_ATTACHMENT_STORE_OP_DONT_CARE);
 
+    RenderpassBuilder renderpassBuilder(attachmentLayout);
+    renderpassBuilder.createSubpass().addOutputAttachment(0).addOutputAttachment(1);
     _envMappingRenderPass =
-        RenderpassBuilder(attachmentLayout)
-            .withMultiView({0b111111}, {0b111111})
+        renderpassBuilder.withMultiView({0b111111}, {0b111111})
             .addDependency(
                 VK_SUBPASS_EXTERNAL, 0,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -312,7 +390,6 @@ private:
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
                     | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-            .addSubpass({0, 1})
             .build(*_logicalDevice);
 
     _envMappingFramebuffer =
@@ -350,10 +427,12 @@ private:
     };
 
     _envMappingUniformBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(faceTransform));
-    _envMappingUniformBuffer.copyData(faceTransform);
-    _envMappingHandle = _bindlessWriter->storeBuffer(_envMappingUniformBuffer);
+    common::copyData(_envMappingUniformBuffer.getMappedMemory(), 0, faceTransform);
+    _envMappingHandle = _bindlessWriter->writeBuffer(_envMappingUniformBuffer);
     Sampler sampler = SamplerBuilder().withAnisotropy(samplerAnisotropy).build(*_logicalDevice);
-    _envMappingTextureHandle = _bindlessWriter->storeTexture(_envMappingAttachments[0], sampler);
+    _envMappingTextureHandle = _bindlessWriter->writeTexture(
+        _envMappingAttachments[0].getVkImageView(), _envMappingAttachments[0].getVkImageLayout(),
+        sampler.getVkSampler());
     _samplerManager->transferSampler(std::move(sampler));
   }
 
@@ -373,21 +452,31 @@ private:
                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
             .withBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
             .build(*_logicalDevice);
-    _shadowHandle = _bindlessWriter->storeTexture(_shadowMap, std::move(sampler));
+    _shadowHandle = _bindlessWriter->writeTexture(
+        _shadowMap.getVkImageView(), _shadowMap.getVkImageLayout(), sampler.getVkSampler());
     _samplerManager->transferSampler(std::move(sampler));
 
     AttachmentLayout attachmentLayout;
     attachmentLayout.addShadowAttachment(
         VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    _shadowRenderPass = RenderpassBuilder(attachmentLayout).addSubpass({0}).build(*_logicalDevice);
+    RenderpassBuilder builder(attachmentLayout);
+    builder.createSubpass().addOutputAttachment(0);
+    _shadowRenderPass = builder.build(*_logicalDevice);
     _shadowFramebuffer =
         Framebuffer::createFromTextures(_shadowRenderPass, std::span(&_shadowMap, 1));
   }
 
   void createGraphicsPipelines() {
-    _graphicsPipeline = _pipelineManager->getPipeline(
-        _pipelineManager->createPBRProgram(_renderPass, MULTIVIEW_PRESENTATION));
+    _graphicsPipelineHandle =
+        _pipelineManager->createPBRProgram(_renderPass, MULTIVIEW_PRESENTATION);
+    _graphicsPipeline = _pipelineManager->getPipeline(_graphicsPipelineHandle);
+    _graphicsTesselationPipelineHandle =
+        _pipelineManager->createPbrTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION);
+    _blinnPhongTesselationPipelineHandle =
+        _pipelineManager->createBlinnPhongTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION);
+    _graphicsTesselationPipeline =
+        _pipelineManager->getPipeline(_graphicsTesselationPipelineHandle);
     _skyboxPipeline =
         _pipelineManager->getPipeline(_pipelineManager->createSkyboxProgram(_renderPass));
     _phongEnvMappingPipeline = _pipelineManager->getPipeline(
@@ -396,6 +485,8 @@ private:
         _pipelineManager->getPipeline(_pipelineManager->createShadowProgram(_shadowRenderPass));
     _envMappingPipeline = _pipelineManager->getPipeline(
         _pipelineManager->createPbrEnvMappingProgram(_envMappingRenderPass));
+    _fsrPipeline = _pipelineManager->getPipeline(
+        _pipelineManager->createFragmentShadingRateProgram(*_logicalDevice));
   }
 
   void createCommandBuffers() {
@@ -442,9 +533,9 @@ private:
                          std::pair<UniformTextureHandle, GpuTextureHandle>>& textureCache,
       StagingImageDataResourceHandle textureID, VkFormat format, VkCommandBuffer commandBuffer,
       float maxSamplerAnisotropy, SamplerHandle samplerHandle) {
-    auto it = textureCache.find(textureID);
+    auto [it, inserted] = textureCache.try_emplace(textureID);
 
-    if (it != textureCache.end()) {
+    if (!inserted) {
       _gpuBufferManager->increaseRefCount(it->second.second);
       return it->second;
     }
@@ -452,19 +543,19 @@ private:
     const AssetManager::ImageData& imgData = _assetManager->getImageData(textureID);
     Texture texture =
         createTexture2D(*_logicalDevice, commandBuffer, imgData, format, maxSamplerAnisotropy);
-    UniformTextureHandle handle =
-        _bindlessWriter->storeTexture(texture, _samplerManager->getSampler(samplerHandle));
+    UniformTextureHandle handle = _bindlessWriter->writeTexture(
+        texture.getVkImageView(), texture.getVkImageLayout(),
+        _samplerManager->getSampler(samplerHandle).getVkSampler());
     const GpuTextureHandle index = _gpuBufferManager->transferTexture(std::move(texture));
 
     const auto result = std::make_tuple(handle, index);
-    textureCache.emplace(textureID, result);
+    it->second = result;
 
     return result;
   }
 
-  void loadObjects(std::span<const VertexData> sceneData) {
+  void loadObjects(std::span<const common::VertexData> sceneData, PipelineHandle pipelineHandle) {
     const float maxSamplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
-    _objects.reserve(sceneData.size());
 
     std::unordered_map<StagingImageDataResourceHandle,
                        std::pair<UniformTextureHandle, GpuTextureHandle>>
@@ -478,7 +569,7 @@ private:
                           .build(*_logicalDevice);
     SamplerHandle samplerHandle = _samplerManager->transferSampler(std::move(sampler));
 
-    for (const VertexData& sceneObject : sceneData) {
+    for (const common::VertexData& sceneObject : sceneData) {
       const auto [diffuseHandle, diffuseTextureIndex] =
           getOrLoadTexture(textureCache, sceneObject.diffuseTexture.ID, VK_FORMAT_R8G8B8A8_SRGB,
                            commandBuffer, maxSamplerAnisotropy, samplerHandle);
@@ -494,7 +585,8 @@ private:
       Entity e = _registry.createEntity();
       _objects.emplace_back("", e);
       _registry.addComponent<MaterialComponent>(
-          e, MaterialComponent{diffuseHandle, normalHandle, metallicRoughnessHandle});
+          e,
+          MaterialComponent{diffuseHandle, normalHandle, metallicRoughnessHandle, pipelineHandle});
       MeshComponent msh;
       if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
         AssetManager::VertexData vData =
@@ -526,6 +618,10 @@ private:
   }
 
   void createOctreeScene() {
+    if (_objects.empty()) {
+      return;
+    }
+
     AABB sceneAABB = _registry.getComponent<MeshComponent>(_objects[0].getEntity()).aabb;
 
     for (int i = 1; i < _objects.size(); ++i) {
@@ -690,28 +786,36 @@ private:
         _ubCamera.view = cameraContexts[i].view;
         _ubCamera.proj = cameraContexts[i].proj;
         _ubCamera.pos = cameraContexts[i].position;
-        _dynamicUniformBuffersCamera.copyData(
-            _ubCamera, (2 * currentFrame + i)
-                           * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
+        _ubCamera.viewDir = cameraContexts[i].viewDir;
+//        _dynamicUniformBuffersCamera.copyData(
+//            _ubCamera, (2 * currentFrame + i)
+//                           * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
+        common::copyData(_dynamicUniformBuffersCamera.getMappedMemory(), (2 * currentFrame + i)
+            * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)), _ubCamera);
       }
     } else {
       UniformBufferCamera _ubCamera;
       _ubCamera.view = cameraContexts[0].view;
       _ubCamera.proj = cameraContexts[0].proj;
       _ubCamera.pos = cameraContexts[0].position;
-      _dynamicUniformBuffersCamera.copyData(
-          _ubCamera,
-          currentFrame * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
+      _ubCamera.viewDir = cameraContexts[0].viewDir;
+      common::copyData(
+          _dynamicUniformBuffersCamera.getMappedMemory(),
+          currentFrame * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)),
+          _ubCamera);
     }
   }
 
   void recordOctreeSecondaryCommandBuffer(
       const VkCommandBuffer commandBuffer, const OctreeNode* rootNode,
-      std::span<const glm::vec4> planes) {
+      std::span<const glm::vec4> planes, std::span<VkDescriptorSet> descriptorSets,
+      std::span<uint32_t> dynamicUniformBufferOffsets) {
     if (!rootNode || !rootNode->getVolume().intersectsFrustum(planes)) {
       return;
     }
 
+    std::optional<PipelineHandle> globalPipelineHandle;
+    Pipeline* pipeline;
     static std::queue<const OctreeNode*> nodeQueue;  // Keep it static to preserve
     // capacity
     nodeQueue.push(rootNode);
@@ -735,9 +839,21 @@ private:
                                 static_cast<uint32_t>(*_shadowHandle)}
         };
 
-        vkCmdPushConstants(
-            commandBuffer, _graphicsPipeline->getVkPipelineLayout(),
-            _graphicsPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
+        if (!globalPipelineHandle.has_value()
+            || materialComponent.pipelineHandle != *globalPipelineHandle) {
+          globalPipelineHandle = materialComponent.pipelineHandle;
+          pipeline = _pipelineManager->getPipeline(*globalPipelineHandle);
+          vkCmdBindPipeline(
+              commandBuffer, pipeline->getVkPipelineBindPoint(), pipeline->getVkPipeline());
+          vkCmdBindDescriptorSets(
+              commandBuffer, pipeline->getVkPipelineBindPoint(), pipeline->getVkPipelineLayout(), 0,
+              static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(),
+              static_cast<uint32_t>(dynamicUniformBufferOffsets.size()),
+              dynamicUniformBufferOffsets.data());
+        }
+
+        vkCmdPushConstants(commandBuffer, pipeline->getVkPipelineLayout(),
+                           pipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
 
         const auto& meshComponent = _registry.getComponent<MeshComponent>(object->getEntity());
         const Buffer& indexBuffer = _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
@@ -764,11 +880,47 @@ private:
     }
   }
 
-  void recordCommandBuffer(
-      const glm::mat4& cameraProj, const glm::mat4& cameraView, uint32_t imageIndex) {
+  void recordCommandBuffer(const glm::mat4& cameraProj, const glm::mat4& cameraView,
+                           uint32_t imageIndex, glm::u32vec2 screenPos) {
     const Framebuffer& framebuffer = _framebuffers[imageIndex];
     const CommandBuffer& primaryCommandBuffer = _primaryCommandBuffer[_synchContext.currentFrame];
     primaryCommandBuffer.beginAsPrimary();
+
+    const VkCommandBuffer commandBuffer = primaryCommandBuffer.getVkCommandBuffer();
+
+    const PushConstantFov fsrPc = {screenPos};
+    vkCmdPushConstants(commandBuffer, _fsrPipeline->getVkPipelineLayout(),
+                       VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, &fsrPc);
+    vkCmdBindPipeline(
+        commandBuffer, _fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipeline());
+    const VkDescriptorSet fsrDescriptorSets[] = {_computeDescriptorSet.getVkDescriptorSet()};
+    vkCmdBindDescriptorSets(
+        commandBuffer, _fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipelineLayout(),
+        0, 1, fsrDescriptorSets, 0, nullptr);
+    vkCmdDispatch(commandBuffer, 16, 16, 1);
+
+    const Texture& fsrTexture = _gpuBufferManager->getTexture(_fsrTextureHandle);
+    const VkImageMemoryBarrier fsrBarrier = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
+      .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .newLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = fsrTexture.getVkImage(),
+      .subresourceRange = {
+                           .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                           .baseMipLevel = 0,
+                           .levelCount = fsrTexture.getMipLevelsCount(),
+                           .baseArrayLayer = 0, 
+                           .layerCount = fsrTexture.getLayersCount(),
+                           }
+    };
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, 0, 0, nullptr,
+                         0, nullptr, 1, &fsrBarrier);
+
     primaryCommandBuffer.beginRenderPass(framebuffer);
 
     static const bool viewportScissorInheritance =
@@ -799,8 +951,9 @@ private:
         vkCmdSetViewport(commandBuffer, 0, 1, &framebuffer.getViewport());
         vkCmdSetScissor(commandBuffer, 0, 1, &framebuffer.getScissor());
       }
-      vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
-                        _graphicsPipeline->getVkPipeline());
+
+      // vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
+      //                   _graphicsPipeline->getVkPipeline());
 
       const OctreeNode* root = _octree->getRoot();
       const auto& planes = extractFrustumPlanes(cameraProj * cameraView);
@@ -817,12 +970,9 @@ private:
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
             dynamicUniformBufferOffsets, {_synchContext.currentFrame});
       }
-      vkCmdBindDescriptorSets(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
-                              _graphicsPipeline->getVkPipelineLayout(), 0,
-                              static_cast<uint32_t>(std::size(descriptorSets)), descriptorSets,
-                              std::size(dynamicUniformBufferOffsets), dynamicUniformBufferOffsets);
 
-      recordOctreeSecondaryCommandBuffer(commandBuffer, root, planes);
+      recordOctreeSecondaryCommandBuffer(
+          commandBuffer, root, planes, descriptorSets, dynamicUniformBufferOffsets);
 
       CHECK_VKCMD(vkEndCommandBuffer(commandBuffer), "Failed to vkEndCommandBuffer.");
     });
@@ -847,15 +997,20 @@ private:
 
       static constexpr VkDeviceSize offsets[] = {0};
 
+      const MeshComponent& cubeMeshComponent = _registry.getComponent<MeshComponent>(_skyboxEntity);
+      const MaterialComponent& cubeMaterialComponent =
+          _registry.getComponent<MaterialComponent>(_skyboxEntity);
       const VkBuffer vertexBuffer =
-          _gpuBufferManager->getBuffer(_vertexBufferCubeHandle).getVkBuffer();
-      const Buffer& indexBuffer = _gpuBufferManager->getBuffer(_indexBufferCubeHandle);
+          _gpuBufferManager->getBuffer(cubeMeshComponent.vertexBufferPrimitiveHandle).getVkBuffer();
+      const Buffer& indexBuffer = _gpuBufferManager->getBuffer(cubeMeshComponent.indexBufferHandle);
       vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
-      vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getVkBuffer(), 0, _indexBufferCubeType);
+      vkCmdBindIndexBuffer(
+          commandBuffer, indexBuffer.getVkBuffer(), 0, cubeMeshComponent.indexType);
 
-      const PushConstantsSkybox pc = {.proj = cameraProj,
-                                      .view = cameraView,
-                                      .skyboxHandle = static_cast<uint32_t>(*_skyboxHandle)};
+      const PushConstantsSkybox pc = {
+        .proj = cameraProj,
+        .view = cameraView,
+        .skyboxHandle = static_cast<uint32_t>(*cubeMaterialComponent.diffuse)};
       vkCmdPushConstants(commandBuffer, _skyboxPipeline->getVkPipelineLayout(),
                          _skyboxPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
 
@@ -867,10 +1022,11 @@ private:
           _skyboxPipeline->getVkPipelineLayout(), 0, 1, descriptorSets, 0, nullptr);
 
       vkCmdDrawIndexed(
-          commandBuffer, indexBuffer.getSize() / getIndexSize(_indexBufferCubeType), 1, 0, 0, 0);
+          commandBuffer, indexBuffer.getSize() / getIndexSize(cubeMeshComponent.indexType), 1, 0, 0,
+          0);
 
       // Env mapping
-      vkCmdBindPipeline(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
+      /*vkCmdBindPipeline(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
                         _phongEnvMappingPipeline->getVkPipeline());
 
       uint32_t dynamicUniformBufferOffsets[MULTIVIEW_PRESENTATION ? 2 : 1];
@@ -891,7 +1047,8 @@ private:
         .model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f))
                  * glm::scale(glm::mat4(1.0f), glm::vec3(0.75f, 0.75f, 0.75f)),
         .descriptorHandles = {
-                              static_cast<uint32_t>(*_envMappingHandle), static_cast<uint32_t>(*_lightHandle)}
+                              static_cast<uint32_t>(*_envMappingHandle),
+      static_cast<uint32_t>(*_lightHandle)}
       };
 
       vkCmdPushConstants(commandBuffer, _phongEnvMappingPipeline->getVkPipelineLayout(),
@@ -905,7 +1062,7 @@ private:
       vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getVkBuffer(), 0, _indexBufferCubeType);
 
       vkCmdDrawIndexed(
-          commandBuffer, indexBuffer.getSize() / getIndexSize(_indexBufferCubeType), 1, 0, 0, 0);
+          commandBuffer, indexBuffer.getSize() / getIndexSize(_indexBufferCubeType), 1, 0, 0, 0);*/
 
       CHECK_VKCMD(vkEndCommandBuffer(commandBuffer), "Failed to vkEndCommandBuffer.");
     });
@@ -925,10 +1082,6 @@ private:
   }
 };
 
-}  // namespace vlkn
-
-namespace vlkn {
-
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
     std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
@@ -939,9 +1092,11 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
     _fileLoader(fileLoader),
     _singleTimeCommandPool(
         CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)),
-    _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::deferred)),
+    _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::async)),
     _gpuBufferManager(GpuBufferManager::create()), _samplerManager(SamplerManager::create()),
     _pipelineManager(PipelineManager::create(fileLoader)),
+    _framebufferAttachmentManager(
+        std::make_unique<FramebufferAttachmentManager>(*_gpuBufferManager)),
     _bindlessDescriptorPool(DescriptorPool::create(
         *_logicalDevice, 1, VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT)),
     _bindlessDescriptorSet(_bindlessDescriptorPool->createDesriptorSet(
@@ -949,7 +1104,10 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
     _bindlessWriter(BindlessDescriptorSetWriter::create(_bindlessDescriptorSet)),
     _dynamicDescriptorPool(DescriptorPool::create(*_logicalDevice, 1)),
     _dynamicDescriptorSet(_dynamicDescriptorPool->createDesriptorSet(
-        _pipelineManager->getOrCreateCameraLayout(*_logicalDevice, MULTIVIEW_PRESENTATION))) {}
+        _pipelineManager->getOrCreateCameraLayout(*_logicalDevice, MULTIVIEW_PRESENTATION))),
+    _computeDescriptorPool(DescriptorPool::create(*_logicalDevice, 1)),
+    _computeDescriptorSet(_computeDescriptorPool->createDesriptorSet(
+        _pipelineManager->getOrCreateComputeLayout(*_logicalDevice))) {}
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 std::unique_ptr<common::GraphicsContext> GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
@@ -997,7 +1155,8 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
   vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame]);
 
   const common::CameraContext& cameraContext = drawingContext.cameraContexts[0];
-  recordCommandBuffer(cameraContext.proj, cameraContext.view, drawingContext.imageIndex);
+  recordCommandBuffer(cameraContext.proj, cameraContext.view, drawingContext.imageIndex,
+                      drawingContext.screenSpaceViewPos);
 
   VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
 
@@ -1048,44 +1207,89 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::waitCompleteExecut
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingResources(
     const common::PresentResources& presentResources) {
-  static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+  lib::Buffer<VkPhysicalDeviceFragmentShadingRateKHR> fragmentShadingRates =
+      _physicalDevice->getFragmentShadingRates();
+
+  static constexpr VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_2_BIT;
   const VkFormat swapchainImageFormat = static_cast<VkFormat>(presentResources.imageFormat);
+  const VkExtent2D extent = VkExtent2D{presentResources.width, presentResources.height};
 
   AttachmentLayout attachmentsLayout(msaaSamples);
   attachmentsLayout
       .addColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE)
       .addColorAttachment(
           swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
-      .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+      .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE)
+      .addFragmentShadingRateAttachment();
+
+  lib::Buffer<GpuTextureHandle> attachmentHandles;
+  {
+    SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
+    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+    GpuTextureHandle collorAttachmentHandle = _gpuBufferManager->transferTexture(createAttachment(
+        *_logicalDevice, commandBuffer, swapchainImageFormat, msaaSamples, extent,
+        presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+    GpuTextureHandle depthAttachmentHandle = _gpuBufferManager->transferTexture(createAttachment(
+        *_logicalDevice, commandBuffer, VK_FORMAT_D24_UNORM_S8_UINT, msaaSamples, extent,
+        presentResources.numLayers, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT));
+
+    const VkPhysicalDeviceFragmentShadingRatePropertiesKHR& fsrProperties =
+        _physicalDevice->getFragmentShadingRateProperties();
+    const VkExtent2D fsrTexelExtent = fsrProperties.maxFragmentShadingRateAttachmentTexelSize;
+    const VkExtent2D fsrExtent = VkExtent2D{
+      static_cast<uint32_t>(std::ceil(extent.width / static_cast<float>(fsrTexelExtent.width))),
+      static_cast<uint32_t>(std::ceil(extent.height / static_cast<float>(fsrTexelExtent.height)))};
+    Texture fsrTexture = createAttachment(
+        *_logicalDevice, commandBuffer, VK_FORMAT_R8_UINT, VK_SAMPLE_COUNT_1_BIT, fsrExtent,
+        presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+            | VK_IMAGE_USAGE_STORAGE_BIT);
+    createFsrContents(fsrTexture, *_logicalDevice, *_singleTimeCommandPool);
+
+    _computeDescriptorSetWriter.storeImageStorage(fsrTexture);
+    _computeDescriptorSetWriter.writeDescriptorSet(
+        _logicalDevice->getVkDevice(), _computeDescriptorSet.getVkDescriptorSet());
+
+    GpuTextureHandle fsrAttachmentHandle = _fsrTextureHandle =
+        _gpuBufferManager->transferTexture(std::move(fsrTexture));
+
+    attachmentHandles = lib::Buffer<GpuTextureHandle>{
+      collorAttachmentHandle, depthAttachmentHandle, fsrAttachmentHandle};
+  }
 
   RenderpassBuilder renderpassBuilder(attachmentsLayout);
-  renderpassBuilder
-      .addDependency(
-          VK_SUBPASS_EXTERNAL, 0,
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-              | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-      .addSubpass({0, 1, 2});
   if constexpr (MULTIVIEW_PRESENTATION) {
     auto mask = lib::setNLeastSignificantBits<uint32_t>(presentResources.numLayers);
     renderpassBuilder.withMultiView({mask}, {mask});
   }
 
-  _renderPass = renderpassBuilder.build(*_logicalDevice);
+  const VkExtent2D fsrTexelSize =
+      _physicalDevice->getFragmentShadingRateProperties().maxFragmentShadingRateAttachmentTexelSize;
+  renderpassBuilder.createSubpass()
+      .addOutputAttachment(0)
+      .addOutputAttachment(1)
+      .addOutputAttachment(2)
+      .withShadingRateAttachment(fsrTexelSize.width, fsrTexelSize.height);
+  _renderPass =
+      renderpassBuilder
+          .addDependency(
+              VK_SUBPASS_EXTERNAL, 0,
+              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                  | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                  | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+          .build(*_logicalDevice);
 
-  {
-    SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-    auto imageViews = std::span<const VkImageView>(
-        reinterpret_cast<const VkImageView*>(presentResources.imageViews.data()),
-        presentResources.imageViews.size());
-    for (VkImageView imageView : imageViews) {
-      _framebuffers.push_back(Framebuffer::createFromSwapchain(
-          commandBuffer, _renderPass, {presentResources.width, presentResources.height},
-          presentResources.numLayers, imageView, _attachments));
-    }
+  auto imageViews = std::span<const VkImageView>(
+      reinterpret_cast<const VkImageView*>(presentResources.imageViews.data()),
+      presentResources.imageViews.size());
+  for (VkImageView imageView : imageViews) {
+    _framebuffers.push_back(_framebufferAttachmentManager->createFramebuffer(
+        _renderPass, attachmentHandles, extent, imageView));
   }
 }
 
@@ -1114,9 +1318,10 @@ Texture createSkybox(
           .withUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
           .withLayerCount(6)
           .withAdditionalCreateInfoFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-          .withLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-          .buildImage(logicalDevice, commandBuffer, imageData.stagingBuffer.getVkBuffer(),
-                      imageData.copyRegions);
+          .buildImage(logicalDevice);
+  texture.copyFromStagingBuffer(
+      commandBuffer, imageData.stagingBuffer.getVkBuffer(), imageData.copyRegions);
+  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, imageData.mipLevels, 0, 6);
   return texture;
 }
@@ -1133,7 +1338,8 @@ Texture createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer comman
           .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | additionalUsage)
           .withLayerCount(6)
           .withAdditionalCreateInfoFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-          .buildAttachment(logicalDevice, commandBuffer);
+          .buildImage(logicalDevice);
+  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, 6);
   return texture;
 }
@@ -1146,7 +1352,8 @@ Texture createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer comm
           .withExtent(width, height)
           .withFormat(format)
           .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-          .buildImageSampler(logicalDevice, commandBuffer);
+          .buildImage(logicalDevice);
+  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, 1);
   return texture;
 }
@@ -1162,10 +1369,52 @@ Texture createTexture2D(
           .withMipLevels(imageData.mipLevels)
           .withUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
                      | VK_IMAGE_USAGE_SAMPLED_BIT)
-          .buildMipmapImage(logicalDevice, commandBuffer, imageData.stagingBuffer.getVkBuffer(),
-                            imageData.copyRegions);
+          .buildImage(logicalDevice);
+  texture.copyFromStagingBuffer(
+      commandBuffer, imageData.stagingBuffer.getVkBuffer(), imageData.copyRegions);
+  texture.generateMipmaps(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   texture.addCreateVkImageView(0, imageData.mipLevels, 0, 1);
+
   return texture;
+}
+
+Texture createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                         VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent,
+                         uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage) {
+  Texture texture =
+      TextureBuilder()
+          .withFormat(format)
+          .withNumSamples(samples)
+          .withExtent(extent)
+          .withLayerCount(numLayers)
+          .withAspect(aspect)
+          .withUsage(usage)
+          .buildImage(logicalDevice);
+  texture.addCreateVkImageView(0, 1, 0, numLayers);
+  return texture;
+}
+
+void createFsrContents(
+    Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool) {
+  const VkExtent2D extent = texture.getVkExtent2D();
+  const lib::Buffer<std::byte> buffer(
+      static_cast<size_t>(extent.width * extent.height), std::byte{10});
+  Buffer stagingBuffer =
+      Buffer::createStagingBuffer(logicalDevice, buffer.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  common::copyData(stagingBuffer.getMappedMemory(), 0, std::span(buffer));
+  lib::Buffer<VkBufferImageCopy> imageCopy(texture.getLayersCount());
+  for (uint32_t layer = 0; layer < imageCopy.size(); layer++) {
+    imageCopy[layer] = VkBufferImageCopy{
+      .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                           .mipLevel = 0,
+                           .baseArrayLayer = layer,
+                           .layerCount = 1},
+      .imageExtent = VkExtent3D{extent.width, extent.height, 1},
+    };
+  }
+  SingleTimeCommandBuffer handle(commandPool);
+  texture.copyFromStagingBuffer(handle.getCommandBuffer(), stagingBuffer.getVkBuffer(), imageCopy);
+  texture.transitionLayout(handle.getCommandBuffer(), VK_IMAGE_LAYOUT_GENERAL);
 }
 
 }  // namespace

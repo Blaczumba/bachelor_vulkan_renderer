@@ -1,8 +1,15 @@
 #include "pipeline.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <iterator>
+#include <span>
+#include <vector>
+#include <vulkan/vulkan.h>
 
+#include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/util/check.h"
 
 Pipeline::Pipeline(
@@ -11,7 +18,7 @@ Pipeline::Pipeline(
   : _logicalDevice(&logicalDevice), _pipeline(pipeline), _bindPoint(bindPoint),
     _pushConstantShaderStages(pushConstantShaderStages), _layout(layout) {}
 
-Pipeline Pipeline::create(
+Pipeline Pipeline::createGraphicsPipeline(
     const LogicalDevice& logicalDevice, const VkGraphicsPipelineCreateInfo& createInfo,
     VkShaderStageFlags shaderStageFlags) {
   VkPipeline pipeline;
@@ -22,7 +29,7 @@ Pipeline Pipeline::create(
                   createInfo.layout);
 }
 
-std::vector<Pipeline> Pipeline::create(
+std::vector<Pipeline> Pipeline::createGraphicsPipelines(
     const LogicalDevice& logicalDevice, std::span<const VkGraphicsPipelineCreateInfo> createInfos) {
   lib::Buffer<VkPipeline> vkPipelines(createInfos.size());
   vkCreateGraphicsPipelines(
@@ -41,6 +48,16 @@ std::vector<Pipeline> Pipeline::create(
                    Pipeline{};
       });
   return pipelines;
+}
+
+Pipeline Pipeline::createComputePipeline(
+    const LogicalDevice& logicalDevice, const VkComputePipelineCreateInfo& createInfo) {
+  VkPipeline pipeline;
+  CHECK_VKCMD(vkCreateComputePipelines(
+                  logicalDevice.getVkDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline),
+              "Failed to create VkPipeline.");
+  return Pipeline(logicalDevice, pipeline, VK_PIPELINE_BIND_POINT_COMPUTE,
+                  VK_SHADER_STAGE_COMPUTE_BIT, createInfo.layout);
 }
 
 Pipeline::Pipeline(Pipeline&& other) noexcept

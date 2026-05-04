@@ -1,6 +1,5 @@
 #pragma once
 
-#include <initializer_list>
 #include <vector>
 #include <vulkan/vulkan.h>
 
@@ -14,6 +13,9 @@ class Framebuffer {
 
 public:
   Framebuffer() noexcept = default;
+
+  static Framebuffer create(const Renderpass& renderpass, VkExtent2D extent, uint32_t numLayers,
+                            std::span<const VkImageView> attachments);
 
   static Framebuffer createFromSwapchain(
       VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent,

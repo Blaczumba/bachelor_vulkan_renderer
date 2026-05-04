@@ -2,10 +2,28 @@
 
 #include <algorithm>
 #include <array>
-#include <numeric>
+#include <cstdint>
+#include <optional>
 #include <ranges>
+#include <span>
+#include <vector>
+#include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
+#include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/pipeline/pipeline_layout.h"
+#include "vulkan/wrapper/render_pass/render_pass.h"
+
+namespace {
+
+template <typename T>
+void chainExtendedField(void** next, T& feature) {
+  feature.pNext = *next;
+  *next = (void*)&feature;
+}
+
+}  // namespace
 
 // We need to pass the dynamic state in the constructor because some other states depend on it.
 GraphicsPipelineBuilder::GraphicsPipelineBuilder(
@@ -36,6 +54,7 @@ Pipeline GraphicsPipelineBuilder::createPipeline(
 
   const VkGraphicsPipelineCreateInfo createInfo{
     .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+    .pNext = _pNext,
     .stageCount = static_cast<uint32_t>(_shaderStages.size()),
     .pStages = _shaderStages.data(),
     .pVertexInputState = &_vertexInputState,
@@ -49,7 +68,8 @@ Pipeline GraphicsPipelineBuilder::createPipeline(
     .pDynamicState = &_dynamicState,
     .layout = pipelineLayout.getVkPipelineLayout(),
     .renderPass = renderpass.getVkRenderPass()};
-  return Pipeline::create(renderpass.getLogicalDevice(), createInfo, _shaderStageFlags);
+  return Pipeline::createGraphicsPipeline(
+      renderpass.getLogicalDevice(), createInfo, _shaderStageFlags);
 }
 
 std::vector<Pipeline> GraphicsPipelineBuilder::createPipelines(
@@ -103,7 +123,7 @@ std::vector<Pipeline> GraphicsPipelineBuilder::createPipelines(
       .renderPass = renderpass.getVkRenderPass()});
   }
 
-  return Pipeline::create(renderpasses[0].getLogicalDevice(), createInfos);
+  return Pipeline::createGraphicsPipelines(renderpasses[0].getLogicalDevice(), createInfos);
 }
 
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withShaderStageCreateInfo(
@@ -215,14 +235,13 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::withRasterizationStateCreateIn
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withMultisampleStateCreateInfo(
     VkSampleCountFlagBits numMsaaSamples, std::optional<float> minSampleShading,
     std::span<const VkSampleMask> sampleMasks, VkPipelineMultisampleStateCreateFlags flags) {
-  _sampleMasks = lib::Buffer<VkSampleMask>(sampleMasks);
   _multisampleState = VkPipelineMultisampleStateCreateInfo{
     .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
     .flags = flags,
     .rasterizationSamples = numMsaaSamples,
-    .sampleShadingEnable = minSampleShading.has_value(),
+    .sampleShadingEnable = minSampleShading.has_value() ? VK_TRUE : VK_FALSE,
     .minSampleShading = minSampleShading.value_or(0.0f),
-    .pSampleMask = _sampleMasks.size() > 0 ? _sampleMasks.data() : nullptr};
+    .pSampleMask = sampleMasks.size() > 0 ? sampleMasks.data() : nullptr};
   return *this;
 }
 
@@ -274,5 +293,17 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::withDepthStencilStateCreateInf
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::withPushConstantShaderStages(
     VkShaderStageFlags shaderStageFlags) {
   _shaderStageFlags = shaderStageFlags;
+  return *this;
+}
+
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::withFragmentShadingRateStateCreateInfo(
+    VkExtent2D fragmentSize, VkFragmentShadingRateCombinerOpKHR combinerOp1,
+    VkFragmentShadingRateCombinerOpKHR combinerOp2) {
+  _fragmentShadingRateState = VkPipelineFragmentShadingRateStateCreateInfoKHR{
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR,
+    .fragmentSize = fragmentSize,
+    .combinerOps = {combinerOp1, combinerOp2}
+  };
+  chainExtendedField(&_pNext, _fragmentShadingRateState);
   return *this;
 }

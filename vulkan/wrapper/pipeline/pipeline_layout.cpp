@@ -1,8 +1,12 @@
 #include "pipeline_layout.h"
 
+#include <cstdint>
+#include <span>
 #include <utility>
+#include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/util/check.h"
 
 PipelineLayout::PipelineLayout(const LogicalDevice& logicalDevice, VkPipelineLayout layout) noexcept

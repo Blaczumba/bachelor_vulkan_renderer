@@ -1,8 +1,19 @@
 #include "command_buffer.h"
 
+#include <cstdint>
+#include <initializer_list>
 #include <iterator>
+#include <memory>
+#include <span>
+#include <utility>
+#include <vector>
+#include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
+#include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/framebuffer/framebuffer.h"
+#include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/util/check.h"
 
 CommandPool::CommandPool(const LogicalDevice& logicalDevice, VkCommandPool commandPool) noexcept

@@ -1,13 +1,16 @@
 #include "physical_device.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <memory>
 #include <ranges>
-#include <vulkan/vulkan.hpp>
+#include <string_view>
+#include <unordered_set>
+#include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
-#include "lib/algorithm.h"
+#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/instance/extensions.h"
-#include "vulkan/wrapper/logical_device/logical_device.h"
 
 namespace {
 
@@ -162,14 +165,26 @@ VkPhysicalDevice getBestPhysicalDevice(
   return VK_NULL_HANDLE;
 }
 
+template <typename T>
+void chainExtendedField(void** next, T& feature, VkStructureType sType) {
+  feature.sType = sType;
+  feature.pNext = *next;
+  *next = (void*)&feature;
+}
+
 }  // namespace
 
 PhysicalDevice::PhysicalDevice(VkPhysicalDevice physicalDevice, const Instance& instance,
-                               const QueueFamilyIndices& queueFamilyIndices,
-                               const VkPhysicalDeviceProperties& properties) noexcept
+                               const QueueFamilyIndices& queueFamilyIndices) noexcept
   : _device(physicalDevice), _instance(instance),
     _availableRequestedExtensions(checkDeviceExtensionSupport(physicalDevice)),
-    _queueFamilyIndices(queueFamilyIndices), _properties(properties) {}
+    _queueFamilyIndices(queueFamilyIndices) {
+  _properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+  _properties.pNext = nullptr;
+  chainExtendedField(&_properties.pNext, _fsrProperties,
+                     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR);
+  vkGetPhysicalDeviceProperties2(physicalDevice, &_properties);
+}
 
 std::unique_ptr<PhysicalDevice> PhysicalDevice::create(
     const Instance& instance, VkSurfaceKHR surface) {
@@ -179,10 +194,8 @@ std::unique_ptr<PhysicalDevice> PhysicalDevice::create(
     throw EngineException("Failed to find physical device.");
   }
 
-  VkPhysicalDeviceProperties properties;
-  vkGetPhysicalDeviceProperties(bestDevice, &properties);
-  return std::unique_ptr<PhysicalDevice>(new PhysicalDevice(
-      bestDevice, instance, findQueueFamilyIndices(bestDevice, surface), properties));
+  return std::unique_ptr<PhysicalDevice>(
+      new PhysicalDevice(bestDevice, instance, findQueueFamilyIndices(bestDevice, surface)));
 }
 
 std::unique_ptr<PhysicalDevice> PhysicalDevice::wrap(
@@ -191,11 +204,8 @@ std::unique_ptr<PhysicalDevice> PhysicalDevice::wrap(
     throw EngineException("Cannot wrap VK_NULL_HANDLE around PhysicalDevice.");
   }
 
-  VkPhysicalDeviceProperties properties;
-  vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-
-  return std::unique_ptr<PhysicalDevice>(new PhysicalDevice(
-      physicalDevice, instance, findQueueFamilyIndices(physicalDevice), properties));
+  return std::unique_ptr<PhysicalDevice>(
+      new PhysicalDevice(physicalDevice, instance, findQueueFamilyIndices(physicalDevice)));
 }
 
 VkPhysicalDevice PhysicalDevice::getVkPhysicalDevice() const noexcept {
@@ -211,15 +221,38 @@ bool PhysicalDevice::hasAvailableExtension(std::string_view extension) const noe
 }
 
 float PhysicalDevice::getMaxSamplerAnisotropy() const noexcept {
-  return _properties.limits.maxSamplerAnisotropy;
+  return _properties.properties.limits.maxSamplerAnisotropy;
 }
 
 VkPhysicalDeviceType PhysicalDevice::getPhysicalDeviceType() const noexcept {
-  return _properties.deviceType;
+  return _properties.properties.deviceType;
+}
+
+const VkPhysicalDeviceFragmentShadingRatePropertiesKHR&
+PhysicalDevice::getFragmentShadingRateProperties() const noexcept {
+  return _fsrProperties;
+}
+
+lib::Buffer<VkPhysicalDeviceFragmentShadingRateKHR>
+PhysicalDevice::getFragmentShadingRates() const noexcept {
+  static PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR vkGetPhysicalDeviceFragmentShadingRatesKHR =
+      (PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR)vkGetInstanceProcAddr(
+          _instance.getVkInstance(), "vkGetPhysicalDeviceFragmentShadingRatesKHR");
+  if (vkGetPhysicalDeviceFragmentShadingRatesKHR == nullptr) {
+    return lib::Buffer<VkPhysicalDeviceFragmentShadingRateKHR>{};
+  }
+
+  uint32_t fsRates;
+  vkGetPhysicalDeviceFragmentShadingRatesKHR(_device, &fsRates, nullptr);
+  lib::Buffer<VkPhysicalDeviceFragmentShadingRateKHR> fragmentShadingrates(
+      fsRates, VkPhysicalDeviceFragmentShadingRateKHR{
+                 VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR});
+  vkGetPhysicalDeviceFragmentShadingRatesKHR(_device, &fsRates, fragmentShadingrates.data());
+  return fragmentShadingrates;
 }
 
 size_t PhysicalDevice::getMemoryAlignment(size_t size) const noexcept {
-  const size_t minUboAlignment = _properties.limits.minUniformBufferOffsetAlignment;
+  const size_t minUboAlignment = _properties.properties.limits.minUniformBufferOffsetAlignment;
   return minUboAlignment > 0 ? (size + minUboAlignment - 1) & ~(minUboAlignment - 1) : size;
 }
 

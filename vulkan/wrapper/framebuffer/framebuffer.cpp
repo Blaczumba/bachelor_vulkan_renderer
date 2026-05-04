@@ -1,12 +1,17 @@
 #include "framebuffer.h"
 
+#include <cmath>
+#include <cstdint>
 #include <optional>
+#include <span>
+#include <vector>
+#include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
-#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/util/check.h"
+#include "vulkan/wrapper/util/util.h"
 
 namespace {
 
@@ -21,16 +26,10 @@ Texture createColorAttachment(
           .withLayerCount(numLayers)
           .withNumSamples(samples)
           .withUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-          .withLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-          .buildAttachment(logicalDevice, commandBuffer);
+          .buildImage(logicalDevice);
+  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
-}
-
-bool hasStencil(VkFormat format) {
-  static constexpr VkFormat formats[] = {VK_FORMAT_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT,
-                                         VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT_S8_UINT};
-  return std::find(std::cbegin(formats), std::cend(formats), format) != std::cend(formats);
 }
 
 Texture createDepthAttachment(
@@ -46,25 +45,75 @@ Texture createDepthAttachment(
           .withNumSamples(samples)
           .withUsage(
               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)
-          .withLayout(hasStencil(format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
-                                           VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
-          .buildAttachment(logicalDevice, commandBuffer);
+          .buildImage(logicalDevice);
+  texture.transitionLayout(
+      commandBuffer, hasStencil(format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
+                                          VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+  texture.addCreateVkImageView(0, 1, 0, numLayers);
+  return texture;
+}
+
+Texture createFragmentShadingRateAttachment(
+    const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer, VkFormat format,
+    VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers) {
+  const VkPhysicalDeviceFragmentShadingRatePropertiesKHR& fsrProperties =
+      logicalDevice.getPhysicalDevice().getFragmentShadingRateProperties();
+  const VkExtent2D fsrTexelExtent = fsrProperties.maxFragmentShadingRateAttachmentTexelSize;
+  Texture texture =
+      TextureBuilder()
+          .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
+          .withExtent(static_cast<uint32_t>(
+                          std::ceil(extent.width / static_cast<float>(fsrTexelExtent.width))),
+                      static_cast<uint32_t>(
+                          std::ceil(extent.height / static_cast<float>(fsrTexelExtent.height))))
+          .withFormat(format)
+          .withLayerCount(numLayers)
+          .withNumSamples(samples)
+          .withUsage(VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR
+                     | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT)
+          .buildImage(logicalDevice);
+  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   texture.addCreateVkImageView(0, 1, 0, numLayers);
   return texture;
 }
 
 }  // namespace
 
+Framebuffer Framebuffer::create(const Renderpass& renderpass, VkExtent2D extent, uint32_t numLayers,
+                                std::span<const VkImageView> attachments) {
+  const VkFramebufferCreateInfo framebufferInfo = {
+    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+    .renderPass = renderpass.getVkRenderPass(),
+    .attachmentCount = static_cast<uint32_t>(attachments.size()),
+    .pAttachments = attachments.data(),
+    .width = extent.width,
+    .height = extent.height,
+    .layers = 1};
+
+  VkFramebuffer framebuffer;
+  CHECK_VKCMD(vkCreateFramebuffer(renderpass.getLogicalDevice().getVkDevice(), &framebufferInfo,
+                                  nullptr, &framebuffer),
+              "Failed to create VkFramebuffer.");
+
+  return Framebuffer(
+      framebuffer, renderpass,
+      VkViewport{.width = static_cast<float>(extent.width),
+                 .height = static_cast<float>(extent.height),
+                 .minDepth = 0.0f,
+                 .maxDepth = 1.0f},
+      VkRect2D{.extent = extent});
+}
+
 Framebuffer Framebuffer::createFromSwapchain(
     VkCommandBuffer commandBuffer, const Renderpass& renderpass, VkExtent2D swapchainExtent,
     uint32_t numLayers, VkImageView swapchainImageView, std::vector<Texture>& attachments) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
-  std::span<const VkAttachmentDescription> attachmentDescriptions =
+  std::span<const VkAttachmentDescription2> attachmentDescriptions =
       renderpass.getAttachmentsLayout().getVkAttachmentDescriptions();
 
   std::vector<VkImageView> imageViews;
   imageViews.reserve(attachmentDescriptions.size());
-  for (const VkAttachmentDescription& description : attachmentDescriptions) {
+  for (const VkAttachmentDescription2& description : attachmentDescriptions) {
     switch (description.finalLayout) {
       case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
         imageViews.push_back(swapchainImageView);
@@ -81,6 +130,16 @@ Framebuffer Framebuffer::createFromSwapchain(
       case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
         {
           Texture attachment = createDepthAttachment(
+              logicalDevice, commandBuffer, description.format, description.samples,
+              swapchainExtent, numLayers);
+          imageViews.push_back(attachment.getVkImageView());
+          attachments.push_back(std::move(attachment));
+          break;
+        }
+      case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+      case VK_IMAGE_LAYOUT_GENERAL:
+        {
+          Texture attachment = createFragmentShadingRateAttachment(
               logicalDevice, commandBuffer, description.format, description.samples,
               swapchainExtent, numLayers);
           imageViews.push_back(attachment.getVkImageView());

@@ -1,5 +1,11 @@
 #include "resource_destroyer.h"
 
+#include <functional>
+#include <vulkan/vulkan.h>
+
+#include "lib/thread/worker.h"
+#include "vulkan/wrapper/memory_allocator/allocation.h"
+
 void ThreadedResourceDestroyer::destroyResource(Job destroyResource) {
   _worker.addJob(std::move(destroyResource));
 }

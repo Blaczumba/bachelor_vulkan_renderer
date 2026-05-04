@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"

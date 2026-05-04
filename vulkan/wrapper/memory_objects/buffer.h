@@ -1,18 +1,10 @@
 #pragma once
 
-#include <array>
-#include <cstring>
-#include <format>
-#include <glm/glm.hpp>
-#include <memory>
+#include <cstdint>
 #include <optional>
 #include <span>
-#include <vector>
 #include <vulkan/vulkan.h>
 
-#include "common/util/buffer_manip.h"
-#include "common/util/engine_exception.h"
-#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class Buffer {
@@ -33,33 +25,17 @@ public:
 
   static Buffer createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t size);
 
+  std::span<const std::byte> getMappedMemory() const noexcept;
+
+  std::span<std::byte> getMappedMemory() noexcept;
+
   void copyBuffer(const VkCommandBuffer commandBuffer, const Buffer& srcBuffer,
                   std::optional<VkDeviceSize> size = std::nullopt, VkDeviceSize srcOffset = 0,
                   VkDeviceSize dstOffset = 0);
 
-  void copyDataInterleaving(
-      std::span<const glm::vec3> positions, std::span<const glm::vec2> texCoords);
-
-  void copyDataInterleaving(
-      std::span<const glm::vec3> positions, std::span<const glm::vec2> texCoords,
-      std::span<const glm::vec3> normals);
-
-  void copyDataInterleaving(std::span<const AttributeDescription> attributes);
-
-  void copyAndShrinkData(std::span<const std::byte> data, size_t dstIndexSize, size_t srcIndexSize,
-                         VkDeviceSize offset = 0);
-
-  template <typename T>
-  void copyData(std::span<const T> data, VkDeviceSize offset = 0);
-
-  template <typename T>
-  void copyData(const T& data, VkDeviceSize offset = 0);
-
   VkBufferUsageFlags getUsage() const noexcept;
 
   uint32_t getSize() const noexcept;
-
-  void* getMappedMemory() const noexcept;
 
   const VkBuffer& getVkBuffer() const noexcept;
 
@@ -80,30 +56,3 @@ private:
 
   const LogicalDevice* _logicalDevice;
 };
-
-template <typename T>
-void Buffer::copyData(std::span<const T> data, VkDeviceSize offset) {
-  if (!_mappedMemory) [[unlikely]] {
-    throw EngineException("Cannot copy raw data to unmapped memory.");
-  }
-  const uint32_t size = data.size() * sizeof(T);
-  if (offset + size > _size) [[unlikely]] {
-    throw EngineException(std::format(
-        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
-        offset, size, _size));
-  }
-  std::memcpy(static_cast<uint8_t*>(_mappedMemory) + offset, data.data(), size);
-}
-
-template <typename T>
-void Buffer::copyData(const T& data, VkDeviceSize offset) {
-  if (!_mappedMemory) [[unlikely]] {
-    throw EngineException("Cannot copy raw data to unmapped memory.");
-  }
-  if (offset + sizeof(T) > _size) [[unlikely]] {
-    throw EngineException(std::format(
-        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
-        offset, sizeof(T), _size));
-  }
-  std::memcpy(static_cast<uint8_t*>(_mappedMemory) + offset, &data, sizeof(T));
-}

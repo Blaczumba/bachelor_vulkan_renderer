@@ -80,7 +80,7 @@ target_link_libraries(${COMMON_ENGINE_NAME} INTERFACE
     CommonCamera CommonInputManager CommonECS
     CommonObject CommonUtil
     CommonScene CommonStandardFileLoader
-    CommonModelLoader
+    CommonModelLoader CommonMath CommonBuffer
 )
 target_link_libraries(${ENGINE_NAME} INTERFACE ${COMMON_ENGINE_NAME})
 

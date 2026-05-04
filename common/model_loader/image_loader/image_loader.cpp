@@ -9,7 +9,7 @@
 
 #include "common/util/engine_exception.h"
 
-ImageResource loadImageStbi(std::span<const std::byte> imageData) {
+std::tuple<ImageResource, OwnedImageResources> loadImageStbi(std::span<const std::byte> imageData) {
   int width, height, channels;
   stbi_uc* pixels = stbi_load_from_memory(
       reinterpret_cast<const stbi_uc*>(imageData.data()), static_cast<int>(imageData.size()),
@@ -18,23 +18,24 @@ ImageResource loadImageStbi(std::span<const std::byte> imageData) {
     throw EngineException("Failed to load image file (stbi).");
   }
 
-  return ImageResource{
-    .libraryResource = pixels,
-    .width = static_cast<uint32_t>(width),
-    .height = static_cast<uint32_t>(height),
-    .mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
-    .layerCount = 1,
-    .subresources = {ImageSubresource{
-      .layerCount = 1,
-      .width = static_cast<uint32_t>(width),
-      .height = static_cast<uint32_t>(height),
-      .depth = 1,
-    }},
-    .data = pixels,
-    .size = static_cast<uint32_t>(4 * width * height)};
+  return std::make_tuple(
+      ImageResource{
+        .width = static_cast<uint32_t>(width),
+        .height = static_cast<uint32_t>(height),
+        .mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
+        .layerCount = 1,
+        .subresources = {ImageSubresource{
+          .layerCount = 1,
+          .width = static_cast<uint32_t>(width),
+          .height = static_cast<uint32_t>(height),
+          .depth = 1,
+        }},
+        .data = pixels,
+        .size = static_cast<uint32_t>(4 * width * height)},
+      StbUniquePtr(pixels));
 }
 
-ImageResource loadImageKtx(std::span<const std::byte> imageData) {
+std::tuple<ImageResource, OwnedImageResources> loadImageKtx(std::span<const std::byte> imageData) {
   ktxTexture* ktxTexture;
   if (ktxResult result = ktxTexture_CreateFromMemory(
           reinterpret_cast<const ktx_uint8_t*>(imageData.data()), imageData.size(),
@@ -44,7 +45,6 @@ ImageResource loadImageKtx(std::span<const std::byte> imageData) {
   }
 
   ImageResource image{
-    .libraryResource = ktxTexture,
     .width = ktxTexture->baseWidth,
     .height = ktxTexture->baseHeight,
     .mipLevels = ktxTexture->numLevels,
@@ -74,33 +74,14 @@ ImageResource loadImageKtx(std::span<const std::byte> imageData) {
       };
     }
   }
-  return image;
+  return std::make_tuple(std::move(image), KtxUniquePtr(ktxTexture));
 }
 
-ImageResource loadImage(std::span<const std::byte> imageData, std::string_view filePath) {
+std::tuple<ImageResource, OwnedImageResources> loadImage(
+    std::span<const std::byte> imageData, std::string_view filePath) {
   if (filePath.ends_with(".ktx") || filePath.ends_with(".ktx2")) {
     return loadImageKtx(imageData);
   } else {
     return loadImageStbi(imageData);
   }
-}
-
-namespace {
-
-struct Deallocator {
-  void operator()(ktxTexture* texture) {
-    ktxTexture_Destroy(texture);
-  }
-
-  void operator()(stbi_uc* texture) {
-    stbi_image_free(texture);
-  }
-
-  void operator()(auto&&) {}
-};
-
-}  // namespace
-
-void deallocateResources(ImageResource& resource) {
-  std::visit(Deallocator{}, resource.libraryResource);
 }

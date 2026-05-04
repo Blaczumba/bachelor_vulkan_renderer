@@ -1,5 +1,6 @@
 #include "vulkan/graphics_context/presentation.h"
 
+#include "common/math/engine_math.h"
 #include "common/util/engine_exception.h"
 #include "lib/types/util.h"
 #include "vulkan/graphics_context/graphics_context.h"
@@ -65,7 +66,7 @@ void Presentation::run() {
   float deltaTime;
   VkResult result;
   // This should be handled outside by engine but for now it is ok here:
-  _mouseKeyboardManager->absorbCursor();
+  // _mouseKeyboardManager->absorbCursor();
   _mouseKeyboardManager->setKeyboardCallback([&](Keyboard::Key key, int action) {
     switch (key) {
       case Keyboard::Key::Escape:
@@ -90,8 +91,10 @@ void Presentation::run() {
   });
 
   _graphicsContext->initializeResources();
-  Camera camera(PerspectiveProjection{glm::radians(45.0f), 1920.0f / 1080.f, 0.01f, 50.0f},
+  Camera camera(PerspectiveProjection{glm::radians(45.0f), 1920.0f / 1080.f, 0.01f, 500.0f},
                 glm::vec3(0.0f), 5.5f, 0.01f);
+  const auto [screenWidth, screenHeight] = _window->getFramebufferSize();
+  glm::mat4 tempViewMat(1.0f);
   while (_window->open()) {
     current = std::chrono::steady_clock::now();
     deltaTime = std::chrono::duration<float>(current - previous).count();
@@ -103,13 +106,16 @@ void Presentation::run() {
     _graphicsContext->waitCompleteExecution();
     _swapchain.acquireNextImage(synchContext->imageAvailableSemaphores[synchContext->currentFrame],
                                 &_drawingContext.imageIndex);
+    glm::vec2 mousePos = _mouseKeyboardManager->getMousePosition();
+    const glm::vec3 viewDir = common::getWorldSpaceViewDirection(
+        mousePos.x, mousePos.y, screenWidth, screenHeight, glm::inverse(tempViewMat),
+        glm::inverse(camera.getProjectionMatrix()));
     _drawingContext.cameraContexts = {
-      {
-       camera.getPosition(),
-       camera.getViewMatrix(),
-       camera.getProjectionMatrix(),
-       }
+      {camera.getPosition(),
+       _mouseKeyboardManager->isPressed(Keyboard::Key::R) ? tempViewMat = camera.getViewMatrix() :
+                                                            tempViewMat, camera.getProjectionMatrix(), viewDir}
     };
+    _drawingContext.screenSpaceViewPos = _mouseKeyboardManager->getMousePosition();
     _graphicsContext->draw(_drawingContext);
     _swapchain.present(_drawingContext.imageIndex,
                        synchContext->renderFinishedSemaphores[_drawingContext.imageIndex]);

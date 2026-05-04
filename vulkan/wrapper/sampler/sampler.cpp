@@ -1,5 +1,10 @@
 #include "sampler.h"
 
+#include <utility>
+#include <vulkan/vulkan.h>
+
+#include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/util/check.h"
 
 Sampler::Sampler(const LogicalDevice& logicalDevice, VkSampler sampler) noexcept
@@ -22,7 +27,7 @@ Sampler& Sampler::operator=(Sampler&& other) noexcept {
     return *this;
   }
 
-  if (isValid()) {
+  if (_sampler != VK_NULL_HANDLE) {
     destroy();
   }
 
@@ -32,7 +37,7 @@ Sampler& Sampler::operator=(Sampler&& other) noexcept {
 }
 
 Sampler::~Sampler() {
-  if (isValid()) {
+  if (_sampler != VK_NULL_HANDLE) {
     destroy();
     _sampler = VK_NULL_HANDLE;
   }
@@ -40,10 +45,6 @@ Sampler::~Sampler() {
 
 VkSampler Sampler::getVkSampler() const noexcept {
   return _sampler;
-}
-
-bool Sampler::isValid() const noexcept {
-  return _sampler != VK_NULL_HANDLE;
 }
 
 void Sampler::destroy() {

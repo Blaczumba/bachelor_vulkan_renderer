@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <span>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -7,7 +8,9 @@
 enum class AttachmentType : uint8_t {
   COLOR = 0,
   COLOR_RESOLVE,
-  DEPTH
+  DEPTH,
+  FRAGMENT_SHADING_RATE,
+  FRAGMENT_DENSITY_MAP
 };
 
 class AttachmentLayout {
@@ -16,11 +19,15 @@ public:
 
   std::span<const VkClearValue> getVkClearValues() const noexcept;
 
-  std::span<const VkAttachmentDescription> getVkAttachmentDescriptions() const noexcept;
+  std::span<const VkAttachmentDescription2> getVkAttachmentDescriptions() const noexcept;
 
-  std::span<const VkImageLayout> getVkSubpassLayouts() const noexcept;
+  VkImageLayout getAttachmentVkImageLayout(uint32_t index) const;
 
-  std::span<const AttachmentType> getAttachmentsTypes() const noexcept;
+  AttachmentType getAttachmentType(uint32_t index) const;
+
+  VkImageAspectFlags getAttachmentAspectFlags(uint32_t index) const;
+
+  size_t getAttachmentsCount() const noexcept;
 
   uint32_t getColorAttachmentsCount() const noexcept;
 
@@ -43,10 +50,15 @@ public:
 
   AttachmentLayout& addColorResolvePresentAttachment(VkFormat format, VkAttachmentLoadOp loadOp);
 
+  AttachmentLayout& addFragmentShadingRateAttachment();
+
+  AttachmentLayout& addFragmentDensityMapAttachment();
+
 private:
   VkSampleCountFlagBits _numMsaaSamples;
   std::vector<VkClearValue> _clearValues;
-  std::vector<VkAttachmentDescription> _attachmentDescriptions;
-  std::vector<VkImageLayout> _subpassImageLayouts;
+  std::vector<VkAttachmentDescription2> _attachmentDescriptions;
+  std::vector<VkImageLayout> _attachmentImageLayouts;
   std::vector<AttachmentType> _attachmentTypes;
+  std::vector<VkImageAspectFlags> _aspectFlags;
 };

@@ -1,11 +1,8 @@
 #include "shader.h"
 
-#include <chrono>
-#include <functional>
 #include <span>
 #include <string_view>
 
-#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
 

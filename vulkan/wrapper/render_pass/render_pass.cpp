@@ -1,11 +1,27 @@
 #include "render_pass.h"
 
-#include <algorithm>
-#include <iterator>
+#include <cstdint>
+#include <optional>
+#include <span>
+#include <utility>
+#include <vector>
+#include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
+#include "vulkan/wrapper/logical_device/logical_device.h"
+#include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/render_pass/attachment_layout.h"
 #include "vulkan/wrapper/util/check.h"
+
+namespace {
+
+template <typename T>
+void chainExtendedField(void** next, T& feature) {
+  feature.pNext = *next;
+  *next = (void*)&feature;
+}
+
+}  // namespace
 
 RenderpassBuilder::RenderpassBuilder(const AttachmentLayout& attachmentLayout)
   : _attachmentLayout(attachmentLayout) {}
@@ -13,77 +29,105 @@ RenderpassBuilder::RenderpassBuilder(const AttachmentLayout& attachmentLayout)
 RenderpassBuilder& RenderpassBuilder::addDependency(
     uint32_t srcSubpassIndex, uint32_t dstSubpassIndex, VkPipelineStageFlags srcStageMask,
     VkAccessFlags srcAccessMask, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask) {
-  _subpassDepencies.emplace_back(
-      srcSubpassIndex, dstSubpassIndex, srcStageMask, dstStageMask, srcAccessMask, dstAccessMask);
+  _subpassDepencies.push_back(VkSubpassDependency2{
+    .sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
+    .srcSubpass = srcSubpassIndex,
+    .dstSubpass = dstSubpassIndex,
+    .srcStageMask = srcStageMask,
+    .dstStageMask = dstStageMask,
+    .srcAccessMask = srcAccessMask,
+    .dstAccessMask = dstAccessMask});
   return *this;
 }
 
-RenderpassBuilder& RenderpassBuilder::addSubpass(std::initializer_list<uint8_t> outputAttachments,
-                                                 std::initializer_list<uint8_t> inputAttachments) {
-  Subpass subpass;
-  for (uint8_t index : outputAttachments) {
-    subpass.addOutputAttachment(_attachmentLayout, index);
-  }
-
-  for (uint8_t index : inputAttachments) {
-    // TODO set proper image layouts
-    subpass.addInputAttachment(_attachmentLayout, index, VK_IMAGE_LAYOUT_GENERAL);
-  }
-
-  _subpasses.push_back(subpass);
-  return *this;
+RenderpassBuilder::Subpass& RenderpassBuilder::createSubpass() {
+  return *_subpasses.emplace_back(std::make_unique<Subpass>(_attachmentLayout));
 }
 
 RenderpassBuilder& RenderpassBuilder::withMultiView(
     std::vector<uint32_t>&& viewMask, std::vector<uint32_t>&& correlationMask) {
   _multiViewInfo = MultiViewInfo{
-    .multiviewCreateInfo = {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO,
-                            .pViewMasks = viewMask.data(),
-                            .correlationMaskCount = static_cast<uint32_t>(correlationMask.size()),
-                            .pCorrelationMasks = correlationMask.data()},
-    .viewMasks = std::move(viewMask),
-    .correlationMasks = std::move(correlationMask)
-  };
+    .viewMasks = std::move(viewMask), .correlationMasks = std::move(correlationMask)};
   return *this;
 }
 
-void RenderpassBuilder::Subpass::addOutputAttachment(
-    const AttachmentLayout& layout, uint32_t attachmentBinding) {
-  std::span<const AttachmentType> attachmentTypes = layout.getAttachmentsTypes();
-  if (attachmentTypes.size() <= attachmentBinding) [[unlikely]] {
-    throw EngineException("Attachment binding exceeds the total number of attachments.");
-  }
+RenderpassBuilder::Subpass::Subpass(const AttachmentLayout& attachmentLayout) noexcept
+  : _attachmentLayout(attachmentLayout) {}
 
-  switch (attachmentTypes[attachmentBinding]) {
+RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::addOutputAttachment(
+    uint32_t attachmentBinding) {
+  const VkAttachmentReference2 attachmentRef{
+    .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+    .attachment = attachmentBinding,
+    .layout = _attachmentLayout.getAttachmentVkImageLayout(attachmentBinding),
+    .aspectMask = _attachmentLayout.getAttachmentAspectFlags(attachmentBinding)};
+  switch (_attachmentLayout.getAttachmentType(attachmentBinding)) {
     case AttachmentType::COLOR:
-      _colorAttachmentRefs.emplace_back(
-          attachmentBinding, layout.getVkSubpassLayouts()[attachmentBinding]);
+      _colorAttachmentRefs.push_back(attachmentRef);
       break;
     case AttachmentType::COLOR_RESOLVE:
-      _colorAttachmentResolveRefs.emplace_back(
-          attachmentBinding, layout.getVkSubpassLayouts()[attachmentBinding]);
+      _colorAttachmentResolveRefs.push_back(attachmentRef);
       break;
     case AttachmentType::DEPTH:
-      _depthAttachmentRefs.emplace_back(
-          attachmentBinding, layout.getVkSubpassLayouts()[attachmentBinding]);
+      _depthAttachmentRefs.push_back(attachmentRef);
       break;
     default:
       throw EngineException("Failed to recognize attachment type.");
   }
+  return *this;
 }
 
-void RenderpassBuilder::Subpass::addInputAttachment(
-    const AttachmentLayout& layout, uint32_t attachmentBinding, VkImageLayout imageLayout) {
-  if (layout.getAttachmentsTypes().size() <= attachmentBinding) [[unlikely]] {
-    throw EngineException("Input binding attachment index cannot exceed number of attachments.");
+RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::addInputAttachment(
+    uint32_t attachmentBinding) {
+  _inputAttachmentRefs.push_back(VkAttachmentReference2{
+    .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+    .attachment = attachmentBinding,
+    .layout = _attachmentLayout.getAttachmentVkImageLayout(attachmentBinding),
+    .aspectMask = _attachmentLayout.getAttachmentAspectFlags(attachmentBinding)});
+  return *this;
+}
+
+RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::withShadingRateAttachment(
+    uint32_t texelWidth, uint32_t texelHeight) {
+  for (uint32_t binding = 0; binding < _attachmentLayout.getAttachmentsCount(); binding++) {
+    if (_attachmentLayout.getAttachmentType(binding) == AttachmentType::FRAGMENT_SHADING_RATE) {
+      return withShadingRateAttachment(binding, texelWidth, texelHeight);
+    }
   }
 
-  _inputAttachmentRefs.emplace_back(attachmentBinding, imageLayout);
+  throw EngineException(
+      "The attachment layout does not contain a fragment shading rate attachment.");
 }
 
-VkSubpassDescription RenderpassBuilder::Subpass::getVkSubpassDescription() const {
-  return VkSubpassDescription{
+RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::withShadingRateAttachment(
+    uint32_t binding, uint32_t texelWidth, uint32_t texelHeight) {
+  if (_attachmentLayout.getAttachmentType(binding) != AttachmentType::FRAGMENT_SHADING_RATE) {
+    throw EngineException(
+        "The specified attachment binding does not correspond to a fragment shading rate "
+        "attachment.");
+  }
+
+  _fragmentShadingRateAttachmentRef = VkAttachmentReference2{
+    .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+    .attachment = binding,
+    .layout = _attachmentLayout.getAttachmentVkImageLayout(binding)};
+
+  _shadingRateAttachmentInfo = VkFragmentShadingRateAttachmentInfoKHR{
+    .sType = VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR,
+    .pFragmentShadingRateAttachment = &_fragmentShadingRateAttachmentRef.value(),
+    .shadingRateAttachmentTexelSize = VkExtent2D{texelWidth, texelHeight}
+  };
+
+  chainExtendedField(&_pNext, _shadingRateAttachmentInfo);
+  return *this;
+}
+
+VkSubpassDescription2 RenderpassBuilder::Subpass::getVkSubpassDescription(uint32_t viewMask) const {
+  return VkSubpassDescription2{
+    .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
+    .pNext = _pNext,
     .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+    .viewMask = viewMask,
     .inputAttachmentCount = static_cast<uint32_t>(_inputAttachmentRefs.size()),
     .pInputAttachments = !_inputAttachmentRefs.empty() ? _inputAttachmentRefs.data() : nullptr,
     .colorAttachmentCount = static_cast<uint32_t>(_colorAttachmentRefs.size()),
@@ -95,32 +139,49 @@ VkSubpassDescription RenderpassBuilder::Subpass::getVkSubpassDescription() const
 }
 
 Renderpass RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
-  std::span<const VkAttachmentDescription> attachmentDescriptions =
+  std::span<const VkAttachmentDescription2> attachmentDescriptions =
       _attachmentLayout.getVkAttachmentDescriptions();
-  lib::Buffer<VkSubpassDescription> subpassDescriptions(_subpasses.size());
-  std::transform(_subpasses.cbegin(), _subpasses.cend(), subpassDescriptions.begin(),
-                 [](const Subpass& subpass) {
-                   return subpass.getVkSubpassDescription();
-                 });
-
-  if (_multiViewInfo.has_value()) {
-    _multiViewInfo->multiviewCreateInfo.subpassCount =
-        static_cast<uint32_t>(subpassDescriptions.size());
+  lib::Buffer<VkSubpassDescription2> subpassDescriptions(_subpasses.size());
+  if (_multiViewInfo.has_value() && _multiViewInfo->viewMasks.size() != _subpasses.size()) {
+    throw EngineException(
+        "The number of view masks must be the same as the number of subpasses when using multiview "
+        "feature.");
   }
 
-  const VkRenderPassCreateInfo renderPassInfo = {
-    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-    .pNext = _multiViewInfo.has_value() ? &_multiViewInfo->multiviewCreateInfo : nullptr,
+  for (int i = 0; i < _subpasses.size(); i++) {
+    subpassDescriptions[i] = _subpasses[i]->getVkSubpassDescription(
+        _multiViewInfo.has_value() ? _multiViewInfo->viewMasks[i] : 0);
+  }
+
+  for (uint32_t i = 0; i < _attachmentLayout.getAttachmentsCount(); i++) {
+    if (_attachmentLayout.getAttachmentType(i) == AttachmentType::FRAGMENT_DENSITY_MAP) {
+      _fragmentDensityMapCreateInfo = VkRenderPassFragmentDensityMapCreateInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT,
+        .fragmentDensityMapAttachment =
+            VkAttachmentReference{i, _attachmentLayout.getAttachmentVkImageLayout(i)}
+      };
+      chainExtendedField(&_pNext, _fragmentDensityMapCreateInfo);
+      break;
+    }
+  }
+
+  const VkRenderPassCreateInfo2 renderPassInfo = {
+    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
+    .pNext = _pNext,
     .attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size()),
-    .pAttachments = attachmentDescriptions.data(),
+    .pAttachments = !attachmentDescriptions.empty() ? attachmentDescriptions.data() : nullptr,
     .subpassCount = static_cast<uint32_t>(subpassDescriptions.size()),
-    .pSubpasses = subpassDescriptions.data(),
+    .pSubpasses = !subpassDescriptions.empty() ? subpassDescriptions.data() : nullptr,
     .dependencyCount = static_cast<uint32_t>(_subpassDepencies.size()),
-    .pDependencies = _subpassDepencies.data()};
+    .pDependencies = !_subpassDepencies.empty() ? _subpassDepencies.data() : nullptr,
+    .correlatedViewMaskCount = static_cast<uint32_t>(
+        _multiViewInfo.has_value() ? _multiViewInfo->correlationMasks.size() : 0),
+    .pCorrelatedViewMasks =
+        _multiViewInfo.has_value() ? _multiViewInfo->correlationMasks.data() : nullptr};
 
   VkRenderPass renderpass;
   CHECK_VKCMD(
-      vkCreateRenderPass(logicalDevice.getVkDevice(), &renderPassInfo, nullptr, &renderpass),
+      vkCreateRenderPass2(logicalDevice.getVkDevice(), &renderPassInfo, nullptr, &renderpass),
       "Failed to create VkRenderPass.");
   return Renderpass(logicalDevice, renderpass, _attachmentLayout);
 }

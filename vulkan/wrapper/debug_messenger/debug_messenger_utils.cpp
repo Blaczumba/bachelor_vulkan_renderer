@@ -1,5 +1,7 @@
 #include "debug_messenger_utils.h"
 
+#include <vulkan/vulkan.h>
+
 VkDebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfoUtility(
     PFN_vkDebugUtilsMessengerCallbackEXT debugCallback) noexcept {
   return VkDebugUtilsMessengerCreateInfoEXT{

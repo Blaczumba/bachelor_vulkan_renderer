@@ -6,21 +6,7 @@
 #include <string>
 #include <vector>
 
-struct AttributeDescription {
-  void* data;
-  size_t size;
-  size_t count;
-};
-
-struct BufferDescription {
-  std::string name;
-  std::vector<AttributeDescription> attributes;
-  size_t totalSize;
-};
-
-std::vector<BufferDescription> analyzeConfig(
-    std::span<const std::pair<std::string, std::string>> orders,
-    std::span<const AttributeDescription> descs);
+#include "common/buffer/buffer.h"
 
 size_t getShrunkIndexSize(std::span<const std::byte> indicesBuffer, size_t indexSize);
 

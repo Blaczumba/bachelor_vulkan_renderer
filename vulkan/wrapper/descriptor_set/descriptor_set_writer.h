@@ -19,6 +19,8 @@ public:
 
   DescriptorSetWriter& storeTexture(const Texture& texture, const Sampler& sampler);
 
+  DescriptorSetWriter& storeImageStorage(const Texture& texture);
+
   DescriptorSetWriter& storeBuffer(const Buffer& buffer);
 
   DescriptorSetWriter& storeDynamicBuffer(
@@ -32,6 +34,8 @@ public:
       uint32_t* data, std::initializer_list<uint32_t> offsets) const;
 
 private:
+  void storeImage(VkImageView view, VkImageLayout layout, VkSampler sampler, VkDescriptorType type);
+
   uint32_t _binding = 0;
   uint32_t _arrayElement = 0;
 

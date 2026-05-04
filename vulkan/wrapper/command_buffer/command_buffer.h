@@ -1,6 +1,9 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <span>
 #include <vulkan/vulkan.h>

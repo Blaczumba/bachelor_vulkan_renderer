@@ -1,11 +1,12 @@
 #include "buffer.h"
 
 #include <format>
-#include <glm/glm.hpp>
-#include <iterator>
-#include <numeric>
-#include <ranges>
+#include <optional>
+#include <span>
+#include <variant>
+#include <vulkan/vulkan.h>
 
+#include "common/util/engine_exception.h"
 #include "vulkan/wrapper/memory_objects/buffers.h"
 
 Buffer::Buffer(
@@ -24,7 +25,9 @@ Buffer& Buffer::operator=(Buffer&& buffer) noexcept {
     return *this;
   }
 
-  destroy();
+  if (_buffer != VK_NULL_HANDLE) {
+    destroy();
+  }
 
   _buffer = std::exchange(buffer._buffer, VK_NULL_HANDLE);
   _allocation = buffer._allocation;
@@ -50,17 +53,17 @@ struct BufferDeallocator {
 }  // namespace
 
 void Buffer::destroy() {
-  if (_buffer != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource(
-        [buffer = _buffer, allocation = _allocation](DestroyerContext context) {
-          std::visit(BufferDeallocator{buffer}, *context.memoryAllocator, allocation);
-        });
-  }
+  _logicalDevice->destroyResource(
+      [buffer = _buffer, allocation = _allocation](DestroyerContext context) {
+        std::visit(BufferDeallocator{buffer}, *context.memoryAllocator, allocation);
+      });
 }
 
 Buffer::~Buffer() {
-  destroy();
-  _buffer = VK_NULL_HANDLE;
+  if (_buffer != VK_NULL_HANDLE) {
+    destroy();
+    _buffer = VK_NULL_HANDLE;
+  }
 }
 
 namespace {
@@ -144,6 +147,14 @@ Buffer Buffer::createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t 
                 bufferData.mappedMemory);
 }
 
+std::span<const std::byte> Buffer::getMappedMemory() const noexcept {
+  return std::span(static_cast<const std::byte*>(_mappedMemory), _size);
+}
+
+std::span<std::byte> Buffer::getMappedMemory() noexcept {
+  return std::span(static_cast<std::byte*>(_mappedMemory), _size);
+}
+
 void Buffer::copyBuffer(
     const VkCommandBuffer commandBuffer, const Buffer& srcBuffer,
     std::optional<VkDeviceSize> srcSize, VkDeviceSize srcOffset, VkDeviceSize dstOffset) {
@@ -177,66 +188,12 @@ void Buffer::copyBuffer(
   copyBufferToBuffer(commandBuffer, srcBuffer._buffer, _buffer, srcOffset, dstOffset, size);
 }
 
-void Buffer::copyAndShrinkData(std::span<const std::byte> data, size_t dstIndexSize,
-                               size_t srcIndexSize, VkDeviceSize offset) {
-  if (!_mappedMemory) [[unlikely]] {
-    throw EngineException("Cannot copy raw data to unmapped memory.");
-  }
-
-  if (_size < dstIndexSize * data.size() / srcIndexSize + offset) [[unlikely]] {
-    throw EngineException(std::format(
-        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
-        offset, dstIndexSize * data.size() / srcIndexSize, _size));
-  }
-
-  copyAndShrinkIndices(static_cast<uint8_t*>(_mappedMemory) + offset, dstIndexSize, data.data(),
-                       srcIndexSize, data.size() / srcIndexSize);
-}
-
-void Buffer::copyDataInterleaving(std::span<const AttributeDescription> attributes) {
-  if (!_mappedMemory) [[unlikely]] {
-    throw EngineException("Cannot copy raw data to unmapped memory.");
-  }
-
-  if (std::any_of(std::cbegin(attributes), std::cend(attributes),
-                  [first = attributes[0].count](const AttributeDescription& attribute) {
-                    return attribute.count != first;
-                  })) {
-    throw EngineException(
-        "Buffers must have equal number of elements when copying buffers in an interleaving "
-        "manner.");
-  }
-
-  std::vector<uint8_t*> offsetMemory;
-  offsetMemory.reserve(attributes.size());
-  offsetMemory.push_back(static_cast<uint8_t*>(_mappedMemory));
-  size_t stride = 0;
-  std::transform(
-      std::cbegin(attributes), std::prev(std::cend(attributes)), std::back_inserter(offsetMemory),
-      [this, &stride](const AttributeDescription& attribute) {
-        stride += attribute.size;
-        return static_cast<uint8_t*>(_mappedMemory) + stride;
-      });
-  stride += attributes.back().size;
-
-  for (size_t j = 0, running_stride = 0; j < attributes[0].count; j++, running_stride += stride) {
-    for (const auto& [offset, attribute] : std::views::zip(offsetMemory, attributes)) {
-      std::memcpy(offset + running_stride,
-                  static_cast<uint8_t*>(attribute.data) + j * attribute.size, attribute.size);
-    }
-  }
-}
-
 VkBufferUsageFlags Buffer::getUsage() const noexcept {
   return _usage;
 }
 
 uint32_t Buffer::getSize() const noexcept {
   return _size;
-}
-
-void* Buffer::getMappedMemory() const noexcept {
-  return _mappedMemory;
 }
 
 const VkBuffer& Buffer::getVkBuffer() const noexcept {

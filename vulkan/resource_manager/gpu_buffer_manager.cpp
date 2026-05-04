@@ -1,5 +1,12 @@
 #include "gpu_buffer_manager.h"
 
+#include <format>
+#include <memory>
+#include <vulkan/vulkan.h>
+
+#include "common/util/engine_exception.h"
+#include "common/util/resource_handles.h"
+
 std::unique_ptr<GpuBufferManager> GpuBufferManager::create() {
   return std::unique_ptr<GpuBufferManager>(new GpuBufferManager());
 }

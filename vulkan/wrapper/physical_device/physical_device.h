@@ -1,10 +1,13 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string_view>
 #include <unordered_set>
+#include <vulkan/vulkan.h>
 
+#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/instance/instance.h"
 
 struct QueueFamilyIndices {
@@ -22,8 +25,7 @@ struct SwapChainSupportDetails {
 
 class PhysicalDevice {
   PhysicalDevice(VkPhysicalDevice physicalDevice, const Instance& instance,
-                 const QueueFamilyIndices& queueFamilyIndices,
-                 const VkPhysicalDeviceProperties& properties) noexcept;
+                 const QueueFamilyIndices& queueFamilyIndices) noexcept;
 
 public:
   ~PhysicalDevice() = default;
@@ -43,6 +45,11 @@ public:
 
   VkPhysicalDeviceType getPhysicalDeviceType() const noexcept;
 
+  const VkPhysicalDeviceFragmentShadingRatePropertiesKHR&
+  getFragmentShadingRateProperties() const noexcept;
+
+  lib::Buffer<VkPhysicalDeviceFragmentShadingRateKHR> getFragmentShadingRates() const noexcept;
+
   size_t getMemoryAlignment(size_t size) const noexcept;
 
   lib::Buffer<const char*> getAvailableExtensions() const;
@@ -56,7 +63,9 @@ private:
 
   const Instance& _instance;
 
-  VkPhysicalDeviceProperties _properties;
+  VkPhysicalDeviceProperties2 _properties;
+  VkPhysicalDeviceFragmentShadingRatePropertiesKHR _fsrProperties;
+
   QueueFamilyIndices _queueFamilyIndices;
 
   const std::unordered_set<std::string_view> _availableRequestedExtensions;

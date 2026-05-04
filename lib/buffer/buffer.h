@@ -15,14 +15,13 @@ class Buffer {
 public:
   Buffer() = default;
 
-  explicit Buffer(size_t size) : _buffer(std::make_unique_for_overwrite<T[]>(size)), _size(size) {}
+  explicit Buffer(size_t size) : _buffer(size > 0 ? std::make_unique_for_overwrite<T[]>(size) : nullptr), _size(size) {}
 
   Buffer(size_t size, T value) : Buffer(size) {
     std::fill(_buffer.get(), std::next(_buffer.get(), size), value);
   }
 
   Buffer(const Buffer& other) : Buffer(other._size) {
-    // TODO if sizes are equal then do not allocate memory
     std::copy(other._buffer.get(), other._buffer.get() + _size, _buffer.get());
   }
 
@@ -45,18 +44,15 @@ public:
   Buffer(Buffer&& other) noexcept
     : _buffer(std::move(other._buffer)), _size(std::exchange(other._size, 0)) {}
 
-  template <typename... Args>
-  void emplace(size_t index, Args&&... args) {
-    new (&_buffer[index]) T(std::forward<Args>(args)...);
-  }
-
   Buffer& operator=(const Buffer& other) {
     if (this == &other) {
       return *this;
     }
-    // TODO if sizes are equal then do not allocate memory
-    _size = other._size;
-    _buffer = std::make_unique_for_overwrite<T[]>(_size);
+
+    if (_size != other._size) {
+      _size = other._size;
+      _buffer = std::make_unique_for_overwrite<T[]>(_size);
+    }
     std::copy(other._buffer.get(), other._buffer.get() + _size, _buffer.get());
     return *this;
   }
@@ -78,51 +74,51 @@ public:
     return _buffer[index];
   }
 
-  operator std::span<T>() {
+  operator std::span<T>() noexcept {
     return std::span<T>(_buffer.get(), _size);
   }
 
-  operator std::span<const T>() const {
+  operator std::span<const T>() const noexcept {
     return std::span<const T>(_buffer.get(), _size);
   }
 
-  bool empty() const {
+  bool empty() const noexcept {
     return _size == 0;
   }
 
-  const T* data() const {
+  const T* data() const noexcept {
     return _buffer.get();
   }
 
-  T* data() {
+  T* data() noexcept {
     return _buffer.get();
   }
 
-  const T* begin() const {
+  const T* begin() const noexcept {
     return _buffer.get();
   }
 
-  T* begin() {
+  T* begin() noexcept {
     return _buffer.get();
   }
 
-  const T* end() const {
+  const T* end() const noexcept {
     return std::next(_buffer.get(), _size);
   }
 
-  T* end() {
+  T* end() noexcept {
     return std::next(_buffer.get(), _size);
   }
 
-  const T* cbegin() const {
+  const T* cbegin() const noexcept {
     return _buffer.get();
   }
 
-  const T* cend() const {
+  const T* cend() const noexcept {
     return std::next(_buffer.get(), _size);
   }
 
-  size_t size() const {
+  size_t size() const noexcept {
     return _size;
   }
 

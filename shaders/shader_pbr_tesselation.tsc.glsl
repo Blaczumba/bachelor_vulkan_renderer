@@ -10,6 +10,14 @@ layout(location = 0) in vec2 inTexCoord[];
 layout(location = 1) in vec3 inNormal[];
 layout(location = 2) in vec3 inTangent[];
 
+layout(set=1, binding=0) uniform CameraUniform { // Dynamic uniform buffer which depends on frame in flight
+    mat4 view;
+    mat4 proj;
+    vec3 viewPos;
+    vec3 viewDir;
+
+} camera;
+
 struct OutputPatch
 {
     vec3 WorldPos_B030;
@@ -31,10 +39,7 @@ struct OutputPatch
 layout(location = 0) out patch OutputPatch outPatch;
 
 vec3 ProjectToPlane(vec3 Point, vec3 PlanePoint, vec3 PlaneNormal) {
-    vec3 v = Point - PlanePoint;
-    float Len = dot(v, PlaneNormal);
-    vec3 d = Len * PlaneNormal;
-    return (Point - d);
+    return Point - dot(Point - PlanePoint, PlaneNormal) * PlaneNormal;
 }
 
 void CalcPositions() {
@@ -77,6 +82,19 @@ void CalcPositions() {
     outPatch.WorldPos_B111 += (outPatch.WorldPos_B111 - Center) / 2.0;
 }
 
+const float MIN_TESS = 1.0;
+const float MAX_TESS = 3.0;
+const float MAX_DIST = 10.0;
+const float MIN_DIST = 0.1;
+
+float getLevelForPoint(vec3 pos) {
+    float dist = distance(camera.viewPos, pos);
+    float dFactor = clamp((MAX_DIST - dist) / (MAX_DIST - MIN_DIST), 0.0, 1.0);
+    vec3 patchDir = normalize(pos - camera.viewPos);
+    float vFactor = clamp(dot(camera.viewDir, patchDir) * 6.0 - 5.0, 0.0, 1.0);
+    return mix(MIN_TESS, MAX_TESS, dFactor * vFactor);
+}
+
 void main() {
     // Pass through the per-vertex data to the tessellation evaluation shader
     // gl_out[gl_InvocationID].gl_Position =  gl_in[gl_InvocationID].gl_Position;
@@ -90,8 +108,12 @@ void main() {
 
     CalcPositions();
 
-    gl_TessLevelOuter[0] = tessLevelOuter;
-    gl_TessLevelOuter[1] = tessLevelOuter;
-    gl_TessLevelOuter[2] = tessLevelOuter;
-    gl_TessLevelInner[0] = tessLevelInner;
+    float v0Level = getLevelForPoint(gl_in[0].gl_Position.xyz);
+    float v1Level = getLevelForPoint(gl_in[1].gl_Position.xyz);
+    float v2Level = getLevelForPoint(gl_in[2].gl_Position.xyz);
+    gl_TessLevelOuter[0] = (v1Level + v2Level) / 2.0;
+    gl_TessLevelOuter[1] = (v2Level + v0Level) / 2.0;
+    gl_TessLevelOuter[2] = (v0Level + v1Level) / 2.0;
+
+    gl_TessLevelInner[0] = (v0Level + v1Level + v2Level) / 3.0;
 }

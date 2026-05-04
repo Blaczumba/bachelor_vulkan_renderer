@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+#include <span>
 #include <vector>
 
 #include "common/util/resource_handles.h"
@@ -20,14 +22,20 @@ public:
   static std::unique_ptr<BindlessDescriptorSetWriter> create(
       const DescriptorSet& descriptorSet) noexcept;
 
-  UniformTextureHandle storeTexture(const Texture& texture, const Sampler& sampler);
+  UniformTextureHandle writeTexture(VkImageView view, VkImageLayout layout, VkSampler sampler);
 
+  void overwriteTexture(
+      UniformTextureHandle handle, VkImageView view, VkImageLayout layout, VkSampler sampler);
+
+  // TODO: refactor.
   std::vector<UniformTextureHandle> storeTextures(std::span<const Texture> textures);
 
   void removeTexture(UniformTextureHandle handle);
 
-  UniformBufferHandle storeBuffer(const Buffer& buffer);
+  UniformBufferHandle writeBuffer(
+      const Buffer& buffer, std::optional<size_t> size = std::nullopt, size_t offset = 0);
 
+  // TODO: refactor.
   std::vector<UniformBufferHandle> storeBuffers(std::span<const Buffer> buffers);
 
   void removeBuffer(UniformBufferHandle handle);

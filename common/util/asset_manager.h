@@ -5,33 +5,25 @@
 #include <span>
 #include <string>
 
+#include "common/buffer/buffer.h"
+#include "common/model_loader/image_loader/image_loader.h"
 #include "common/util/resource_handles.h"
 
 namespace common {
 
-template <typename AssetManagerImpl>
 class AssetManager {
 public:
-  StagingImageDataResourceHandle loadImageAsync(const std::string& filePath) {
-    return static_cast<AssetManagerImpl*>(this)->loadImageAsync(filePath);
-  }
+  virtual StagingImageDataResourceHandle loadImageAsync(const std::string& filePath) = 0;
 
-  template <typename Model, typename... Type>
-  StagingVertexDataResourceHandle loadVertexDataInterleavingAsync(
-      std::shared_ptr<Model>& modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
-      std::span<const std::pair<std::string, std::string>> orders,
-      std::span<const Type>... attributes) {
-    return static_cast<AssetManagerImpl*>(this)->loadVertexDataInterleavingAsync(
-        modelPtr, indices, indexSize, orders, attributes...);
-  }
+  virtual StagingImageDataResourceHandle loadImageAsync(
+      std::shared_ptr<void> modelPtr, std::span<const std::byte> data) = 0;
 
-  template <typename Model, typename VertexType>
-  void loadVertexDataAsync(
-      std::shared_ptr<Model>& modelPtr, const std::string& filePath,
-      std::span<const std::byte> indices, uint8_t indexSize, std::span<const VertexType> vertices) {
-    static_cast<AssetManagerImpl*>(this)->template loadVertexDataAsync<VertexType>(
-        modelPtr, filePath, indices, indexSize, vertices);
-  }
+  virtual StagingImageDataResourceHandle loadImageAsync(
+      std::shared_ptr<void> modelPtr, ImageResource&& imageResource) = 0;
+
+  virtual StagingVertexDataResourceHandle loadVertexDataInterleavingAsync(
+      std::shared_ptr<void> modelPtr, std::span<const std::byte> indices, uint8_t indexSize,
+      std::vector<BufferDescription>&& bufferDescriptions) = 0;
 };
 
 }  // namespace common

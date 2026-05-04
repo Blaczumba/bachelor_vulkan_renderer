@@ -10,6 +10,7 @@ public:
   UniformTextureHandle diffuse;
   UniformTextureHandle normal;
   UniformTextureHandle metallicRoughness;
+  PipelineHandle pipelineHandle;
 
   static constexpr std::enable_if_t < componentID<MAX_COMPONENTS, ComponentType> getComponentID() {
     return componentID;

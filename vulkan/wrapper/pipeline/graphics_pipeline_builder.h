@@ -2,18 +2,15 @@
 
 #include <array>
 #include <initializer_list>
-#include <map>
+#include <optional>
+#include <span>
+#include <vector>
 #include <vulkan/vulkan.h>
 
+#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/pipeline/pipeline.h"
 #include "vulkan/wrapper/pipeline/pipeline_layout.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
-
-struct SpecializationData {
-  void* data;
-  size_t dataSize;
-  std::map<VkShaderStageFlagBits, std::vector<VkSpecializationMapEntry>> mapEntries;
-};
 
 class GraphicsPipelineBuilder {
 public:
@@ -99,6 +96,10 @@ public:
 
   GraphicsPipelineBuilder& withPushConstantShaderStages(VkShaderStageFlags shaderStageFlags);
 
+  GraphicsPipelineBuilder& withFragmentShadingRateStateCreateInfo(
+      VkExtent2D fragmentSize, VkFragmentShadingRateCombinerOpKHR combinerOp1,
+      VkFragmentShadingRateCombinerOpKHR combinerOp2);
+
 private:
   SpecializationData _specializationData;
   lib::Buffer<VkPipelineShaderStageCreateInfo> _shaderStages;
@@ -128,4 +129,8 @@ private:
 
   lib::Buffer<VkDynamicState> _dynamicStates;
   VkPipelineDynamicStateCreateInfo _dynamicState = {};
+
+  VkPipelineFragmentShadingRateStateCreateInfoKHR _fragmentShadingRateState = {};
+
+  void* _pNext = nullptr;
 };

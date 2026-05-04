@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class Sampler {
@@ -17,8 +19,6 @@ public:
   ~Sampler();
 
   VkSampler getVkSampler() const noexcept;
-
-  bool isValid() const noexcept;
 
 private:
   VkSampler _sampler = VK_NULL_HANDLE;

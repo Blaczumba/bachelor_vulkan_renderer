@@ -1,5 +1,8 @@
 #include "buffers.h"
 
+#include <cstdint>
+#include <vulkan/vulkan.h>
+
 namespace {
 
 struct PipelineStageInfo {
@@ -19,6 +22,9 @@ constexpr PipelineStageInfo sourceStageAndAccessMask(VkImageLayout layout) {
       return {VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
     case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
       return {VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+      return {VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
+              VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR};
     default:
       return {0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
   }
@@ -42,6 +48,9 @@ constexpr PipelineStageInfo destinationStageAndAccessMask(VkImageLayout layout) 
         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT};
     case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
       return {VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
+    case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+      return {VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
+              VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR};
     default:
       return {0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
   }
@@ -51,7 +60,8 @@ constexpr PipelineStageInfo destinationStageAndAccessMask(VkImageLayout layout) 
 
 void transitionImageLayout(
     VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
-    VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t layerCount) {
+    VkImageAspectFlags aspectFlags, uint32_t baseMipLevel, uint32_t levelCount,
+    uint32_t baseArrayLayer, uint32_t layerCount) {
   const PipelineStageInfo srcStageInfo = sourceStageAndAccessMask(oldLayout);
   const PipelineStageInfo dstStageInfo = sourceStageAndAccessMask(newLayout);
 
@@ -66,9 +76,9 @@ void transitionImageLayout(
     .image = image,
     .subresourceRange = VkImageSubresourceRange{
                                                 .aspectMask = aspectFlags,
-                                                .baseMipLevel = 0,
-                                                .levelCount = mipLevels,
-                                                .baseArrayLayer = 0,
+                                                .baseMipLevel = baseMipLevel,
+                                                .levelCount = levelCount,
+                                                .baseArrayLayer = baseArrayLayer,
                                                 .layerCount = layerCount}
   };
 

@@ -1,10 +1,11 @@
 #include "memory_allocator.h"
 
-#include "vulkan/wrapper/util/check.h"
-
 #define VMA_IMPLEMENTATION
-#include <variant>
+#include <utility>
 #include <vma/vk_mem_alloc.h>
+#include <vulkan/vulkan.h>
+
+#include "vulkan/wrapper/util/check.h"
 
 VmaWrapper::VmaWrapper(VkDevice device, VkPhysicalDevice physicalDevice, VkInstance instance) {
   const VmaAllocatorCreateInfo allocatorCreateInfo = {
