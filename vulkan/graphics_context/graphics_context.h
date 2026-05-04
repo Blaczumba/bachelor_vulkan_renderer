@@ -218,27 +218,27 @@ private:
   void setup() {
     const std::vector<common::VertexData> sponzaData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
-     std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
-         *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
-     std::for_each(
-         antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData&
-         data) {
-           data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
-                        * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
-         });
+     //std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
+     //    *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
+     //std::for_each(
+     //    antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData&
+     //    data) {
+     //      data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
+     //                   * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
+     //    });
     /*std::vector<common::VertexData> lanternData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_lantern_3d_model/scene.gltf");
     std::for_each(lanternData.begin(), lanternData.end(), [](common::VertexData& data) {
       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(8.5f, 4.25f, 0.0f))
                    * glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
     });*/
-    std::vector<common::VertexData> spartanData =
-        common::LoadGltfFromFile(*_assetManager, MODELS_PATH "pbr_spartan_helmet/scene.gltf");
-    std::for_each(spartanData.begin(), spartanData.end(), [](common::VertexData& data) {
-      data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(1000.0f, 16.0f, -250.0f))
-                   * glm::rotate(glm::mat4(1.0f), glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
-                   * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
-    });
+    //std::vector<common::VertexData> spartanData =
+    //    common::LoadGltfFromFile(*_assetManager, MODELS_PATH "pbr_spartan_helmet/scene.gltf");
+    //std::for_each(spartanData.begin(), spartanData.end(), [](common::VertexData& data) {
+    //  data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(1000.0f, 16.0f, -250.0f))
+    //               * glm::rotate(glm::mat4(1.0f), glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
+    //               * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
+    //});
 
     createDescriptorSets();
     createEnvMappingResources();
@@ -247,7 +247,7 @@ private:
     createCommandBuffers();
     createSyncObjects();
     loadObjects(sponzaData, _graphicsPipelineHandle);
-    loadObjects(antiqueCandleStickData, _graphicsTesselationPipelineHandle);
+    // loadObjects(antiqueCandleStickData, _graphicsTesselationPipelineHandle);
     // loadObjects(lanternData, _graphicsTesselationPipelineHandle);
     // loadObjects(spartanData, _graphicsTesselationPipelineHandle);
 
@@ -269,23 +269,23 @@ private:
       _skyboxEntity =
           loadObject(commandBuffer, cubeData, PipelineHandle(0), std::move(skyboxTexture));
 
-      std::string razielFileContents = _fileLoader.loadFileToString(MODELS_PATH "Raziel.obj");
-      common::VertexData razielData =
-          common::loadObj(*_assetManager, "Raziel.obj", razielFileContents);
-      razielData.model =
-          glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))
-          * glm::scale(glm::mat4(1.0f), glm::vec3(3.0f, 3.0f, 3.0f));
-      razielData.diffuseTexture = {
-        _assetManager->loadImageAsync(TEXTURES_PATH "Raziel.png"), TEXTURES_PATH "Raziel.png"};
-      const AssetManager::ImageData& razielImageData =
-          _assetManager->getImageData(razielData.diffuseTexture.ID);
+      //std::string razielFileContents = _fileLoader.loadFileToString(MODELS_PATH "Raziel.obj");
+      //common::VertexData razielData =
+      //    common::loadObj(*_assetManager, "Raziel.obj", razielFileContents);
+      //razielData.model =
+      //    glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))
+      //    * glm::scale(glm::mat4(1.0f), glm::vec3(3.0f, 3.0f, 3.0f));
+      //razielData.diffuseTexture = {
+      //  _assetManager->loadImageAsync(TEXTURES_PATH "Raziel.png"), TEXTURES_PATH "Raziel.png"};
+      //const AssetManager::ImageData& razielImageData =
+      //    _assetManager->getImageData(razielData.diffuseTexture.ID);
 
-      Texture razielTexture =
-          createTexture2D(*_logicalDevice, commandBuffer, razielImageData, VK_FORMAT_R8G8B8A8_SRGB,
-                          _physicalDevice->getMaxSamplerAnisotropy());
-      _razielEntity = loadObject(commandBuffer, razielData, _blinnPhongTesselationPipelineHandle,
-                                 std::move(razielTexture));
-      _objects.push_back(Object("Raziel", _razielEntity));
+      //Texture razielTexture =
+      //    createTexture2D(*_logicalDevice, commandBuffer, razielImageData, VK_FORMAT_R8G8B8A8_SRGB,
+      //                    _physicalDevice->getMaxSamplerAnisotropy());
+      //_razielEntity = loadObject(commandBuffer, razielData, _blinnPhongTesselationPipelineHandle,
+      //                           std::move(razielTexture));
+      //_objects.push_back(Object("Raziel", _razielEntity));
     }
 
     createOctreeScene();
