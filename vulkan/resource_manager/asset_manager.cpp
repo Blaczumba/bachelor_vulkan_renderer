@@ -20,7 +20,7 @@ using VertexData = AssetManager::VertexData;
 
 AssetManager::AssetManager(
     const LogicalDevice& logicalDevice, const FileLoader& fileLoader, std::launch launchPolicy)
-  : _logicalDevice(logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy),
+  : _logicalDevice(logicalDevice), _fileLoader(fileLoader), _launchPolicy(std::launch::deferred),
     _freeImageDataIndices(MAX_STAGING_IMAGE_DATA_RESOURCES),
     _freeVertexDataIndices(MAX_STAGING_VERTEX_DATA_RESOURCES) {
   std::iota(_freeImageDataIndices.rbegin(), _freeImageDataIndices.rend(),
@@ -39,7 +39,7 @@ namespace {
 lib::Buffer<VkBufferImageCopy> translateToVkBufferImageCopy(
     std::span<const ImageSubresource> imageSubresources) {
   lib::Buffer<VkBufferImageCopy> vkSubresources(imageSubresources.size());
-  std::transform(imageSubresources.cbegin(), imageSubresources.cend(), vkSubresources.begin(),
+  std::transform(std::cbegin(imageSubresources), std::cend(imageSubresources), vkSubresources.begin(),
                  [](const ImageSubresource& subresource) {
                    return VkBufferImageCopy{
                      .bufferOffset = subresource.offset,

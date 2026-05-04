@@ -239,9 +239,9 @@ std::vector<VertexData> LoadGltfFromFile(
     common::AssetManager& assetManager, const std::string& filePath) {
   auto sharedData = std::make_shared<SharedData>();
   tinygltf::TinyGLTF loader;
-  if (!std::filesystem::exists(std::filesystem::path(filePath))) {
-    throw EngineException(std::format("{} does not exists in the filesystem.", filePath));
-  }
+//  if (!std::filesystem::exists(std::filesystem::path(filePath))) {
+//    throw EngineException(std::format("{} does not exists in the filesystem.", filePath));
+//  }
 
   // loader.SetImageLoader(nullptr, nullptr);
   if (filePath.ends_with(".glb")) {

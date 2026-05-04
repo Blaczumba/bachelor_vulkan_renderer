@@ -218,14 +218,14 @@ private:
   void setup() {
     const std::vector<common::VertexData> sponzaData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
-     //std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
-     //    *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
-     //std::for_each(
-     //    antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData&
-     //    data) {
-     //      data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
-     //                   * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
-     //    });
+//     std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
+//         *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
+//     std::for_each(
+//         antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData&
+//         data) {
+//           data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
+//                        * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
+//         });
     /*std::vector<common::VertexData> lanternData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_lantern_3d_model/scene.gltf");
     std::for_each(lanternData.begin(), lanternData.end(), [](common::VertexData& data) {
@@ -247,7 +247,7 @@ private:
     createCommandBuffers();
     createSyncObjects();
     loadObjects(sponzaData, _graphicsPipelineHandle);
-    // loadObjects(antiqueCandleStickData, _graphicsTesselationPipelineHandle);
+    // loadObjects(antiqueCandleStickData, _graphicsPipelineHandle);
     // loadObjects(lanternData, _graphicsTesselationPipelineHandle);
     // loadObjects(spartanData, _graphicsTesselationPipelineHandle);
 
@@ -787,9 +787,11 @@ private:
         _ubCamera.proj = cameraContexts[i].proj;
         _ubCamera.pos = cameraContexts[i].position;
         _ubCamera.viewDir = cameraContexts[i].viewDir;
-        _dynamicUniformBuffersCamera.copyData(
-            _ubCamera, (2 * currentFrame + i)
-                           * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
+//        _dynamicUniformBuffersCamera.copyData(
+//            _ubCamera, (2 * currentFrame + i)
+//                           * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
+        common::copyData(_dynamicUniformBuffersCamera.getMappedMemory(), (2 * currentFrame + i)
+            * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)), _ubCamera);
       }
     } else {
       UniformBufferCamera _ubCamera;
@@ -1396,7 +1398,7 @@ void createFsrContents(
     Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool) {
   const VkExtent2D extent = texture.getVkExtent2D();
   const lib::Buffer<std::byte> buffer(
-      static_cast<size_t>(extent.width * extent.height), std::byte{0});
+      static_cast<size_t>(extent.width * extent.height), std::byte{10});
   Buffer stagingBuffer =
       Buffer::createStagingBuffer(logicalDevice, buffer.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   common::copyData(stagingBuffer.getMappedMemory(), 0, std::span(buffer));
@@ -1404,8 +1406,8 @@ void createFsrContents(
   for (uint32_t layer = 0; layer < imageCopy.size(); layer++) {
     imageCopy[layer] = VkBufferImageCopy{
       .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                           .mipLevel = layer,
-                           .baseArrayLayer = 0,
+                           .mipLevel = 0,
+                           .baseArrayLayer = layer,
                            .layerCount = 1},
       .imageExtent = VkExtent3D{extent.width, extent.height, 1},
     };
