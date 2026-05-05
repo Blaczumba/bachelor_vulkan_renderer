@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
+include(FetchContent)
 
 set(ENGINE_NAME BejzakEngine)
 
@@ -19,6 +20,13 @@ find_package(Vulkan REQUIRED)
 if(NOT Vulkan_FOUND)
     message(FATAL_ERROR "Vulkan not found!")
 endif()
+
+FetchContent_Declare(
+	glm
+	GIT_REPOSITORY	https://github.com/g-truc/glm.git
+	GIT_TAG 	0af55ccecd98d4e5a8d1fad7de25ba429d60e863 #refs/tags/1.0.1
+)
+FetchContent_MakeAvailable(glm)
 
 # find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 # 
@@ -46,6 +54,7 @@ else()
 endif()
 
 add_definitions(-DGLM_FORCE_NO_CTOR_INIT)
+add_definitions(-DGLM_FORCE_DEPTH_ZERO_TO_ONE)
 
 if(NOT ANDROID)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -63,7 +72,6 @@ elseif(UNIX)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 endif()
 
-include_directories(${PROJECT_SOURCE_DIR}/external/glm)
 include_directories(${PROJECT_SOURCE_DIR}/external/)
 
 add_library(${ENGINE_NAME} INTERFACE)

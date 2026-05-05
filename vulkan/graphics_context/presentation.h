@@ -4,7 +4,6 @@
 
 #include "common/abstractions/graphics_context.h"
 #include "common/abstractions/presentation.h"
-#include "common/camera/camera.h"
 #include "common/input_manager/mouse_keyboard_manager.h"
 #include "common/window/window.h"
 #include "vulkan/graphics_context/graphics_context.h"

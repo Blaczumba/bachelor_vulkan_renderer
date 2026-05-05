@@ -1,6 +1,7 @@
 add_library(VulkanLayer graphics_context.h presentation.h presentation.cpp)
 
 target_link_libraries(VulkanLayer PUBLIC Vulkan::Vulkan)
+target_link_libraries(VulkanLayer PRIVATE glm::glm)
 target_link_libraries(VulkanLayer PUBLIC CommonModelLoader Instance PhysicalDevice LogicalDevice Surface Swapchain)
 
 target_include_directories(VulkanLayer PUBLIC ${PROJECT_SOURCE_DIR})
