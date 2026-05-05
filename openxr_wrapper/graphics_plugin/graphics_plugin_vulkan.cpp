@@ -335,8 +335,9 @@ std::unique_ptr<common::GraphicsContext> GraphicsPluginVulkan::createGraphicsCon
     VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME};
   std::unique_ptr<Instance> instance =
       createInstance("VR BejzakEngine", extensions, debugCallback, xrInstance, systemId);
+DebugMessenger debugMessenger;
 #ifdef VALIDATION_LAYERS_ENABLED
-  DebugMessenger debugMessenger = DebugMessenger::create(*instance, debugCallback);
+  debugMessenger = DebugMessenger::create(*instance, debugCallback);
 #endif
   std::unique_ptr<PhysicalDevice> physicalDevice =
       createPhysicalDevice(xrInstance, systemId, *instance);

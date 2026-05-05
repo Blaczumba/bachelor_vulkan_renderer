@@ -28,6 +28,23 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
+add_definitions(-DSPDLOG_USE_STD_FORMAT)
+FetchContent_Declare(spdlog
+        GIT_REPOSITORY https://github.com/gabime/spdlog.git
+        GIT_TAG v1.13.0
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+)
+FetchContent_MakeAvailable(spdlog)
+
+FetchContent_Declare(OpenXR
+        GIT_REPOSITORY https://github.com/KhronosGroup/OpenXR-SDK.git
+        GIT_TAG release-1.0.33 #must match the meta quest loader OpenXR version
+        #https://developer.oculus.com/downloads/package/oculus-openxr-mobile-sdk#current-openxr-version
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+)
+FetchContent_MakeAvailable(OpenXR)
 
 # find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 # 
@@ -124,16 +141,15 @@ endif()
 if (ANDROID)
     add_library(NativeAppGlue STATIC ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
     target_include_directories(NativeAppGlue PUBLIC ${ANDROID_NDK}/sources/android/native_app_glue)
-
-    add_subdirectory(openxr_wrapper)
-    # target_compile_definitions(${ENGINE_NAME} INTERFACE XR_USE_PLATFORM_ANDROID)
-    target_link_libraries(${ENGINE_NAME} INTERFACE
-            OpenxrGraphicsPlugin OpenxrPlatform OpenxrInstance
-            OpenxrSystem OpenxrSession OpenxrSwapchain
-            OpenxrSpace OpenxrPresentation
-
-            OpenXR::headers
-
-            CommonAndroidFileLoader
-    )
+    target_link_libraries(${ENGINE_NAME} INTERFACE  CommonAndroidFileLoader)
 endif ()
+
+add_subdirectory(openxr_wrapper)
+# target_compile_definitions(${ENGINE_NAME} INTERFACE XR_USE_PLATFORM_ANDROID)
+target_link_libraries(${ENGINE_NAME} INTERFACE
+        OpenxrGraphicsPlugin OpenxrPlatform OpenxrInstance
+        OpenxrSystem OpenxrSession OpenxrSwapchain
+        OpenxrSpace OpenxrPresentation
+
+        OpenXR::headers OpenXR::openxr_loader
+)

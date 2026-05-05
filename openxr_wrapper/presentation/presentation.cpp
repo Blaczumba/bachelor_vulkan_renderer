@@ -8,7 +8,6 @@
 #include "common/file/file_loader.h"
 #include "common/util/engine_exception.h"
 #include "openxr_wrapper/graphics_plugin/graphics_plugin_vulkan.h"  // Needs to be included before platform.
-#include "openxr_wrapper/platform/android_platform.h"
 #include "openxr_wrapper/util/check.h"
 
 namespace xrw {
@@ -230,12 +229,12 @@ bool Presentation::renderLayer(XrTime predictedDisplayTime,
     const XrCompositionLayerProjectionView& projectionLayerView =
         projectionLayerViews.emplace_back(XrCompositionLayerProjectionView{
           .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+          .next = nullptr, // Dobra praktyka w OpenXR
           .pose = views[i].pose,
           .fov = views[i].fov,
-          .subImage.swapchain = viewSwapchain.getSwapchain(),
-          .subImage.imageRect.offset = {0, 0},
-          .subImage.imageRect.extent = viewSwapchain.getXrExtent2Di(),
-          .subImage.imageArrayIndex = i
+          .subImage = {.swapchain = viewSwapchain.getSwapchain(),
+                       .imageRect = {.offset = {0, 0}, .extent = viewSwapchain.getXrExtent2Di()},
+                       .imageArrayIndex = i}
     });
     const auto [x, y, z] = projectionLayerView.pose.position;
     cameraContexts.push_back(common::CameraContext{
