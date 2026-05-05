@@ -18,5 +18,7 @@ if (Vulkan_FOUND)
     target_link_libraries(OpenxrGraphicsPlugin INTERFACE OpenxrGraphicsPluginVulkan)
 endif ()
 
+target_link_libraries(OpenxrGraphicsPlugin INTERFACE CommonAbstractions)
+
 target_include_directories(OpenxrGraphicsPlugin INTERFACE ${PROJECT_SOURCE_DIR})
 target_include_directories(OpenxrGraphicsPlugin INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

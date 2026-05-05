@@ -6,6 +6,7 @@
 #include <span>
 #include <variant>
 #include <vector>
+#include <glm/glm.hpp>
 
 #include "common/camera/camera.h"
 #include "common/util/resource_handles.h"

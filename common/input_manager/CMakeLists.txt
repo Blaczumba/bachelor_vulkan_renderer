@@ -14,5 +14,7 @@ if((WIN32 OR UNIX) AND NOT ANDROID)
 	target_link_libraries(CommonInputManager INTERFACE CommonInputManagerGlfw)
 endif()
 
+target_link_libraries(CommonInputManager INTERFACE glm::glm)
+
 target_include_directories(CommonInputManager INTERFACE ${PROJECT_SOURCE_DIR})
 target_include_directories(CommonInputManager INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
