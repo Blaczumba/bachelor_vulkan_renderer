@@ -37,15 +37,6 @@ FetchContent_Declare(spdlog
 )
 FetchContent_MakeAvailable(spdlog)
 
-FetchContent_Declare(OpenXR
-        GIT_REPOSITORY https://github.com/KhronosGroup/OpenXR-SDK.git
-        GIT_TAG release-1.0.33 #must match the meta quest loader OpenXR version
-        #https://developer.oculus.com/downloads/package/oculus-openxr-mobile-sdk#current-openxr-version
-        GIT_SHALLOW TRUE
-        GIT_PROGRESS TRUE
-)
-FetchContent_MakeAvailable(OpenXR)
-
 # find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 # 
 # if(NOT Boost_FOUND)
@@ -115,7 +106,7 @@ target_include_directories(${COMMON_ENGINE_NAME} INTERFACE
 target_link_libraries(${COMMON_ENGINE_NAME} INTERFACE
     CommonCamera CommonInputManager CommonECS
     CommonObject CommonUtil
-    CommonScene CommonStandardFileLoader
+    CommonScene CommonFileLoader
     CommonModelLoader CommonMath CommonBuffer
     CommonAbstractions
 )
@@ -138,18 +129,19 @@ if(Vulkan_FOUND)
     target_link_libraries(${ENGINE_NAME} INTERFACE ${VULKAN_ENGINE_NAME})
 endif()
 
-if (ANDROID)
-    add_library(NativeAppGlue STATIC ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
-    target_include_directories(NativeAppGlue PUBLIC ${ANDROID_NDK}/sources/android/native_app_glue)
-    target_link_libraries(${ENGINE_NAME} INTERFACE  CommonAndroidFileLoader)
-endif ()
+FetchContent_Declare(OpenXR
+        GIT_REPOSITORY https://github.com/KhronosGroup/OpenXR-SDK.git
+        GIT_TAG release-1.0.33 #must match the meta quest loader OpenXR version
+        #https://developer.oculus.com/downloads/package/oculus-openxr-mobile-sdk#current-openxr-version
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+)
+FetchContent_MakeAvailable(OpenXR)
 
 add_subdirectory(openxr_wrapper)
-# target_compile_definitions(${ENGINE_NAME} INTERFACE XR_USE_PLATFORM_ANDROID)
 target_link_libraries(${ENGINE_NAME} INTERFACE
         OpenxrGraphicsPlugin OpenxrPlatform OpenxrInstance
         OpenxrSystem OpenxrSession OpenxrSwapchain
         OpenxrSpace OpenxrPresentation
-
-        OpenXR::headers OpenXR::openxr_loader
+        OpenXR::openxr_loader OpenXR::headers
 )
