@@ -131,7 +131,7 @@ endif()
 
 FetchContent_Declare(OpenXR
         GIT_REPOSITORY https://github.com/KhronosGroup/OpenXR-SDK.git
-        GIT_TAG release-1.0.33 #must match the meta quest loader OpenXR version
+        GIT_TAG release-1.0.34 #must match the meta quest loader OpenXR version
         #https://developer.oculus.com/downloads/package/oculus-openxr-mobile-sdk#current-openxr-version
         GIT_SHALLOW TRUE
         GIT_PROGRESS TRUE
@@ -143,5 +143,5 @@ target_link_libraries(${ENGINE_NAME} INTERFACE
         OpenxrGraphicsPlugin OpenxrPlatform OpenxrInstance
         OpenxrSystem OpenxrSession OpenxrSwapchain
         OpenxrSpace OpenxrPresentation
-        OpenXR::openxr_loader OpenXR::headers
+        OpenXR::headers
 )
