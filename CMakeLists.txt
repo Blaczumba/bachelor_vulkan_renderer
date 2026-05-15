@@ -112,6 +112,9 @@ target_link_libraries(${COMMON_ENGINE_NAME} INTERFACE
 )
 target_link_libraries(${ENGINE_NAME} INTERFACE ${COMMON_ENGINE_NAME})
 
+add_subdirectory(system)
+target_link_libraries(${ENGINE_NAME} INTERFACE System)
+
 if(Vulkan_FOUND)
     add_subdirectory(vulkan)
     set(VULKAN_ENGINE_NAME ${ENGINE_NAME}Vulkan)
