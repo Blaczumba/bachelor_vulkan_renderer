@@ -3,10 +3,10 @@
 #include <any>
 #include <array>
 #include <chrono>
-#include <iostream>
-#include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
+#include <vector>
 
 #include "common/abstractions/contexts.h"
 #include "common/abstractions/graphics_context.h"
@@ -40,6 +40,8 @@
 #include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
+#include "vulkan/wrapper/surface/surface.h"
+#include "vulkan/wrapper/swapchain/swapchain.h"
 #include "vulkan/wrapper/util/index_buffer_util.h"
 
 inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback1(
@@ -61,6 +63,99 @@ struct SynchronizationContext {
   uint8_t currentFrame = 0;
   std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> imageAvailableSemaphores;
   std::vector<VkSemaphore> renderFinishedSemaphores;
+};
+
+class PresentationContext {
+  PresentationContext(Surface&& surface, Swapchain&& swapchain) noexcept
+    : _surface(std::move(surface)), _swapchain(std::move(swapchain)),
+      _renderFinishedSemaphores(_swapchain.getImagesCount()) {
+    static constexpr VkSemaphoreCreateInfo semaphoreInfo = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+
+    const VkDevice device = _swapchain.getLogicalDevice().getVkDevice();
+    for (VkSemaphore& semaphore : _imageAvailableSemaphores) {
+      CHECK_VKCMD(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore),
+                  "Failed to create VkSemaphore.");
+    }
+    for (VkSemaphore& semaphore : _renderFinishedSemaphores) {
+      CHECK_VKCMD(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore),
+                  "Failed to create VkSemaphore.");
+    }
+  }
+
+public:
+  static std::unique_ptr<PresentationContext> create(Surface&& surface, Swapchain&& swapchain) {
+    return std::unique_ptr<PresentationContext>(
+        new PresentationContext(std::move(surface), std::move(swapchain)));
+  }
+
+  ~PresentationContext() {
+    const VkDevice device = _swapchain.getLogicalDevice().getVkDevice();
+    for (VkSemaphore& semaphore : _imageAvailableSemaphores) {
+      vkDestroySemaphore(device, semaphore, nullptr);
+    }
+    for (VkSemaphore& semaphore : _renderFinishedSemaphores) {
+      vkDestroySemaphore(device, semaphore, nullptr);
+    }
+  }
+
+  PresentationContext(const PresentationContext&) = delete;
+
+  PresentationContext(PresentationContext&&) = delete;
+
+  PresentationContext& operator=(const PresentationContext&) = delete;
+
+  PresentationContext& operator=(PresentationContext&&) = delete;
+
+  common::PresentResources getPresentResources() const {
+    const auto [width, height] = _swapchain.getExtent();
+    std::span<const VkImageView> imageViews = _swapchain.getImageViews();
+    return common::PresentResources{
+      .imageFormat = static_cast<int64_t>(_swapchain.getVkFormat()),
+      .width = width,
+      .height = height,
+      .numLayers = 1,
+      .imageViews =
+          std::span(reinterpret_cast<const std::byte*>(imageViews.data()), imageViews.size()),
+      .multiview = false,
+    };
+  }
+
+  void synchronizeSubmit(VkSubmitInfo* submitInfo) const {
+    submitInfo->waitSemaphoreCount = 1;
+    submitInfo->pWaitSemaphores = &_imageAvailableSemaphores[_currentFrame];
+
+    submitInfo->signalSemaphoreCount = 1;
+    submitInfo->pSignalSemaphores = &_renderFinishedSemaphores[_imageIndex];
+  }
+
+  void setCurrentFrame(uint8_t frame) {
+    _currentFrame = frame;
+  }
+
+  const Swapchain& getSwapchain() const noexcept {
+    return _swapchain;
+  }
+
+  uint32_t acquireNextImage() {
+    CHECK_VKCMD(_swapchain.acquireNextImage(_imageAvailableSemaphores[_currentFrame], &_imageIndex),
+                "Failed to acquire next image from swapchain.");
+    return _imageIndex;
+  }
+
+  void present() const {
+    CHECK_VKCMD(_swapchain.present(_imageIndex, _renderFinishedSemaphores[_imageIndex]),
+                "Failed to present swapchain image.");
+  }
+
+private:
+  Surface _surface;
+  Swapchain _swapchain;
+
+  uint8_t _currentFrame = 0;
+  std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> _imageAvailableSemaphores;
+  uint32_t _imageIndex = 0;
+  lib::Buffer<VkSemaphore> _renderFinishedSemaphores;
 };
 
 struct SwapchainContext {
@@ -123,13 +218,15 @@ template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 class GraphicsContext final : public common::GraphicsContext {
   GraphicsContext(std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
                   std::unique_ptr<PhysicalDevice>&& physicalDevice,
-                  std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader);
+                  std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader,
+                  std::unique_ptr<PresentationContext> presentationContext);
 
 public:
   static std::unique_ptr<common::GraphicsContext> create(
       std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
       std::unique_ptr<PhysicalDevice>&& physicalDevice,
-      std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader);
+      std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader,
+      std::unique_ptr<PresentationContext> presentationContext);
 
   ~GraphicsContext();
 
@@ -145,8 +242,6 @@ public:
 
   void waitDeviceIdle() const override;
 
-  std::any getSynchronizationContext() const override;
-
   static constexpr uint32_t MAX_THREADS_IN_POOL = 2;
 
 private:
@@ -154,10 +249,11 @@ private:
   DebugMessenger _debugMessenger;
   std::unique_ptr<PhysicalDevice> _physicalDevice;
   std::unique_ptr<LogicalDevice> _logicalDevice;
+  std::unique_ptr<PresentationContext> _presentationContext;
 
   const FileLoader& _fileLoader;
 
-  SynchronizationContext _synchContext;
+  uint8_t _currentFrame = 0;
 
   std::array<VkFence, MAX_FRAMES_IN_FLIGHT> _frameFences;
 
@@ -242,27 +338,30 @@ private:
   void setup() {
     const std::vector<common::VertexData> sponzaData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
-//     std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
-//         *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
-//     std::for_each(
-//         antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData&
-//         data) {
-//           data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f, .0f))
-//                        * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
-//         });
+    //     std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
+    //         *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
+    //     std::for_each(
+    //         antiqueCandleStickData.begin(), antiqueCandleStickData.end(), [](common::VertexData&
+    //         data) {
+    //           data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(7.0f, -2.0f,
+    //           .0f))
+    //                        * glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
+    //         });
     /*std::vector<common::VertexData> lanternData =
         common::LoadGltfFromFile(*_assetManager, MODELS_PATH "ornate_lantern_3d_model/scene.gltf");
     std::for_each(lanternData.begin(), lanternData.end(), [](common::VertexData& data) {
       data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(8.5f, 4.25f, 0.0f))
                    * glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
     });*/
-    //std::vector<common::VertexData> spartanData =
-    //    common::LoadGltfFromFile(*_assetManager, MODELS_PATH "pbr_spartan_helmet/scene.gltf");
-    //std::for_each(spartanData.begin(), spartanData.end(), [](common::VertexData& data) {
-    //  data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(1000.0f, 16.0f, -250.0f))
-    //               * glm::rotate(glm::mat4(1.0f), glm::radians(-25.0f), glm::vec3(1.0f, 0.0f, 0.0f))
-    //               * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
-    //});
+    // std::vector<common::VertexData> spartanData =
+    //     common::LoadGltfFromFile(*_assetManager, MODELS_PATH "pbr_spartan_helmet/scene.gltf");
+    // std::for_each(spartanData.begin(), spartanData.end(), [](common::VertexData& data) {
+    //   data.model = data.model * glm::translate(glm::mat4(1.0f), glm::vec3(1000.0f, 16.0f,
+    //   -250.0f))
+    //                * glm::rotate(glm::mat4(1.0f), glm::radians(-25.0f), glm::vec3(1.0f, 0.0f,
+    //                0.0f))
+    //                * glm::scale(glm::mat4(1.0f), glm::vec3(2.5f, 2.5f, 2.5f));
+    // });
 
     createDescriptorSets();
     createEnvMappingResources();
@@ -293,22 +392,23 @@ private:
       _skyboxEntity =
           loadObject(commandBuffer, cubeData, PipelineHandle(0), std::move(skyboxTexture));
 
-      //std::string razielFileContents = _fileLoader.loadFileToString(MODELS_PATH "Raziel.obj");
-      //common::VertexData razielData =
-      //    common::loadObj(*_assetManager, "Raziel.obj", razielFileContents);
-      //razielData.model =
-      //    glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))
-      //    * glm::scale(glm::mat4(1.0f), glm::vec3(3.0f, 3.0f, 3.0f));
-      //razielData.diffuseTexture = {
-      //  _assetManager->loadImageAsync(TEXTURES_PATH "Raziel.png"), TEXTURES_PATH "Raziel.png"};
-      //const AssetManager::ImageData& razielImageData =
-      //    _assetManager->getImageData(razielData.diffuseTexture.ID);
+      // std::string razielFileContents = _fileLoader.loadFileToString(MODELS_PATH "Raziel.obj");
+      // common::VertexData razielData =
+      //     common::loadObj(*_assetManager, "Raziel.obj", razielFileContents);
+      // razielData.model =
+      //     glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))
+      //     * glm::scale(glm::mat4(1.0f), glm::vec3(3.0f, 3.0f, 3.0f));
+      // razielData.diffuseTexture = {
+      //   _assetManager->loadImageAsync(TEXTURES_PATH "Raziel.png"), TEXTURES_PATH "Raziel.png"};
+      // const AssetManager::ImageData& razielImageData =
+      //     _assetManager->getImageData(razielData.diffuseTexture.ID);
 
-      //Texture razielTexture =
-      //    createTexture2D(*_logicalDevice, commandBuffer, razielImageData, VK_FORMAT_R8G8B8A8_SRGB,
-      //                    _physicalDevice->getMaxSamplerAnisotropy());
+      // Texture razielTexture =
+      //     createTexture2D(*_logicalDevice, commandBuffer, razielImageData,
+      //     VK_FORMAT_R8G8B8A8_SRGB,
+      //                     _physicalDevice->getMaxSamplerAnisotropy());
       //_razielEntity = loadObject(commandBuffer, razielData, _blinnPhongTesselationPipelineHandle,
-      //                           std::move(razielTexture));
+      //                            std::move(razielTexture));
       //_objects.push_back(Object("Raziel", _razielEntity));
     }
 
@@ -528,27 +628,11 @@ private:
   }
 
   void createSyncObjects() {
-    static constexpr VkSemaphoreCreateInfo semaphoreInfo = {
-      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     static constexpr VkFenceCreateInfo fenceInfo = {
       .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
-
-    if constexpr (!SYNCED_OUTSIDE) {
-      // TODO: Swapchain images count.
-      _synchContext.renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    }
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-      if constexpr (!SYNCED_OUTSIDE) {
-        CHECK_VKCMD(vkCreateSemaphore(_logicalDevice->getVkDevice(), &semaphoreInfo, nullptr,
-                                      &_synchContext.imageAvailableSemaphores[i]),
-                    "Failed to create VkSemaphore.");
-        CHECK_VKCMD(vkCreateSemaphore(_logicalDevice->getVkDevice(), &semaphoreInfo, nullptr,
-                                      &_synchContext.renderFinishedSemaphores[i]),
-                    "Failed to create VkSemaphore.");
-      }
-      CHECK_VKCMD(
-          vkCreateFence(_logicalDevice->getVkDevice(), &fenceInfo, nullptr, &_frameFences[i]),
-          "Failed to create VkFence.");
+    for (VkFence& fence : _frameFences) {
+      CHECK_VKCMD(vkCreateFence(_logicalDevice->getVkDevice(), &fenceInfo, nullptr, &fence),
+                  "Failed to create VkFence.");
     }
   }
 
@@ -811,11 +895,13 @@ private:
         _ubCamera.proj = cameraContexts[i].proj;
         _ubCamera.pos = cameraContexts[i].position;
         _ubCamera.viewDir = cameraContexts[i].viewDir;
-//        _dynamicUniformBuffersCamera.copyData(
-//            _ubCamera, (2 * currentFrame + i)
-//                           * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
-        common::copyData(_dynamicUniformBuffersCamera.getMappedMemory(), (2 * currentFrame + i)
-            * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)), _ubCamera);
+        //        _dynamicUniformBuffersCamera.copyData(
+        //            _ubCamera, (2 * currentFrame + i)
+        //                           * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
+        common::copyData(_dynamicUniformBuffersCamera.getMappedMemory(),
+                         (2 * currentFrame + i)
+                             * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)),
+                         _ubCamera);
       }
     } else {
       UniformBufferCamera _ubCamera;
@@ -907,7 +993,7 @@ private:
   void recordCommandBuffer(const glm::mat4& cameraProj, const glm::mat4& cameraView,
                            uint32_t imageIndex, glm::u32vec2 screenPos) {
     const Framebuffer& framebuffer = _framebuffers[imageIndex];
-    const CommandBuffer& primaryCommandBuffer = _primaryCommandBuffer[_synchContext.currentFrame];
+    const CommandBuffer& primaryCommandBuffer = _primaryCommandBuffer[_currentFrame];
     primaryCommandBuffer.beginAsPrimary();
 
     const VkCommandBuffer commandBuffer = primaryCommandBuffer.getVkCommandBuffer();
@@ -937,7 +1023,7 @@ private:
                            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                            .baseMipLevel = 0,
                            .levelCount = fsrTexture.getMipLevelsCount(),
-                           .baseArrayLayer = 0, 
+                           .baseArrayLayer = 0,
                            .layerCount = fsrTexture.getLayersCount(),
                            }
     };
@@ -964,14 +1050,13 @@ private:
 
     futures[0] = std::async(std::launch::async, [&]() -> void {
       const VkCommandBuffer commandBuffer =
-          _secondaryCommandBuffers[0][_synchContext.currentFrame].getVkCommandBuffer();
+          _secondaryCommandBuffers[0][_currentFrame].getVkCommandBuffer();
 
       if (viewportScissorInheritance) [[likely]] {
-        _secondaryCommandBuffers[0][_synchContext.currentFrame].beginAsSecondary(
+        _secondaryCommandBuffers[0][_currentFrame].beginAsSecondary(
             framebuffer, &scissorViewportInheritance);
       } else {
-        _secondaryCommandBuffers[0][_synchContext.currentFrame].beginAsSecondary(
-            framebuffer, nullptr);
+        _secondaryCommandBuffers[0][_currentFrame].beginAsSecondary(framebuffer, nullptr);
         vkCmdSetViewport(commandBuffer, 0, 1, &framebuffer.getViewport());
         vkCmdSetScissor(commandBuffer, 0, 1, &framebuffer.getScissor());
       }
@@ -987,12 +1072,12 @@ private:
 
       uint32_t dynamicUniformBufferOffsets[MULTIVIEW_PRESENTATION ? 2 : 1];
       if constexpr (MULTIVIEW_PRESENTATION) {
-        const uint32_t baseOffset = 2u * _synchContext.currentFrame;
+        const uint32_t baseOffset = 2u * _currentFrame;
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
             dynamicUniformBufferOffsets, {baseOffset, baseOffset});
       } else {
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-            dynamicUniformBufferOffsets, {_synchContext.currentFrame});
+            dynamicUniformBufferOffsets, {_currentFrame});
       }
 
       recordOctreeSecondaryCommandBuffer(
@@ -1004,14 +1089,13 @@ private:
     futures[1] = std::async(std::launch::async, [&]() -> void {
       // Skybox
       const VkCommandBuffer commandBuffer =
-          _secondaryCommandBuffers[1][_synchContext.currentFrame].getVkCommandBuffer();
+          _secondaryCommandBuffers[1][_currentFrame].getVkCommandBuffer();
 
       if (viewportScissorInheritance) [[likely]] {
-        _secondaryCommandBuffers[1][_synchContext.currentFrame].beginAsSecondary(
+        _secondaryCommandBuffers[1][_currentFrame].beginAsSecondary(
             framebuffer, &scissorViewportInheritance);
       } else {
-        _secondaryCommandBuffers[1][_synchContext.currentFrame].beginAsSecondary(
-            framebuffer, nullptr);
+        _secondaryCommandBuffers[1][_currentFrame].beginAsSecondary(framebuffer, nullptr);
         vkCmdSetViewport(commandBuffer, 0, 1, &framebuffer.getViewport());
         vkCmdSetScissor(commandBuffer, 0, 1, &framebuffer.getScissor());
       }
@@ -1055,12 +1139,12 @@ private:
 
       uint32_t dynamicUniformBufferOffsets[MULTIVIEW_PRESENTATION ? 2 : 1];
       if constexpr (MULTIVIEW_PRESENTATION) {
-        const uint32_t baseOffset = 2u * _synchContext.currentFrame;
+        const uint32_t baseOffset = 2u * _currentFrame;
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
             dynamicUniformBufferOffsets, {baseOffset, baseOffset});
       } else {
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-            dynamicUniformBufferOffsets, {_synchContext.currentFrame});
+            dynamicUniformBufferOffsets, {_currentFrame});
       }
       vkCmdBindDescriptorSets(
           commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
@@ -1096,8 +1180,8 @@ private:
     });
 
     primaryCommandBuffer.executeSecondaryCommandBuffers(
-        {_secondaryCommandBuffers[0][_synchContext.currentFrame].getVkCommandBuffer(),
-         _secondaryCommandBuffers[1][_synchContext.currentFrame].getVkCommandBuffer()});
+        {_secondaryCommandBuffers[0][_currentFrame].getVkCommandBuffer(),
+         _secondaryCommandBuffers[1][_currentFrame].getVkCommandBuffer()});
     primaryCommandBuffer.endRenderPass();
 
     if (primaryCommandBuffer.end() != VK_SUCCESS) {
@@ -1110,10 +1194,11 @@ template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
     std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
     std::unique_ptr<PhysicalDevice>&& physicalDevice,
-    std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader)
+    std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader,
+    std::unique_ptr<PresentationContext> presentationContext)
   : _instance(std::move(instance)), _debugMessenger(std::move(debugMessenger)),
     _physicalDevice(std::move(physicalDevice)), _logicalDevice(std::move(logicalDevice)),
-    _fileLoader(fileLoader),
+    _fileLoader(fileLoader), _presentationContext(std::move(presentationContext)),
     _singleTimeCommandPool(
         CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)),
     _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::async)),
@@ -1137,11 +1222,12 @@ template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 std::unique_ptr<common::GraphicsContext> GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
     create(std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
            std::unique_ptr<PhysicalDevice>&& physicalDevice,
-           std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader) {
+           std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader,
+           std::unique_ptr<PresentationContext> presentationContext) {
   return std::unique_ptr<GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>>(
       new GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>(
           std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
-          std::move(logicalDevice), fileLoader));
+          std::move(logicalDevice), fileLoader, std::move(presentationContext)));
 }
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
@@ -1149,10 +1235,6 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::~GraphicsContext() {
   const VkDevice device = _logicalDevice->getVkDevice();
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    if constexpr (!SYNCED_OUTSIDE) {
-      vkDestroySemaphore(device, _synchContext.renderFinishedSemaphores[i], nullptr);
-      vkDestroySemaphore(device, _synchContext.imageAvailableSemaphores[i], nullptr);
-    }
     vkDestroyFence(device, _frameFences[i], nullptr);
   }
 }
@@ -1166,17 +1248,17 @@ common::UpdateContextResponse GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTA
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
     const common::DrawingContext& drawingContext) {
-  vkWaitForFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame],
-                  VK_TRUE, UINT64_MAX);
+  vkWaitForFences(
+      _logicalDevice->getVkDevice(), 1, &_frameFences[_currentFrame], VK_TRUE, UINT64_MAX);
 
-  updateUniformBuffer(drawingContext.cameraContexts, _synchContext.currentFrame);
+  updateUniformBuffer(drawingContext.cameraContexts, _currentFrame);
 
-  _primaryCommandBuffer[_synchContext.currentFrame].resetCommandBuffer();
+  _primaryCommandBuffer[_currentFrame].resetCommandBuffer();
   for (int i = 0; i < MAX_THREADS_IN_POOL; i++) {
-    _secondaryCommandBuffers[i][_synchContext.currentFrame].resetCommandBuffer();
+    _secondaryCommandBuffers[i][_currentFrame].resetCommandBuffer();
   }
 
-  vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame]);
+  vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_currentFrame]);
 
   const common::CameraContext& cameraContext = drawingContext.cameraContexts[0];
   recordCommandBuffer(cameraContext.proj, cameraContext.view, drawingContext.imageIndex,
@@ -1185,35 +1267,28 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
   VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
 
   VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-
-  VkSemaphore waitSemaphore;
-  if constexpr (!SYNCED_OUTSIDE) {
-    waitSemaphore = _synchContext.imageAvailableSemaphores[_synchContext.currentFrame];
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &waitSemaphore;
-  }
   submitInfo.pWaitDstStageMask = waitStages;
 
-  VkCommandBuffer submitCommands[] = {
-    _primaryCommandBuffer[_synchContext.currentFrame].getVkCommandBuffer()};
+  VkCommandBuffer submitCommands[] = {_primaryCommandBuffer[_currentFrame].getVkCommandBuffer()};
   submitInfo.commandBufferCount = static_cast<uint32_t>(std::size(submitCommands));
   submitInfo.pCommandBuffers = submitCommands;
 
-  VkSemaphore signalSemaphore;
   if constexpr (!SYNCED_OUTSIDE) {
-    signalSemaphore = _synchContext.renderFinishedSemaphores[drawingContext.imageIndex];
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &signalSemaphore;
+    _presentationContext->synchronizeSubmit(&submitInfo);
   }
 
-  if (vkQueueSubmit(_logicalDevice->getGraphicsVkQueue(), 1, &submitInfo,
-                    _frameFences[_synchContext.currentFrame])
+  if (vkQueueSubmit(
+          _logicalDevice->getGraphicsVkQueue(), 1, &submitInfo, _frameFences[_currentFrame])
       != VK_SUCCESS) {
     throw std::runtime_error("failed to submit draw command buffer!");
   }
 
-  if (++_synchContext.currentFrame == MAX_FRAMES_IN_FLIGHT) {
-    _synchContext.currentFrame = 0;
+  if (++_currentFrame == MAX_FRAMES_IN_FLIGHT) {
+    _currentFrame = 0;
+  }
+
+  if constexpr (!SYNCED_OUTSIDE) {
+    _presentationContext->setCurrentFrame(_currentFrame);
   }
 }
 
@@ -1224,8 +1299,8 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::initializeResource
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::waitCompleteExecution() const {
-  vkWaitForFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_synchContext.currentFrame],
-                  VK_TRUE, UINT64_MAX);
+  vkWaitForFences(
+      _logicalDevice->getVkDevice(), 1, &_frameFences[_currentFrame], VK_TRUE, UINT64_MAX);
 }
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
@@ -1320,12 +1395,6 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::createPresentingRe
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::waitDeviceIdle() const {
   vkDeviceWaitIdle(_logicalDevice->getVkDevice());
-}
-
-template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
-std::any
-GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::getSynchronizationContext() const {
-  return std::make_any<const SynchronizationContext*>(&_synchContext);
 }
 
 namespace {

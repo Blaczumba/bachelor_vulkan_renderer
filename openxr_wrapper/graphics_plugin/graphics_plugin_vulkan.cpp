@@ -354,7 +354,7 @@ DebugMessenger debugMessenger;
 
   return vlkn::GraphicsContext<true, true>::create(
       std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
-      std::move(logicalDevice), fileLoader);
+      std::move(logicalDevice), fileLoader, nullptr);
 }
 
 }  // namespace xrw

@@ -39,8 +39,8 @@ namespace {
 lib::Buffer<VkBufferImageCopy> translateToVkBufferImageCopy(
     std::span<const ImageSubresource> imageSubresources) {
   lib::Buffer<VkBufferImageCopy> vkSubresources(imageSubresources.size());
-  std::transform(std::cbegin(imageSubresources), std::cend(imageSubresources), vkSubresources.begin(),
-                 [](const ImageSubresource& subresource) {
+  std::transform(std::cbegin(imageSubresources), std::cend(imageSubresources),
+                 vkSubresources.begin(), [](const ImageSubresource& subresource) {
                    return VkBufferImageCopy{
                      .bufferOffset = subresource.offset,
                      .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,

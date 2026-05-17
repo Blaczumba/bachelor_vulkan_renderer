@@ -13,7 +13,7 @@
 namespace vlkn {
 
 class Presentation final : public common::Presentation {
-  Presentation(std::shared_ptr<Window>&& window, Surface&& surface, Swapchain&& swapchain,
+  Presentation(std::shared_ptr<Window>&& window, PresentationContext& presentationContext,
                std::unique_ptr<GraphicsContext<false, false>>&& graphicsContext,
                const FileLoader& fileLoader);
 
@@ -32,8 +32,7 @@ private:
   std::shared_ptr<Window> _window;
 
   std::unique_ptr<GraphicsContext<false, false>> _graphicsContext;
-  Surface _surface;
-  Swapchain _swapchain;
+  PresentationContext& _presentationContext;
 
   // This should come from the outside but for now it is ok:
   common::DrawingContext _drawingContext;

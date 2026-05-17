@@ -1,6 +1,5 @@
 #pragma once
 
-#include <any>
 #include <cstdint>
 
 #include "common/abstractions/contexts.h"
@@ -27,8 +26,6 @@ public:
   virtual void createPresentingResources(const PresentResources& presentResources) = 0;
 
   virtual void waitDeviceIdle() const = 0;
-
-  virtual std::any getSynchronizationContext() const = 0;
 
 private:
 };

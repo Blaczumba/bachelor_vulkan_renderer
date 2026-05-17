@@ -15,8 +15,8 @@ class Framebuffer {
 public:
   Framebuffer() noexcept = default;
 
-  static Framebuffer create(const Renderpass& renderpass, VkExtent2D extent,
-                            std::span<const VkImageView> attachments);
+  static Framebuffer create(
+      const Renderpass& renderpass, VkExtent2D extent, std::span<const VkImageView> attachments);
 
   Framebuffer(Framebuffer&& framebuffer) noexcept;
 

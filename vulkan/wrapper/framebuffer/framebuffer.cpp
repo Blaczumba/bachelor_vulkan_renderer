@@ -12,8 +12,8 @@
 #include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/util/check.h"
 
-Framebuffer Framebuffer::create(const Renderpass& renderpass, VkExtent2D extent,
-                                std::span<const VkImageView> attachments) {
+Framebuffer Framebuffer::create(
+    const Renderpass& renderpass, VkExtent2D extent, std::span<const VkImageView> attachments) {
   const VkFramebufferCreateInfo framebufferInfo = {
     .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
     .renderPass = renderpass.getVkRenderPass(),

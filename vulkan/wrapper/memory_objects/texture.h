@@ -29,7 +29,7 @@ public:
   void generateMipmaps(VkCommandBuffer commandBuffer, VkImageLayout dstLayout);
 
   void copyFromBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
-                             std::span<const VkBufferImageCopy> copyRegions);
+                      std::span<const VkBufferImageCopy> copyRegions);
 
   void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
 
