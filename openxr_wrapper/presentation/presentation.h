@@ -14,14 +14,14 @@ namespace xrw {
 
 class Presentation final : public common::Presentation {
   Presentation(
-      std::unique_ptr<Platform>&& platform, std::unique_ptr<GraphicsPlugin>&& graphicsPlugin,
-      std::unique_ptr<common::GraphicsContext>&& graphicsContext,
-      std::unique_ptr<Instance>&& instance, std::unique_ptr<System>&& system,
-      std::unique_ptr<Session>&& session, std::vector<Swapchain>&& swapchains) noexcept;
+      std::unique_ptr<Platform> platform, std::unique_ptr<GraphicsPlugin> graphicsPlugin,
+      std::unique_ptr<common::GraphicsContext> graphicsContext,
+      std::unique_ptr<Instance> instance, std::unique_ptr<System> system,
+      std::unique_ptr<Session> session, std::vector<Swapchain>&& swapchains) noexcept;
 
 public:
   static std::unique_ptr<common::Presentation> create(
-      std::unique_ptr<Platform>&& platform, common::GraphicsApi graphicsApi,
+      std::unique_ptr<Platform> platform, common::GraphicsApi graphicsApi,
       const FileLoader& fileLoader);
 
   ~Presentation() = default;

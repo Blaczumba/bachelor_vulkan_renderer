@@ -54,16 +54,16 @@ glm::mat4 createViewMatrix(const XrPosef& pose) {
 }  // namespace
 
 Presentation::Presentation(
-    std::unique_ptr<Platform>&& platform, std::unique_ptr<GraphicsPlugin>&& graphicsPlugin,
-    std::unique_ptr<common::GraphicsContext>&& graphicsContext,
-    std::unique_ptr<Instance>&& instance, std::unique_ptr<System>&& system,
-    std::unique_ptr<Session>&& session, std::vector<Swapchain>&& swapchains) noexcept
+    std::unique_ptr<Platform> platform, std::unique_ptr<GraphicsPlugin> graphicsPlugin,
+    std::unique_ptr<common::GraphicsContext> graphicsContext,
+    std::unique_ptr<Instance> instance, std::unique_ptr<System> system,
+    std::unique_ptr<Session> session, std::vector<Swapchain>&& swapchains) noexcept
   : _platform(std::move(platform)), _graphicsPlugin(std::move(graphicsPlugin)),
     _graphicsContext(std::move(graphicsContext)), _instance(std::move(instance)),
     _system(std::move(system)), _session(std::move(session)), _swapchains(std::move(swapchains)) {}
 
 std::unique_ptr<common::Presentation> Presentation::create(
-    std::unique_ptr<Platform>&& platform, common::GraphicsApi graphicsApi,
+    std::unique_ptr<Platform> platform, common::GraphicsApi graphicsApi,
     const FileLoader& fileLoader) {
   std::unique_ptr<GraphicsPlugin> graphicsPlugin = createGraphicsPlugin(graphicsApi);
   std::unique_ptr<Instance> instance = Instance::create("BejzakEngine", *platform, *graphicsPlugin);
