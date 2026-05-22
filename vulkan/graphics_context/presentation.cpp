@@ -4,6 +4,7 @@
 #include "common/util/engine_exception.h"
 #include "lib/types/util.h"
 #include "vulkan/graphics_context/graphics_context.h"
+#include "vulkan/graphics_context/presentation_lib.h"
 #include "vulkan/wrapper/instance/instance.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
@@ -13,9 +14,10 @@
 namespace vlkn {
 
 Presentation::Presentation(
-    std::shared_ptr<Window>&& window, PresentationContext& presentationContext,
-    std::unique_ptr<GraphicsContext<false, false>>&& graphicsContext, const FileLoader& fileLoader)
-  : _window(std::move(window)), _presentationContext(presentationContext),
+    std::shared_ptr<Window>&& window, std::shared_ptr<Instance>& instance, Surface&& surface,
+    std::unique_ptr<PresentationContext> presentationContext,
+    std::unique_ptr<GraphicsContext<false, false>> graphicsContext, const FileLoader& fileLoader)
+  : _window(std::move(window)), _instance(instance), _surface(std::move(surface)), _presentationContext(std::move(presentationContext)),
     _graphicsContext(std::move(graphicsContext)),
     _mouseKeyboardManager(_window->createMouseKeyboardManager()) {}
 
@@ -26,7 +28,7 @@ std::unique_ptr<common::Presentation> Presentation::create(
   requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif  // VALIDATION_LAYERS_ENABLED
   requiredExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-  std::unique_ptr<Instance> instance =
+  std::shared_ptr<Instance> instance =
       Instance::createPtr("Bejzak Engine", requiredExtensions, debugCallback1);
 #ifdef VALIDATION_LAYERS_ENABLED
   DebugMessenger debugMessenger = DebugMessenger::create(*instance, debugCallback1);
@@ -45,15 +47,14 @@ std::unique_ptr<common::Presentation> Presentation::create(
           .build(*logicalDevice, surface.getVkSurface(), VkExtent2D{width, height});
 
   std::unique_ptr<PresentationContext> presentationContext =
-      PresentationContext::create(std::move(surface), std::move(swapchain));
-  PresentationContext& presentationContextRef = *presentationContext;
+      PresentationContext::create(std::move(swapchain));
 
   auto graphicsContext =
       lib::dynamicUniqueCast<GraphicsContext<false, false>>(GraphicsContext<false, false>::create(
-          std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
-          std::move(logicalDevice), fileLoader, std::move(presentationContext)));
+          instance, std::move(debugMessenger), std::move(physicalDevice),
+          std::move(logicalDevice), fileLoader, presentationContext.get()));
   return std::unique_ptr<Presentation>(new Presentation(
-      std::move(window), presentationContextRef, std::move(graphicsContext), fileLoader));
+      std::move(window), instance, std::move(surface), std::move(presentationContext), std::move(graphicsContext), fileLoader));
 }
 
 common::GraphicsContext* Presentation::getGraphicsContext() {
@@ -78,7 +79,7 @@ void Presentation::run() {
     }
   });
   /////////////////////////
-  _graphicsContext->createPresentingResources(_presentationContext.getPresentResources());
+  _graphicsContext->createPresentingResources(_presentationContext->getPresentResources());
 
   _graphicsContext->initializeResources();
   Camera camera(PerspectiveProjection{glm::radians(45.0f), 1920.0f / 1080.f, 0.01f, 500.0f},
@@ -94,7 +95,7 @@ void Presentation::run() {
     camera.updateFromKeyboard(*_mouseKeyboardManager, deltaTime);
     /////////////////////////
     _graphicsContext->waitCompleteExecution();
-    _drawingContext.imageIndex = _presentationContext.acquireNextImage();
+    _drawingContext.imageIndex = _presentationContext->acquireNextImage();
     glm::vec2 mousePos = _mouseKeyboardManager->getMousePosition();
     const glm::vec3 viewDir = common::getWorldSpaceViewDirection(
         mousePos.x, mousePos.y, screenWidth, screenHeight, glm::inverse(tempViewMat),
@@ -106,9 +107,8 @@ void Presentation::run() {
     };
     _drawingContext.screenSpaceViewPos = _mouseKeyboardManager->getMousePosition();
     _graphicsContext->draw(_drawingContext);
-    _presentationContext.present();
+    _presentationContext->present();
   }
-  _graphicsContext->waitDeviceIdle();
 }
 
 }  // namespace vlkn

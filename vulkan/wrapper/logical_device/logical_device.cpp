@@ -60,6 +60,7 @@ LogicalDevice& LogicalDevice::operator=(LogicalDevice&& logicalDevice) noexcept 
 
 LogicalDevice::~LogicalDevice() {
   if (_device != VK_NULL_HANDLE) {
+    vkDeviceWaitIdle(_device);
     _resourceDestroyer.reset();
     _memoryAllocator.reset();
     vkDestroyDevice(_device, nullptr);

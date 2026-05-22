@@ -1,6 +1,5 @@
 #pragma once
 
-#include <any>
 #include <array>
 #include <chrono>
 #include <glm/glm.hpp>
@@ -40,8 +39,7 @@
 #include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
-#include "vulkan/wrapper/surface/surface.h"
-#include "vulkan/wrapper/swapchain/swapchain.h"
+#include "vulkan/graphics_context/presentation_lib.h"
 #include "vulkan/wrapper/util/index_buffer_util.h"
 
 inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback1(
@@ -56,114 +54,6 @@ inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback1(
 }
 
 namespace vlkn {
-
-constexpr size_t MAX_FRAMES_IN_FLIGHT = 3;
-
-struct SynchronizationContext {
-  uint8_t currentFrame = 0;
-  std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> imageAvailableSemaphores;
-  std::vector<VkSemaphore> renderFinishedSemaphores;
-};
-
-class PresentationContext {
-  PresentationContext(Surface&& surface, Swapchain&& swapchain) noexcept
-    : _surface(std::move(surface)), _swapchain(std::move(swapchain)),
-      _renderFinishedSemaphores(_swapchain.getImagesCount()) {
-    static constexpr VkSemaphoreCreateInfo semaphoreInfo = {
-      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-
-    const VkDevice device = _swapchain.getLogicalDevice().getVkDevice();
-    for (VkSemaphore& semaphore : _imageAvailableSemaphores) {
-      CHECK_VKCMD(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore),
-                  "Failed to create VkSemaphore.");
-    }
-    for (VkSemaphore& semaphore : _renderFinishedSemaphores) {
-      CHECK_VKCMD(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore),
-                  "Failed to create VkSemaphore.");
-    }
-  }
-
-public:
-  static std::unique_ptr<PresentationContext> create(Surface&& surface, Swapchain&& swapchain) {
-    return std::unique_ptr<PresentationContext>(
-        new PresentationContext(std::move(surface), std::move(swapchain)));
-  }
-
-  ~PresentationContext() {
-    const VkDevice device = _swapchain.getLogicalDevice().getVkDevice();
-    for (VkSemaphore& semaphore : _imageAvailableSemaphores) {
-      vkDestroySemaphore(device, semaphore, nullptr);
-    }
-    for (VkSemaphore& semaphore : _renderFinishedSemaphores) {
-      vkDestroySemaphore(device, semaphore, nullptr);
-    }
-  }
-
-  PresentationContext(const PresentationContext&) = delete;
-
-  PresentationContext(PresentationContext&&) = delete;
-
-  PresentationContext& operator=(const PresentationContext&) = delete;
-
-  PresentationContext& operator=(PresentationContext&&) = delete;
-
-  common::PresentResources getPresentResources() const {
-    const auto [width, height] = _swapchain.getExtent();
-    std::span<const VkImageView> imageViews = _swapchain.getImageViews();
-    return common::PresentResources{
-      .imageFormat = static_cast<int64_t>(_swapchain.getVkFormat()),
-      .width = width,
-      .height = height,
-      .numLayers = 1,
-      .imageViews =
-          std::span(reinterpret_cast<const std::byte*>(imageViews.data()), imageViews.size()),
-      .multiview = false,
-    };
-  }
-
-  void synchronizeSubmit(VkSubmitInfo* submitInfo) const {
-    submitInfo->waitSemaphoreCount = 1;
-    submitInfo->pWaitSemaphores = &_imageAvailableSemaphores[_currentFrame];
-
-    submitInfo->signalSemaphoreCount = 1;
-    submitInfo->pSignalSemaphores = &_renderFinishedSemaphores[_imageIndex];
-  }
-
-  void setCurrentFrame(uint8_t frame) {
-    _currentFrame = frame;
-  }
-
-  const Swapchain& getSwapchain() const noexcept {
-    return _swapchain;
-  }
-
-  uint32_t acquireNextImage() {
-    CHECK_VKCMD(_swapchain.acquireNextImage(_imageAvailableSemaphores[_currentFrame], &_imageIndex),
-                "Failed to acquire next image from swapchain.");
-    return _imageIndex;
-  }
-
-  void present() const {
-    CHECK_VKCMD(_swapchain.present(_imageIndex, _renderFinishedSemaphores[_imageIndex]),
-                "Failed to present swapchain image.");
-  }
-
-private:
-  Surface _surface;
-  Swapchain _swapchain;
-
-  uint8_t _currentFrame = 0;
-  std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> _imageAvailableSemaphores;
-  uint32_t _imageIndex = 0;
-  lib::Buffer<VkSemaphore> _renderFinishedSemaphores;
-};
-
-struct SwapchainContext {
-  VkFormat imageFormat;
-  VkExtent2D imageExtent;
-  std::span<const VkImageView> imageViews;
-  bool multiview;
-};
 
 namespace {
 
@@ -216,17 +106,17 @@ void createFsrContents(
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 class GraphicsContext final : public common::GraphicsContext {
-  GraphicsContext(std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
-                  std::unique_ptr<PhysicalDevice>&& physicalDevice,
-                  std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader,
-                  std::unique_ptr<PresentationContext> presentationContext);
+  GraphicsContext(std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
+                  std::unique_ptr<PhysicalDevice> physicalDevice,
+                  std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
+                  PresentationContext* presentationContext = nullptr);
 
 public:
   static std::unique_ptr<common::GraphicsContext> create(
-      std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
-      std::unique_ptr<PhysicalDevice>&& physicalDevice,
-      std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader,
-      std::unique_ptr<PresentationContext> presentationContext);
+      std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
+      std::unique_ptr<PhysicalDevice> physicalDevice,
+      std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
+      PresentationContext* presentationContext);
 
   ~GraphicsContext();
 
@@ -245,11 +135,11 @@ public:
   static constexpr uint32_t MAX_THREADS_IN_POOL = 2;
 
 private:
-  std::unique_ptr<Instance> _instance;
+  std::shared_ptr<Instance> _instance;
   DebugMessenger _debugMessenger;
   std::unique_ptr<PhysicalDevice> _physicalDevice;
   std::unique_ptr<LogicalDevice> _logicalDevice;
-  std::unique_ptr<PresentationContext> _presentationContext;
+  PresentationContext* _presentationContext;
 
   const FileLoader& _fileLoader;
 
@@ -1192,13 +1082,13 @@ private:
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
-    std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
-    std::unique_ptr<PhysicalDevice>&& physicalDevice,
-    std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader,
-    std::unique_ptr<PresentationContext> presentationContext)
-  : _instance(std::move(instance)), _debugMessenger(std::move(debugMessenger)),
+    std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
+    std::unique_ptr<PhysicalDevice> physicalDevice,
+    std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
+    PresentationContext* presentationContext)
+  : _instance(instance), _debugMessenger(std::move(debugMessenger)),
     _physicalDevice(std::move(physicalDevice)), _logicalDevice(std::move(logicalDevice)),
-    _fileLoader(fileLoader), _presentationContext(std::move(presentationContext)),
+    _fileLoader(fileLoader), _presentationContext(presentationContext),
     _singleTimeCommandPool(
         CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)),
     _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::async)),
@@ -1220,20 +1110,21 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 std::unique_ptr<common::GraphicsContext> GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
-    create(std::unique_ptr<Instance>&& instance, DebugMessenger&& debugMessenger,
-           std::unique_ptr<PhysicalDevice>&& physicalDevice,
-           std::unique_ptr<LogicalDevice>&& logicalDevice, const FileLoader& fileLoader,
-           std::unique_ptr<PresentationContext> presentationContext) {
+    create(std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
+           std::unique_ptr<PhysicalDevice> physicalDevice,
+           std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
+           PresentationContext* presentationContext) {
   return std::unique_ptr<GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>>(
       new GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>(
-          std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
-          std::move(logicalDevice), fileLoader, std::move(presentationContext)));
+          instance, std::move(debugMessenger), std::move(physicalDevice),
+          std::move(logicalDevice), fileLoader, presentationContext));
 }
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::~GraphicsContext() {
   const VkDevice device = _logicalDevice->getVkDevice();
 
+  vkWaitForFences(device, MAX_FRAMES_IN_FLIGHT, _frameFences.data(), VK_TRUE, UINT64_MAX);
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vkDestroyFence(device, _frameFences[i], nullptr);
   }
@@ -1248,9 +1139,6 @@ common::UpdateContextResponse GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTA
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
     const common::DrawingContext& drawingContext) {
-  vkWaitForFences(
-      _logicalDevice->getVkDevice(), 1, &_frameFences[_currentFrame], VK_TRUE, UINT64_MAX);
-
   updateUniformBuffer(drawingContext.cameraContexts, _currentFrame);
 
   _primaryCommandBuffer[_currentFrame].resetCommandBuffer();

@@ -333,7 +333,7 @@ std::unique_ptr<common::GraphicsContext> GraphicsPluginVulkan::createGraphicsCon
     XrInstance xrInstance, XrSystemId systemId, const FileLoader& fileLoader) {
   static constexpr const char* extensions[] = {
     VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME};
-  std::unique_ptr<Instance> instance =
+  std::shared_ptr<Instance> instance =
       createInstance("VR BejzakEngine", extensions, debugCallback, xrInstance, systemId);
 DebugMessenger debugMessenger;
 #ifdef VALIDATION_LAYERS_ENABLED
@@ -353,7 +353,7 @@ DebugMessenger debugMessenger;
     .queueFamilyIndex = *physicalDevice->getQueueFamilyIndices().graphicsFamily};
 
   return vlkn::GraphicsContext<true, true>::create(
-      std::move(instance), std::move(debugMessenger), std::move(physicalDevice),
+      instance, std::move(debugMessenger), std::move(physicalDevice),
       std::move(logicalDevice), fileLoader, nullptr);
 }
 

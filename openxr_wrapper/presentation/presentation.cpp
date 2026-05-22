@@ -255,6 +255,7 @@ bool Presentation::renderLayer(XrTime predictedDisplayTime,
   CHECK_XRCMD(xrWaitSwapchainImage(viewSwapchain.getSwapchain(), &imageWaitInfo),
               "Failed to xrWaitSwapchainImage.");
 
+  _graphicsContext->waitCompleteExecution();
   common::DrawingContext drawingContext = {
     .imageIndex = swapchainImageIndex, .cameraContexts = std::move(cameraContexts)};
   _graphicsContext->draw(drawingContext);
