@@ -8,12 +8,13 @@
 #include "common/window/window.h"
 #include "vulkan/graphics_context/graphics_context.h"
 #include "vulkan/wrapper/surface/surface.h"
+#include "presentation_graphics_communication/presentation_graphics_communication.h"
 
 namespace vlkn {
 
 class Presentation final : public common::Presentation {
   Presentation(std::shared_ptr<Window>&& window, std::shared_ptr<Instance>& instance, Surface&& surface, std::unique_ptr<PresentationContext> presentationContext,
-               std::unique_ptr<GraphicsContext<false, false>> graphicsContext,
+               std::unique_ptr<GraphicsContext<false, false>> graphicsContext, std::shared_ptr<engine::PresentationGraphicsCommunication>& communicationLayer,
                const FileLoader& fileLoader);
 
 public:
@@ -29,6 +30,7 @@ public:
 private:
   // TODO: Change to unique_ptr.
   std::shared_ptr<Window> _window;
+  std::shared_ptr<engine::PresentationGraphicsCommunication> _communicationLayer;
 
   std::shared_ptr<Instance> _instance;
   Surface _surface;

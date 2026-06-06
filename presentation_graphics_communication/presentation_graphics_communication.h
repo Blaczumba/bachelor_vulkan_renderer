@@ -8,6 +8,7 @@
 #include <vector>
 #include <span>
 #include <memory>
+#include <utility>
 
 namespace engine {
 
@@ -30,9 +31,14 @@ public:
 
   std::span<const common::CameraContext> getCameraContexts() const;
 
+  void setScreenPos(uint32_t x, uint32_t y);
+
+  std::pair<uint32_t, uint32_t> getScreenPos() const;
+
 private:
   uint32_t _swapchainImageIndex = 0;
   std::vector<common::CameraContext> _cameraContexts;
+  std::pair<uint32_t, uint32_t> _screenPos = {};
 };
 
 } // engine

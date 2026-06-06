@@ -9,6 +9,7 @@
 #include "common/util/engine_exception.h"
 #include "openxr_wrapper/graphics_plugin/graphics_plugin_vulkan.h"  // Needs to be included before platform.
 #include "openxr_wrapper/util/check.h"
+#include "presentation_graphics_communication/presentation_graphics_communication.h"
 
 namespace xrw {
 
@@ -56,10 +57,11 @@ glm::mat4 createViewMatrix(const XrPosef& pose) {
 Presentation::Presentation(
     std::unique_ptr<Platform> platform, std::unique_ptr<GraphicsPlugin> graphicsPlugin,
     std::unique_ptr<common::GraphicsContext> graphicsContext,
+    std::shared_ptr<engine::PresentationGraphicsCommunication>& communicationLayer,
     std::unique_ptr<Instance> instance, std::unique_ptr<System> system,
     std::unique_ptr<Session> session, std::vector<Swapchain>&& swapchains) noexcept
   : _platform(std::move(platform)), _graphicsPlugin(std::move(graphicsPlugin)),
-    _graphicsContext(std::move(graphicsContext)), _instance(std::move(instance)),
+    _graphicsContext(std::move(graphicsContext)), _communicationLayer(communicationLayer), _instance(std::move(instance)),
     _system(std::move(system)), _session(std::move(session)), _swapchains(std::move(swapchains)) {}
 
 std::unique_ptr<common::Presentation> Presentation::create(
@@ -68,8 +70,10 @@ std::unique_ptr<common::Presentation> Presentation::create(
   std::unique_ptr<GraphicsPlugin> graphicsPlugin = createGraphicsPlugin(graphicsApi);
   std::unique_ptr<Instance> instance = Instance::create("BejzakEngine", *platform, *graphicsPlugin);
   std::unique_ptr<System> system = System::create(*instance);
+  std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer =
+      engine::PresentationGraphicsCommunication::create();
   std::unique_ptr<common::GraphicsContext> graphicsContext = graphicsPlugin->createGraphicsContext(
-      instance->getXrInstance(), system->getXrSystemId(), fileLoader);
+      instance->getXrInstance(), system->getXrSystemId(), communicationLayer, fileLoader);
   std::unique_ptr<Session> session = Session::create(*system, *graphicsPlugin);
   std::vector<Swapchain> swapchains =
       SwapchainBuilder()
@@ -77,7 +81,7 @@ std::unique_ptr<common::Presentation> Presentation::create(
           .withViewConfigType(VIEW_CONFIG_TYPE)
           .build(*session, *graphicsPlugin);
   return std::unique_ptr<common::Presentation>(new Presentation(
-      std::move(platform), std::move(graphicsPlugin), std::move(graphicsContext),
+      std::move(platform), std::move(graphicsPlugin), std::move(graphicsContext), communicationLayer,
       std::move(instance), std::move(system), std::move(session), std::move(swapchains)));
 }
 

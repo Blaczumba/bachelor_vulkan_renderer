@@ -9,13 +9,15 @@
 #include "openxr_wrapper/session/session.h"
 #include "openxr_wrapper/space/space.h"
 #include "openxr_wrapper/swapchain/swapchain.h"
+#include "presentation_graphics_communication/presentation_graphics_communication.h"
 
 namespace xrw {
 
 class Presentation final : public common::Presentation {
   Presentation(
       std::unique_ptr<Platform> platform, std::unique_ptr<GraphicsPlugin> graphicsPlugin,
-      std::unique_ptr<common::GraphicsContext> graphicsContext,
+               std::unique_ptr<common::GraphicsContext> graphicsContext,
+               std::shared_ptr<engine::PresentationGraphicsCommunication>& communicationLayer,
       std::unique_ptr<Instance> instance, std::unique_ptr<System> system,
       std::unique_ptr<Session> session, std::vector<Swapchain>&& swapchains) noexcept;
 
@@ -51,6 +53,7 @@ private:
 
   std::unique_ptr<Platform> _platform;
   std::unique_ptr<common::GraphicsContext> _graphicsContext;
+  std::shared_ptr<engine::PresentationGraphicsCommunication> _communicationLayer;
   std::unique_ptr<GraphicsPlugin> _graphicsPlugin;
   std::unique_ptr<Instance> _instance;
   std::unique_ptr<System> _system;

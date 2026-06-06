@@ -21,6 +21,7 @@
 #include "vulkan/wrapper/instance/extensions.h"
 #include "vulkan/wrapper/logical_device/extensions_connector.h"
 #include "vulkan/wrapper/util/check.h"
+#include "presentation_graphics_communication/presentation_graphics_communication.h"
 
 namespace xrw {
 
@@ -330,7 +331,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 }
 
 std::unique_ptr<common::GraphicsContext> GraphicsPluginVulkan::createGraphicsContext(
-    XrInstance xrInstance, XrSystemId systemId, const FileLoader& fileLoader) {
+    XrInstance xrInstance, XrSystemId systemId,
+    std::shared_ptr<engine::PresentationGraphicsCommunication>& communicationLayer,
+    const FileLoader& fileLoader) {
   static constexpr const char* extensions[] = {
     VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME};
   std::shared_ptr<Instance> instance =
@@ -353,8 +356,8 @@ DebugMessenger debugMessenger;
     .queueFamilyIndex = *physicalDevice->getQueueFamilyIndices().graphicsFamily};
 
   return vlkn::GraphicsContext<true, true>::create(
-      instance, std::move(debugMessenger), std::move(physicalDevice),
-      std::move(logicalDevice), fileLoader, nullptr);
+      instance, std::move(debugMessenger), std::move(physicalDevice), std::move(logicalDevice),
+      fileLoader, communicationLayer, nullptr);
 }
 
 }  // namespace xrw

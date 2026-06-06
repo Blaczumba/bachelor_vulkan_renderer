@@ -37,4 +37,12 @@ std::span<const common::CameraContext> PresentationGraphicsCommunication::getCam
   return _cameraContexts;
 }
 
+void PresentationGraphicsCommunication::setScreenPos(uint32_t x, uint32_t y) {
+  _screenPos = std::make_pair(x, y);
+}
+
+std::pair<uint32_t, uint32_t> PresentationGraphicsCommunication::getScreenPos() const {
+  return _screenPos;
+}
+
 }  // namespace engine

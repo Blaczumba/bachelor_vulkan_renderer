@@ -41,6 +41,7 @@
 #include "vulkan/wrapper/render_pass/render_pass.h"
 #include "vulkan/graphics_context/presentation_lib.h"
 #include "vulkan/wrapper/util/index_buffer_util.h"
+#include "presentation_graphics_communication/presentation_graphics_communication.h"
 
 inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback1(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -109,6 +110,8 @@ class GraphicsContext final : public common::GraphicsContext {
   GraphicsContext(std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
                   std::unique_ptr<PhysicalDevice> physicalDevice,
                   std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
+                  std::shared_ptr<engine::PresentationGraphicsCommunication>&
+                      communicationLayer,
                   PresentationContext* presentationContext = nullptr);
 
 public:
@@ -116,6 +119,8 @@ public:
       std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
       std::unique_ptr<PhysicalDevice> physicalDevice,
       std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
+      std::shared_ptr<engine::PresentationGraphicsCommunication>&
+          communicationLayer,
       PresentationContext* presentationContext);
 
   ~GraphicsContext();
@@ -138,6 +143,7 @@ private:
   std::unique_ptr<PhysicalDevice> _physicalDevice;
   std::unique_ptr<LogicalDevice> _logicalDevice;
   PresentationContext* _presentationContext;
+  std::shared_ptr<engine::PresentationGraphicsCommunication> _communicationLayer;
 
   const FileLoader& _fileLoader;
 
@@ -774,32 +780,32 @@ private:
     vkCmdEndRenderPass(commandBuffer);
   }
 
-  void updateUniformBuffer(
-      const std::vector<common::CameraContext>& cameraContexts, uint32_t currentFrame) {
+  void updateUniformBuffer(uint32_t currentFrame) {
     if constexpr (MULTIVIEW_PRESENTATION) {
       UniformBufferCamera _ubCamera;
       for (size_t i = 0; i < 2; ++i) {
-        _ubCamera.view = cameraContexts[i].view;
-        _ubCamera.proj = cameraContexts[i].proj;
-        _ubCamera.pos = cameraContexts[i].position;
-        _ubCamera.viewDir = cameraContexts[i].viewDir;
+        const common::CameraContext& cameraContext = _communicationLayer->getCameraContexts()[i];
+        _ubCamera.view = cameraContext.view;
+        _ubCamera.proj = cameraContext.proj;
+        _ubCamera.pos = cameraContext.position;
+        _ubCamera.viewDir = cameraContext.viewDir;
         //        _dynamicUniformBuffersCamera.copyData(
         //            _ubCamera, (2 * currentFrame + i)
         //                           * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
         common::copyData(_dynamicUniformBuffersCamera.getMappedMemory(),
-                         (2 * currentFrame + i)
-                             * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)),
+                         (2 * currentFrame + i) * _physicalDevice->getMemoryAlignment(sizeof(_ubCamera)),
                          _ubCamera);
       }
     } else {
       UniformBufferCamera _ubCamera;
-      _ubCamera.view = cameraContexts[0].view;
-      _ubCamera.proj = cameraContexts[0].proj;
-      _ubCamera.pos = cameraContexts[0].position;
-      _ubCamera.viewDir = cameraContexts[0].viewDir;
+      const common::CameraContext& cameraContext = _communicationLayer->getCameraContexts()[0];
+      _ubCamera.view = cameraContext.view;
+      _ubCamera.proj = cameraContext.proj;
+      _ubCamera.pos = cameraContext.position;
+      _ubCamera.viewDir = cameraContext.viewDir;
       common::copyData(
           _dynamicUniformBuffersCamera.getMappedMemory(),
-          currentFrame * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)),
+          currentFrame * _physicalDevice->getMemoryAlignment(sizeof(_ubCamera)),
           _ubCamera);
     }
   }
@@ -1083,10 +1089,12 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
     std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
     std::unique_ptr<PhysicalDevice> physicalDevice,
     std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
+    std::shared_ptr<engine::PresentationGraphicsCommunication>&
+        communicationLayer,
     PresentationContext* presentationContext)
   : _instance(instance), _debugMessenger(std::move(debugMessenger)),
     _physicalDevice(std::move(physicalDevice)), _logicalDevice(std::move(logicalDevice)),
-    _fileLoader(fileLoader), _presentationContext(presentationContext),
+    _fileLoader(fileLoader), _communicationLayer(communicationLayer), _presentationContext(presentationContext),
     _singleTimeCommandPool(
         CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)),
     _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::async)),
@@ -1111,11 +1119,13 @@ std::unique_ptr<common::GraphicsContext> GraphicsContext<SYNCED_OUTSIDE, MULTIVI
     create(std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
            std::unique_ptr<PhysicalDevice> physicalDevice,
            std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
+           std::shared_ptr<engine::PresentationGraphicsCommunication>&
+               communicationLayer,
            PresentationContext* presentationContext) {
   return std::unique_ptr<GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>>(
       new GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>(
-          instance, std::move(debugMessenger), std::move(physicalDevice),
-          std::move(logicalDevice), fileLoader, presentationContext));
+          instance, std::move(debugMessenger), std::move(physicalDevice), std::move(logicalDevice),
+          fileLoader, communicationLayer, presentationContext));
 }
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
@@ -1131,7 +1141,7 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::~GraphicsContext() {
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
     const common::DrawingContext& drawingContext) {
-  updateUniformBuffer(drawingContext.cameraContexts, _currentFrame);
+  updateUniformBuffer(_currentFrame);
 
   _primaryCommandBuffer[_currentFrame].resetCommandBuffer();
   for (int i = 0; i < MAX_THREADS_IN_POOL; i++) {
@@ -1140,9 +1150,10 @@ void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
 
   vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_currentFrame]);
 
-  const common::CameraContext& cameraContext = drawingContext.cameraContexts[0];
-  recordCommandBuffer(cameraContext.proj, cameraContext.view, drawingContext.imageIndex,
-                      drawingContext.screenSpaceViewPos);
+  const common::CameraContext& cameraContext = _communicationLayer->getCameraContexts()[0];
+  const auto [screenx, screeny] = _communicationLayer->getScreenPos();
+  recordCommandBuffer(
+      cameraContext.proj, cameraContext.view, _communicationLayer->getCurrentSwapchainImageIndex(), {screenx, screeny});
 
   VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
 

@@ -10,15 +10,19 @@
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/surface/surface.h"
 #include "vulkan/wrapper/swapchain/swapchain.h"
+#include "presentation_graphics_communication/presentation_graphics_communication.h"
 
 namespace vlkn {
 
 Presentation::Presentation(
     std::shared_ptr<Window>&& window, std::shared_ptr<Instance>& instance, Surface&& surface,
     std::unique_ptr<PresentationContext> presentationContext,
-    std::unique_ptr<GraphicsContext<false, false>> graphicsContext, const FileLoader& fileLoader)
+    std::unique_ptr<GraphicsContext<false, false>> graphicsContext,
+    std::shared_ptr<engine::PresentationGraphicsCommunication>& communicationLayer, const FileLoader&
+        fileLoader)
   : _window(std::move(window)), _instance(instance), _surface(std::move(surface)), _presentationContext(std::move(presentationContext)),
     _graphicsContext(std::move(graphicsContext)),
+    _communicationLayer(communicationLayer),
     _mouseKeyboardManager(_window->createMouseKeyboardManager()) {}
 
 std::unique_ptr<common::Presentation> Presentation::create(
@@ -49,12 +53,15 @@ std::unique_ptr<common::Presentation> Presentation::create(
   std::unique_ptr<PresentationContext> presentationContext =
       PresentationContext::create(std::move(swapchain));
 
+  std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer =
+      engine::PresentationGraphicsCommunication::create();
   auto graphicsContext =
       lib::dynamicUniqueCast<GraphicsContext<false, false>>(GraphicsContext<false, false>::create(
-          instance, std::move(debugMessenger), std::move(physicalDevice),
-          std::move(logicalDevice), fileLoader, presentationContext.get()));
+          instance, std::move(debugMessenger), std::move(physicalDevice), std::move(logicalDevice),
+          fileLoader, communicationLayer, presentationContext.get()));
   return std::unique_ptr<Presentation>(new Presentation(
-      std::move(window), instance, std::move(surface), std::move(presentationContext), std::move(graphicsContext), fileLoader));
+      std::move(window), instance, std::move(surface), std::move(presentationContext),
+      std::move(graphicsContext), communicationLayer, fileLoader));
 }
 
 common::GraphicsContext* Presentation::getGraphicsContext() {
@@ -95,17 +102,18 @@ void Presentation::run() {
     camera.updateFromKeyboard(*_mouseKeyboardManager, deltaTime);
     /////////////////////////
     _graphicsContext->waitCompleteExecution();
-    _drawingContext.imageIndex = _presentationContext->acquireNextImage();
+    _communicationLayer->setCurrentSwapchainImageIndex(_presentationContext->acquireNextImage());
     glm::vec2 mousePos = _mouseKeyboardManager->getMousePosition();
     const glm::vec3 viewDir = common::getWorldSpaceViewDirection(
         mousePos.x, mousePos.y, screenWidth, screenHeight, glm::inverse(tempViewMat),
         glm::inverse(camera.getProjectionMatrix()));
-    _drawingContext.cameraContexts = {
-      {camera.getPosition(),
-       _mouseKeyboardManager->isPressed(Keyboard::Key::R) ? tempViewMat = camera.getViewMatrix() :
-                                                            tempViewMat, camera.getProjectionMatrix(), viewDir}
-    };
-    _drawingContext.screenSpaceViewPos = _mouseKeyboardManager->getMousePosition();
+    _communicationLayer->setCameraContexts({
+      common::CameraContext{
+                            camera.getPosition(),
+                            _mouseKeyboardManager->isPressed(Keyboard::Key::R) ? tempViewMat = camera.getViewMatrix() :
+                                                             tempViewMat, camera.getProjectionMatrix(), viewDir}
+    });
+    _communicationLayer->setScreenPos(mousePos.x, mousePos.y);
     _graphicsContext->draw(_drawingContext);
     _presentationContext->present();
   }
