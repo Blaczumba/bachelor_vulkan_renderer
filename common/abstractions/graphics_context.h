@@ -15,8 +15,6 @@ class GraphicsContext {
 public:
   virtual ~GraphicsContext() = default;
 
-  virtual UpdateContextResponse update(const UpdateContext& updateContext) = 0;
-
   virtual void draw(const DrawingContext& drawingContext) = 0;
 
   virtual void initializeResources() = 0;

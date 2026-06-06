@@ -112,8 +112,8 @@ target_link_libraries(${COMMON_ENGINE_NAME} INTERFACE
 )
 target_link_libraries(${ENGINE_NAME} INTERFACE ${COMMON_ENGINE_NAME})
 
-add_subdirectory(system)
-target_link_libraries(${ENGINE_NAME} INTERFACE System)
+add_subdirectory(presentation_graphics_communication)
+target_link_libraries(${ENGINE_NAME} INTERFACE PresentationGraphicsCommunication)
 
 if(Vulkan_FOUND)
     add_subdirectory(vulkan)

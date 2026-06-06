@@ -120,8 +120,6 @@ public:
 
   ~GraphicsContext();
 
-  common::UpdateContextResponse update(const common::UpdateContext& updateContext) override;
-
   void draw(const common::DrawingContext& drawingContext) override;
 
   void initializeResources() override;
@@ -1128,12 +1126,6 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::~GraphicsContext() {
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vkDestroyFence(device, _frameFences[i], nullptr);
   }
-}
-
-template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
-common::UpdateContextResponse GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::update(
-    const common::UpdateContext& updateContext) {
-  return {};
 }
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
