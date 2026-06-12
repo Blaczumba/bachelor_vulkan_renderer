@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <span>
 #include <spdlog/spdlog.h>
 
 #include "common/camera/camera.h"
@@ -14,6 +15,8 @@
 namespace xrw {
 
 namespace {
+
+static constexpr size_t IMAGES_IN_LAYER = 2;
 
 std::unique_ptr<GraphicsPlugin> createGraphicsPlugin(common::GraphicsApi graphicsApi) {
   switch (graphicsApi) {
@@ -204,7 +207,7 @@ void Presentation::pollActions() {
 }
 
 bool Presentation::renderLayer(XrTime predictedDisplayTime,
-                               std::vector<XrCompositionLayerProjectionView>& projectionLayerViews,
+                               std::span<XrCompositionLayerProjectionView> projectionLayerViews,
                                XrCompositionLayerProjection& layer) {
   XrViewState viewState = {.type = XR_TYPE_VIEW_STATE};
 
@@ -215,9 +218,7 @@ bool Presentation::renderLayer(XrTime predictedDisplayTime,
     .space = _space->getXrSpace()};
 
   uint32_t viewCountOutput;
-  // Not sure if it needs to remain (not local)
-  // Create 2 XrViews per eye.
-  lib::Buffer<XrView> views(2, {.type = XR_TYPE_VIEW});
+  std::array<XrView, IMAGES_IN_LAYER> views = {XrView{.type = XR_TYPE_VIEW}, XrView{.type = XR_TYPE_VIEW}};
   CHECK_XRCMD(xrLocateViews(_session->getXrSession(), &viewLocateInfo, &viewState, views.size(),
                             &viewCountOutput, views.data()),
               "Failed to xrLocateViews.");
@@ -228,23 +229,23 @@ bool Presentation::renderLayer(XrTime predictedDisplayTime,
   }
 
   const xrw::Swapchain& viewSwapchain = _swapchains[0];
-  std::vector<common::CameraContext> cameraContexts;
-  for (uint32_t i = 0; i < views.size(); i++) {
+  std::array<common::CameraContext, IMAGES_IN_LAYER> cameraContexts;
+  for (uint32_t i = 0; i < IMAGES_IN_LAYER; i++) {
     const XrCompositionLayerProjectionView& projectionLayerView =
-        projectionLayerViews.emplace_back(XrCompositionLayerProjectionView{
+        projectionLayerViews[i] = XrCompositionLayerProjectionView{
           .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
-          .next = nullptr, // Dobra praktyka w OpenXR
           .pose = views[i].pose,
           .fov = views[i].fov,
           .subImage = {.swapchain = viewSwapchain.getSwapchain(),
                        .imageRect = {.offset = {0, 0}, .extent = viewSwapchain.getXrExtent2Di()},
                        .imageArrayIndex = i}
-    });
+    };
     const auto [x, y, z] = projectionLayerView.pose.position;
-    cameraContexts.push_back(common::CameraContext{
+    cameraContexts[i] = common::CameraContext{
       glm::vec3(x, y, z), createViewMatrix(projectionLayerView.pose),
-      createProjectionMatrix(projectionLayerView.fov, 0.01f, 50.0f)});
+      createProjectionMatrix(projectionLayerView.fov, 0.01f, 50.0f)};
   }
+  _communicationLayer->setCameraContexts(cameraContexts);
 
   const XrSwapchainImageAcquireInfo acquireInfo = {.type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
 
@@ -252,6 +253,7 @@ bool Presentation::renderLayer(XrTime predictedDisplayTime,
   CHECK_XRCMD(
       xrAcquireSwapchainImage(viewSwapchain.getSwapchain(), &acquireInfo, &swapchainImageIndex),
       "Failed to xrAcquireSwapchainImage.");
+  _communicationLayer->setCurrentSwapchainImageIndex(swapchainImageIndex);
 
   const XrSwapchainImageWaitInfo imageWaitInfo = {
     .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO, .timeout = XR_INFINITE_DURATION};
@@ -260,9 +262,7 @@ bool Presentation::renderLayer(XrTime predictedDisplayTime,
               "Failed to xrWaitSwapchainImage.");
 
   _graphicsContext->waitCompleteExecution();
-  common::DrawingContext drawingContext = {
-    .imageIndex = swapchainImageIndex, .cameraContexts = std::move(cameraContexts)};
-  _graphicsContext->draw(drawingContext);
+  _graphicsContext->draw({});
 
   const XrSwapchainImageReleaseInfo releaseInfo = {.type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
   CHECK_XRCMD(xrReleaseSwapchainImage(viewSwapchain.getSwapchain(), &releaseInfo),
@@ -294,14 +294,14 @@ void Presentation::draw() {
   };
   CHECK_XRCMD(xrBeginFrame(_session->getXrSession(), &frameBeginInfo), "Failed to xrBeginFrame.");
 
-  std::vector<XrCompositionLayerBaseHeader*> layers{};
+  XrCompositionLayerBaseHeader* layerHeader = nullptr;
   XrCompositionLayerProjection layer{
     .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
   };
-  std::vector<XrCompositionLayerProjectionView> projectionLayerViews;
+  std::array<XrCompositionLayerProjectionView, IMAGES_IN_LAYER> projectionLayerViews;
   if (frameState.shouldRender == XR_TRUE) {
     if (renderLayer(frameState.predictedDisplayTime, projectionLayerViews, layer)) {
-      layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&layer));
+      layerHeader = reinterpret_cast<XrCompositionLayerBaseHeader*>(&layer);
     }
   }
 
@@ -309,8 +309,8 @@ void Presentation::draw() {
     .type = XR_TYPE_FRAME_END_INFO,
     .displayTime = frameState.predictedDisplayTime,
     .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-    .layerCount = static_cast<uint32_t>(layers.size()),
-    .layers = layers.data()};
+    .layerCount = layerHeader != nullptr ? 1u : 0u,
+    .layers = layerHeader != nullptr ? &layerHeader : nullptr};
 
   CHECK_XRCMD(xrEndFrame(_session->getXrSession(), &frameEndInfo), "Failed to xrEndFrame.");
 }

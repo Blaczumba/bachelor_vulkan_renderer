@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <span>
 
 #include "common/abstractions/graphics_context.h"
 #include "common/abstractions/presentation.h"
@@ -43,7 +44,7 @@ private:
 
   // TODO: refactor
   bool renderLayer(XrTime predictedDisplayTime,
-                   std::vector<XrCompositionLayerProjectionView>& projectionLayerViews,
+                   std::span<XrCompositionLayerProjectionView> projectionLayerViews,
                    XrCompositionLayerProjection& layer);
 
   void draw();
