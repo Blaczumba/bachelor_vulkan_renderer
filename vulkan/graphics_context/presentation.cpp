@@ -15,18 +15,18 @@
 namespace vlkn {
 
 Presentation::Presentation(
-    std::shared_ptr<Window>&& window, std::shared_ptr<Instance>& instance, Surface&& surface,
-    std::unique_ptr<PresentationContext> presentationContext,
+    std::shared_ptr<Window> window, std::shared_ptr<Instance> instance, Surface&& surface,
+    PresentationContext* presentationContext,
     std::unique_ptr<GraphicsContext<false, false>> graphicsContext,
-    std::shared_ptr<engine::PresentationGraphicsCommunication>& communicationLayer, const FileLoader&
+    std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer, const FileLoader&
         fileLoader)
-  : _window(std::move(window)), _instance(instance), _surface(std::move(surface)), _presentationContext(std::move(presentationContext)),
+  : _window(std::move(window)), _instance(std::move(instance)), _surface(std::move(surface)), _presentationContext(presentationContext),
     _graphicsContext(std::move(graphicsContext)),
-    _communicationLayer(communicationLayer),
+    _communicationLayer(std::move(communicationLayer)),
     _mouseKeyboardManager(_window->createMouseKeyboardManager()) {}
 
 std::unique_ptr<common::Presentation> Presentation::create(
-    std::shared_ptr<Window>&& window, const FileLoader& fileLoader) {
+    std::shared_ptr<Window> window, const FileLoader& fileLoader) {
   std::vector<const char*> requiredExtensions = window->getVulkanExtensions();
 #ifdef VALIDATION_LAYERS_ENABLED
   requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -52,16 +52,17 @@ std::unique_ptr<common::Presentation> Presentation::create(
 
   std::unique_ptr<PresentationContext> presentationContext =
       PresentationContext::create(std::move(swapchain));
+  PresentationContext* presentationContextPtr = presentationContext.get();
 
   std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer =
       engine::PresentationGraphicsCommunication::create();
   auto graphicsContext =
       lib::dynamicUniqueCast<GraphicsContext<false, false>>(GraphicsContext<false, false>::create(
           instance, std::move(debugMessenger), std::move(physicalDevice), std::move(logicalDevice),
-          fileLoader, communicationLayer, presentationContext.get()));
+          fileLoader, communicationLayer, std::move(presentationContext)));
   return std::unique_ptr<Presentation>(new Presentation(
-      std::move(window), instance, std::move(surface), std::move(presentationContext),
-      std::move(graphicsContext), communicationLayer, fileLoader));
+      std::move(window), std::move(instance), std::move(surface), presentationContextPtr,
+      std::move(graphicsContext), std::move(communicationLayer), fileLoader));
 }
 
 common::GraphicsContext* Presentation::getGraphicsContext() {
@@ -114,7 +115,7 @@ void Presentation::run() {
                                                              tempViewMat, camera.getProjectionMatrix(), viewDir}
     });
     _communicationLayer->setScreenPos(mousePos.x, mousePos.y);
-    _graphicsContext->draw(_drawingContext);
+    _graphicsContext->draw({});
     _presentationContext->present();
   }
 }

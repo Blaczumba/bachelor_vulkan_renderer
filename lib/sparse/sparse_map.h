@@ -60,7 +60,6 @@ Type* SparseMap<Type, N>::tryGetValue(IndexType index) {
   if (denseIndex < _size && _dense[denseIndex] == index) [[likely]] {
     return &_values[denseIndex];
   }
-
   return nullptr;
 }
 
@@ -71,7 +70,6 @@ const Type* SparseMap<Type, N>::tryGetValue(
   if (denseIndex < _size && _dense[denseIndex] == index) [[likely]] {
     return &_values[denseIndex];
   }
-
   return nullptr;
 }
 
@@ -116,7 +114,6 @@ bool SparseMap<Type, N>::insert(IndexType index, Type&& value) {
   if (_size == N || exists(index)) [[unlikely]] {
     return false;
   }
-
   _sparse[index] = _size;
   _dense[_size] = index;
   _values[_size] = std::move(value);
@@ -129,7 +126,6 @@ bool SparseMap<Type, N>::insert(IndexType index, const Type& value) {
   if (_size == N || exists(index)) [[unlikely]] {
     return false;
   }
-
   _sparse[index] = _size;
   _dense[_size] = index;
   _values[_size] = value;
@@ -156,7 +152,6 @@ bool SparseMap<Type, N>::erase(IndexType index) {
   if (!exists(index)) [[unlikely]] {
     return false;
   }
-
   eraseUnsafe(index);
   return true;
 }
@@ -171,7 +166,6 @@ void SparseMap<Type, N>::eraseUnsafe(IndexType index) {
   } else if constexpr (!std::is_trivially_destructible<Type>()) {
     std::destroy_at(&_values[denseIndex]);
   }
-
   _sparse[lastIndex] = denseIndex;
 }
 

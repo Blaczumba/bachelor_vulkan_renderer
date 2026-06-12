@@ -332,7 +332,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
 std::unique_ptr<common::GraphicsContext> GraphicsPluginVulkan::createGraphicsContext(
     XrInstance xrInstance, XrSystemId systemId,
-    std::shared_ptr<engine::PresentationGraphicsCommunication>& communicationLayer,
+    std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer,
     const FileLoader& fileLoader) {
   static constexpr const char* extensions[] = {
     VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME};
@@ -357,7 +357,7 @@ DebugMessenger debugMessenger;
 
   return vlkn::GraphicsContext<true, true>::create(
       instance, std::move(debugMessenger), std::move(physicalDevice), std::move(logicalDevice),
-      fileLoader, communicationLayer, nullptr);
+      fileLoader, std::move(communicationLayer), nullptr);
 }
 
 }  // namespace xrw

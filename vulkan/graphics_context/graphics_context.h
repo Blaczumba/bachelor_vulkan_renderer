@@ -107,21 +107,21 @@ void createFsrContents(
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 class GraphicsContext final : public common::GraphicsContext {
-  GraphicsContext(std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
+  GraphicsContext(std::shared_ptr<Instance> instance, DebugMessenger&& debugMessenger,
                   std::unique_ptr<PhysicalDevice> physicalDevice,
                   std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
-                  std::shared_ptr<engine::PresentationGraphicsCommunication>&
+                  std::shared_ptr<engine::PresentationGraphicsCommunication>
                       communicationLayer,
-                  PresentationContext* presentationContext = nullptr);
+                  std::unique_ptr<PresentationContext> presentationContext = nullptr);
 
 public:
   static std::unique_ptr<common::GraphicsContext> create(
-      std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
+      std::shared_ptr<Instance> instance, DebugMessenger&& debugMessenger,
       std::unique_ptr<PhysicalDevice> physicalDevice,
       std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
-      std::shared_ptr<engine::PresentationGraphicsCommunication>&
+      std::shared_ptr<engine::PresentationGraphicsCommunication>
           communicationLayer,
-      PresentationContext* presentationContext);
+      std::unique_ptr<PresentationContext> presentationContext);
 
   ~GraphicsContext();
 
@@ -142,7 +142,7 @@ private:
   DebugMessenger _debugMessenger;
   std::unique_ptr<PhysicalDevice> _physicalDevice;
   std::unique_ptr<LogicalDevice> _logicalDevice;
-  PresentationContext* _presentationContext;
+  std::unique_ptr<PresentationContext> _presentationContext;
   std::shared_ptr<engine::PresentationGraphicsCommunication> _communicationLayer;
 
   const FileLoader& _fileLoader;
@@ -1086,15 +1086,15 @@ private:
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
-    std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
+    std::shared_ptr<Instance> instance, DebugMessenger&& debugMessenger,
     std::unique_ptr<PhysicalDevice> physicalDevice,
     std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
-    std::shared_ptr<engine::PresentationGraphicsCommunication>&
+    std::shared_ptr<engine::PresentationGraphicsCommunication>
         communicationLayer,
-    PresentationContext* presentationContext)
-  : _instance(instance), _debugMessenger(std::move(debugMessenger)),
+    std::unique_ptr<PresentationContext> presentationContext)
+  : _instance(std::move(instance)), _debugMessenger(std::move(debugMessenger)),
     _physicalDevice(std::move(physicalDevice)), _logicalDevice(std::move(logicalDevice)),
-    _fileLoader(fileLoader), _communicationLayer(communicationLayer), _presentationContext(presentationContext),
+    _fileLoader(fileLoader), _communicationLayer(std::move(communicationLayer)), _presentationContext(std::move(presentationContext)),
     _singleTimeCommandPool(
         CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)),
     _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::async)),
@@ -1116,16 +1116,16 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::GraphicsContext(
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 std::unique_ptr<common::GraphicsContext> GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
-    create(std::shared_ptr<Instance>& instance, DebugMessenger&& debugMessenger,
+    create(std::shared_ptr<Instance> instance, DebugMessenger&& debugMessenger,
            std::unique_ptr<PhysicalDevice> physicalDevice,
            std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
-           std::shared_ptr<engine::PresentationGraphicsCommunication>&
+           std::shared_ptr<engine::PresentationGraphicsCommunication>
                communicationLayer,
-           PresentationContext* presentationContext) {
+           std::unique_ptr<PresentationContext> presentationContext) {
   return std::unique_ptr<GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>>(
       new GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>(
-          instance, std::move(debugMessenger), std::move(physicalDevice), std::move(logicalDevice),
-          fileLoader, communicationLayer, presentationContext));
+          std::move(instance), std::move(debugMessenger), std::move(physicalDevice), std::move(logicalDevice),
+          fileLoader, std::move(communicationLayer), std::move(presentationContext)));
 }
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>

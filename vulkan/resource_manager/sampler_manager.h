@@ -19,7 +19,6 @@ public:
   const Sampler& getSampler(SamplerHandle handle) const;
 
 private:
-  using SamplerMap = lib::SparseMap<Sampler, MAX_SAMPLERS>;
-  SamplerMap _samplerMap;
+  lib::SparseMap<Sampler, MAX_SAMPLERS> _samplerMap;
   std::vector<SamplerHandle> _freeSamplerHandles;
 };

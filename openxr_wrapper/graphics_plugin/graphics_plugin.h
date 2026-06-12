@@ -33,7 +33,7 @@ public:
 
   virtual std::unique_ptr<common::GraphicsContext> createGraphicsContext(
       XrInstance xrInstance, XrSystemId systemId,
-      std::shared_ptr<engine::PresentationGraphicsCommunication>& communicationLayer,
+      std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer,
       const FileLoader& fileLoader) = 0;
 };
 

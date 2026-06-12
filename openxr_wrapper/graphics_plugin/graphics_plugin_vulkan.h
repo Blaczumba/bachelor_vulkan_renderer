@@ -49,7 +49,7 @@ public:
   void createResources() override;
 
   std::unique_ptr<common::GraphicsContext> createGraphicsContext(
-      XrInstance xrInstance, XrSystemId systemId, std::shared_ptr<engine::PresentationGraphicsCommunication>& communicationLayer, const FileLoader& fileLoader) override;
+      XrInstance xrInstance, XrSystemId systemId, std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer, const FileLoader& fileLoader) override;
 
 private:
   const LogicalDevice* _logicalDevice;
