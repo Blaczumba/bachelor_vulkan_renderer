@@ -1,8 +1,6 @@
 #pragma once
 
 #include <span>
-#include <variant>
-#include <vector>
 #include <glm/glm.hpp>
 
 #include "common/camera/camera.h"
@@ -15,12 +13,6 @@ struct CameraContext {
   glm::mat4 view;
   glm::mat4 proj;
   glm::vec3 viewDir;
-};
-
-struct DrawingContext {
-  uint32_t imageIndex;
-  std::vector<CameraContext> cameraContexts;
-  glm::u32vec2 screenSpaceViewPos;
 };
 
 struct PresentResources {

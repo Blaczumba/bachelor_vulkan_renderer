@@ -14,28 +14,31 @@ namespace engine {
 
 // It is responsible for communication between main presentation and graphics context layers.
 class PresentationGraphicsCommunication : private lib::Noncopyable {
-  PresentationGraphicsCommunication() noexcept = default;
+  PresentationGraphicsCommunication(bool multiview) noexcept;
 
 public:
-  static std::unique_ptr<PresentationGraphicsCommunication> create();
+  static std::unique_ptr<PresentationGraphicsCommunication> create(bool multiview = false);
 
-  ~PresentationGraphicsCommunication() noexcept = default;
+  ~PresentationGraphicsCommunication() = default;
 
-  void setCurrentSwapchainImageIndex(uint32_t swapchainImageIndex);
+  bool multiview() const noexcept;
 
-  uint32_t getCurrentSwapchainImageIndex() const;
+  void setCurrentSwapchainImageIndex(uint32_t swapchainImageIndex) noexcept;
 
-  void setCameraContexts(std::span<const common::CameraContext> cameraContexts);
+  uint32_t getCurrentSwapchainImageIndex() const noexcept;
 
-  void setCameraContexts(std::initializer_list<common::CameraContext> cameraContexts);
+  void setCameraContexts(std::span<const common::CameraContext> cameraContexts) noexcept;
 
-  std::span<const common::CameraContext> getCameraContexts() const;
+  void setCameraContexts(std::initializer_list<common::CameraContext> cameraContexts) noexcept;
 
-  void setScreenPos(uint32_t x, uint32_t y);
+  std::span<const common::CameraContext> getCameraContexts() const noexcept;
 
-  std::pair<uint32_t, uint32_t> getScreenPos() const;
+  void setScreenPos(uint32_t x, uint32_t y) noexcept;
+
+  std::pair<uint32_t, uint32_t> getScreenPos() const noexcept;
 
 private:
+  const bool _multiview;
   uint32_t _swapchainImageIndex = 0;
   std::vector<common::CameraContext> _cameraContexts;
   std::pair<uint32_t, uint32_t> _screenPos = {};

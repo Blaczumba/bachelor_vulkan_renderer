@@ -115,7 +115,7 @@ void Presentation::run() {
                                                              tempViewMat, camera.getProjectionMatrix(), viewDir}
     });
     _communicationLayer->setScreenPos(mousePos.x, mousePos.y);
-    _graphicsContext->draw({});
+    _graphicsContext->draw();
     _presentationContext->present();
   }
 }

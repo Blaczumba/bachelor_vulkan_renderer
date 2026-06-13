@@ -125,7 +125,7 @@ public:
 
   ~GraphicsContext();
 
-  void draw(const common::DrawingContext& drawingContext) override;
+  void draw() override;
 
   void initializeResources() override;
 
@@ -358,10 +358,10 @@ private:
     const uint32_t size =
         _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera));
     _dynamicUniformBuffersCamera = Buffer::createUniformBuffer(
-        *_logicalDevice, (MULTIVIEW_PRESENTATION ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size);
+        *_logicalDevice, (_communicationLayer->multiview() ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size);
 
     _dynamicDescriptorSetWriter.storeDynamicBuffer(
-        _dynamicUniformBuffersCamera, size, MULTIVIEW_PRESENTATION ? 2 : 1);
+        _dynamicUniformBuffersCamera, size, _communicationLayer->multiview() ? 2 : 1);
     _dynamicDescriptorSetWriter.writeDescriptorSet(
         _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
 
@@ -487,18 +487,18 @@ private:
 
   void createGraphicsPipelines() {
     _graphicsPipelineHandle =
-        _pipelineManager->createPBRProgram(_renderPass, MULTIVIEW_PRESENTATION);
+        _pipelineManager->createPBRProgram(_renderPass, _communicationLayer->multiview());
     _graphicsPipeline = _pipelineManager->getPipeline(_graphicsPipelineHandle);
-    _graphicsTesselationPipelineHandle =
-        _pipelineManager->createPbrTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION);
-    _blinnPhongTesselationPipelineHandle =
-        _pipelineManager->createBlinnPhongTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION);
+    _graphicsTesselationPipelineHandle = _pipelineManager->createPbrTesselationProgram(
+        _renderPass, _communicationLayer->multiview());
+    _blinnPhongTesselationPipelineHandle = _pipelineManager->createBlinnPhongTesselationProgram(
+        _renderPass, _communicationLayer->multiview());
     _graphicsTesselationPipeline =
         _pipelineManager->getPipeline(_graphicsTesselationPipelineHandle);
     _skyboxPipeline =
         _pipelineManager->getPipeline(_pipelineManager->createSkyboxProgram(_renderPass));
     _phongEnvMappingPipeline = _pipelineManager->getPipeline(
-        _pipelineManager->createEnvMappingProgram(_renderPass, MULTIVIEW_PRESENTATION));
+        _pipelineManager->createEnvMappingProgram(_renderPass, _communicationLayer->multiview()));
     _shadowPipeline =
         _pipelineManager->getPipeline(_pipelineManager->createShadowProgram(_shadowRenderPass));
     _envMappingPipeline = _pipelineManager->getPipeline(
@@ -781,31 +781,19 @@ private:
   }
 
   void updateUniformBuffer(uint32_t currentFrame) {
-    if constexpr (MULTIVIEW_PRESENTATION) {
-      UniformBufferCamera _ubCamera;
-      for (size_t i = 0; i < 2; ++i) {
-        const common::CameraContext& cameraContext = _communicationLayer->getCameraContexts()[i];
-        _ubCamera.view = cameraContext.view;
-        _ubCamera.proj = cameraContext.proj;
-        _ubCamera.pos = cameraContext.position;
-        _ubCamera.viewDir = cameraContext.viewDir;
-        //        _dynamicUniformBuffersCamera.copyData(
-        //            _ubCamera, (2 * currentFrame + i)
-        //                           * _physicalDevice->getMemoryAlignment(sizeof(UniformBufferCamera)));
-        common::copyData(_dynamicUniformBuffersCamera.getMappedMemory(),
-                         (2 * currentFrame + i) * _physicalDevice->getMemoryAlignment(sizeof(_ubCamera)),
-                         _ubCamera);
-      }
-    } else {
-      UniformBufferCamera _ubCamera;
-      const common::CameraContext& cameraContext = _communicationLayer->getCameraContexts()[0];
+    UniformBufferCamera _ubCamera;
+    std::span<const common::CameraContext> cameraContexts = _communicationLayer->getCameraContexts();
+    // TODO: Switch to std::views::enumerate.
+    for (size_t i = 0; i < cameraContexts.size(); i++) {
+      const common::CameraContext& cameraContext = cameraContexts[i];
       _ubCamera.view = cameraContext.view;
       _ubCamera.proj = cameraContext.proj;
       _ubCamera.pos = cameraContext.position;
       _ubCamera.viewDir = cameraContext.viewDir;
       common::copyData(
           _dynamicUniformBuffersCamera.getMappedMemory(),
-          currentFrame * _physicalDevice->getMemoryAlignment(sizeof(_ubCamera)),
+                       (cameraContexts.size() * currentFrame + i)
+                           * _physicalDevice->getMemoryAlignment(sizeof(_ubCamera)),
           _ubCamera);
     }
   }
@@ -964,18 +952,20 @@ private:
       VkDescriptorSet descriptorSets[] = {
         _bindlessDescriptorSet.getVkDescriptorSet(), _dynamicDescriptorSet.getVkDescriptorSet()};
 
-      uint32_t dynamicUniformBufferOffsets[MULTIVIEW_PRESENTATION ? 2 : 1];
-      if constexpr (MULTIVIEW_PRESENTATION) {
+      if (_communicationLayer->multiview()) {
+        uint32_t dynamicUniformBufferOffsets[2];
         const uint32_t baseOffset = 2u * _currentFrame;
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
             dynamicUniformBufferOffsets, {baseOffset, baseOffset});
+        recordOctreeSecondaryCommandBuffer(
+            commandBuffer, root, planes, descriptorSets, dynamicUniformBufferOffsets);
       } else {
+        uint32_t dynamicUniformBufferOffset[1];
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-            dynamicUniformBufferOffsets, {_currentFrame});
+            dynamicUniformBufferOffset, {_currentFrame});
+        recordOctreeSecondaryCommandBuffer(
+            commandBuffer, root, planes, descriptorSets, dynamicUniformBufferOffset);
       }
-
-      recordOctreeSecondaryCommandBuffer(
-          commandBuffer, root, planes, descriptorSets, dynamicUniformBufferOffsets);
 
       CHECK_VKCMD(vkEndCommandBuffer(commandBuffer), "Failed to vkEndCommandBuffer.");
     });
@@ -1139,8 +1129,7 @@ GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::~GraphicsContext() {
 }
 
 template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
-void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw(
-    const common::DrawingContext& drawingContext) {
+void GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::draw() {
   updateUniformBuffer(_currentFrame);
 
   _primaryCommandBuffer[_currentFrame].resetCommandBuffer();
