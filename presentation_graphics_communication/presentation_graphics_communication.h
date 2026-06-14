@@ -14,14 +14,12 @@ namespace engine {
 
 // It is responsible for communication between main presentation and graphics context layers.
 class PresentationGraphicsCommunication : private lib::Noncopyable {
-  PresentationGraphicsCommunication(bool multiview) noexcept;
+  PresentationGraphicsCommunication() noexcept = default;
 
 public:
-  static std::unique_ptr<PresentationGraphicsCommunication> create(bool multiview = false);
+  static std::unique_ptr<PresentationGraphicsCommunication> create();
 
   ~PresentationGraphicsCommunication() = default;
-
-  bool multiview() const noexcept;
 
   void setCurrentSwapchainImageIndex(uint32_t swapchainImageIndex) noexcept;
 
@@ -38,7 +36,6 @@ public:
   std::pair<uint32_t, uint32_t> getScreenPos() const noexcept;
 
 private:
-  const bool _multiview;
   uint32_t _swapchainImageIndex = 0;
   std::vector<common::CameraContext> _cameraContexts;
   std::pair<uint32_t, uint32_t> _screenPos = {};

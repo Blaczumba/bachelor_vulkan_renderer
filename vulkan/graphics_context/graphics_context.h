@@ -358,10 +358,10 @@ private:
     const uint32_t size =
         _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera));
     _dynamicUniformBuffersCamera = Buffer::createUniformBuffer(
-        *_logicalDevice, (_communicationLayer->multiview() ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size);
+        *_logicalDevice, (MULTIVIEW_PRESENTATION ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size);
 
     _dynamicDescriptorSetWriter.storeDynamicBuffer(
-        _dynamicUniformBuffersCamera, size, _communicationLayer->multiview() ? 2 : 1);
+        _dynamicUniformBuffersCamera, size, MULTIVIEW_PRESENTATION ? 2 : 1);
     _dynamicDescriptorSetWriter.writeDescriptorSet(
         _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
 
@@ -487,18 +487,18 @@ private:
 
   void createGraphicsPipelines() {
     _graphicsPipelineHandle =
-        _pipelineManager->createPBRProgram(_renderPass, _communicationLayer->multiview());
+        _pipelineManager->createPBRProgram(_renderPass, MULTIVIEW_PRESENTATION);
     _graphicsPipeline = _pipelineManager->getPipeline(_graphicsPipelineHandle);
     _graphicsTesselationPipelineHandle = _pipelineManager->createPbrTesselationProgram(
-        _renderPass, _communicationLayer->multiview());
+        _renderPass, MULTIVIEW_PRESENTATION);
     _blinnPhongTesselationPipelineHandle = _pipelineManager->createBlinnPhongTesselationProgram(
-        _renderPass, _communicationLayer->multiview());
+        _renderPass, MULTIVIEW_PRESENTATION);
     _graphicsTesselationPipeline =
         _pipelineManager->getPipeline(_graphicsTesselationPipelineHandle);
     _skyboxPipeline =
         _pipelineManager->getPipeline(_pipelineManager->createSkyboxProgram(_renderPass));
     _phongEnvMappingPipeline = _pipelineManager->getPipeline(
-        _pipelineManager->createEnvMappingProgram(_renderPass, _communicationLayer->multiview()));
+        _pipelineManager->createEnvMappingProgram(_renderPass, MULTIVIEW_PRESENTATION));
     _shadowPipeline =
         _pipelineManager->getPipeline(_pipelineManager->createShadowProgram(_shadowRenderPass));
     _envMappingPipeline = _pipelineManager->getPipeline(
@@ -952,7 +952,7 @@ private:
       VkDescriptorSet descriptorSets[] = {
         _bindlessDescriptorSet.getVkDescriptorSet(), _dynamicDescriptorSet.getVkDescriptorSet()};
 
-      if (_communicationLayer->multiview()) {
+      if constexpr (MULTIVIEW_PRESENTATION) {
         uint32_t dynamicUniformBufferOffsets[2];
         const uint32_t baseOffset = 2u * _currentFrame;
         _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(

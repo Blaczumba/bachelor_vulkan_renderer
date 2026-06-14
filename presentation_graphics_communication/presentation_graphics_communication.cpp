@@ -8,17 +8,9 @@
 
 namespace engine {
 
-PresentationGraphicsCommunication::PresentationGraphicsCommunication(bool multiview) noexcept
-  : _multiview(multiview) {}
-
-std::unique_ptr<PresentationGraphicsCommunication> PresentationGraphicsCommunication::create(
-    bool multiview) {
+std::unique_ptr<PresentationGraphicsCommunication> PresentationGraphicsCommunication::create() {
   return std::unique_ptr<PresentationGraphicsCommunication>(
-      new PresentationGraphicsCommunication(multiview));
-}
-
-bool PresentationGraphicsCommunication::multiview() const noexcept {
-  return _multiview;
+      new PresentationGraphicsCommunication());
 }
 
 void PresentationGraphicsCommunication::setCurrentSwapchainImageIndex(
