@@ -1,12 +1,12 @@
 #pragma once
 
 #include <array>
+#include <glm/glm.hpp>
+#include <iostream>
 #include <span>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <glm/glm.hpp>
-#include <iostream>
 
 #include "common/abstractions/contexts.h"
 #include "common/abstractions/graphics_context.h"
@@ -17,6 +17,8 @@
 #include "common/object/object.h"
 #include "common/scene/octree.h"
 #include "common/util/primitives.h"
+#include "presentation_graphics_communication/presentation_graphics_communication.h"
+#include "vulkan/graphics_context/presentation_lib.h"
 #include "vulkan/resource_manager/asset_manager.h"
 #include "vulkan/resource_manager/bindless_descriptor_set_writer.h"
 #include "vulkan/resource_manager/framebuffer_attachments_manager.h"
@@ -35,8 +37,6 @@
 #include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
-#include "vulkan/graphics_context/presentation_lib.h"
-#include "presentation_graphics_communication/presentation_graphics_communication.h"
 
 inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback1(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -56,17 +56,15 @@ class GraphicsContext final : public common::GraphicsContext {
   GraphicsContext(std::shared_ptr<Instance> instance, DebugMessenger&& debugMessenger,
                   std::unique_ptr<PhysicalDevice> physicalDevice,
                   std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
-                  std::shared_ptr<engine::PresentationGraphicsCommunication>
-                      communicationLayer,
+                  std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer,
                   std::unique_ptr<PresentationContext> presentationContext = nullptr);
 
 public:
   static std::unique_ptr<common::GraphicsContext> create(
       std::shared_ptr<Instance> instance, DebugMessenger&& debugMessenger,
-      std::unique_ptr<PhysicalDevice> physicalDevice,
-      std::unique_ptr<LogicalDevice> logicalDevice, const FileLoader& fileLoader,
-      std::shared_ptr<engine::PresentationGraphicsCommunication>
-          communicationLayer,
+      std::unique_ptr<PhysicalDevice> physicalDevice, std::unique_ptr<LogicalDevice> logicalDevice,
+      const FileLoader& fileLoader,
+      std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer,
       std::unique_ptr<PresentationContext> presentationContext);
 
   ~GraphicsContext();

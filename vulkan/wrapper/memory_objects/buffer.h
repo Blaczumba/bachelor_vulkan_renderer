@@ -19,11 +19,8 @@ struct BufferMetadata {
   std::span<std::byte> getMappedMemoryAsSpan() noexcept;
 };
 
-class BufferBuilder;
-
 class Buffer {
-  Buffer(const LogicalDevice& logicalDevice, const Allocation allocation,
-         const VkBuffer buffer) noexcept;
+  Buffer(const LogicalDevice& logicalDevice, VkBuffer buffer, Allocation allocation) noexcept;
 
 public:
   Buffer() noexcept = default;
@@ -64,14 +61,13 @@ public:
 
   BufferBuilder& withQueueFamilyIndices(std::span<const uint32_t> queueFamilyIndices) noexcept;
 
-  BufferWithMetadata createVertexInputBuffer(
-      const LogicalDevice& logicalDevice);
+  BufferWithMetadata createVertexInputBuffer(const LogicalDevice& logicalDevice);
 
-  BufferWithMetadata createStagingBuffer(
-      const LogicalDevice& logicalDevice);
+  BufferWithMetadata createStagingBuffer(const LogicalDevice& logicalDevice);
 
   BufferWithMetadata createUniformBuffer(const LogicalDevice& logicalDevice);
 
 private:
-  VkBufferCreateInfo _createInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
+  VkBufferCreateInfo _createInfo = {
+    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
 };

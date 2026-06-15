@@ -1,20 +1,19 @@
 #include "presentation_lib.h"
 
 #include <array>
-#include <memory>
 #include <cstdint>
+#include <memory>
 #include <vulkan/vulkan.h>
 
-#include "vulkan/wrapper/swapchain/swapchain.h"
-#include "vulkan/wrapper/util/check.h"
 #include "common/abstractions/contexts.h"
 #include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/swapchain/swapchain.h"
+#include "vulkan/wrapper/util/check.h"
 
 namespace vlkn {
 
 PresentationContext::PresentationContext(Swapchain&& swapchain) noexcept
-  :  _swapchain(std::move(swapchain)),
-    _renderFinishedSemaphores(_swapchain.getImagesCount()) {
+  : _swapchain(std::move(swapchain)), _renderFinishedSemaphores(_swapchain.getImagesCount()) {
   static constexpr VkSemaphoreCreateInfo semaphoreInfo = {
     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
 
@@ -29,10 +28,8 @@ PresentationContext::PresentationContext(Swapchain&& swapchain) noexcept
   }
 }
 
-std::unique_ptr<PresentationContext> PresentationContext::create(
-    Swapchain&& swapchain) {
-  return std::unique_ptr<PresentationContext>(
-      new PresentationContext(std::move(swapchain)));
+std::unique_ptr<PresentationContext> PresentationContext::create(Swapchain&& swapchain) {
+  return std::unique_ptr<PresentationContext>(new PresentationContext(std::move(swapchain)));
 }
 
 PresentationContext::~PresentationContext() {

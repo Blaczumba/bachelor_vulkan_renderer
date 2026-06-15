@@ -1,13 +1,13 @@
 #pragma once
 
 #include <array>
-#include <memory>
 #include <cstdint>
+#include <memory>
 #include <vulkan/vulkan.h>
 
-#include "vulkan/wrapper/swapchain/swapchain.h"
 #include "common/abstractions/contexts.h"
 #include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/swapchain/swapchain.h"
 
 namespace vlkn {
 

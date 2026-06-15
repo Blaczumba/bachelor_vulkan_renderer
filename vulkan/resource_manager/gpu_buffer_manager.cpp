@@ -6,7 +6,7 @@
 
 #include "common/util/engine_exception.h"
 #include "common/util/resource_handles.h"
-#include "vulkan/wrapper/memory_objects/buffers.h"
+#include "vulkan/wrapper/memory_objects/memory_objects_lib.h"
 
 std::unique_ptr<GpuBufferManager> GpuBufferManager::create() {
   return std::unique_ptr<GpuBufferManager>(new GpuBufferManager());
@@ -46,9 +46,11 @@ inline void decreaseRefCountInternal(MapType& map, IndexType index) {
   }
 }
 
-void copyBuffer(const VkCommandBuffer commandBuffer, VkBuffer dstBuffer, const BufferMetadata& dstMetadata,
-                 VkBuffer srcBuffer, const BufferMetadata& srcMetadata, std::optional<VkDeviceSize> srcSize = std::nullopt,
-    VkDeviceSize srcOffset = 0, VkDeviceSize dstOffset = 0) {
+void copyBuffer(
+    const VkCommandBuffer commandBuffer, VkBuffer dstBuffer, const BufferMetadata& dstMetadata,
+    VkBuffer srcBuffer, const BufferMetadata& srcMetadata,
+    std::optional<VkDeviceSize> srcSize = std::nullopt, VkDeviceSize srcOffset = 0,
+    VkDeviceSize dstOffset = 0) {
   if ((dstMetadata.usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) == 0) [[unlikely]] {
     throw EngineException(
         "When copying one buffer to other the destination one must have "
@@ -74,8 +76,7 @@ void copyBuffer(const VkCommandBuffer commandBuffer, VkBuffer dstBuffer, const B
         dstOffset, size, dstMetadata.size));
   }
 
-  copyBufferToBuffer(commandBuffer, srcBuffer, dstBuffer,
-                     srcOffset, dstOffset, size);
+  copyBufferToBuffer(commandBuffer, srcBuffer, dstBuffer, srcOffset, dstOffset, size);
 }
 
 }  // namespace
@@ -107,23 +108,25 @@ GpuBufferHandle GpuBufferManager::uploadBuffer(
 
   GpuBufferHandle index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
   BufferBuilder bufferBuilder;
-  BufferWithMetadata buffer = bufferBuilder
-      .withUsage(bufferType == BufferType::VERTEX ?
-                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT :
-                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
-      .withSize(stagingBuffer.metadata.size)
-      .createVertexInputBuffer(logicalDevice);
-  copyBuffer(commandBuffer, buffer.buffer.getVkBuffer(), buffer.metadata, stagingBuffer.buffer.getVkBuffer(), stagingBuffer.metadata);
+  BufferWithMetadata buffer =
+      bufferBuilder
+          .withUsage(bufferType == BufferType::VERTEX ?
+                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT :
+                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+          .withSize(stagingBuffer.metadata.size)
+          .createVertexInputBuffer(logicalDevice);
+  copyBuffer(commandBuffer, buffer.buffer.getVkBuffer(), buffer.metadata,
+             stagingBuffer.buffer.getVkBuffer(), stagingBuffer.metadata);
   _bufferMap.insertUnsafe(*index, BufferResource(std::move(buffer), 1));
   return index;
 }
 
 GpuBufferHandle GpuBufferManager::transferBuffer(BufferWithMetadata&& stagingBuffer) {
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
-    throw EngineException(
-        std::format(
-            "GpuBufferManager::transferBuffer: Cannot upload more buffers, maximum limit of {} reached.",
-            MAX_GPU_BUFFERS));
+    throw EngineException(std::
+                              format("GpuBufferManager::transferBuffer: Cannot upload more "
+                                     "buffers, maximum limit " "of {} reached.",
+                                     MAX_GPU_BUFFERS));
   }
 
   GpuBufferHandle index = getNextHandle(_bufferMap.size(), _freeBufferIndices);

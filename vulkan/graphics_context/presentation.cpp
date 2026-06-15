@@ -3,6 +3,7 @@
 #include "common/math/engine_math.h"
 #include "common/util/engine_exception.h"
 #include "lib/types/util.h"
+#include "presentation_graphics_communication/presentation_graphics_communication.h"
 #include "vulkan/graphics_context/graphics_context.h"
 #include "vulkan/graphics_context/presentation_lib.h"
 #include "vulkan/wrapper/instance/instance.h"
@@ -10,7 +11,6 @@
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/surface/surface.h"
 #include "vulkan/wrapper/swapchain/swapchain.h"
-#include "presentation_graphics_communication/presentation_graphics_communication.h"
 
 namespace vlkn {
 
@@ -18,10 +18,10 @@ Presentation::Presentation(
     std::shared_ptr<Window> window, std::shared_ptr<Instance> instance, Surface&& surface,
     PresentationContext* presentationContext,
     std::unique_ptr<GraphicsContext<false, false>> graphicsContext,
-    std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer, const FileLoader&
-        fileLoader)
-  : _window(std::move(window)), _instance(std::move(instance)), _surface(std::move(surface)), _presentationContext(presentationContext),
-    _graphicsContext(std::move(graphicsContext)),
+    std::shared_ptr<engine::PresentationGraphicsCommunication> communicationLayer,
+    const FileLoader& fileLoader)
+  : _window(std::move(window)), _instance(std::move(instance)), _surface(std::move(surface)),
+    _presentationContext(presentationContext), _graphicsContext(std::move(graphicsContext)),
     _communicationLayer(std::move(communicationLayer)),
     _mouseKeyboardManager(_window->createMouseKeyboardManager()) {}
 

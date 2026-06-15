@@ -29,10 +29,12 @@ DescriptorSetWriter& DescriptorSetWriter::storeImageStorage(const Texture& textu
   return *this;
 }
 
-DescriptorSetWriter& DescriptorSetWriter::storeBuffer(const Buffer& buffer, VkBufferUsageFlags usage, VkDeviceSize range, VkDeviceSize offset) {
+DescriptorSetWriter& DescriptorSetWriter::storeBuffer(
+    const Buffer& buffer, VkBufferUsageFlags usage, VkDeviceSize range, VkDeviceSize offset) {
   _bufferInfos.push_back(VkDescriptorBufferInfo{
     .buffer = buffer.getVkBuffer(),
-    .offset = offset, .range = range,
+    .offset = offset,
+    .range = range,
   });
 
   _arrayElement = 0;
@@ -47,7 +49,8 @@ DescriptorSetWriter& DescriptorSetWriter::storeBuffer(const Buffer& buffer, VkBu
 }
 
 DescriptorSetWriter& DescriptorSetWriter::storeDynamicBuffer(
-    const Buffer& buffer, VkBufferUsageFlags usage, uint32_t dynamicElementSize, uint32_t descriptorCount) {
+    const Buffer& buffer, VkBufferUsageFlags usage, uint32_t dynamicElementSize,
+    uint32_t descriptorCount) {
   _arrayElement = 0;
   _bufferInfos.reserve(descriptorCount);
   for (uint32_t i = 0; i < descriptorCount; i++) {
@@ -69,7 +72,8 @@ DescriptorSetWriter& DescriptorSetWriter::storeDynamicBuffer(
   return *this;
 }
 
-DescriptorSetWriter& DescriptorSetWriter::storeBufferArrayElement(const Buffer& buffer, VkBufferUsageFlags usage, VkDeviceSize range, VkDeviceSize offset) {
+DescriptorSetWriter& DescriptorSetWriter::storeBufferArrayElement(
+    const Buffer& buffer, VkBufferUsageFlags usage, VkDeviceSize range, VkDeviceSize offset) {
   _bufferInfos.push_back(
       VkDescriptorBufferInfo{.buffer = buffer.getVkBuffer(), .offset = offset, .range = range});
 

@@ -142,24 +142,25 @@ UniformBufferHandle BindlessDescriptorSetWriter::writeBuffer(
 std::vector<UniformBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
     std::span<const Buffer> buffers) {
   std::vector<UniformBufferHandle> handles;
-  //handles.reserve(buffers.size());
-  //for (uint32_t i = 0; i < buffers.size(); i++) {
-  //  const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
-  //  if (!_buffersMap.insert(*handle)) [[unlikely]] {
-  //    throw EngineException(std::format(
-  //        "BindlessDescriptorSetWriter::storeBuffers: Failed to insert Buffer Handle = {}.",
-  //        *handle));
-  //  }
+  // handles.reserve(buffers.size());
+  // for (uint32_t i = 0; i < buffers.size(); i++) {
+  //   const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
+  //   if (!_buffersMap.insert(*handle)) [[unlikely]] {
+  //     throw EngineException(std::format(
+  //         "BindlessDescriptorSetWriter::storeBuffers: Failed to insert Buffer Handle = {}.",
+  //         *handle));
+  //   }
 
   //  handles.push_back(handle);
   //}
 
-  //lib::Buffer<VkDescriptorBufferInfo> bufferInfos(buffers.size());
-  //lib::Buffer<VkWriteDescriptorSet> writes(buffers.size());
+  // lib::Buffer<VkDescriptorBufferInfo> bufferInfos(buffers.size());
+  // lib::Buffer<VkWriteDescriptorSet> writes(buffers.size());
 
-  //for (auto&& [bufferInfo, write, handle, buffer] :
-  //     std::views::zip(bufferInfos, writes, handles, buffers)) {
-  //  bufferInfo = VkDescriptorBufferInfo{.buffer = buffer.getVkBuffer(), .range = buffer.getSize()};
+  // for (auto&& [bufferInfo, write, handle, buffer] :
+  //      std::views::zip(bufferInfos, writes, handles, buffers)) {
+  //   bufferInfo = VkDescriptorBufferInfo{.buffer = buffer.getVkBuffer(), .range =
+  //   buffer.getSize()};
 
   //  write = VkWriteDescriptorSet{
   //    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -171,8 +172,8 @@ std::vector<UniformBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
   //    .pBufferInfo = &bufferInfo};
   //}
 
-  //vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
-  //                       static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+  // vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
+  //                        static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
   return handles;
 }
 

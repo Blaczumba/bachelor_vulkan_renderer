@@ -13,9 +13,8 @@ std::span<std::byte> BufferMetadata::getMappedMemoryAsSpan() noexcept {
   return std::span(mappedMemory, size);
 }
 
-Buffer::Buffer(
-    const LogicalDevice& logicalDevice, const Allocation allocation, const VkBuffer buffer) noexcept
-  : _logicalDevice(&logicalDevice), _allocation(allocation), _buffer(buffer) {}
+Buffer::Buffer(const LogicalDevice& logicalDevice, VkBuffer buffer, Allocation allocation) noexcept
+  : _logicalDevice(&logicalDevice), _buffer(buffer), _allocation(allocation) {}
 
 Buffer::Buffer(Buffer&& buffer) noexcept
   : _buffer(std::exchange(buffer._buffer, VK_NULL_HANDLE)), _allocation(buffer._allocation),
@@ -122,34 +121,32 @@ BufferWithMetadata BufferBuilder::createVertexInputBuffer(const LogicalDevice& l
   const BufferResources bufferResources =
       std::visit(VertexInputBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
   return BufferWithMetadata{
-      .buffer = Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
-      .metadata = BufferMetadata{
-    _createInfo.usage, _createInfo.size, reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
-        _createInfo.flags, _createInfo.sharingMode}
+    .buffer = Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation),
+    .metadata = BufferMetadata{_createInfo.usage, _createInfo.size,
+                               reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
+                               _createInfo.flags, _createInfo.sharingMode}
   };
 }
 
-BufferWithMetadata BufferBuilder::createStagingBuffer(
-    const LogicalDevice& logicalDevice) {
+BufferWithMetadata BufferBuilder::createStagingBuffer(const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
       std::visit(StagingBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
   return BufferWithMetadata{
-    .buffer = Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
+    .buffer = Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation),
     .metadata = BufferMetadata{_createInfo.usage, _createInfo.size,
-                   reinterpret_cast<std::byte*>(bufferResources.mappedMemory), _createInfo.flags,
-                   _createInfo.sharingMode}
+                               reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
+                               _createInfo.flags, _createInfo.sharingMode}
   };
 }
 
-BufferWithMetadata BufferBuilder::createUniformBuffer(
-    const LogicalDevice& logicalDevice) {
+BufferWithMetadata BufferBuilder::createUniformBuffer(const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
       std::visit(UniformBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
   return BufferWithMetadata{
-    .buffer = Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
+    .buffer = Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation),
     .metadata = BufferMetadata{_createInfo.usage, _createInfo.size,
-                   reinterpret_cast<std::byte*>(bufferResources.mappedMemory), _createInfo.flags,
-                   _createInfo.sharingMode}
+                               reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
+                               _createInfo.flags, _createInfo.sharingMode}
   };
 }
 

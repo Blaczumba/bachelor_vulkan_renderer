@@ -10,7 +10,7 @@
 #include "common/util/engine_exception.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
-#include "vulkan/wrapper/memory_objects/buffers.h"
+#include "vulkan/wrapper/memory_objects/memory_objects_lib.h"
 
 Texture::Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
                  VkImageType type, VkFormat format, VkExtent3D extent, VkImageAspectFlags aspect,
