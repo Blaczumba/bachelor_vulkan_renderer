@@ -7,52 +7,70 @@
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
+struct BufferMetadata {
+  VkBufferUsageFlags usage;
+  VkDeviceSize size;
+  std::byte* mappedMemory;
+  VkBufferCreateFlags flags;
+  VkSharingMode sharingMode;
+  // Other std::optional fields representing pNext metadata.
+  std::span<const std::byte> getMappedMemoryAsSpan() const noexcept;
+
+  std::span<std::byte> getMappedMemoryAsSpan() noexcept;
+};
+
+class BufferBuilder;
+
 class Buffer {
+  Buffer(const LogicalDevice& logicalDevice, const Allocation allocation,
+         const VkBuffer buffer) noexcept;
+
 public:
   Buffer() noexcept = default;
 
-  Buffer(Buffer&& Buffer) noexcept;
+  Buffer(Buffer&& buffer) noexcept;
 
-  Buffer& operator=(Buffer&& Buffer) noexcept;
+  Buffer& operator=(Buffer&& buffer) noexcept;
 
   ~Buffer();
-
-  static Buffer createVertexInputBuffer(
-      const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage = {});
-
-  static Buffer createStagingBuffer(
-      const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage = {});
-
-  static Buffer createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t size);
-
-  std::span<const std::byte> getMappedMemory() const noexcept;
-
-  std::span<std::byte> getMappedMemory() noexcept;
-
-  void copyBuffer(const VkCommandBuffer commandBuffer, const Buffer& srcBuffer,
-                  std::optional<VkDeviceSize> size = std::nullopt, VkDeviceSize srcOffset = 0,
-                  VkDeviceSize dstOffset = 0);
-
-  VkBufferUsageFlags getUsage() const noexcept;
-
-  uint32_t getSize() const noexcept;
 
   const VkBuffer& getVkBuffer() const noexcept;
 
   const LogicalDevice& getLogicalDevice() const;
 
 private:
-  Buffer(const LogicalDevice& logicalDevice, const Allocation allocation,
-         const VkBuffer vertexBuffer, VkBufferUsageFlags usage, uint32_t size,
-         void* mappedData = nullptr) noexcept;
-
   void destroy();
 
   VkBuffer _buffer = VK_NULL_HANDLE;
   Allocation _allocation;
-  VkDeviceSize _size;
-  VkBufferUsageFlags _usage;
-  void* _mappedMemory = nullptr;
 
   const LogicalDevice* _logicalDevice;
+
+  friend class BufferBuilder;
+};
+
+using BufferWithMetadata = std::pair<Buffer, BufferMetadata>;
+
+using BufferWithMetadataRef = std::pair<Buffer&, BufferMetadata&>;
+
+class BufferBuilder {
+public:
+  BufferBuilder& withUsage(VkBufferUsageFlags usage) noexcept;
+
+  BufferBuilder& withSize(VkDeviceSize size) noexcept;
+
+  BufferBuilder& withFlags(VkBufferCreateFlags flags) noexcept;
+
+  BufferBuilder& withQueueFamilyIndices(std::span<const uint32_t> queueFamilyIndices) noexcept;
+
+  BufferWithMetadata createVertexInputBuffer(
+      const LogicalDevice& logicalDevice);
+
+  BufferWithMetadata createStagingBuffer(
+      const LogicalDevice& logicalDevice);
+
+  BufferWithMetadata createUniformBuffer(const LogicalDevice& logicalDevice);
+
+private:
+  VkBufferCreateInfo _createInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
 };

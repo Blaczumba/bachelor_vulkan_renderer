@@ -229,16 +229,23 @@ void GCONTEXT_CLASS createDescriptorSets() {
   // If VR presentation is enabled then multiply times 2 otherwise times 1.
   const uint32_t size =
       _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera));
-  _dynamicUniformBuffersCamera = Buffer::createUniformBuffer(
-      *_logicalDevice, (MULTIVIEW_PRESENTATION ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size);
+  _dynamicUniformBuffersCamera =
+      BufferBuilder()
+          .withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+          .withSize((MULTIVIEW_PRESENTATION ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size)
+          .createUniformBuffer(*_logicalDevice);
 
   _dynamicDescriptorSetWriter.storeDynamicBuffer(
-      _dynamicUniformBuffersCamera, size, MULTIVIEW_PRESENTATION ? 2 : 1);
+      _dynamicUniformBuffersCamera.first, _dynamicUniformBuffersCamera.second.usage, size,
+      MULTIVIEW_PRESENTATION ? 2 : 1);
   _dynamicDescriptorSetWriter.writeDescriptorSet(
       _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
 
-  _lightBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(UniformBufferLight));
-  _lightHandle = _bindlessWriter->writeBuffer(_lightBuffer);
+  BufferWithMetadata lightBuffer = BufferBuilder()
+                     .withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+                     .withSize(sizeof(UniformBufferLight))
+                     .createUniformBuffer(*_logicalDevice);
+  _lightHandle = _bindlessWriter->writeBuffer(lightBuffer);
 
   _ubLight.pos = glm::vec3(15.1891f, 2.66408f, -0.841221f);
   _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.1f, 40.0f);
@@ -246,7 +253,8 @@ void GCONTEXT_CLASS createDescriptorSets() {
   _ubLight.projView = _ubLight.projView
                       * glm::lookAt(_ubLight.pos, glm::vec3(-3.82383f, 3.66503f, 1.30751f),
                                     glm::vec3(0.0f, 1.0f, 0.0f));
-  common::copyData(_lightBuffer.getMappedMemory(), 0, _ubLight);
+  common::copyData(lightBuffer.second.getMappedMemoryAsSpan(), 0, _ubLight);
+  _lightBuffer = std::move(lightBuffer.first);
 }
 
 GCONTEXT_TEMPLATE
@@ -309,14 +317,15 @@ void GCONTEXT_CLASS createEnvMappingResources() {
     .lightPos = _ubLight.pos
   };
 
-  _envMappingUniformBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(faceTransform));
-  common::copyData(_envMappingUniformBuffer.getMappedMemory(), 0, faceTransform);
-  _envMappingHandle = _bindlessWriter->writeBuffer(_envMappingUniformBuffer);
-  Sampler sampler = SamplerBuilder().withAnisotropy(samplerAnisotropy).build(*_logicalDevice);
-  _envMappingTextureHandle = _bindlessWriter->writeTexture(
-      _envMappingAttachments[0].getVkImageView(), _envMappingAttachments[0].getVkImageLayout(),
-      sampler.getVkSampler());
-  _samplerManager->transferSampler(std::move(sampler));
+  // TODO:
+  //_envMappingUniformBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(faceTransform));
+  //common::copyData(_envMappingUniformBuffer.getMappedMemory(), 0, faceTransform);
+  //_envMappingHandle = _bindlessWriter->writeBuffer(_envMappingUniformBuffer);
+  //Sampler sampler = SamplerBuilder().withAnisotropy(samplerAnisotropy).build(*_logicalDevice);
+  //_envMappingTextureHandle = _bindlessWriter->writeTexture(
+  //    _envMappingAttachments[0].getVkImageView(), _envMappingAttachments[0].getVkImageLayout(),
+  //    sampler.getVkSampler());
+  //_samplerManager->transferSampler(std::move(sampler));
 }
 
 GCONTEXT_TEMPLATE
@@ -556,14 +565,14 @@ void GCONTEXT_CLASS recordShadowCommandBuffer(VkCommandBuffer commandBuffer) {
                        _shadowPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
 
     VkBuffer vertexBuffer =
-        _gpuBufferManager->getBuffer(meshComponent.vertexBufferPrimitiveHandle).getVkBuffer();
+        _gpuBufferManager->getBuffer(meshComponent.vertexBufferPrimitiveHandle).first.getVkBuffer();
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
 
-    const Buffer& indexBuffer = _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getVkBuffer(), 0, meshComponent.indexType);
+    const BufferWithMetadata& indexBuffer = _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer.first.getVkBuffer(), 0, meshComponent.indexType);
 
     vkCmdDrawIndexed(
-        commandBuffer, indexBuffer.getSize() / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
+        commandBuffer, indexBuffer.second.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
   }
 
   vkCmdEndRenderPass(commandBuffer);
@@ -634,14 +643,14 @@ void GCONTEXT_CLASS recordEnvMappingCommandBuffer(VkCommandBuffer commandBuffer)
         _envMappingPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
 
     VkBuffer vertexBuffer =
-        _gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle).getVkBuffer();
+        _gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle).first.getVkBuffer();
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
 
-    const Buffer& indexBuffer = _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getVkBuffer(), 0, meshComponent.indexType);
+    const BufferWithMetadata& indexBuffer = _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer.first.getVkBuffer(), 0, meshComponent.indexType);
 
     vkCmdDrawIndexed(
-        commandBuffer, indexBuffer.getSize() / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
+        commandBuffer, indexBuffer.second.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
   }
 
   vkCmdEndRenderPass(commandBuffer);
@@ -658,7 +667,7 @@ void GCONTEXT_CLASS updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.proj = cameraContext.proj;
     _ubCamera.pos = cameraContext.position;
     _ubCamera.viewDir = cameraContext.viewDir;
-    common::copyData(_dynamicUniformBuffersCamera.getMappedMemory(),
+    common::copyData(_dynamicUniformBuffersCamera.second.getMappedMemoryAsSpan(),
                      (cameraContexts.size() * currentFrame + i)
                          * _physicalDevice->getMemoryAlignment(sizeof(_ubCamera)),
                      _ubCamera);
@@ -716,13 +725,13 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
                          pipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
 
       const auto& meshComponent = _registry.getComponent<MeshComponent>(object->getEntity());
-      const Buffer& indexBuffer = _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
-      const Buffer& vertexBuffer = _gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle);
+      const BufferWithMetadata& indexBuffer = _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
+      const Buffer& vertexBuffer = _gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle).first;
       static constexpr VkDeviceSize offsets[] = {0};
       vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer.getVkBuffer(), offsets);
-      vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getVkBuffer(), 0, meshComponent.indexType);
+      vkCmdBindIndexBuffer(commandBuffer, indexBuffer.first.getVkBuffer(), 0, meshComponent.indexType);
       vkCmdDrawIndexed(
-          commandBuffer, indexBuffer.getSize() / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
+          commandBuffer, indexBuffer.second.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
     }
 
     static constexpr OctreeNode::Subvolume options[] = {
@@ -861,10 +870,10 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
     const MaterialComponent& cubeMaterialComponent =
         _registry.getComponent<MaterialComponent>(_skyboxEntity);
     const VkBuffer vertexBuffer =
-        _gpuBufferManager->getBuffer(cubeMeshComponent.vertexBufferPrimitiveHandle).getVkBuffer();
-    const Buffer& indexBuffer = _gpuBufferManager->getBuffer(cubeMeshComponent.indexBufferHandle);
+        _gpuBufferManager->getBuffer(cubeMeshComponent.vertexBufferPrimitiveHandle).first.getVkBuffer();
+    const BufferWithMetadata& indexBuffer = _gpuBufferManager->getBuffer(cubeMeshComponent.indexBufferHandle);
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getVkBuffer(), 0, cubeMeshComponent.indexType);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer.first.getVkBuffer(), 0, cubeMeshComponent.indexType);
 
     const PushConstantsSkybox pc = {
       .proj = cameraProj,
@@ -881,7 +890,7 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
         _skyboxPipeline->getVkPipelineLayout(), 0, 1, descriptorSets, 0, nullptr);
 
     vkCmdDrawIndexed(commandBuffer,
-                     indexBuffer.getSize() / getIndexSize(cubeMeshComponent.indexType), 1, 0, 0, 0);
+                     indexBuffer.second.size / getIndexSize(cubeMeshComponent.indexType), 1, 0, 0, 0);
 
     // Env mapping
     /*vkCmdBindPipeline(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
@@ -1236,9 +1245,12 @@ void createFsrContents(
   const VkExtent2D extent = texture.getVkExtent2D();
   const lib::Buffer<std::byte> buffer(
       static_cast<size_t>(extent.width * extent.height), std::byte{10});
-  Buffer stagingBuffer =
-      Buffer::createStagingBuffer(logicalDevice, buffer.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  common::copyData(stagingBuffer.getMappedMemory(), 0, std::span(buffer));
+  BufferBuilder bufferBuilder;
+  auto [stagingBuffer, stagingBufferMetadata] = bufferBuilder
+      .withSize(buffer.size())
+      .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+      .createStagingBuffer(logicalDevice);
+  common::copyData(stagingBufferMetadata.getMappedMemoryAsSpan(), 0, std::span(buffer));
   lib::Buffer<VkBufferImageCopy> imageCopy(texture.getLayersCount());
   for (uint32_t layer = 0; layer < imageCopy.size(); layer++) {
     imageCopy[layer] = VkBufferImageCopy{

@@ -21,12 +21,15 @@ public:
 
   DescriptorSetWriter& storeImageStorage(const Texture& texture);
 
-  DescriptorSetWriter& storeBuffer(const Buffer& buffer);
+  DescriptorSetWriter& storeBuffer(
+      const Buffer& buffer, VkBufferUsageFlags usage, VkDeviceSize range, VkDeviceSize offset = 0);
 
   DescriptorSetWriter& storeDynamicBuffer(
-      const Buffer& buffer, uint32_t dynamicElementSize, uint32_t descriptorCount = 1);
+      const Buffer& buffer, VkBufferUsageFlags usage, uint32_t dynamicElementSize,
+      uint32_t descriptorCount = 1);
 
-  DescriptorSetWriter& storeBufferArrayElement(const Buffer& buffer);
+  DescriptorSetWriter& storeBufferArrayElement(
+      const Buffer& buffer, VkBufferUsageFlags usage, VkDeviceSize range, VkDeviceSize offset);
 
   void writeDescriptorSet(VkDevice device, const VkDescriptorSet descriptorSet);
 

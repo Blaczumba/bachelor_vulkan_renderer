@@ -107,23 +107,23 @@ void BindlessDescriptorSetWriter::removeTexture(UniformTextureHandle handle) {
 }
 
 UniformBufferHandle BindlessDescriptorSetWriter::writeBuffer(
-    const Buffer& buffer, std::optional<size_t> size, size_t offset) {
+    const BufferWithMetadata& buffer, std::optional<size_t> size, size_t offset) {
   const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
   if (!_buffersMap.insert(*handle)) [[unlikely]] {
     throw EngineException(std::format(
         "BindlessDescriptorSetWriter::storeBuffer: Failed to insert Buffer Handle = {}.", *handle));
   }
 
-  size_t range = size.value_or(buffer.getSize());
-  if (range + offset > buffer.getSize()) [[unlikely]] {
+  size_t range = size.value_or(buffer.second.size);
+  if (range + offset > buffer.second.size) [[unlikely]] {
     throw EngineException(
         std::format(
             "BindlessDescriptorSetWriter::storeBuffer: Buffer range " "(offset = {}, size " "= " "{" "}" ")" " " "e" "x" "c" "e" "e" "d" "s" " " "buffer size " "({}).",
-            offset, range, buffer.getSize()));
+            offset, range, buffer.second.size));
   }
 
   const VkDescriptorBufferInfo bufferInfo = {
-    .buffer = buffer.getVkBuffer(), .offset = offset, .range = range};
+    .buffer = buffer.first.getVkBuffer(), .offset = offset, .range = range};
 
   const VkWriteDescriptorSet write = {
     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -131,7 +131,7 @@ UniformBufferHandle BindlessDescriptorSetWriter::writeBuffer(
     .dstBinding = UNIFORM_BINDING,
     .dstArrayElement = static_cast<uint32_t>(*handle),
     .descriptorCount = 1,
-    .descriptorType = getDescriptorType(buffer.getUsage()),
+    .descriptorType = getDescriptorType(buffer.second.usage),
     .pBufferInfo = &bufferInfo};
 
   vkUpdateDescriptorSets(
@@ -143,37 +143,37 @@ UniformBufferHandle BindlessDescriptorSetWriter::writeBuffer(
 std::vector<UniformBufferHandle> BindlessDescriptorSetWriter::storeBuffers(
     std::span<const Buffer> buffers) {
   std::vector<UniformBufferHandle> handles;
-  handles.reserve(buffers.size());
-  for (uint32_t i = 0; i < buffers.size(); i++) {
-    const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
-    if (!_buffersMap.insert(*handle)) [[unlikely]] {
-      throw EngineException(std::format(
-          "BindlessDescriptorSetWriter::storeBuffers: Failed to insert Buffer Handle = {}.",
-          *handle));
-    }
+  //handles.reserve(buffers.size());
+  //for (uint32_t i = 0; i < buffers.size(); i++) {
+  //  const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
+  //  if (!_buffersMap.insert(*handle)) [[unlikely]] {
+  //    throw EngineException(std::format(
+  //        "BindlessDescriptorSetWriter::storeBuffers: Failed to insert Buffer Handle = {}.",
+  //        *handle));
+  //  }
 
-    handles.push_back(handle);
-  }
+  //  handles.push_back(handle);
+  //}
 
-  lib::Buffer<VkDescriptorBufferInfo> bufferInfos(buffers.size());
-  lib::Buffer<VkWriteDescriptorSet> writes(buffers.size());
+  //lib::Buffer<VkDescriptorBufferInfo> bufferInfos(buffers.size());
+  //lib::Buffer<VkWriteDescriptorSet> writes(buffers.size());
 
-  for (auto&& [bufferInfo, write, handle, buffer] :
-       std::views::zip(bufferInfos, writes, handles, buffers)) {
-    bufferInfo = VkDescriptorBufferInfo{.buffer = buffer.getVkBuffer(), .range = buffer.getSize()};
+  //for (auto&& [bufferInfo, write, handle, buffer] :
+  //     std::views::zip(bufferInfos, writes, handles, buffers)) {
+  //  bufferInfo = VkDescriptorBufferInfo{.buffer = buffer.getVkBuffer(), .range = buffer.getSize()};
 
-    write = VkWriteDescriptorSet{
-      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .dstSet = _descriptorSet.getVkDescriptorSet(),
-      .dstBinding = UNIFORM_BINDING,
-      .dstArrayElement = static_cast<uint32_t>(*handle),
-      .descriptorCount = 1,
-      .descriptorType = getDescriptorType(buffer.getUsage()),
-      .pBufferInfo = &bufferInfo};
-  }
+  //  write = VkWriteDescriptorSet{
+  //    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+  //    .dstSet = _descriptorSet.getVkDescriptorSet(),
+  //    .dstBinding = UNIFORM_BINDING,
+  //    .dstArrayElement = static_cast<uint32_t>(*handle),
+  //    .descriptorCount = 1,
+  //    .descriptorType = getDescriptorType(buffer.getUsage()),
+  //    .pBufferInfo = &bufferInfo};
+  //}
 
-  vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
-                         static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+  //vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
+  //                       static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
   return handles;
 }
 

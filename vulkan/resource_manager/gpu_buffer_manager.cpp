@@ -6,6 +6,7 @@
 
 #include "common/util/engine_exception.h"
 #include "common/util/resource_handles.h"
+#include "vulkan/wrapper/memory_objects/buffers.h"
 
 std::unique_ptr<GpuBufferManager> GpuBufferManager::create() {
   return std::unique_ptr<GpuBufferManager>(new GpuBufferManager());
@@ -45,6 +46,38 @@ inline void decreaseRefCountInternal(MapType& map, IndexType index) {
   }
 }
 
+void copyBuffer(const VkCommandBuffer commandBuffer, VkBuffer dstBuffer, const BufferMetadata& dstMetadata,
+                 VkBuffer srcBuffer, const BufferMetadata& srcMetadata, std::optional<VkDeviceSize> srcSize = std::nullopt,
+    VkDeviceSize srcOffset = 0, VkDeviceSize dstOffset = 0) {
+  if ((dstMetadata.usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) == 0) [[unlikely]] {
+    throw EngineException(
+        "When copying one buffer to other the destination one must have "
+        "VK_BUFFER_USAGE_TRANSFER_DST_BIT specified.");
+  }
+
+  if ((srcMetadata.usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) == 0) [[unlikely]] {
+    throw EngineException(
+        "When copying one buffer to other the source one must have "
+        "VK_BUFFER_USAGE_TRANSFER_SRC_BIT specified.");
+  }
+
+  const VkDeviceSize size = srcSize.value_or(srcMetadata.size);
+  if (srcOffset + size > srcMetadata.size) [[unlikely]] {
+    throw EngineException(std::format(
+        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
+        srcOffset, size, srcMetadata.size));
+  }
+
+  if (dstOffset + size > dstMetadata.size) [[unlikely]] {
+    throw EngineException(std::format(
+        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
+        dstOffset, size, dstMetadata.size));
+  }
+
+  copyBufferToBuffer(commandBuffer, srcBuffer, dstBuffer,
+                     srcOffset, dstOffset, size);
+}
+
 }  // namespace
 
 void GpuBufferManager::increaseRefCount(GpuBufferHandle index) {
@@ -64,8 +97,8 @@ void GpuBufferManager::decreaseRefCount(GpuTextureHandle index) {
 }
 
 GpuBufferHandle GpuBufferManager::uploadBuffer(
-    VkCommandBuffer commandBuffer, const Buffer& stagingBuffer, BufferType bufferType) {
-  const LogicalDevice& logicalDevice = stagingBuffer.getLogicalDevice();
+    VkCommandBuffer commandBuffer, const BufferWithMetadata& stagingBuffer, BufferType bufferType) {
+  const LogicalDevice& logicalDevice = stagingBuffer.first.getLogicalDevice();
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(std::format(
         "GpuBufferManager::uploadBuffer: Cannot upload more buffers, maximum limit of {} reached.",
@@ -73,21 +106,23 @@ GpuBufferHandle GpuBufferManager::uploadBuffer(
   }
 
   GpuBufferHandle index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
-  Buffer buffer = Buffer::createVertexInputBuffer(
-      logicalDevice, stagingBuffer.getSize(),
-      bufferType == BufferType::VERTEX ?
-          VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT :
-          VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-  buffer.copyBuffer(commandBuffer, stagingBuffer);
+  BufferBuilder bufferBuilder;
+  BufferWithMetadata buffer = bufferBuilder
+      .withUsage(bufferType == BufferType::VERTEX ?
+                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT :
+                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+      .withSize(stagingBuffer.second.size)
+      .createVertexInputBuffer(logicalDevice);
+  copyBuffer(commandBuffer, buffer.first.getVkBuffer(), buffer.second, stagingBuffer.first.getVkBuffer(), stagingBuffer.second);
   _bufferMap.insertUnsafe(*index, BufferResource(std::move(buffer), 1));
   return index;
 }
 
-GpuBufferHandle GpuBufferManager::transferBuffer(Buffer&& stagingBuffer) {
+GpuBufferHandle GpuBufferManager::transferBuffer(BufferWithMetadata&& stagingBuffer) {
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(
         std::format(
-            "GpuBufferManager::transferBuffer: Cannot upload more " "buffers, maximum " "limit " "o" "f" " " "{" "}" " " "reached.",
+            "GpuBufferManager::transferBuffer: Cannot upload more buffers, maximum limit of {} reached.",
             MAX_GPU_BUFFERS));
   }
 
@@ -96,7 +131,7 @@ GpuBufferHandle GpuBufferManager::transferBuffer(Buffer&& stagingBuffer) {
   return index;
 }
 
-const Buffer& GpuBufferManager::getBuffer(GpuBufferHandle index) const {
+const BufferWithMetadata& GpuBufferManager::getBuffer(GpuBufferHandle index) const {
   const BufferResource* resource = _bufferMap.tryGetValue(*index);
   if (resource == nullptr) [[unlikely]] {
     throw EngineException(

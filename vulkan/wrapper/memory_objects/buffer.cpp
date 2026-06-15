@@ -1,24 +1,25 @@
 #include "buffer.h"
 
-#include <format>
 #include <optional>
 #include <span>
 #include <variant>
 #include <vulkan/vulkan.h>
 
-#include "common/util/engine_exception.h"
-#include "vulkan/wrapper/memory_objects/buffers.h"
+std::span<const std::byte> BufferMetadata::getMappedMemoryAsSpan() const noexcept {
+  return std::span(mappedMemory, size);
+}
+
+std::span<std::byte> BufferMetadata::getMappedMemoryAsSpan() noexcept {
+  return std::span(mappedMemory, size);
+}
 
 Buffer::Buffer(
-    const LogicalDevice& logicalDevice, const Allocation allocation, const VkBuffer buffer,
-    VkBufferUsageFlags usage, uint32_t size, void* mappedData) noexcept
-  : _logicalDevice(&logicalDevice), _allocation(allocation), _buffer(buffer), _usage(usage),
-    _size(size), _mappedMemory(mappedData) {}
+    const LogicalDevice& logicalDevice, const Allocation allocation, const VkBuffer buffer) noexcept
+  : _logicalDevice(&logicalDevice), _allocation(allocation), _buffer(buffer) {}
 
 Buffer::Buffer(Buffer&& buffer) noexcept
   : _buffer(std::exchange(buffer._buffer, VK_NULL_HANDLE)), _allocation(buffer._allocation),
-    _logicalDevice(std::exchange(buffer._logicalDevice, nullptr)), _usage(buffer._usage),
-    _size(buffer._size), _mappedMemory(std::exchange(buffer._mappedMemory, nullptr)) {}
+    _logicalDevice(std::exchange(buffer._logicalDevice, nullptr)) {}
 
 Buffer& Buffer::operator=(Buffer&& buffer) noexcept {
   if (this == &buffer) {
@@ -31,9 +32,6 @@ Buffer& Buffer::operator=(Buffer&& buffer) noexcept {
 
   _buffer = std::exchange(buffer._buffer, VK_NULL_HANDLE);
   _allocation = buffer._allocation;
-  _size = buffer._size;
-  _usage = buffer._usage;
-  _mappedMemory = std::exchange(buffer._mappedMemory, nullptr);
   _logicalDevice = std::exchange(buffer._logicalDevice, nullptr);
   return *this;
 }
@@ -68,132 +66,86 @@ Buffer::~Buffer() {
 
 namespace {
 
-struct BufferData {
+struct BufferResources {
   VkBuffer buffer;
   Allocation allocation;
-  VkBufferUsageFlags usage;
   void* mappedMemory;
 };
 
 struct VertexInputBufferAllocator {
-  const size_t size;
-  VkBufferUsageFlags usage;
+  const VkBufferCreateInfo& bufferCreateInfo;
 
-  BufferData operator()(VmaWrapper& allocator) {
+  BufferResources operator()(VmaWrapper& allocator) {
     const VmaWrapper::Buffer buffer =
-        allocator.createVkBuffer(size, usage, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
-    return BufferData{buffer.buffer, buffer.allocation, usage};
+        allocator.createVkBuffer(bufferCreateInfo, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+    return BufferResources{buffer.buffer, buffer.allocation};
   }
 
-  BufferData operator()(auto&&) {
+  BufferResources operator()(auto&&) {
     return {};
   }
 };
 
 struct StagingBufferAllocator {
-  const size_t size;
-  VkBufferUsageFlags usage = {};
+  const VkBufferCreateInfo& bufferCreateInfo;
 
-  BufferData operator()(VmaWrapper& wrapper) {
+  BufferResources operator()(VmaWrapper& wrapper) {
     const VmaWrapper::Buffer buffer = wrapper.createVkBuffer(
-        size, usage, VMA_MEMORY_USAGE_AUTO,
+        bufferCreateInfo, VMA_MEMORY_USAGE_AUTO,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
-    return BufferData{buffer.buffer, buffer.allocation, usage, buffer.mappedData};
+    return BufferResources{buffer.buffer, buffer.allocation, buffer.mappedData};
   }
 
-  BufferData operator()(auto&&) {
+  BufferResources operator()(auto&&) {
     return {};
   }
 };
 
 struct UniformBufferAllocator {
-  const size_t size;
+  const VkBufferCreateInfo& bufferCreateInfo;
 
-  BufferData operator()(VmaWrapper& allocator) {
-    VkBufferUsageFlags usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+  BufferResources operator()(VmaWrapper& allocator) {
     const VmaWrapper::Buffer buffer = allocator.createVkBuffer(
-        size, usage, VMA_MEMORY_USAGE_CPU_ONLY,
+        bufferCreateInfo, VMA_MEMORY_USAGE_CPU_ONLY,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
-    return BufferData{buffer.buffer, buffer.allocation, usage, buffer.mappedData};
+    return BufferResources{buffer.buffer, buffer.allocation, buffer.mappedData};
   }
 
-  BufferData operator()(auto&&) {
+  BufferResources operator()(auto&&) {
     return {};
   }
 };
 
 }  // namespace
 
-Buffer Buffer::createVertexInputBuffer(
-    const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage) {
-  const BufferData bufferData =
-      std::visit(VertexInputBufferAllocator{size, usage}, logicalDevice.getMemoryAllocator());
-  return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
-                bufferData.mappedMemory);
+BufferWithMetadata BufferBuilder::createVertexInputBuffer(
+    const LogicalDevice& logicalDevice) {
+  const BufferResources bufferResources =
+      std::visit(VertexInputBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
+  return std::make_tuple(Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
+      BufferMetadata{
+        _createInfo.usage, _createInfo.size, reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
+        _createInfo.flags, _createInfo.sharingMode});
 }
 
-Buffer Buffer::createStagingBuffer(
-    const LogicalDevice& logicalDevice, uint32_t size, VkBufferUsageFlags usage) {
-  const BufferData bufferData =
-      std::visit(StagingBufferAllocator{size, usage}, logicalDevice.getMemoryAllocator());
-  return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
-                bufferData.mappedMemory);
+BufferWithMetadata BufferBuilder::createStagingBuffer(
+    const LogicalDevice& logicalDevice) {
+  const BufferResources bufferResources =
+      std::visit(StagingBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
+  return std::make_tuple(Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
+      BufferMetadata{
+        _createInfo.usage, _createInfo.size, reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
+        _createInfo.flags, _createInfo.sharingMode});
 }
 
-Buffer Buffer::createUniformBuffer(const LogicalDevice& logicalDevice, uint32_t size) {
-  const BufferData bufferData =
-      std::visit(UniformBufferAllocator{size}, logicalDevice.getMemoryAllocator());
-  return Buffer(logicalDevice, bufferData.allocation, bufferData.buffer, bufferData.usage, size,
-                bufferData.mappedMemory);
-}
-
-std::span<const std::byte> Buffer::getMappedMemory() const noexcept {
-  return std::span(static_cast<const std::byte*>(_mappedMemory), _size);
-}
-
-std::span<std::byte> Buffer::getMappedMemory() noexcept {
-  return std::span(static_cast<std::byte*>(_mappedMemory), _size);
-}
-
-void Buffer::copyBuffer(
-    const VkCommandBuffer commandBuffer, const Buffer& srcBuffer,
-    std::optional<VkDeviceSize> srcSize, VkDeviceSize srcOffset, VkDeviceSize dstOffset) {
-  if ((_usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) == 0) [[unlikely]] {
-    throw EngineException(
-        "When copying one buffer to other the destination one must have "
-        "VK_BUFFER_USAGE_TRANSFER_DST_BIT specified.");
-  }
-
-  if ((srcBuffer._usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) == 0) [[unlikely]] {
-    throw EngineException(
-        "When copying one buffer to other the source one must have "
-        "VK_BUFFER_USAGE_TRANSFER_SRC_BIT specified.");
-  }
-
-  const VkDeviceSize size = srcSize.value_or(srcBuffer._size);
-  if (srcOffset + size > srcBuffer._size) [[unlikely]] {
-    // TODO:
-    throw EngineException(std::format(
-        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
-        srcOffset, size, srcBuffer._size));
-  }
-
-  if (dstOffset + size > _size) [[unlikely]] {
-    // TODO:
-    throw EngineException(std::format(
-        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
-        srcOffset, size, srcBuffer._size));
-  }
-
-  copyBufferToBuffer(commandBuffer, srcBuffer._buffer, _buffer, srcOffset, dstOffset, size);
-}
-
-VkBufferUsageFlags Buffer::getUsage() const noexcept {
-  return _usage;
-}
-
-uint32_t Buffer::getSize() const noexcept {
-  return _size;
+BufferWithMetadata BufferBuilder::createUniformBuffer(
+    const LogicalDevice& logicalDevice) {
+  const BufferResources bufferResources =
+      std::visit(UniformBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
+  return std::make_tuple(Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
+      BufferMetadata{
+        _createInfo.usage, _createInfo.size, reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
+        _createInfo.flags, _createInfo.sharingMode});
 }
 
 const VkBuffer& Buffer::getVkBuffer() const noexcept {
@@ -202,4 +154,27 @@ const VkBuffer& Buffer::getVkBuffer() const noexcept {
 
 const LogicalDevice& Buffer::getLogicalDevice() const {
   return *_logicalDevice;
+}
+
+BufferBuilder& BufferBuilder::withUsage(VkBufferUsageFlags usage) noexcept {
+  _createInfo.usage = usage;
+  return *this;
+}
+
+BufferBuilder& BufferBuilder::withSize(VkDeviceSize size) noexcept {
+  _createInfo.size = size;
+  return *this;
+}
+
+BufferBuilder& BufferBuilder::withFlags(VkBufferCreateFlags flags) noexcept {
+  _createInfo.flags = flags;
+  return *this;
+}
+
+BufferBuilder& BufferBuilder::withQueueFamilyIndices(
+    std::span<const uint32_t> queueFamilyIndices) noexcept {
+  _createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+  _createInfo.queueFamilyIndexCount = static_cast<uint32_t>(queueFamilyIndices.size());
+  _createInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+  return *this;
 }

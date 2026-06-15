@@ -167,7 +167,7 @@ private:
   PipelineHandle _blinnPhongTesselationPipelineHandle;
 
   UniformBufferLight _ubLight;
-  Buffer _dynamicUniformBuffersCamera;
+  BufferWithMetadata _dynamicUniformBuffersCamera;
   Buffer _lightBuffer;
   UniformBufferHandle _lightHandle;
 

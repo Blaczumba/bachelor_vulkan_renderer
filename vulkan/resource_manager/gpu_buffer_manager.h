@@ -8,7 +8,7 @@
 
 class GpuBufferManager {
   struct BufferResource {
-    Buffer buffer;
+    BufferWithMetadata buffer;
     size_t refCount = 0;
   };
 
@@ -41,12 +41,12 @@ public:
     INDEX
   };
 
-  GpuBufferHandle uploadBuffer(
-      VkCommandBuffer commandBuffer, const Buffer& stagingBuffer, BufferType bufferType);
+  GpuBufferHandle uploadBuffer(VkCommandBuffer commandBuffer,
+                               const BufferWithMetadata& stagingBuffer, BufferType bufferType);
 
-  GpuBufferHandle transferBuffer(Buffer&& stagingBuffer);
+  GpuBufferHandle transferBuffer(BufferWithMetadata&& stagingBuffer);
 
-  const Buffer& getBuffer(GpuBufferHandle index) const;
+  const BufferWithMetadata& getBuffer(GpuBufferHandle index) const;
 
   bool removeBuffer(GpuBufferHandle index);
 

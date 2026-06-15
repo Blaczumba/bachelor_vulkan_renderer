@@ -31,6 +31,7 @@ public:
 
   struct ImageData {
     Buffer stagingBuffer;
+    BufferMetadata stagingBufferMetadata;
     uint32_t width;
     uint32_t height;
     uint32_t mipLevels;
@@ -39,8 +40,8 @@ public:
   };
 
   struct VertexData {
-    lib::DynamicAssociationList<std::string, Buffer> buffers;
-    Buffer indexBuffer;
+    lib::DynamicAssociationList<std::string, BufferWithMetadata> buffers;
+    BufferWithMetadata indexBuffer;
     VkIndexType indexType;
   };
 

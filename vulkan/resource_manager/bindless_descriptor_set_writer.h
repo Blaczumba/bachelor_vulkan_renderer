@@ -32,8 +32,8 @@ public:
 
   void removeTexture(UniformTextureHandle handle);
 
-  UniformBufferHandle writeBuffer(
-      const Buffer& buffer, std::optional<size_t> size = std::nullopt, size_t offset = 0);
+  UniformBufferHandle writeBuffer(const BufferWithMetadata& buffer,
+                                  std::optional<size_t> size = std::nullopt, size_t offset = 0);
 
   // TODO: refactor.
   std::vector<UniformBufferHandle> storeBuffers(std::span<const Buffer> buffers);
