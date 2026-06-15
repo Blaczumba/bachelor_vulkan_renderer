@@ -98,7 +98,7 @@ void GpuBufferManager::decreaseRefCount(GpuTextureHandle index) {
 
 GpuBufferHandle GpuBufferManager::uploadBuffer(
     VkCommandBuffer commandBuffer, const BufferWithMetadata& stagingBuffer, BufferType bufferType) {
-  const LogicalDevice& logicalDevice = stagingBuffer.first.getLogicalDevice();
+  const LogicalDevice& logicalDevice = stagingBuffer.buffer.getLogicalDevice();
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(std::format(
         "GpuBufferManager::uploadBuffer: Cannot upload more buffers, maximum limit of {} reached.",
@@ -111,9 +111,9 @@ GpuBufferHandle GpuBufferManager::uploadBuffer(
       .withUsage(bufferType == BufferType::VERTEX ?
                      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT :
                      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
-      .withSize(stagingBuffer.second.size)
+      .withSize(stagingBuffer.metadata.size)
       .createVertexInputBuffer(logicalDevice);
-  copyBuffer(commandBuffer, buffer.first.getVkBuffer(), buffer.second, stagingBuffer.first.getVkBuffer(), stagingBuffer.second);
+  copyBuffer(commandBuffer, buffer.buffer.getVkBuffer(), buffer.metadata, stagingBuffer.buffer.getVkBuffer(), stagingBuffer.metadata);
   _bufferMap.insertUnsafe(*index, BufferResource(std::move(buffer), 1));
   return index;
 }

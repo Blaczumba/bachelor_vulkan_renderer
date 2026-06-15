@@ -114,24 +114,23 @@ UniformBufferHandle BindlessDescriptorSetWriter::writeBuffer(
         "BindlessDescriptorSetWriter::storeBuffer: Failed to insert Buffer Handle = {}.", *handle));
   }
 
-  size_t range = size.value_or(buffer.second.size);
-  if (range + offset > buffer.second.size) [[unlikely]] {
+  size_t range = size.value_or(buffer.metadata.size);
+  if (range + offset > buffer.metadata.size) [[unlikely]] {
     throw EngineException(
         std::format(
             "BindlessDescriptorSetWriter::storeBuffer: Buffer range " "(offset = {}, size " "= " "{" "}" ")" " " "e" "x" "c" "e" "e" "d" "s" " " "buffer size " "({}).",
-            offset, range, buffer.second.size));
+            offset, range, buffer.metadata.size));
   }
 
   const VkDescriptorBufferInfo bufferInfo = {
-    .buffer = buffer.first.getVkBuffer(), .offset = offset, .range = range};
-
+    .buffer = buffer.buffer.getVkBuffer(), .offset = offset, .range = range};
   const VkWriteDescriptorSet write = {
     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
     .dstSet = _descriptorSet.getVkDescriptorSet(),
     .dstBinding = UNIFORM_BINDING,
     .dstArrayElement = static_cast<uint32_t>(*handle),
     .descriptorCount = 1,
-    .descriptorType = getDescriptorType(buffer.second.usage),
+    .descriptorType = getDescriptorType(buffer.metadata.usage),
     .pBufferInfo = &bufferInfo};
 
   vkUpdateDescriptorSets(

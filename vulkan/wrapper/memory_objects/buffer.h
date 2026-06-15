@@ -49,9 +49,10 @@ private:
   friend class BufferBuilder;
 };
 
-using BufferWithMetadata = std::pair<Buffer, BufferMetadata>;
-
-using BufferWithMetadataRef = std::pair<Buffer&, BufferMetadata&>;
+struct BufferWithMetadata {
+  Buffer buffer;
+  BufferMetadata metadata;
+};
 
 class BufferBuilder {
 public:

@@ -118,34 +118,39 @@ struct UniformBufferAllocator {
 
 }  // namespace
 
-BufferWithMetadata BufferBuilder::createVertexInputBuffer(
-    const LogicalDevice& logicalDevice) {
+BufferWithMetadata BufferBuilder::createVertexInputBuffer(const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
       std::visit(VertexInputBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
-  return std::make_tuple(Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
-      BufferMetadata{
-        _createInfo.usage, _createInfo.size, reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
-        _createInfo.flags, _createInfo.sharingMode});
+  return BufferWithMetadata{
+      .buffer = Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
+      .metadata = BufferMetadata{
+    _createInfo.usage, _createInfo.size, reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
+        _createInfo.flags, _createInfo.sharingMode}
+  };
 }
 
 BufferWithMetadata BufferBuilder::createStagingBuffer(
     const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
       std::visit(StagingBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
-  return std::make_tuple(Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
-      BufferMetadata{
-        _createInfo.usage, _createInfo.size, reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
-        _createInfo.flags, _createInfo.sharingMode});
+  return BufferWithMetadata{
+    .buffer = Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
+    .metadata = BufferMetadata{_createInfo.usage, _createInfo.size,
+                   reinterpret_cast<std::byte*>(bufferResources.mappedMemory), _createInfo.flags,
+                   _createInfo.sharingMode}
+  };
 }
 
 BufferWithMetadata BufferBuilder::createUniformBuffer(
     const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
       std::visit(UniformBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
-  return std::make_tuple(Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
-      BufferMetadata{
-        _createInfo.usage, _createInfo.size, reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
-        _createInfo.flags, _createInfo.sharingMode});
+  return BufferWithMetadata{
+    .buffer = Buffer(logicalDevice, bufferResources.allocation, bufferResources.buffer),
+    .metadata = BufferMetadata{_createInfo.usage, _createInfo.size,
+                   reinterpret_cast<std::byte*>(bufferResources.mappedMemory), _createInfo.flags,
+                   _createInfo.sharingMode}
+  };
 }
 
 const VkBuffer& Buffer::getVkBuffer() const noexcept {
