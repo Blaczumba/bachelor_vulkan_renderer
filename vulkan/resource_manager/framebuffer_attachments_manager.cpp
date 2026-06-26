@@ -14,8 +14,8 @@ FramebufferAttachmentManager::FramebufferAttachmentManager(
   : _gpuBufferManager(gpuBufferManager) {}
 
 FramebufferAttachmentManager::~FramebufferAttachmentManager() {
-  for (const auto& [framebuffer, attachments] : _framebuffers) {
-    for (GpuImageHandle imageHandle : attachments.attachments) {
+  for (const auto& [framebuffer, attachments] : _framebuffersAttachments) {
+    for (GpuImageHandle imageHandle : attachments) {
       _gpuBufferManager.decreaseRefCount(imageHandle);
     }
   }
@@ -37,17 +37,16 @@ Framebuffer FramebufferAttachmentManager::createFramebuffer(
   }
 
   Framebuffer framebuffer = framebufferBuilder.build(renderpass);
-  _framebuffers.emplace(
-      framebuffer.getVkFramebuffer(),
-      Attachments{.attachments = attachments, .swapchainImageView = swapchainView});
+  _framebuffersAttachments.emplace(framebuffer.getVkFramebuffer(), attachments);
+  _framebuffersSwapchainViews.emplace(framebuffer.getVkFramebuffer(), swapchainView);
   return framebuffer;
 }
 
 std::span<const GpuImageHandle> FramebufferAttachmentManager::getAttachments(
-    VkFramebuffer framebuffer) {
-  auto it = _framebuffers.find(framebuffer);
-  if (it == _framebuffers.end()) [[unlikely]] {
+    VkFramebuffer framebuffer) const {
+  auto it = _framebuffersAttachments.find(framebuffer);
+  if (it == _framebuffersAttachments.end()) [[unlikely]] {
     throw EngineException("Framebuffer not found in FramebufferAttachmentManager.");
   }
-  return it->second.attachments;
+  return it->second;
 }

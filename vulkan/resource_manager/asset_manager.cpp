@@ -114,29 +114,29 @@ StagingImageDataResourceHandle AssetManager::loadImageAsync(
   const StagingImageDataResourceHandle index = _freeImageDataIndices.back();
   _freeImageDataIndices.pop_back();
   _awaitingImageDataResources.emplace(
-      index, std::async(_launchPolicy,
-                        [this, modelPtr = std::move(modelPtr),
-                         imageResource = std::move(imageResource)]() -> ImageData {
-                          BufferBuilder bufferBuilder;
-                          ImageData imageData = {
-                            .stagingBuffer =
-                                BufferWithMetadata{bufferBuilder.withSize(imageResource.size)
-                                                       .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-                                                       .createStagingBuffer(_logicalDevice),
-                                                   bufferBuilder.getMetadata()},
-                            .width = imageResource.width,
-                            .height = imageResource.height,
-                            .mipLevels = imageResource.mipLevels,
-                            .layerCount = imageResource.layerCount,
-                            .copyRegions = translateToVkBufferImageCopy(imageResource.subresources),
-                          };
-                          common::copyData(
-                              imageData.stagingBuffer.metadata.getMappedMemoryAsSpan(), 0,
-                              std::span(static_cast<const std::byte*>(imageResource.data),
-                                        imageResource.size),
-                              0, imageResource.size);
-                          return imageData;
-                        }));
+      index,
+      std::async(
+          _launchPolicy,
+          [this, modelPtr = std::move(modelPtr),
+           imageResource = std::move(imageResource)]() -> ImageData {
+            BufferBuilder bufferBuilder;
+            ImageData imageData = {
+              .stagingBuffer = BufferWithMetadata{bufferBuilder.withSize(imageResource.size)
+                                                      .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+                                                      .createStagingBuffer(_logicalDevice),
+                                                  bufferBuilder.getMetadata()},
+              .width = imageResource.width,
+              .height = imageResource.height,
+              .mipLevels = imageResource.mipLevels,
+              .layerCount = imageResource.layerCount,
+              .copyRegions = translateToVkBufferImageCopy(imageResource.subresources),
+            };
+            common::copyData(
+                imageData.stagingBuffer.metadata.getMappedMemoryAsSpan(), 0,
+                std::span(static_cast<const std::byte*>(imageResource.data), imageResource.size), 0,
+                imageResource.size);
+            return imageData;
+          }));
   return index;
 }
 

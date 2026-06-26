@@ -22,6 +22,9 @@ public:
 
   ~Renderpass();
 
+  static Renderpass create(
+      const LogicalDevice& logicalDevice, const VkRenderPassCreateInfo2& createInfo);
+
   VkRenderPass getVkRenderPass() const noexcept;
 
   const AttachmentLayout& getAttachmentsLayout() const noexcept;

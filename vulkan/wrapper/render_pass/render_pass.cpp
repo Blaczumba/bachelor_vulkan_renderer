@@ -220,6 +220,15 @@ Renderpass::~Renderpass() {
   destroy();
 }
 
+// Renderpass Renderpass::create(
+//     const LogicalDevice& logicalDevice, const VkRenderPassCreateInfo2& createInfo) {
+//   VkRenderPass renderpass;
+//   CHECK_VKCMD(vkCreateRenderPass2(logicalDevice.getVkDevice(), &createInfo, nullptr,
+//   &renderpass),
+//       "Failed to create VkRenderPass.");
+//   return Renderpass(logicalDevice, renderpass, _attachmentLayout);
+// }
+
 VkRenderPass Renderpass::getVkRenderPass() const noexcept {
   return _renderpass;
 }

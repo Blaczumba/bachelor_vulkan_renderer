@@ -107,7 +107,8 @@ void BindlessDescriptorSetWriter::removeTexture(UniformTextureHandle handle) {
 }
 
 UniformBufferHandle BindlessDescriptorSetWriter::writeBuffer(
-    const Buffer& buffer, const BufferMetadata& metadata, std::optional<size_t> size, size_t offset) {
+    const Buffer& buffer, const BufferMetadata& metadata, std::optional<size_t> size,
+    size_t offset) {
   const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
   if (!_buffersMap.insert(*handle)) [[unlikely]] {
     throw EngineException(std::format(

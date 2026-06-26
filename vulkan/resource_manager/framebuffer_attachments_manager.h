@@ -19,14 +19,11 @@ public:
       const Renderpass& renderpass, std::span<const GpuImageHandle> attachments, VkExtent2D extent,
       VkImageView swapchainView = VK_NULL_HANDLE);
 
-  std::span<const GpuImageHandle> getAttachments(VkFramebuffer framebuffer);
+  std::span<const GpuImageHandle> getAttachments(VkFramebuffer framebuffer) const;
 
 private:
   GpuBufferManager& _gpuBufferManager;
 
-  struct Attachments {
-    lib::Buffer<GpuImageHandle> attachments;
-    VkImageView swapchainImageView;
-  };
-  std::unordered_map<VkFramebuffer, Attachments> _framebuffers;
+  std::unordered_map<VkFramebuffer, lib::Buffer<GpuImageHandle>> _framebuffersAttachments;
+  std::unordered_map<VkFramebuffer, VkImageView> _framebuffersSwapchainViews;
 };

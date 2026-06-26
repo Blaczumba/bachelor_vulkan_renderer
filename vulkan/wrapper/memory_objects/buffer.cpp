@@ -180,7 +180,8 @@ BufferBuilder& BufferBuilder::withFlags(VkBufferCreateFlags flags) noexcept {
 BufferBuilder& BufferBuilder::withQueueFamilyIndices(
     std::span<const uint32_t> queueFamilyIndices) noexcept {
   _metadata.sharingMode = VK_SHARING_MODE_CONCURRENT;
-  _metadata.queueFamilyIndices.assign(std::cbegin(queueFamilyIndices), std::cend(queueFamilyIndices));
+  _metadata.queueFamilyIndices.assign(
+      std::cbegin(queueFamilyIndices), std::cend(queueFamilyIndices));
   return *this;
 }
 
