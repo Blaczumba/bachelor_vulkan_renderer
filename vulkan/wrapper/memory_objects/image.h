@@ -8,20 +8,20 @@
 #include "vulkan/wrapper/memory_allocator/allocation.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
 
-class Texture {
-  Texture(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
-          VkImageType type, VkFormat format, VkExtent3D extent, VkImageAspectFlags aspect,
-          VkImageCreateFlags createFlags, uint32_t mipLevels, uint32_t arrayLevels,
-          VkImageLayout layout) noexcept;
+class Image {
+  Image(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
+        VkImageType type, VkFormat format, VkExtent3D extent, VkImageAspectFlags aspect,
+        VkImageCreateFlags createFlags, uint32_t mipLevels, uint32_t arrayLevels,
+        VkImageLayout layout) noexcept;
 
 public:
-  Texture() noexcept = default;
+  Image() noexcept = default;
 
-  Texture(Texture&& texture) noexcept;
+  Image(Image&& image) noexcept;
 
-  Texture& operator=(Texture&& texuture) noexcept;
+  Image& operator=(Image&& image) noexcept;
 
-  ~Texture();
+  ~Image();
 
   VkImageView addCreateVkImageView(
       uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
@@ -68,40 +68,40 @@ private:
 
   const LogicalDevice* _logicalDevice = nullptr;
 
-  friend class TextureBuilder;
+  friend class ImageBuilder;
 };
 
-class TextureBuilder {
+class ImageBuilder {
 public:
-  TextureBuilder& withType(VkImageType type) noexcept;
+  ImageBuilder& withType(VkImageType type) noexcept;
 
-  TextureBuilder& withFormat(VkFormat format) noexcept;
+  ImageBuilder& withFormat(VkFormat format) noexcept;
 
-  TextureBuilder& withExtent(uint32_t width) noexcept;
+  ImageBuilder& withExtent(uint32_t width) noexcept;
 
-  TextureBuilder& withExtent(uint32_t width, uint32_t height) noexcept;
+  ImageBuilder& withExtent(uint32_t width, uint32_t height) noexcept;
 
-  TextureBuilder& withExtent(VkExtent2D extent) noexcept;
+  ImageBuilder& withExtent(VkExtent2D extent) noexcept;
 
-  TextureBuilder& withExtent(uint32_t width, uint32_t height, uint32_t depth) noexcept;
+  ImageBuilder& withExtent(uint32_t width, uint32_t height, uint32_t depth) noexcept;
 
-  TextureBuilder& withExtent(VkExtent3D extent) noexcept;
+  ImageBuilder& withExtent(VkExtent3D extent) noexcept;
 
-  TextureBuilder& withAspect(VkImageAspectFlags aspect) noexcept;
+  ImageBuilder& withAspect(VkImageAspectFlags aspect) noexcept;
 
-  TextureBuilder& withMipLevels(uint32_t mipLevels) noexcept;
+  ImageBuilder& withMipLevels(uint32_t mipLevels) noexcept;
 
-  TextureBuilder& withNumSamples(VkSampleCountFlagBits numSamples) noexcept;
+  ImageBuilder& withNumSamples(VkSampleCountFlagBits numSamples) noexcept;
 
-  TextureBuilder& withTiling(VkImageTiling tiling) noexcept;
+  ImageBuilder& withTiling(VkImageTiling tiling) noexcept;
 
-  TextureBuilder& withUsage(VkImageUsageFlags usage) noexcept;
+  ImageBuilder& withUsage(VkImageUsageFlags usage) noexcept;
 
-  TextureBuilder& withLayerCount(uint32_t layerCount) noexcept;
+  ImageBuilder& withLayerCount(uint32_t layerCount) noexcept;
 
-  TextureBuilder& withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept;
+  ImageBuilder& withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept;
 
-  Texture buildImage(const LogicalDevice& logicalDevice) const;
+  Image buildImage(const LogicalDevice& logicalDevice) const;
 
 private:
   VkImageCreateInfo _imageCreateInfo = {

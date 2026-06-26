@@ -34,7 +34,7 @@
 #include "vulkan/wrapper/instance/instance.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
-#include "vulkan/wrapper/memory_objects/texture.h"
+#include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
 
@@ -131,7 +131,7 @@ private:
   // Shadowmap
   Renderpass _shadowRenderPass;
   Framebuffer _shadowFramebuffer;
-  Texture _shadowMap;
+  Image _shadowMap;
   Pipeline* _shadowPipeline;
   UniformTextureHandle _shadowHandle;
 
@@ -149,7 +149,7 @@ private:
   Pipeline* _envMappingPipeline;
   Buffer _envMappingUniformBuffer;
   UniformBufferHandle _envMappingHandle;
-  std::array<Texture, 2> _envMappingAttachments;
+  std::array<Image, 2> _envMappingAttachments;
   UniformTextureHandle _envMappingTextureHandle;
   // Second pass.
   Pipeline* _phongEnvMappingPipeline;
@@ -171,12 +171,12 @@ private:
 
   // Fragment rate shading.
   Pipeline* _fsrPipeline;
-  GpuTextureHandle _fsrTextureHandle;
+  GpuImageHandle _fsrTextureHandle;
 
   void setup();
 
   Entity loadObject(VkCommandBuffer commandBuffer, const common::VertexData& cubeData,
-                    PipelineHandle pipelineHandle, Texture&& texture);
+                    PipelineHandle pipelineHandle, Image&& image);
 
   void createDescriptorSets();
 
@@ -190,9 +190,9 @@ private:
 
   void createSyncObjects();
 
-  std::tuple<UniformTextureHandle, GpuTextureHandle> getOrLoadTexture(
+  std::tuple<UniformTextureHandle, GpuImageHandle> getOrLoadTexture(
       std::unordered_map<StagingImageDataResourceHandle,
-                         std::pair<UniformTextureHandle, GpuTextureHandle>>& textureCache,
+                         std::pair<UniformTextureHandle, GpuImageHandle>>& textureCache,
       StagingImageDataResourceHandle textureID, VkFormat format, VkCommandBuffer commandBuffer,
       float maxSamplerAnisotropy, SamplerHandle samplerHandle);
 

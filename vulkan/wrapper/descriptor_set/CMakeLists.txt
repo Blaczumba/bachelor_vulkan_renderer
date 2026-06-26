@@ -7,7 +7,7 @@ add_library(DescriptorSet
 )
 
 target_link_libraries(DescriptorSet PRIVATE Vulkan::Vulkan)
-target_link_libraries(DescriptorSet PUBLIC LogicalDevice)
+target_link_libraries(DescriptorSet PUBLIC LogicalDevice MemoryObjects)
 
 target_include_directories(DescriptorSet PUBLIC ${PROJECT_SOURCE_DIR})
 target_include_directories(DescriptorSet PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

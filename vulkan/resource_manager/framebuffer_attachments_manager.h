@@ -16,16 +16,16 @@ public:
   ~FramebufferAttachmentManager();
 
   Framebuffer createFramebuffer(
-      const Renderpass& renderpass, std::span<const GpuTextureHandle> attachments,
-      VkExtent2D extent, VkImageView swapchainView = VK_NULL_HANDLE);
+      const Renderpass& renderpass, std::span<const GpuImageHandle> attachments, VkExtent2D extent,
+      VkImageView swapchainView = VK_NULL_HANDLE);
 
-  std::span<const GpuTextureHandle> getAttachments(VkFramebuffer framebuffer);
+  std::span<const GpuImageHandle> getAttachments(VkFramebuffer framebuffer);
 
 private:
   GpuBufferManager& _gpuBufferManager;
 
   struct Attachments {
-    lib::Buffer<GpuTextureHandle> attachments;
+    lib::Buffer<GpuImageHandle> attachments;
     VkImageView swapchainImageView;
   };
   std::unordered_map<VkFramebuffer, Attachments> _framebuffers;

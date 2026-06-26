@@ -20,7 +20,6 @@
 #include "vulkan/wrapper/framebuffer/framebuffer.h"
 #include "vulkan/wrapper/instance/instance.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
-#include "vulkan/wrapper/memory_objects/texture.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "presentation_graphics_communication/presentation_graphics_communication.h"
 

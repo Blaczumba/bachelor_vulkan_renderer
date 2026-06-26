@@ -9,7 +9,7 @@
 #include "lib/types/strong_int.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
-#include "vulkan/wrapper/memory_objects/texture.h"
+#include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/sampler/sampler.h"
 
 class BindlessDescriptorSetWriter {
@@ -28,7 +28,7 @@ public:
       UniformTextureHandle handle, VkImageView view, VkImageLayout layout, VkSampler sampler);
 
   // TODO: refactor.
-  std::vector<UniformTextureHandle> storeTextures(std::span<const Texture> textures);
+  std::vector<UniformTextureHandle> storeTextures(std::span<const Image> images);
 
   void removeTexture(UniformTextureHandle handle);
 

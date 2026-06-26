@@ -40,7 +40,7 @@
 #include "vulkan/wrapper/instance/instance.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
-#include "vulkan/wrapper/memory_objects/texture.h"
+#include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
 #include "vulkan/wrapper/util/index_buffer_util.h"
@@ -53,11 +53,11 @@ namespace vlkn {
 namespace {
 
 Framebuffer createFramebufferFromTextures(
-    const Renderpass& renderpass, std::span<const Texture> textures) {
+    const Renderpass& renderpass, std::span<const Image> textures) {
   std::vector<VkImageView> imageViews;
   imageViews.reserve(textures.size());
   std::optional<VkExtent2D> extent;
-  for (const Texture& texture : textures) {
+  for (const Image& texture : textures) {
     imageViews.push_back(texture.getVkImageView());
     if (!extent.has_value()) {
       extent = texture.getVkExtent2D();
@@ -74,28 +74,28 @@ Framebuffer createFramebufferFromTextures(
   return Framebuffer::create(renderpass, *extent, imageViews);
 }
 
-Texture createSkybox(
+Image createSkybox(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy);
 
-Texture createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+Image createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
 
-                      VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags additionalUsage,
-                      float samplerAnisotropy);
+                    VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags additionalUsage,
+                    float samplerAnisotropy);
 
-Texture createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                        uint32_t width, uint32_t height, VkFormat format);
+Image createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                      uint32_t width, uint32_t height, VkFormat format);
 
-Texture createTexture2D(
+Image createTexture2D(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy);
 
-Texture createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                         VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent,
-                         uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage);
+Image createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                       VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent,
+                       uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage);
 
 void createFsrContents(
-    Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool);
+    Image& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool);
 
 }  // namespace
 
@@ -151,7 +151,7 @@ void GCONTEXT_CLASS setup() {
     const AssetManager::ImageData& imageData =
         _assetManager->getImageData(cubeData.diffuseTexture.ID);
 
-    Texture skyboxTexture =
+    Image skyboxTexture =
         createSkybox(*_logicalDevice, commandBuffer, imageData, VK_FORMAT_R8G8B8A8_SRGB,
                      _physicalDevice->getMaxSamplerAnisotropy());
     _skyboxEntity =
@@ -187,7 +187,7 @@ void GCONTEXT_CLASS setup() {
 
 GCONTEXT_TEMPLATE
 Entity GCONTEXT_CLASS loadObject(VkCommandBuffer commandBuffer, const common::VertexData& cubeData,
-                                 PipelineHandle pipelineHandle, Texture&& texture) {
+                                 PipelineHandle pipelineHandle, Image&& image) {
   Entity entity = _registry.createEntity();
 
   Sampler sampler = SamplerBuilder()
@@ -196,10 +196,10 @@ Entity GCONTEXT_CLASS loadObject(VkCommandBuffer commandBuffer, const common::Ve
   _registry.addComponent<MaterialComponent>(
       entity, MaterialComponent{
                 .diffuse = _bindlessWriter->writeTexture(
-                    texture.getVkImageView(), texture.getVkImageLayout(), sampler.getVkSampler()),
+                    image.getVkImageView(), image.getVkImageLayout(), sampler.getVkSampler()),
                 .pipelineHandle = pipelineHandle});
   _samplerManager->transferSampler(std::move(sampler));
-  _gpuBufferManager->transferTexture(std::move(texture));
+  _gpuBufferManager->transferImage(std::move(image));
 
   MeshComponent msh = {.aabb = createAABBfromVertices(cubeData.positions, glm::mat4(1.0f))};
   if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
@@ -407,9 +407,9 @@ void GCONTEXT_CLASS createSyncObjects() {
 }
 
 GCONTEXT_TEMPLATE
-std::tuple<UniformTextureHandle, GpuTextureHandle> GCONTEXT_CLASS getOrLoadTexture(
+std::tuple<UniformTextureHandle, GpuImageHandle> GCONTEXT_CLASS getOrLoadTexture(
     std::unordered_map<StagingImageDataResourceHandle,
-                       std::pair<UniformTextureHandle, GpuTextureHandle>>& textureCache,
+                       std::pair<UniformTextureHandle, GpuImageHandle>>& textureCache,
     StagingImageDataResourceHandle textureID, VkFormat format, VkCommandBuffer commandBuffer,
     float maxSamplerAnisotropy, SamplerHandle samplerHandle) {
   auto [it, inserted] = textureCache.try_emplace(textureID);
@@ -420,12 +420,12 @@ std::tuple<UniformTextureHandle, GpuTextureHandle> GCONTEXT_CLASS getOrLoadTextu
   }
 
   const AssetManager::ImageData& imgData = _assetManager->getImageData(textureID);
-  Texture texture =
+  Image texture =
       createTexture2D(*_logicalDevice, commandBuffer, imgData, format, maxSamplerAnisotropy);
   UniformTextureHandle handle = _bindlessWriter->writeTexture(
       texture.getVkImageView(), texture.getVkImageLayout(),
       _samplerManager->getSampler(samplerHandle).getVkSampler());
-  const GpuTextureHandle index = _gpuBufferManager->transferTexture(std::move(texture));
+  const GpuImageHandle index = _gpuBufferManager->transferImage(std::move(texture));
 
   const auto result = std::make_tuple(handle, index);
   it->second = result;
@@ -438,9 +438,9 @@ void GCONTEXT_CLASS loadObjects(
     std::span<const common::VertexData> sceneData, PipelineHandle pipelineHandle) {
   const float maxSamplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
 
-  std::unordered_map<StagingImageDataResourceHandle,
-                     std::pair<UniformTextureHandle, GpuTextureHandle>>
-      textureCache;
+  std::
+      unordered_map<StagingImageDataResourceHandle, std::pair<UniformTextureHandle, GpuImageHandle>>
+          textureCache;
   textureCache.reserve(sceneData.size());
   SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
   const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
@@ -776,7 +776,7 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
                           _fsrPipeline->getVkPipelineLayout(), 0, 1, fsrDescriptorSets, 0, nullptr);
   vkCmdDispatch(commandBuffer, 16, 16, 1);
 
-  const Texture& fsrTexture = _gpuBufferManager->getTexture(_fsrTextureHandle);
+  const Image& fsrTexture = _gpuBufferManager->getImage(_fsrTextureHandle);
   const VkImageMemoryBarrier fsrBarrier = {
     .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
     .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
@@ -1087,15 +1087,15 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
       .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE)
       .addFragmentShadingRateAttachment();
 
-  lib::Buffer<GpuTextureHandle> attachmentHandles;
+  lib::Buffer<GpuImageHandle> attachmentHandles;
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-    GpuTextureHandle collorAttachmentHandle = _gpuBufferManager->transferTexture(createAttachment(
+    GpuImageHandle collorAttachmentHandle = _gpuBufferManager->transferImage(createAttachment(
         *_logicalDevice, commandBuffer, swapchainImageFormat, msaaSamples, extent,
         presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
-    GpuTextureHandle depthAttachmentHandle = _gpuBufferManager->transferTexture(createAttachment(
+    GpuImageHandle depthAttachmentHandle = _gpuBufferManager->transferImage(createAttachment(
         *_logicalDevice, commandBuffer, VK_FORMAT_D24_UNORM_S8_UINT, msaaSamples, extent,
         presentResources.numLayers, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT));
@@ -1106,7 +1106,7 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
     const VkExtent2D fsrExtent = VkExtent2D{
       static_cast<uint32_t>(std::ceil(extent.width / static_cast<float>(fsrTexelExtent.width))),
       static_cast<uint32_t>(std::ceil(extent.height / static_cast<float>(fsrTexelExtent.height)))};
-    Texture fsrTexture = createAttachment(
+    Image fsrTexture = createAttachment(
         *_logicalDevice, commandBuffer, VK_FORMAT_R8_UINT, VK_SAMPLE_COUNT_1_BIT, fsrExtent,
         presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
         VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | VK_IMAGE_USAGE_TRANSFER_DST_BIT
@@ -1117,10 +1117,10 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
     _computeDescriptorSetWriter.writeDescriptorSet(
         _logicalDevice->getVkDevice(), _computeDescriptorSet.getVkDescriptorSet());
 
-    GpuTextureHandle fsrAttachmentHandle = _fsrTextureHandle =
-        _gpuBufferManager->transferTexture(std::move(fsrTexture));
+    GpuImageHandle fsrAttachmentHandle = _fsrTextureHandle =
+        _gpuBufferManager->transferImage(std::move(fsrTexture));
 
-    attachmentHandles = lib::Buffer<GpuTextureHandle>{
+    attachmentHandles = lib::Buffer<GpuImageHandle>{
       collorAttachmentHandle, depthAttachmentHandle, fsrAttachmentHandle};
   }
 
@@ -1165,11 +1165,11 @@ void GCONTEXT_CLASS waitDeviceIdle() const {
 
 namespace {
 
-Texture createSkybox(
+Image createSkybox(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy) {
-  Texture texture =
-      TextureBuilder()
+  Image texture =
+      ImageBuilder()
           .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
           .withExtent(imageData.width, imageData.height)
           .withFormat(format)
@@ -1185,12 +1185,12 @@ Texture createSkybox(
   return texture;
 }
 
-Texture createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+Image createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
 
-                      VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags additionalUsage,
-                      float samplerAnisotropy) {
-  Texture texture =
-      TextureBuilder()
+                    VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags additionalUsage,
+                    float samplerAnisotropy) {
+  Image texture =
+      ImageBuilder()
           .withAspect(aspect)
           .withExtent(1024 * 4, 1024 * 4)
           .withFormat(format)
@@ -1203,10 +1203,10 @@ Texture createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer comman
   return texture;
 }
 
-Texture createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                        uint32_t width, uint32_t height, VkFormat format) {
-  Texture texture =
-      TextureBuilder()
+Image createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                      uint32_t width, uint32_t height, VkFormat format) {
+  Image texture =
+      ImageBuilder()
           .withAspect(VK_IMAGE_ASPECT_DEPTH_BIT)
           .withExtent(width, height)
           .withFormat(format)
@@ -1217,11 +1217,11 @@ Texture createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer comm
   return texture;
 }
 
-Texture createTexture2D(
+Image createTexture2D(
     const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy) {
-  Texture texture =
-      TextureBuilder()
+  Image texture =
+      ImageBuilder()
           .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
           .withExtent(imageData.width, imageData.height)
           .withFormat(format)
@@ -1237,11 +1237,11 @@ Texture createTexture2D(
   return texture;
 }
 
-Texture createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                         VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent,
-                         uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage) {
-  Texture texture =
-      TextureBuilder()
+Image createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+                       VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent,
+                       uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage) {
+  Image texture =
+      ImageBuilder()
           .withFormat(format)
           .withNumSamples(samples)
           .withExtent(extent)
@@ -1254,7 +1254,7 @@ Texture createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer com
 }
 
 void createFsrContents(
-    Texture& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool) {
+    Image& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool) {
   const VkExtent2D extent = texture.getVkExtent2D();
   const lib::Buffer<std::byte> buffer(
       static_cast<size_t>(extent.width * extent.height), std::byte{10});

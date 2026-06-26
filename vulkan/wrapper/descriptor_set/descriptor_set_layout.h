@@ -1,6 +1,7 @@
 #pragma once
 
 #include <span>
+#include <vector>
 #include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
@@ -18,9 +19,7 @@ public:
   ~DescriptorSetLayout();
 
   static DescriptorSetLayout create(
-      const LogicalDevice& logicalDevice, std::span<const VkDescriptorSetLayoutBinding> bindings,
-      std::span<const VkDescriptorBindingFlags> bindingFlags = {},
-      VkDescriptorSetLayoutCreateFlags flags = 0);
+      const LogicalDevice& logicalDevice, const VkDescriptorSetLayoutCreateInfo& createInfo);
 
   VkDescriptorSetLayout getVkDescriptorSetLayout() const noexcept;
 
@@ -30,4 +29,21 @@ private:
   VkDescriptorSetLayout _descriptorSetLayout = VK_NULL_HANDLE;
 
   const LogicalDevice* _logicalDevice;
+};
+
+class DescriptorSetLayoutBuilder {
+public:
+  DescriptorSetLayoutBuilder& addBinding(
+      uint32_t binding, VkDescriptorType descriptorType, uint32_t descriptorCount,
+      VkShaderStageFlags stageFlags, VkDescriptorBindingFlags bindingFlags = 0,
+      const VkSampler* immutableSamplers = nullptr);
+
+  DescriptorSetLayoutBuilder& withFlags(VkDescriptorSetLayoutCreateFlags flags) noexcept;
+
+  DescriptorSetLayout build(const LogicalDevice& logicalDevice) const;
+
+private:
+  std::vector<VkDescriptorSetLayoutBinding> _bindings;
+  std::vector<VkDescriptorBindingFlags> _bindingFlags;
+  VkDescriptorSetLayoutCreateFlags _flags;
 };

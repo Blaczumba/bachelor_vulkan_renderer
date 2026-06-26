@@ -10,16 +10,16 @@
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
-#include "vulkan/wrapper/memory_objects/texture.h"
+#include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/sampler/sampler.h"
 
 class DescriptorSetWriter {
 public:
   DescriptorSetWriter() noexcept = default;
 
-  DescriptorSetWriter& storeTexture(const Texture& texture, const Sampler& sampler);
+  DescriptorSetWriter& storeTexture(const Image& image, const Sampler& sampler);
 
-  DescriptorSetWriter& storeImageStorage(const Texture& texture);
+  DescriptorSetWriter& storeImageStorage(const Image& image);
 
   DescriptorSetWriter& storeBuffer(
       const Buffer& buffer, VkBufferUsageFlags usage, VkDeviceSize range, VkDeviceSize offset = 0);

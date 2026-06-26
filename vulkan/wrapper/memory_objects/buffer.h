@@ -7,18 +7,6 @@
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
-struct BufferMetadata {
-  VkBufferUsageFlags usage;
-  VkDeviceSize size;
-  std::byte* mappedMemory;
-  VkBufferCreateFlags flags;
-  VkSharingMode sharingMode;
-  // Other std::optional fields representing pNext metadata.
-  std::span<const std::byte> getMappedMemoryAsSpan() const noexcept;
-
-  std::span<std::byte> getMappedMemoryAsSpan() noexcept;
-};
-
 class Buffer {
   Buffer(const LogicalDevice& logicalDevice, VkBuffer buffer, Allocation allocation) noexcept;
 
@@ -33,7 +21,7 @@ public:
 
   const VkBuffer& getVkBuffer() const noexcept;
 
-  const LogicalDevice& getLogicalDevice() const;
+  const LogicalDevice& getLogicalDevice() const noexcept;
 
 private:
   void destroy();
@@ -44,6 +32,18 @@ private:
   const LogicalDevice* _logicalDevice;
 
   friend class BufferBuilder;
+};
+
+struct BufferMetadata {
+  VkBufferUsageFlags usage;
+  VkDeviceSize size;
+  std::byte* mappedMemory;
+  VkBufferCreateFlags flags;
+  VkSharingMode sharingMode;
+  // Other std::optional fields representing pNext metadata.
+  std::span<const std::byte> getMappedMemoryAsSpan() const noexcept;
+
+  std::span<std::byte> getMappedMemoryAsSpan() noexcept;
 };
 
 struct BufferWithMetadata {

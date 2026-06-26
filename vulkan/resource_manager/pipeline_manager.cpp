@@ -37,28 +37,17 @@ VkDescriptorSetLayout PipelineManager::getOrCreateBindlessLayout(
     return it->second.getVkDescriptorSetLayout();
   }
 
-  static constexpr VkDescriptorSetLayoutBinding bindings[] = {
-    {
-     .binding = 0,
-     .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-     .descriptorCount = 200,
-     .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
-     },
-    {
-     .binding = 1,
-     .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-     .descriptorCount = 200,
-     .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
-     }
-  };
-
-  static constexpr VkDescriptorBindingFlags flags{
-    VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT};
-  static constexpr VkDescriptorBindingFlags bindingFlags[] = {flags, flags};
-
-  DescriptorSetLayout layout = DescriptorSetLayout::create(
-      logicalDevice, bindings, bindingFlags,
-      VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT);
+  DescriptorSetLayout layout =
+      DescriptorSetLayoutBuilder()
+          .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 200, VK_SHADER_STAGE_ALL_GRAPHICS,
+                      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
+                          | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT)
+          .addBinding(
+              1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 200, VK_SHADER_STAGE_ALL_GRAPHICS,
+              VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
+                  | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT)
+          .withFlags(VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT)
+          .build(logicalDevice);
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
   _descriptorSetLayouts.emplace(layoutType, std::move(layout));
   return vkLayout;
@@ -71,16 +60,12 @@ VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(
     return it->second.getVkDescriptorSetLayout();
   }
 
-  static VkDescriptorSetLayoutBinding bindings[] = {
-    {
-     .binding = 0,
-     .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-     .descriptorCount = multiview ? 2u : 1u,
-     .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
-     },
-  };
+  DescriptorSetLayout layout =
+      DescriptorSetLayoutBuilder()
+          .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, multiview ? 2u : 1u,
+                      VK_SHADER_STAGE_ALL_GRAPHICS)
+          .build(logicalDevice);
 
-  DescriptorSetLayout layout = DescriptorSetLayout::create(logicalDevice, bindings);
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
   _descriptorSetLayouts.emplace(layoutType, std::move(layout));
   return vkLayout;
@@ -93,16 +78,10 @@ VkDescriptorSetLayout PipelineManager::getOrCreateComputeLayout(
     return it->second.getVkDescriptorSetLayout();
   }
 
-  static constexpr VkDescriptorSetLayoutBinding bindings[] = {
-    {
-     .binding = 0,
-     .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-     .descriptorCount = 1u,
-     .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-     },
-  };
-
-  DescriptorSetLayout layout = DescriptorSetLayout::create(logicalDevice, bindings);
+  DescriptorSetLayout layout =
+      DescriptorSetLayoutBuilder()
+          .addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1u, VK_SHADER_STAGE_COMPUTE_BIT)
+          .build(logicalDevice);
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
   _descriptorSetLayouts.emplace(layoutType, std::move(layout));
   return vkLayout;

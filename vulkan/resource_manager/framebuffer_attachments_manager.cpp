@@ -15,23 +15,23 @@ FramebufferAttachmentManager::FramebufferAttachmentManager(
 
 FramebufferAttachmentManager::~FramebufferAttachmentManager() {
   for (const auto& [framebuffer, attachments] : _framebuffers) {
-    for (GpuTextureHandle textureHandle : attachments.attachments) {
-      _gpuBufferManager.decreaseRefCount(textureHandle);
+    for (GpuImageHandle imageHandle : attachments.attachments) {
+      _gpuBufferManager.decreaseRefCount(imageHandle);
     }
   }
 }
 
 Framebuffer FramebufferAttachmentManager::createFramebuffer(
-    const Renderpass& renderpass, std::span<const GpuTextureHandle> attachments, VkExtent2D extent,
+    const Renderpass& renderpass, std::span<const GpuImageHandle> attachments, VkExtent2D extent,
     VkImageView swapchainView) {
   std::vector<VkImageView> views;
   if (swapchainView != VK_NULL_HANDLE) {
     views.push_back(swapchainView);
   }
 
-  for (GpuTextureHandle textureHandle : attachments) {
-    _gpuBufferManager.increaseRefCount(textureHandle);
-    views.push_back(_gpuBufferManager.getTexture(textureHandle).getVkImageView());
+  for (GpuImageHandle imageHandle : attachments) {
+    _gpuBufferManager.increaseRefCount(imageHandle);
+    views.push_back(_gpuBufferManager.getImage(imageHandle).getVkImageView());
   }
 
   Framebuffer framebuffer = Framebuffer::create(renderpass, extent, views);
@@ -41,7 +41,7 @@ Framebuffer FramebufferAttachmentManager::createFramebuffer(
   return framebuffer;
 }
 
-std::span<const GpuTextureHandle> FramebufferAttachmentManager::getAttachments(
+std::span<const GpuImageHandle> FramebufferAttachmentManager::getAttachments(
     VkFramebuffer framebuffer) {
   auto it = _framebuffers.find(framebuffer);
   if (it == _framebuffers.end()) [[unlikely]] {

@@ -4,7 +4,7 @@ bindless_descriptor_set_writer.h bindless_descriptor_set_writer.cpp util.h sampl
 framebuffer_attachments_manager.h framebuffer_attachments_manager.cpp)
 
 target_link_libraries(AssetManager PUBLIC Vulkan::Vulkan glm::glm)
-target_link_libraries(AssetManager PUBLIC CommonModelLoader LogicalDevice Buffer Sampler CommonUtil VulkanWrapperUtil)
+target_link_libraries(AssetManager PUBLIC CommonModelLoader LogicalDevice MemoryObjects Sampler CommonUtil VulkanWrapperUtil)
 
 target_include_directories(AssetManager PUBLIC ${PROJECT_SOURCE_DIR})
 target_include_directories(AssetManager PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

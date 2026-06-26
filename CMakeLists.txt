@@ -124,7 +124,7 @@ if(Vulkan_FOUND)
             Surface DebugMessenger
             PhysicalDevice MemoryAllocator
             LogicalDevice Renderpass
-            Swapchain Buffer CommandBuffer
+            Swapchain MemoryObjects CommandBuffer
             Framebuffer Pipeline Sampler
             DescriptorSet VulkanWrapperUtil
             VulkanLayer

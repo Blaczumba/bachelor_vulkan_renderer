@@ -61,7 +61,7 @@ void BindlessDescriptorSetWriter::overwriteTexture(
 }
 
 std::vector<UniformTextureHandle> BindlessDescriptorSetWriter::storeTextures(
-    std::span<const Texture> textures) {
+    std::span<const Image> textures) {
   std::vector<UniformTextureHandle> handles;
   handles.reserve(textures.size());
   for (uint32_t i = 0; i < textures.size(); i++) {

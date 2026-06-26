@@ -27,6 +27,31 @@ private:
   void destroy();
 };
 
+struct SamplerMetadata {
+  VkSamplerCreateFlags flags;
+  VkFilter magFilter;
+  VkFilter minFilter;
+  VkSamplerMipmapMode mipmapMode;
+  VkSamplerAddressMode addressModeU;
+  VkSamplerAddressMode addressModeV;
+  VkSamplerAddressMode addressModeW;
+  float mipLodBias;
+  VkBool32 anisotropyEnable;
+  float maxAnisotropy;
+  VkBool32 compareEnable;
+  VkCompareOp compareOp;
+  float minLod;
+  float maxLod;
+  VkBorderColor borderColor;
+  VkBool32 unnormalizedCoordinates;
+  // Other std::optional fields representing pNext metadata.
+};
+
+struct SamplerWithMetadata {
+  Sampler sampler;
+  SamplerMetadata metadata;
+};
+
 class SamplerBuilder {
 public:
   SamplerBuilder() noexcept = default;

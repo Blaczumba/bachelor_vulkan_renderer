@@ -154,7 +154,7 @@ const VkBuffer& Buffer::getVkBuffer() const noexcept {
   return _buffer;
 }
 
-const LogicalDevice& Buffer::getLogicalDevice() const {
+const LogicalDevice& Buffer::getLogicalDevice() const noexcept {
   return *_logicalDevice;
 }
 

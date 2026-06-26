@@ -1,6 +1,13 @@
 #include "vulkan/wrapper/descriptor_set/descriptor_set_writer.h"
 
+#include <cstdint>
+#include <functional>
+#include <initializer_list>
+#include <vulkan/vulkan.h>
+
 #include "vulkan/wrapper/descriptor_set/descriptor_set_writer_lib.h"
+#include "vulkan/wrapper/memory_objects/buffer.h"
+#include "vulkan/wrapper/memory_objects/image.h"
 
 void DescriptorSetWriter::storeImage(
     VkImageView view, VkImageLayout layout, VkSampler sampler, VkDescriptorType type) {
@@ -16,16 +23,15 @@ void DescriptorSetWriter::storeImage(
     .pImageInfo = &_imageInfos.back()});
 }
 
-DescriptorSetWriter& DescriptorSetWriter::storeTexture(
-    const Texture& texture, const Sampler& sampler) {
-  storeImage(texture.getVkImageView(), texture.getVkImageLayout(), sampler.getVkSampler(),
+DescriptorSetWriter& DescriptorSetWriter::storeTexture(const Image& image, const Sampler& sampler) {
+  storeImage(image.getVkImageView(), image.getVkImageLayout(), sampler.getVkSampler(),
              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
   return *this;
 }
 
-DescriptorSetWriter& DescriptorSetWriter::storeImageStorage(const Texture& texture) {
-  storeImage(texture.getVkImageView(), texture.getVkImageLayout(), nullptr,
-             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+DescriptorSetWriter& DescriptorSetWriter::storeImageStorage(const Image& image) {
+  storeImage(
+      image.getVkImageView(), image.getVkImageLayout(), nullptr, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
   return *this;
 }
 
@@ -88,7 +94,7 @@ DescriptorSetWriter& DescriptorSetWriter::storeBufferArrayElement(
 }
 
 void DescriptorSetWriter::writeDescriptorSet(VkDevice device, const VkDescriptorSet descriptorSet) {
-  for (auto& descriptorWrite : _descriptorWrites) {
+  for (VkWriteDescriptorSet& descriptorWrite : _descriptorWrites) {
     descriptorWrite.dstSet = descriptorSet;
   }
   vkUpdateDescriptorSets(device, static_cast<uint32_t>(_descriptorWrites.size()),
