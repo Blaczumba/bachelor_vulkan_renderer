@@ -115,39 +115,43 @@ struct UniformBufferAllocator {
   }
 };
 
+template <typename Allocator>
+BufferResources createBuffer(const LogicalDevice& logicalDevice, const BufferMetadata& metadata) {
+  const VkBufferCreateInfo bufferCreateInfo = {
+    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = metadata.flags,
+    .size = metadata.size,
+    .usage = metadata.usage,
+    .sharingMode = metadata.sharingMode,
+    .queueFamilyIndexCount = static_cast<uint32_t>(metadata.queueFamilyIndices.size()),
+    .pQueueFamilyIndices =
+        metadata.queueFamilyIndices.empty() ? nullptr : metadata.queueFamilyIndices.data(),
+  };
+  return std::visit(Allocator{bufferCreateInfo}, logicalDevice.getMemoryAllocator());
+}
+
 }  // namespace
 
-BufferWithMetadata BufferBuilder::createVertexInputBuffer(const LogicalDevice& logicalDevice) {
+Buffer BufferBuilder::createVertexInputBuffer(const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
-      std::visit(VertexInputBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
-  return BufferWithMetadata{
-    .buffer = Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation),
-    .metadata = BufferMetadata{_createInfo.usage, _createInfo.size,
-                               reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
-                               _createInfo.flags, _createInfo.sharingMode}
-  };
+      createBuffer<VertexInputBufferAllocator>(logicalDevice, _metadata);
+  _metadata.mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
+  return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
 }
 
-BufferWithMetadata BufferBuilder::createStagingBuffer(const LogicalDevice& logicalDevice) {
+Buffer BufferBuilder::createStagingBuffer(const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
-      std::visit(StagingBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
-  return BufferWithMetadata{
-    .buffer = Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation),
-    .metadata = BufferMetadata{_createInfo.usage, _createInfo.size,
-                               reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
-                               _createInfo.flags, _createInfo.sharingMode}
-  };
+      createBuffer<StagingBufferAllocator>(logicalDevice, _metadata);
+  _metadata.mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
+  return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
 }
 
-BufferWithMetadata BufferBuilder::createUniformBuffer(const LogicalDevice& logicalDevice) {
+Buffer BufferBuilder::createUniformBuffer(const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
-      std::visit(UniformBufferAllocator{_createInfo}, logicalDevice.getMemoryAllocator());
-  return BufferWithMetadata{
-    .buffer = Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation),
-    .metadata = BufferMetadata{_createInfo.usage, _createInfo.size,
-                               reinterpret_cast<std::byte*>(bufferResources.mappedMemory),
-                               _createInfo.flags, _createInfo.sharingMode}
-  };
+      createBuffer<UniformBufferAllocator>(logicalDevice, _metadata);
+  _metadata.mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
+  return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
 }
 
 const VkBuffer& Buffer::getVkBuffer() const noexcept {
@@ -159,24 +163,27 @@ const LogicalDevice& Buffer::getLogicalDevice() const noexcept {
 }
 
 BufferBuilder& BufferBuilder::withUsage(VkBufferUsageFlags usage) noexcept {
-  _createInfo.usage = usage;
+  _metadata.usage = usage;
   return *this;
 }
 
 BufferBuilder& BufferBuilder::withSize(VkDeviceSize size) noexcept {
-  _createInfo.size = size;
+  _metadata.size = size;
   return *this;
 }
 
 BufferBuilder& BufferBuilder::withFlags(VkBufferCreateFlags flags) noexcept {
-  _createInfo.flags = flags;
+  _metadata.flags = flags;
   return *this;
 }
 
 BufferBuilder& BufferBuilder::withQueueFamilyIndices(
     std::span<const uint32_t> queueFamilyIndices) noexcept {
-  _createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-  _createInfo.queueFamilyIndexCount = static_cast<uint32_t>(queueFamilyIndices.size());
-  _createInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+  _metadata.sharingMode = VK_SHARING_MODE_CONCURRENT;
+  _metadata.queueFamilyIndices.assign(queueFamilyIndices.cbegin(), queueFamilyIndices.cend());
   return *this;
+}
+
+BufferMetadata BufferBuilder::getMetadata() const noexcept {
+  return _metadata;
 }

@@ -32,7 +32,7 @@ public:
 
   void removeTexture(UniformTextureHandle handle);
 
-  UniformBufferHandle writeBuffer(const BufferWithMetadata& buffer,
+  UniformBufferHandle writeBuffer(const Buffer& buffer, const BufferMetadata& metadata,
                                   std::optional<size_t> size = std::nullopt, size_t offset = 0);
 
   // TODO: refactor.

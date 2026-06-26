@@ -54,11 +54,10 @@ namespace {
 
 Framebuffer createFramebufferFromTextures(
     const Renderpass& renderpass, std::span<const Image> textures) {
-  std::vector<VkImageView> imageViews;
-  imageViews.reserve(textures.size());
+  FramebufferBuilder builder;
   std::optional<VkExtent2D> extent;
   for (const Image& texture : textures) {
-    imageViews.push_back(texture.getVkImageView());
+    builder.addAttachment(texture.getVkImageView());
     if (!extent.has_value()) {
       extent = texture.getVkExtent2D();
     } else if (VkExtent2D tmpExtent = texture.getVkExtent2D();
@@ -71,7 +70,8 @@ Framebuffer createFramebufferFromTextures(
     throw EngineException("Framebuffer must have an attachment.");
   }
 
-  return Framebuffer::create(renderpass, *extent, imageViews);
+  builder.withExtent(*extent);
+  return builder.build(renderpass);
 }
 
 Image createSkybox(
@@ -229,11 +229,14 @@ void GCONTEXT_CLASS createDescriptorSets() {
   // If VR presentation is enabled then multiply times 2 otherwise times 1.
   const uint32_t size =
       _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera));
-  _dynamicUniformBuffersCamera =
-      BufferBuilder()
-          .withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+  {
+    BufferBuilder builder;
+    _dynamicUniformBuffersCamera = BufferWithMetadata{
+      builder.withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
           .withSize((MULTIVIEW_PRESENTATION ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size)
-          .createUniformBuffer(*_logicalDevice);
+          .createUniformBuffer(*_logicalDevice),
+      builder.getMetadata()};
+  }
 
   _dynamicDescriptorSetWriter.storeDynamicBuffer(
       _dynamicUniformBuffersCamera.buffer, _dynamicUniformBuffersCamera.metadata.usage, size,
@@ -241,21 +244,22 @@ void GCONTEXT_CLASS createDescriptorSets() {
   _dynamicDescriptorSetWriter.writeDescriptorSet(
       _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
 
-  BufferWithMetadata lightBuffer =
-      BufferBuilder()
-          .withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
-          .withSize(sizeof(UniformBufferLight))
-          .createUniformBuffer(*_logicalDevice);
-  _lightHandle = _bindlessWriter->writeBuffer(lightBuffer);
+  {
+    BufferBuilder builder;
+    Buffer lightBuffer = builder.withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+                             .withSize(sizeof(UniformBufferLight))
+                             .createUniformBuffer(*_logicalDevice);
+    _lightHandle = _bindlessWriter->writeBuffer(lightBuffer, builder.getMetadata());
 
-  _ubLight.pos = glm::vec3(15.1891f, 2.66408f, -0.841221f);
-  _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.1f, 40.0f);
-  _ubLight.projView[1][1] = -_ubLight.projView[1][1];
-  _ubLight.projView = _ubLight.projView
-                      * glm::lookAt(_ubLight.pos, glm::vec3(-3.82383f, 3.66503f, 1.30751f),
-                                    glm::vec3(0.0f, 1.0f, 0.0f));
-  common::copyData(lightBuffer.metadata.getMappedMemoryAsSpan(), 0, _ubLight);
-  _lightBuffer = std::move(lightBuffer.buffer);
+    _ubLight.pos = glm::vec3(15.1891f, 2.66408f, -0.841221f);
+    _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.1f, 40.0f);
+    _ubLight.projView[1][1] = -_ubLight.projView[1][1];
+    _ubLight.projView = _ubLight.projView
+                        * glm::lookAt(_ubLight.pos, glm::vec3(-3.82383f, 3.66503f, 1.30751f),
+                                      glm::vec3(0.0f, 1.0f, 0.0f));
+    common::copyData(builder.getMetadata().getMappedMemoryAsSpan(), 0, _ubLight);
+    _lightBuffer = std::move(lightBuffer);
+  }
 }
 
 GCONTEXT_TEMPLATE
@@ -1259,11 +1263,10 @@ void createFsrContents(
   const lib::Buffer<std::byte> buffer(
       static_cast<size_t>(extent.width * extent.height), std::byte{10});
   BufferBuilder bufferBuilder;
-  auto [stagingBuffer, stagingBufferMetadata] =
-      bufferBuilder.withSize(buffer.size())
-          .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-          .createStagingBuffer(logicalDevice);
-  common::copyData(stagingBufferMetadata.getMappedMemoryAsSpan(), 0, std::span(buffer));
+  Buffer stagingBuffer = bufferBuilder.withSize(buffer.size())
+                             .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+                             .createStagingBuffer(logicalDevice);
+  common::copyData(bufferBuilder.getMetadata().getMappedMemoryAsSpan(), 0, std::span(buffer));
   lib::Buffer<VkBufferImageCopy> imageCopy(texture.getLayersCount());
   for (uint32_t layer = 0; layer < imageCopy.size(); layer++) {
     imageCopy[layer] = VkBufferImageCopy{

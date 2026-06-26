@@ -40,6 +40,7 @@ struct BufferMetadata {
   std::byte* mappedMemory;
   VkBufferCreateFlags flags;
   VkSharingMode sharingMode;
+  std::vector<uint32_t> queueFamilyIndices;
   // Other std::optional fields representing pNext metadata.
   std::span<const std::byte> getMappedMemoryAsSpan() const noexcept;
 
@@ -61,13 +62,16 @@ public:
 
   BufferBuilder& withQueueFamilyIndices(std::span<const uint32_t> queueFamilyIndices) noexcept;
 
-  BufferWithMetadata createVertexInputBuffer(const LogicalDevice& logicalDevice);
+  BufferMetadata getMetadata() const noexcept;
 
-  BufferWithMetadata createStagingBuffer(const LogicalDevice& logicalDevice);
+  Buffer createVertexInputBuffer(const LogicalDevice& logicalDevice);
 
-  BufferWithMetadata createUniformBuffer(const LogicalDevice& logicalDevice);
+  Buffer createStagingBuffer(const LogicalDevice& logicalDevice);
+
+  Buffer createUniformBuffer(const LogicalDevice& logicalDevice);
 
 private:
-  VkBufferCreateInfo _createInfo = {
-    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
+  BufferMetadata _metadata = {
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+  };
 };

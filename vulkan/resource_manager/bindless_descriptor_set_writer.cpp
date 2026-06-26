@@ -107,30 +107,30 @@ void BindlessDescriptorSetWriter::removeTexture(UniformTextureHandle handle) {
 }
 
 UniformBufferHandle BindlessDescriptorSetWriter::writeBuffer(
-    const BufferWithMetadata& buffer, std::optional<size_t> size, size_t offset) {
+    const Buffer& buffer, const BufferMetadata& metadata, std::optional<size_t> size, size_t offset) {
   const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
   if (!_buffersMap.insert(*handle)) [[unlikely]] {
     throw EngineException(std::format(
         "BindlessDescriptorSetWriter::storeBuffer: Failed to insert Buffer Handle = {}.", *handle));
   }
 
-  size_t range = size.value_or(buffer.metadata.size);
-  if (range + offset > buffer.metadata.size) [[unlikely]] {
+  size_t range = size.value_or(metadata.size);
+  if (range + offset > metadata.size) [[unlikely]] {
     throw EngineException(
         std::format(
             "BindlessDescriptorSetWriter::storeBuffer: Buffer range " "(offset = {}, size " "= " "{" "}" ")" " " "e" "x" "c" "e" "e" "d" "s" " " "buffer size " "({}).",
-            offset, range, buffer.metadata.size));
+            offset, range, metadata.size));
   }
 
   const VkDescriptorBufferInfo bufferInfo = {
-    .buffer = buffer.buffer.getVkBuffer(), .offset = offset, .range = range};
+    .buffer = buffer.getVkBuffer(), .offset = offset, .range = range};
   const VkWriteDescriptorSet write = {
     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
     .dstSet = _descriptorSet.getVkDescriptorSet(),
     .dstBinding = UNIFORM_BINDING,
     .dstArrayElement = static_cast<uint32_t>(*handle),
     .descriptorCount = 1,
-    .descriptorType = getDescriptorType(buffer.metadata.usage),
+    .descriptorType = getDescriptorType(metadata.usage),
     .pBufferInfo = &bufferInfo};
 
   vkUpdateDescriptorSets(

@@ -64,11 +64,12 @@ StagingImageDataResourceHandle AssetManager::loadImageAsync(const std::string& f
       index, std::async(_launchPolicy, [this, filePath]() -> ImageData {
         const auto [resource, dataPtr] =
             loadImage(_fileLoader.loadFileToBuffer(filePath), filePath);
+        BufferBuilder bufferBuilder;
         ImageData imageData = {
-          .stagingBuffer = BufferBuilder()
-                               .withSize(resource.size)
-                               .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-                               .createStagingBuffer(_logicalDevice),
+          .stagingBuffer = BufferWithMetadata{bufferBuilder.withSize(resource.size)
+                                                  .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+                                                  .createStagingBuffer(_logicalDevice),
+                                              bufferBuilder.getMetadata()},
           .width = resource.width,
           .height = resource.height,
           .mipLevels = resource.mipLevels,
@@ -89,11 +90,12 @@ StagingImageDataResourceHandle AssetManager::loadImageAsync(
   _awaitingImageDataResources.emplace(
       index, std::async(_launchPolicy, [this, modelPtr = std::move(modelPtr), data]() -> ImageData {
         const auto [resource, dataPtr] = loadImage(data, "");  // TODO: refactor.
+        BufferBuilder bufferBuilder;
         ImageData imageData = {
-          .stagingBuffer = BufferBuilder()
-                               .withSize(resource.size)
-                               .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-                               .createStagingBuffer(_logicalDevice),
+          .stagingBuffer = BufferWithMetadata{bufferBuilder.withSize(resource.size)
+                                                  .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+                                                  .createStagingBuffer(_logicalDevice),
+                                              bufferBuilder.getMetadata()},
           .width = resource.width,
           .height = resource.height,
           .mipLevels = resource.mipLevels,
@@ -115,11 +117,13 @@ StagingImageDataResourceHandle AssetManager::loadImageAsync(
       index, std::async(_launchPolicy,
                         [this, modelPtr = std::move(modelPtr),
                          imageResource = std::move(imageResource)]() -> ImageData {
+                          BufferBuilder bufferBuilder;
                           ImageData imageData = {
-                            .stagingBuffer = BufferBuilder()
-                                                 .withSize(imageResource.size)
-                                                 .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-                                                 .createStagingBuffer(_logicalDevice),
+                            .stagingBuffer =
+                                BufferWithMetadata{bufferBuilder.withSize(imageResource.size)
+                                                       .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+                                                       .createStagingBuffer(_logicalDevice),
+                                                   bufferBuilder.getMetadata()},
                             .width = imageResource.width,
                             .height = imageResource.height,
                             .mipLevels = imageResource.mipLevels,
@@ -168,21 +172,24 @@ StagingVertexDataResourceHandle AssetManager::loadVertexDataInterleavingAsync(
 
             for (common::BufferDescription& description : bufferDescriptions) {
               BufferBuilder bufferBuilder;
-              BufferWithMetadata vertexBuffer =
-                  bufferBuilder.withSize(description.totalSize)
-                      .withUsage(flags.vertexBufferUsage)
-                      .createStagingBuffer(_logicalDevice);
+              Buffer vertexBuffer = bufferBuilder.withSize(description.totalSize)
+                                        .withUsage(flags.vertexBufferUsage)
+                                        .createStagingBuffer(_logicalDevice);
               common::copyDataInterleaving(
-                  vertexBuffer.metadata.getMappedMemoryAsSpan(), description.attributes);
-              vertexData.buffers.insert({std::move(description.name), std::move(vertexBuffer)});
+                  bufferBuilder.getMetadata().getMappedMemoryAsSpan(), description.attributes);
+              vertexData.buffers.insert({
+                std::move(description.name),
+                BufferWithMetadata{std::move(vertexBuffer), bufferBuilder.getMetadata()}
+              });
             }
 
             const size_t shrunkIndexSize = getShrunkIndexSize(indices, indexSize);
             BufferBuilder bufferBuilder;
-            vertexData.indexBuffer =
-                bufferBuilder.withSize(indices.size() / indexSize * shrunkIndexSize)
-                    .withUsage(flags.indexBufferUsage)
-                    .createStagingBuffer(_logicalDevice);
+            vertexData.indexBuffer = BufferWithMetadata{
+              bufferBuilder.withSize(indices.size() / indexSize * shrunkIndexSize)
+                  .withUsage(flags.indexBufferUsage)
+                  .createStagingBuffer(_logicalDevice),
+              bufferBuilder.getMetadata()};
             common::copyAndShrinkIndexData(vertexData.indexBuffer.metadata.getMappedMemoryAsSpan(),
                                            indices, shrunkIndexSize, indexSize);
             vertexData.indexType = getIndexType(shrunkIndexSize);

@@ -1,7 +1,6 @@
 #include "graphics_plugin_vulkan.h"
 
 #include <algorithm>
-#include <array>
 #include <format>
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
