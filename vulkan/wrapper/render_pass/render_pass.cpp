@@ -45,9 +45,17 @@ RenderpassBuilder::Subpass& RenderpassBuilder::createSubpass() {
 }
 
 RenderpassBuilder& RenderpassBuilder::withMultiView(
-    std::vector<uint32_t>&& viewMask, std::vector<uint32_t>&& correlationMask) {
+    std::span<const uint32_t> viewMask, std::span<const uint32_t> correlationMask) {
   _multiViewInfo = MultiViewInfo{
-    .viewMasks = std::move(viewMask), .correlationMasks = std::move(correlationMask)};
+    .viewMasks = std::vector<uint32_t>(std::cbegin(viewMask), std::cend(viewMask)),
+    .correlationMasks =
+        std::vector<uint32_t>(std::cbegin(correlationMask), std::cend(correlationMask))};
+  return *this;
+}
+
+RenderpassBuilder& RenderpassBuilder::withMultiView(
+    std::initializer_list<uint32_t> viewMask, std::initializer_list<uint32_t> correlationMask) {
+  _multiViewInfo = MultiViewInfo{.viewMasks = viewMask, .correlationMasks = correlationMask};
   return *this;
 }
 
@@ -69,7 +77,7 @@ RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::addOutputAttachment(
       _colorAttachmentResolveRefs.push_back(attachmentRef);
       break;
     case AttachmentType::DEPTH:
-      _depthAttachmentRefs.push_back(attachmentRef);
+      _depthAttachmentRef.emplace(attachmentRef);
       break;
     default:
       throw EngineException("Failed to recognize attachment type.");
@@ -114,7 +122,7 @@ RenderpassBuilder::Subpass& RenderpassBuilder::Subpass::withShadingRateAttachmen
 
   _shadingRateAttachmentInfo = VkFragmentShadingRateAttachmentInfoKHR{
     .sType = VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR,
-    .pFragmentShadingRateAttachment = &_fragmentShadingRateAttachmentRef.value(),
+    .pFragmentShadingRateAttachment = &_fragmentShadingRateAttachmentRef,
     .shadingRateAttachmentTexelSize = VkExtent2D{texelWidth, texelHeight}
   };
 
@@ -135,7 +143,7 @@ VkSubpassDescription2 RenderpassBuilder::Subpass::getVkSubpassDescription(uint32
     .pResolveAttachments =
         !_colorAttachmentResolveRefs.empty() ? _colorAttachmentResolveRefs.data() : nullptr,
     .pDepthStencilAttachment =
-        !_depthAttachmentRefs.empty() ? _depthAttachmentRefs.data() : nullptr};
+        _depthAttachmentRef.has_value() ? &_depthAttachmentRef.value() : nullptr};
 }
 
 Renderpass RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
@@ -154,14 +162,17 @@ Renderpass RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
   }
 
   for (uint32_t i = 0; i < _attachmentLayout.getAttachmentsCount(); i++) {
-    if (_attachmentLayout.getAttachmentType(i) == AttachmentType::FRAGMENT_DENSITY_MAP) {
-      _fragmentDensityMapCreateInfo = VkRenderPassFragmentDensityMapCreateInfoEXT{
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT,
-        .fragmentDensityMapAttachment =
-            VkAttachmentReference{i, _attachmentLayout.getAttachmentVkImageLayout(i)}
-      };
-      chainExtendedField(&_pNext, _fragmentDensityMapCreateInfo);
-      break;
+    switch (_attachmentLayout.getAttachmentType(i)) {
+      case AttachmentType::FRAGMENT_DENSITY_MAP:
+        {
+          _fragmentDensityMapCreateInfo = VkRenderPassFragmentDensityMapCreateInfoEXT{
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT,
+            .fragmentDensityMapAttachment =
+                VkAttachmentReference{i, _attachmentLayout.getAttachmentVkImageLayout(i)}
+          };
+          chainExtendedField(&_pNext, _fragmentDensityMapCreateInfo);
+          break;
+        }
     }
   }
 
@@ -178,22 +189,15 @@ Renderpass RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
         _multiViewInfo.has_value() ? _multiViewInfo->correlationMasks.size() : 0),
     .pCorrelatedViewMasks =
         _multiViewInfo.has_value() ? _multiViewInfo->correlationMasks.data() : nullptr};
-
-  VkRenderPass renderpass;
-  CHECK_VKCMD(
-      vkCreateRenderPass2(logicalDevice.getVkDevice(), &renderPassInfo, nullptr, &renderpass),
-      "Failed to create VkRenderPass.");
-  return Renderpass(logicalDevice, renderpass, _attachmentLayout);
+  return Renderpass::create(logicalDevice, renderPassInfo);
 }
 
-Renderpass::Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass,
-                       const AttachmentLayout& attachmentLayout) noexcept
-  : _logicalDevice(&logicalDeivce), _renderpass(renderpass), _attachmentsLayout(attachmentLayout) {}
+Renderpass::Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass) noexcept
+  : _logicalDevice(&logicalDeivce), _renderpass(renderpass) {}
 
 Renderpass::Renderpass(Renderpass&& renderpass) noexcept
   : _renderpass(std::exchange(renderpass._renderpass, VK_NULL_HANDLE)),
-    _logicalDevice(std::exchange(renderpass._logicalDevice, nullptr)),
-    _attachmentsLayout(std::move(renderpass._attachmentsLayout)) {}
+    _logicalDevice(std::exchange(renderpass._logicalDevice, nullptr)) {}
 
 void Renderpass::destroy() {
   if (_renderpass != VK_NULL_HANDLE) {
@@ -212,7 +216,6 @@ Renderpass& Renderpass::operator=(Renderpass&& renderpass) noexcept {
 
   _renderpass = std::exchange(renderpass._renderpass, VK_NULL_HANDLE);
   _logicalDevice = std::exchange(renderpass._logicalDevice, nullptr);
-  _attachmentsLayout = std::move(renderpass._attachmentsLayout);
   return *this;
 }
 
@@ -220,21 +223,16 @@ Renderpass::~Renderpass() {
   destroy();
 }
 
-// Renderpass Renderpass::create(
-//     const LogicalDevice& logicalDevice, const VkRenderPassCreateInfo2& createInfo) {
-//   VkRenderPass renderpass;
-//   CHECK_VKCMD(vkCreateRenderPass2(logicalDevice.getVkDevice(), &createInfo, nullptr,
-//   &renderpass),
-//       "Failed to create VkRenderPass.");
-//   return Renderpass(logicalDevice, renderpass, _attachmentLayout);
-// }
+Renderpass Renderpass::create(
+    const LogicalDevice& logicalDevice, const VkRenderPassCreateInfo2& createInfo) {
+  VkRenderPass renderpass;
+  CHECK_VKCMD(vkCreateRenderPass2(logicalDevice.getVkDevice(), &createInfo, nullptr, &renderpass),
+              "Failed to create VkRenderPass.");
+  return Renderpass(logicalDevice, renderpass);
+}
 
 VkRenderPass Renderpass::getVkRenderPass() const noexcept {
   return _renderpass;
-}
-
-const AttachmentLayout& Renderpass::getAttachmentsLayout() const noexcept {
-  return _attachmentsLayout;
 }
 
 const LogicalDevice& Renderpass::getLogicalDevice() const {

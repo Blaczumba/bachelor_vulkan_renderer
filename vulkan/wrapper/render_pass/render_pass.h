@@ -10,8 +10,7 @@
 #include "vulkan/wrapper/render_pass/attachment_layout.h"
 
 class Renderpass {
-  Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass,
-             const AttachmentLayout& attachmentLayout) noexcept;
+  Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass) noexcept;
 
 public:
   Renderpass() noexcept = default;
@@ -27,8 +26,6 @@ public:
 
   VkRenderPass getVkRenderPass() const noexcept;
 
-  const AttachmentLayout& getAttachmentsLayout() const noexcept;
-
   const LogicalDevice& getLogicalDevice() const;
 
 private:
@@ -37,7 +34,6 @@ private:
   VkRenderPass _renderpass = VK_NULL_HANDLE;
 
   const LogicalDevice* _logicalDevice = nullptr;
-  AttachmentLayout _attachmentsLayout;
 
   friend class RenderpassBuilder;
 };
@@ -66,9 +62,9 @@ class RenderpassBuilder {
 
     std::vector<VkAttachmentReference2> _inputAttachmentRefs;
     std::vector<VkAttachmentReference2> _colorAttachmentRefs;
-    std::vector<VkAttachmentReference2> _depthAttachmentRefs;
+    std::optional<VkAttachmentReference2> _depthAttachmentRef;
     std::vector<VkAttachmentReference2> _colorAttachmentResolveRefs;
-    std::optional<VkAttachmentReference2> _fragmentShadingRateAttachmentRef;
+    VkAttachmentReference2 _fragmentShadingRateAttachmentRef;
 
     VkFragmentShadingRateAttachmentInfoKHR _shadingRateAttachmentInfo;
   };
@@ -83,12 +79,15 @@ public:
   Subpass& createSubpass();
 
   RenderpassBuilder& withMultiView(
-      std::vector<uint32_t>&& viewMask, std::vector<uint32_t>&& correlationMask);
+      std::span<const uint32_t> viewMask, std::span<const uint32_t> correlationMask);
+
+  RenderpassBuilder& withMultiView(
+      std::initializer_list<uint32_t> viewMask, std::initializer_list<uint32_t> correlationMask);
 
   Renderpass build(const LogicalDevice& logicalDevice);
 
 private:
-  const AttachmentLayout& _attachmentLayout;
+  AttachmentLayout _attachmentLayout;
 
   void* _pNext = nullptr;
 

@@ -126,10 +126,12 @@ private:
   Registry _registry;
 
   Renderpass _renderPass;
+  AttachmentLayout _attachmentLayout;
   std::vector<Framebuffer> _framebuffers;
 
   // Shadowmap
   Renderpass _shadowRenderPass;
+  AttachmentLayout _shadowAttachmentLayout;
   Framebuffer _shadowFramebuffer;
   Image _shadowMap;
   Pipeline* _shadowPipeline;
@@ -145,6 +147,7 @@ private:
   // Mirror cubemap
   // First pass.
   Renderpass _envMappingRenderPass;
+  AttachmentLayout _envMappingAttachmentLayout;
   Framebuffer _envMappingFramebuffer;
   Pipeline* _envMappingPipeline;
   Buffer _envMappingUniformBuffer;

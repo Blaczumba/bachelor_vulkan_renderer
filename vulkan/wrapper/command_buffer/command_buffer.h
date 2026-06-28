@@ -64,7 +64,8 @@ public:
 
   ~CommandBuffer();
 
-  void beginRenderPass(const Framebuffer& framebuffer) const;
+  void beginRenderPass(
+      const Framebuffer& framebuffer, std::span<const VkClearValue> clearValues) const;
 
   void endRenderPass() const;
 

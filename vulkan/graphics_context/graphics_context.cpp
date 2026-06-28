@@ -277,12 +277,12 @@ void GCONTEXT_CLASS createEnvMappingResources() {
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, samplerAnisotropy);
   }
 
-  AttachmentLayout attachmentLayout;
-  attachmentLayout.addColorAttachment(
+  _envMappingAttachmentLayout.addColorAttachment(
       VK_FORMAT_R8G8B8A8_SRGB, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
-  attachmentLayout.addDepthAttachment(VK_FORMAT_D16_UNORM, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+  _envMappingAttachmentLayout.addDepthAttachment(
+      VK_FORMAT_D16_UNORM, VK_ATTACHMENT_STORE_OP_DONT_CARE);
 
-  RenderpassBuilder renderpassBuilder(attachmentLayout);
+  RenderpassBuilder renderpassBuilder(_envMappingAttachmentLayout);
   renderpassBuilder.createSubpass().addOutputAttachment(0).addOutputAttachment(1);
   _envMappingRenderPass =
       renderpassBuilder.withMultiView({0b111111}, {0b111111})
@@ -354,11 +354,10 @@ void GCONTEXT_CLASS createShadowResources() {
       _shadowMap.getVkImageView(), _shadowMap.getVkImageLayout(), sampler.getVkSampler());
   _samplerManager->transferSampler(std::move(sampler));
 
-  AttachmentLayout attachmentLayout;
-  attachmentLayout.addShadowAttachment(
+  _shadowAttachmentLayout.addShadowAttachment(
       VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-  RenderpassBuilder builder(attachmentLayout);
+  RenderpassBuilder builder(_shadowAttachmentLayout);
   builder.createSubpass().addOutputAttachment(0);
   _shadowRenderPass = builder.build(*_logicalDevice);
   _shadowFramebuffer = createFramebufferFromTextures(_shadowRenderPass, std::span(&_shadowMap, 1));
@@ -366,21 +365,23 @@ void GCONTEXT_CLASS createShadowResources() {
 
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS createGraphicsPipelines() {
-  _graphicsPipelineHandle = _pipelineManager->createPBRProgram(_renderPass, MULTIVIEW_PRESENTATION);
+  _graphicsPipelineHandle =
+      _pipelineManager->createPBRProgram(_renderPass, _attachmentLayout, MULTIVIEW_PRESENTATION);
   _graphicsPipeline = _pipelineManager->getPipeline(_graphicsPipelineHandle);
-  _graphicsTesselationPipelineHandle =
-      _pipelineManager->createPbrTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION);
-  _blinnPhongTesselationPipelineHandle =
-      _pipelineManager->createBlinnPhongTesselationProgram(_renderPass, MULTIVIEW_PRESENTATION);
+  _graphicsTesselationPipelineHandle = _pipelineManager->createPbrTesselationProgram(
+      _renderPass, _attachmentLayout, MULTIVIEW_PRESENTATION);
+  _blinnPhongTesselationPipelineHandle = _pipelineManager->createBlinnPhongTesselationProgram(
+      _renderPass, _attachmentLayout, MULTIVIEW_PRESENTATION);
   _graphicsTesselationPipeline = _pipelineManager->getPipeline(_graphicsTesselationPipelineHandle);
-  _skyboxPipeline =
-      _pipelineManager->getPipeline(_pipelineManager->createSkyboxProgram(_renderPass));
-  _phongEnvMappingPipeline = _pipelineManager->getPipeline(
-      _pipelineManager->createEnvMappingProgram(_renderPass, MULTIVIEW_PRESENTATION));
-  _shadowPipeline =
-      _pipelineManager->getPipeline(_pipelineManager->createShadowProgram(_shadowRenderPass));
-  _envMappingPipeline = _pipelineManager->getPipeline(
-      _pipelineManager->createPbrEnvMappingProgram(_envMappingRenderPass));
+  _skyboxPipeline = _pipelineManager->getPipeline(
+      _pipelineManager->createSkyboxProgram(_renderPass, _attachmentLayout));
+  _phongEnvMappingPipeline =
+      _pipelineManager->getPipeline(_pipelineManager->createEnvMappingProgram(
+          _renderPass, _attachmentLayout, MULTIVIEW_PRESENTATION));
+  _shadowPipeline = _pipelineManager->getPipeline(
+      _pipelineManager->createShadowProgram(_shadowRenderPass, _shadowAttachmentLayout));
+  _envMappingPipeline = _pipelineManager->getPipeline(_pipelineManager->createPbrEnvMappingProgram(
+      _envMappingRenderPass, _envMappingAttachmentLayout));
   _fsrPipeline = _pipelineManager->getPipeline(
       _pipelineManager->createFragmentShadingRateProgram(*_logicalDevice));
 }
@@ -525,8 +526,7 @@ void GCONTEXT_CLASS recordShadowCommandBuffer(VkCommandBuffer commandBuffer) {
 
   VkExtent2D extent = _shadowMap.getVkExtent2D();
 
-  std::span<const VkClearValue> clearValues =
-      _shadowRenderPass.getAttachmentsLayout().getVkClearValues();
+  std::span<const VkClearValue> clearValues = _shadowAttachmentLayout.getVkClearValues();
 
   const VkRenderPassBeginInfo renderPassInfo = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -590,8 +590,7 @@ void GCONTEXT_CLASS recordEnvMappingCommandBuffer(VkCommandBuffer commandBuffer)
 
   VkExtent2D extent = _envMappingAttachments[0].getVkExtent2D();
 
-  std::span<const VkClearValue> clearValues =
-      _envMappingRenderPass.getAttachmentsLayout().getVkClearValues();
+  std::span<const VkClearValue> clearValues = _envMappingAttachmentLayout.getVkClearValues();
 
   const VkRenderPassBeginInfo renderPassInfo = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -802,7 +801,7 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
                        VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, 0, 0, nullptr, 0,
                        nullptr, 1, &fsrBarrier);
 
-  primaryCommandBuffer.beginRenderPass(framebuffer);
+  primaryCommandBuffer.beginRenderPass(framebuffer, _attachmentLayout.getVkClearValues());
 
   static const bool viewportScissorInheritance =
       _physicalDevice->hasAvailableExtension(VK_NV_INHERITED_VIEWPORT_SCISSOR_EXTENSION_NAME);
@@ -1083,8 +1082,8 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
   const VkFormat swapchainImageFormat = static_cast<VkFormat>(presentResources.imageFormat);
   const VkExtent2D extent = VkExtent2D{presentResources.width, presentResources.height};
 
-  AttachmentLayout attachmentsLayout(msaaSamples);
-  attachmentsLayout
+  _attachmentLayout = AttachmentLayout(msaaSamples);
+  _attachmentLayout
       .addColorResolvePresentAttachment(swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE)
       .addColorAttachment(
           swapchainImageFormat, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
@@ -1128,7 +1127,7 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
       collorAttachmentHandle, depthAttachmentHandle, fsrAttachmentHandle};
   }
 
-  RenderpassBuilder renderpassBuilder(attachmentsLayout);
+  RenderpassBuilder renderpassBuilder(_attachmentLayout);
   if constexpr (MULTIVIEW_PRESENTATION) {
     auto mask = lib::setNLeastSignificantBits<uint32_t>(presentResources.numLayers);
     renderpassBuilder.withMultiView({mask}, {mask});

@@ -54,19 +54,26 @@ public:
 
   bool removePipeline(PipelineHandle index);
 
-  PipelineHandle createPBRProgram(const Renderpass& renderpass, bool multiview);
+  PipelineHandle createPBRProgram(
+      const Renderpass& renderpass, const AttachmentLayout& attachmentLayout, bool multiview);
 
-  PipelineHandle createPbrTesselationProgram(const Renderpass& renderpass, bool multiview);
+  PipelineHandle createPbrTesselationProgram(
+      const Renderpass& renderpass, const AttachmentLayout& attachmentLayout, bool multiview);
 
-  PipelineHandle createBlinnPhongTesselationProgram(const Renderpass& renderpass, bool multiview);
+  PipelineHandle createBlinnPhongTesselationProgram(
+      const Renderpass& renderpass, const AttachmentLayout& attachmentLayout, bool multiview);
 
-  PipelineHandle createPbrEnvMappingProgram(const Renderpass& renderpass);
+  PipelineHandle createPbrEnvMappingProgram(
+      const Renderpass& renderpass, const AttachmentLayout& attachmentLayout);
 
-  PipelineHandle createEnvMappingProgram(const Renderpass& renderpass, bool multiview);
+  PipelineHandle createEnvMappingProgram(
+      const Renderpass& renderpass, const AttachmentLayout& attachmentLayout, bool multiview);
 
-  PipelineHandle createSkyboxProgram(const Renderpass& renderpass);
+  PipelineHandle createSkyboxProgram(
+      const Renderpass& renderpass, const AttachmentLayout& attachmentLayout);
 
-  PipelineHandle createShadowProgram(const Renderpass& renderpass);
+  PipelineHandle createShadowProgram(
+      const Renderpass& renderpass, const AttachmentLayout& attachmentLayout);
 
   PipelineHandle createFragmentShadingRateProgram(const LogicalDevice& logicalDevice);
 

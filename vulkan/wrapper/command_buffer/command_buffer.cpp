@@ -114,14 +114,14 @@ std::vector<CommandBuffer> CommandBuffer::create(
   return commandBuffers;
 }
 
-void CommandBuffer::beginRenderPass(const Framebuffer& framebuffer) const {
+void CommandBuffer::beginRenderPass(
+    const Framebuffer& framebuffer, std::span<const VkClearValue> clearValues) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
     throw EngineException(
         "Cannot begin renderpass without VK_COMMAND_BUFFER_LEVEL_PRIMARY specified.");
   }
 
   const Renderpass& renderpass = framebuffer.getRenderpass();
-  std::span<const VkClearValue> clearValues = renderpass.getAttachmentsLayout().getVkClearValues();
   const VkRenderPassBeginInfo renderPassInfo = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
     .renderPass = renderpass.getVkRenderPass(),

@@ -160,7 +160,8 @@ constexpr VkPushConstantRange getPushConstantRange(
 
 }  // namespace
 
-PipelineHandle PipelineManager::createPBRProgram(const Renderpass& renderpass, bool multiview) {
+PipelineHandle PipelineManager::createPBRProgram(
+    const Renderpass& renderpass, const AttachmentLayout& attachmentLayout, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice, multiview ? "shader_pbr_multiview.vert.spv" : "shader_pbr.vert.spv",
@@ -179,7 +180,7 @@ PipelineHandle PipelineManager::createPBRProgram(const Renderpass& renderpass, b
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
-      renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
+      attachmentLayout.getColorAttachmentsCount(),
       VkPipelineColorBlendAttachmentState{
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
@@ -206,7 +207,7 @@ PipelineHandle PipelineManager::createPBRProgram(const Renderpass& renderpass, b
             .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
-            .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples())
+            .withMultisampleStateCreateInfo(attachmentLayout.getNumMsaaSamples())
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
             .withFragmentShadingRateStateCreateInfo(
@@ -218,7 +219,7 @@ PipelineHandle PipelineManager::createPBRProgram(const Renderpass& renderpass, b
 }
 
 PipelineHandle PipelineManager::createPbrTesselationProgram(
-    const Renderpass& renderpass, bool multiview) {
+    const Renderpass& renderpass, const AttachmentLayout& attachmentLayout, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice, "shader_pbr_tesselation.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -243,7 +244,7 @@ PipelineHandle PipelineManager::createPbrTesselationProgram(
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
-      renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
+      attachmentLayout.getColorAttachmentsCount(),
       VkPipelineColorBlendAttachmentState{
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
@@ -271,7 +272,7 @@ PipelineHandle PipelineManager::createPbrTesselationProgram(
             .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
-            .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples())
+            .withMultisampleStateCreateInfo(attachmentLayout.getNumMsaaSamples())
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
             .withFragmentShadingRateStateCreateInfo(
@@ -284,7 +285,7 @@ PipelineHandle PipelineManager::createPbrTesselationProgram(
 }
 
 PipelineHandle PipelineManager::createBlinnPhongTesselationProgram(
-    const Renderpass& renderpass, bool multiview) {
+    const Renderpass& renderpass, const AttachmentLayout& attachmentLayout, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice, "shader_blinn_phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -307,7 +308,7 @@ PipelineHandle PipelineManager::createBlinnPhongTesselationProgram(
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
-      renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
+      attachmentLayout.getColorAttachmentsCount(),
       VkPipelineColorBlendAttachmentState{
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
@@ -334,7 +335,7 @@ PipelineHandle PipelineManager::createBlinnPhongTesselationProgram(
             .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
-            .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples())
+            .withMultisampleStateCreateInfo(attachmentLayout.getNumMsaaSamples())
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
             .withFragmentShadingRateStateCreateInfo(
@@ -346,7 +347,8 @@ PipelineHandle PipelineManager::createBlinnPhongTesselationProgram(
   return pipelineIndex;
 }
 
-PipelineHandle PipelineManager::createPbrEnvMappingProgram(const Renderpass& renderpass) {
+PipelineHandle PipelineManager::createPbrEnvMappingProgram(
+    const Renderpass& renderpass, const AttachmentLayout& attachmentLayout) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice, "pbr_env_mapping.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -362,7 +364,7 @@ PipelineHandle PipelineManager::createPbrEnvMappingProgram(const Renderpass& ren
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
-      renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
+      attachmentLayout.getColorAttachmentsCount(),
       VkPipelineColorBlendAttachmentState{
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
@@ -389,8 +391,7 @@ PipelineHandle PipelineManager::createPbrEnvMappingProgram(const Renderpass& ren
             .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT)
-            .withMultisampleStateCreateInfo(
-                renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
+            .withMultisampleStateCreateInfo(attachmentLayout.getNumMsaaSamples(), 0.2f)
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
             .createPipeline(renderpass, *pipelineLayout),
@@ -399,7 +400,7 @@ PipelineHandle PipelineManager::createPbrEnvMappingProgram(const Renderpass& ren
 }
 
 PipelineHandle PipelineManager::createEnvMappingProgram(
-    const Renderpass& renderpass, bool multiview) {
+    const Renderpass& renderpass, const AttachmentLayout& attachmentLayout, bool multiview) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex =
       addShader(logicalDevice,
@@ -419,7 +420,7 @@ PipelineHandle PipelineManager::createEnvMappingProgram(
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
-      renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
+      attachmentLayout.getColorAttachmentsCount(),
       VkPipelineColorBlendAttachmentState{
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
@@ -444,8 +445,7 @@ PipelineHandle PipelineManager::createEnvMappingProgram(
             .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT)
-            .withMultisampleStateCreateInfo(
-                renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
+            .withMultisampleStateCreateInfo(attachmentLayout.getNumMsaaSamples(), 0.2f)
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
             .createPipeline(renderpass, *pipelineLayout),
@@ -453,7 +453,8 @@ PipelineHandle PipelineManager::createEnvMappingProgram(
   return pipelineIndex;
 }
 
-PipelineHandle PipelineManager::createSkyboxProgram(const Renderpass& renderpass) {
+PipelineHandle PipelineManager::createSkyboxProgram(
+    const Renderpass& renderpass, const AttachmentLayout& attachmentLayout) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex = addShader(logicalDevice, "skybox.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
@@ -467,7 +468,7 @@ PipelineHandle PipelineManager::createSkyboxProgram(const Renderpass& renderpass
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
-      renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
+      attachmentLayout.getColorAttachmentsCount(),
       VkPipelineColorBlendAttachmentState{
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                           | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT});
@@ -490,8 +491,7 @@ PipelineHandle PipelineManager::createSkyboxProgram(const Renderpass& renderpass
             .withPushConstantShaderStages(shaderStageFlags)
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT)
-            .withMultisampleStateCreateInfo(
-                renderpass.getAttachmentsLayout().getNumMsaaSamples(), 0.2f)
+            .withMultisampleStateCreateInfo(attachmentLayout.getNumMsaaSamples(), 0.2f)
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
             .createPipeline(renderpass, *pipelineLayout),
@@ -499,7 +499,8 @@ PipelineHandle PipelineManager::createSkyboxProgram(const Renderpass& renderpass
   return pipelineIndex;
 }
 
-PipelineHandle PipelineManager::createShadowProgram(const Renderpass& renderpass) {
+PipelineHandle PipelineManager::createShadowProgram(
+    const Renderpass& renderpass, const AttachmentLayout& attachmentLayout) {
   const LogicalDevice& logicalDevice = renderpass.getLogicalDevice();
   const Shader& vertex = addShader(logicalDevice, "shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
   const Shader& fragment =
@@ -511,7 +512,7 @@ PipelineHandle PipelineManager::createShadowProgram(const Renderpass& renderpass
       logicalDevice);
 
   lib::Buffer<VkPipelineColorBlendAttachmentState> colorBlendAttachments(
-      renderpass.getAttachmentsLayout().getColorAttachmentsCount(),
+      attachmentLayout.getColorAttachmentsCount(),
       VkPipelineColorBlendAttachmentState{.colorWriteMask = VK_COLOR_COMPONENT_R_BIT});
 
   VertexInputDescriptionBuilder builder;
@@ -533,7 +534,7 @@ PipelineHandle PipelineManager::createShadowProgram(const Renderpass& renderpass
             .withViewportStateCreateInfo()
             .withRasterizationStateCreateInfo(
                 VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, std::pair{0.7f, 2.0f})
-            .withMultisampleStateCreateInfo(renderpass.getAttachmentsLayout().getNumMsaaSamples())
+            .withMultisampleStateCreateInfo(attachmentLayout.getNumMsaaSamples())
             .withColorBlendStateCreateInfo(std::move(colorBlendAttachments))
             .withDepthStencilStateCreateInfo(VK_COMPARE_OP_LESS_OR_EQUAL)
             .createPipeline(renderpass, *pipelineLayout),
