@@ -1,9 +1,12 @@
 #pragma once
 
+#include <cstdint>
 #include <span>
+#include <utility>
 #include <vector>
 #include <vulkan/vulkan.h>
 
+#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class DescriptorSetLayout {
@@ -31,12 +34,20 @@ private:
   const LogicalDevice* _logicalDevice;
 };
 
+struct DescriptorSetLayoutMetadata {
+  lib::Buffer<std::pair<VkDescriptorSetLayoutBinding, VkDescriptorBindingFlags>> bindings;
+  VkDescriptorSetLayoutCreateFlags flags;
+  // Other std::optional fields representing pNext metadata.
+};
+
 class DescriptorSetLayoutBuilder {
 public:
   DescriptorSetLayoutBuilder& addBinding(
       uint32_t binding, VkDescriptorType descriptorType, uint32_t descriptorCount,
       VkShaderStageFlags stageFlags, VkDescriptorBindingFlags bindingFlags = 0,
       const VkSampler* immutableSamplers = nullptr);
+
+  DescriptorSetLayoutMetadata getMetadata() const;
 
   DescriptorSetLayout build(
       const LogicalDevice& logicalDevice, VkDescriptorSetLayoutCreateFlags flags = 0);

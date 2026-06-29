@@ -1,5 +1,9 @@
 #include "descriptor_set_layout.h"
 
+#include <algorithm>
+#include <cstdint>
+
+#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
 
@@ -72,6 +76,19 @@ DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::addBinding(
   _bindings.push_back(newBinding);
   _bindingFlags.push_back(bindingFlags);
   return *this;
+}
+
+DescriptorSetLayoutMetadata DescriptorSetLayoutBuilder::getMetadata() const {
+  DescriptorSetLayoutMetadata metadata = {
+    .bindings = lib::Buffer<std::pair<VkDescriptorSetLayoutBinding, VkDescriptorBindingFlags>>(
+        _bindings.size()),
+    .flags = _flags};
+  std::transform(
+      _bindings.cbegin(), _bindings.cend(), _bindingFlags.cbegin(), metadata.bindings.begin(),
+      [](const VkDescriptorSetLayoutBinding& layoutBinding, VkDescriptorBindingFlags bindingFlag) {
+        return std::make_pair(layoutBinding, bindingFlag);
+      });
+  return metadata;
 }
 
 DescriptorSetLayout DescriptorSetLayoutBuilder::build(

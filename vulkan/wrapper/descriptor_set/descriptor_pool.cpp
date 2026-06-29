@@ -1,10 +1,12 @@
 #include "descriptor_pool.h"
 
 #include <cstdint>
+#include <initializer_list>
+#include <memory>
 #include <span>
 
 #include "common/util/engine_exception.h"
-#include "descriptor_set.h"
+#include "vulkan/wrapper/descriptor_set/descriptor_set.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
 
@@ -12,7 +14,7 @@ DescriptorPool::DescriptorPool(
     const LogicalDevice& logicalDevice, VkDescriptorPool descriptorPool, uint32_t maxNumSets,
     std::span<const VkDescriptorPoolSize> poolSizes) noexcept
   : _logicalDevice(logicalDevice), _descriptorPool(descriptorPool), _maxNumSets(maxNumSets),
-    _allocatedSets(0), _poolSizes(poolSizes) {}
+    _allocatedSets(0), _remainingPoolSizes(poolSizes) {}
 
 DescriptorPool::~DescriptorPool() {
   _logicalDevice.destroyResource([descriptorPool = _descriptorPool](DestroyerContext context) {
@@ -80,6 +82,7 @@ std::unique_ptr<DescriptorPool> DescriptorPoolBuilder::build(
     const LogicalDevice& logicalDevice, uint32_t maxNumSets, VkDescriptorPoolCreateFlags flags) {
   const VkDescriptorPoolCreateInfo createInfo = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+    .pNext = _pNext,
     .flags = _flags = flags,
     .maxSets = _maxNumSets = maxNumSets,
     .poolSizeCount = static_cast<uint32_t>(_poolSizes.size()),

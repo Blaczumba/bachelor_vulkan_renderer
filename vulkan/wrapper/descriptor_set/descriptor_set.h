@@ -4,7 +4,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-class DescriptorPool;  // DescriptorPool is forward declared to avoid circular dependency
+class DescriptorPool;  // DescriptorPool is forward declared to avoid circular dependency.
 
 class DescriptorSet {
   DescriptorSet(VkDescriptorSet descriptorSet,

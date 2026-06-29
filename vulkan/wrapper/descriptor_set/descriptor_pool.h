@@ -1,11 +1,14 @@
 #pragma once
 
+#include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <span>
 #include <vector>
 #include <vulkan/vulkan.h>
 
-#include "descriptor_set.h"
+#include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/descriptor_set/descriptor_set.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 
 class DescriptorPool : public std::enable_shared_from_this<const DescriptorPool> {
@@ -31,7 +34,7 @@ private:
 
   const uint32_t _maxNumSets;
   mutable uint32_t _allocatedSets;
-  mutable lib::Buffer<VkDescriptorPoolSize> _poolSizes;
+  mutable lib::Buffer<VkDescriptorPoolSize> _remainingPoolSizes;
 
   const LogicalDevice& _logicalDevice;
 };
