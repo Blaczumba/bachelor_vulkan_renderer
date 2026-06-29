@@ -52,20 +52,39 @@ DescriptorSet DescriptorPool::createDesriptorSet(VkDescriptorSetLayout layout) c
   return DescriptorSet::create(shared_from_this(), layout);
 }
 
-std::vector<DescriptorSet> DescriptorPool::createDesriptorSets(
-    VkDescriptorSetLayout layout, uint32_t numSets) const {
-  _allocatedSets += numSets;
-  if (_allocatedSets > _maxNumSets) {
-    _allocatedSets -= numSets;
-    throw EngineException("Cannot allocate more descriptor sets from the descriptor set pool.");
-  }
-  return DescriptorSet::create(shared_from_this(), layout, numSets);
-}
-
 bool DescriptorPool::maxSetsReached() const noexcept {
   return _allocatedSets >= _maxNumSets;
 }
 
 const LogicalDevice& DescriptorPool::getLogicalDevice() const {
   return _logicalDevice;
+}
+
+DescriptorPoolBuilder& DescriptorPoolBuilder::addPoolSize(
+    VkDescriptorType type, uint32_t descriptorCount) {
+  _poolSizes.emplace_back(type, descriptorCount);
+  return *this;
+}
+
+DescriptorPoolBuilder& DescriptorPoolBuilder::withPoolSizes(
+    std::span<const VkDescriptorPoolSize> poolSizes) {
+  _poolSizes.assign_range(poolSizes);
+  return *this;
+}
+
+DescriptorPoolBuilder& DescriptorPoolBuilder::withPoolSizes(
+    std::initializer_list<VkDescriptorPoolSize> poolSizes) {
+  _poolSizes.assign_range(poolSizes);
+  return *this;
+}
+
+DescriptorPoolBuilder& DescriptorPoolBuilder::withPoolSizes(
+    std::vector<VkDescriptorPoolSize>&& poolSizes) noexcept {
+  _poolSizes = std::move(poolSizes);
+  return *this;
+}
+
+std::unique_ptr<DescriptorPool> DescriptorPoolBuilder::build(
+    const LogicalDevice& logicalDevice, uint32_t maxNumSets, VkDescriptorPoolCreateFlags flags) {
+  return nullptr;
 }

@@ -46,8 +46,7 @@ VkDescriptorSetLayout PipelineManager::getOrCreateBindlessLayout(
               1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 200, VK_SHADER_STAGE_ALL_GRAPHICS,
               VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
                   | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT)
-          .withFlags(VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT)
-          .build(logicalDevice);
+          .build(logicalDevice, VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT);
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
   _descriptorSetLayouts.emplace(layoutType, std::move(layout));
   return vkLayout;

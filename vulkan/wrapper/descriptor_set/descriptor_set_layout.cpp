@@ -74,13 +74,8 @@ DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::addBinding(
   return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::withFlags(
-    VkDescriptorSetLayoutCreateFlags flags) noexcept {
-  _flags = flags;
-  return *this;
-}
-
-DescriptorSetLayout DescriptorSetLayoutBuilder::build(const LogicalDevice& logicalDevice) const {
+DescriptorSetLayout DescriptorSetLayoutBuilder::build(
+    const LogicalDevice& logicalDevice, VkDescriptorSetLayoutCreateFlags flags) {
   const VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
     .bindingCount = static_cast<uint32_t>(_bindingFlags.size()),
@@ -88,7 +83,7 @@ DescriptorSetLayout DescriptorSetLayoutBuilder::build(const LogicalDevice& logic
   const VkDescriptorSetLayoutCreateInfo createInfo = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
     .pNext = &bindingFlagsCreateInfo,
-    .flags = _flags,
+    .flags = _flags = flags,
     .bindingCount = static_cast<uint32_t>(_bindings.size()),
     .pBindings = _bindings.data()};
   return DescriptorSetLayout::create(logicalDevice, createInfo);

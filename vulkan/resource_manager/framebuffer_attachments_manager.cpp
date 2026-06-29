@@ -25,8 +25,6 @@ Framebuffer FramebufferAttachmentManager::createFramebuffer(
     const Renderpass& renderpass, std::span<const GpuImageHandle> attachments, VkExtent2D extent,
     VkImageView swapchainView) {
   FramebufferBuilder framebufferBuilder;
-  framebufferBuilder.withExtent(extent);
-
   if (swapchainView != VK_NULL_HANDLE) {
     framebufferBuilder.addAttachment(swapchainView);
   }
@@ -36,7 +34,7 @@ Framebuffer FramebufferAttachmentManager::createFramebuffer(
     framebufferBuilder.addAttachment(_gpuBufferManager.getImage(imageHandle).getVkImageView());
   }
 
-  Framebuffer framebuffer = framebufferBuilder.build(renderpass);
+  Framebuffer framebuffer = framebufferBuilder.build(renderpass, extent, 1);
   _framebuffersAttachments.emplace(framebuffer.getVkFramebuffer(), attachments);
   _framebuffersSwapchainViews.emplace(framebuffer.getVkFramebuffer(), swapchainView);
   return framebuffer;

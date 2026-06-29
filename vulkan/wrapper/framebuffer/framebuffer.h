@@ -4,6 +4,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
+#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
 
 class Framebuffer {
@@ -44,10 +45,10 @@ private:
 };
 
 struct FramebufferMetadata {
+  lib::Buffer<VkImageView> attachments;
   VkExtent2D extent;
   uint32_t layers;
   VkFramebufferCreateFlags flags;
-  std::vector<VkImageView> attachments;
   // Other std::optional fields representing pNext metadata.
 };
 
@@ -55,18 +56,22 @@ class FramebufferBuilder {
 public:
   FramebufferBuilder& addAttachment(VkImageView attachment);
 
-  FramebufferBuilder& withExtent(VkExtent2D extent) noexcept;
+  FramebufferBuilder& withAttachments(std::span<const VkImageView> attachments);
 
-  FramebufferBuilder& withLayers(uint32_t layers) noexcept;
+  FramebufferBuilder& withAttachments(std::initializer_list<VkImageView> attachments);
 
-  FramebufferBuilder& withFlags(VkFramebufferCreateFlags flags) noexcept;
+  FramebufferBuilder& withAttachments(std::vector<VkImageView>&& attachments) noexcept;
 
   FramebufferMetadata getMetadata() const noexcept;
 
-  Framebuffer build(const Renderpass& renderpass) const;
+  Framebuffer build(const Renderpass& renderpass, VkExtent2D extent, uint32_t layers,
+                    VkFramebufferCreateFlags flags = 0);
 
 private:
-  FramebufferMetadata _metadata = {
-    .layers = 1,
-  };
+  std::vector<VkImageView> _attachments;
+  VkExtent2D _extent;
+  uint32_t _layers;
+  VkFramebufferCreateFlags _flags;
+
+  void* _pNext = nullptr;
 };

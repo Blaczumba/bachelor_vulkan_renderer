@@ -70,8 +70,7 @@ Framebuffer createFramebufferFromTextures(
     throw EngineException("Framebuffer must have an attachment.");
   }
 
-  builder.withExtent(*extent);
-  return builder.build(renderpass);
+  return builder.build(renderpass, *extent, 1);
 }
 
 Image createSkybox(

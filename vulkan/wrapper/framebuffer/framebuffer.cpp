@@ -4,6 +4,7 @@
 #include <utility>
 #include <vulkan/vulkan.h>
 
+#include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
 
@@ -82,38 +83,45 @@ VkFramebuffer Framebuffer::getVkFramebuffer() const noexcept {
 }
 
 FramebufferBuilder& FramebufferBuilder::addAttachment(VkImageView attachment) {
-  _metadata.attachments.push_back(attachment);
+  _attachments.push_back(attachment);
   return *this;
 }
 
-FramebufferBuilder& FramebufferBuilder::withExtent(VkExtent2D extent) noexcept {
-  _metadata.extent = extent;
+FramebufferBuilder& FramebufferBuilder::withAttachments(std::span<const VkImageView> attachments) {
+  _attachments.assign_range(attachments);
   return *this;
 }
 
-FramebufferBuilder& FramebufferBuilder::withLayers(uint32_t layers) noexcept {
-  _metadata.layers = layers;
+FramebufferBuilder& FramebufferBuilder::withAttachments(
+    std::initializer_list<VkImageView> attachments) {
+  _attachments.assign_range(attachments);
   return *this;
 }
 
-FramebufferBuilder& FramebufferBuilder::withFlags(VkFramebufferCreateFlags flags) noexcept {
-  _metadata.flags = flags;
+FramebufferBuilder& FramebufferBuilder::withAttachments(
+    std::vector<VkImageView>&& attachments) noexcept {
+  _attachments = std::move(attachments);
   return *this;
 }
 
 FramebufferMetadata FramebufferBuilder::getMetadata() const noexcept {
-  return _metadata;
+  return FramebufferMetadata{
+    .attachments = lib::Buffer<VkImageView>(_attachments.begin(), _attachments.end()),
+    .extent = _extent,
+    .layers = _layers,
+    .flags = _flags};
 }
 
-Framebuffer FramebufferBuilder::build(const Renderpass& renderpass) const {
+Framebuffer FramebufferBuilder::build(const Renderpass& renderpass, VkExtent2D extent,
+                                      uint32_t layers, VkFramebufferCreateFlags flags) {
   const VkFramebufferCreateInfo createInfo = {
     .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-    .flags = _metadata.flags,
+    .flags = _flags = flags,
     .renderPass = renderpass.getVkRenderPass(),
-    .attachmentCount = static_cast<uint32_t>(_metadata.attachments.size()),
-    .pAttachments = _metadata.attachments.data(),
-    .width = _metadata.extent.width,
-    .height = _metadata.extent.height,
-    .layers = _metadata.layers};
+    .attachmentCount = static_cast<uint32_t>(_attachments.size()),
+    .pAttachments = _attachments.data(),
+    .width = _extent.width = extent.width,
+    .height = _extent.height = extent.height,
+    .layers = _layers = layers};
   return Framebuffer::create(renderpass, createInfo);
 }

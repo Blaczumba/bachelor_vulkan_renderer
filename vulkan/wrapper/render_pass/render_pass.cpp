@@ -1,5 +1,6 @@
 #include "render_pass.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -146,66 +147,66 @@ VkSubpassDescription2 RenderpassBuilder::Subpass::getVkSubpassDescription(uint32
         _depthAttachmentRef.has_value() ? &_depthAttachmentRef.value() : nullptr};
 }
 
-Renderpass RenderpassBuilder::build(const LogicalDevice& logicalDevice) {
+Renderpass RenderpassBuilder::build(
+    const LogicalDevice& logicalDevice, VkRenderPassCreateFlags flags) {
   std::span<const VkAttachmentDescription2> attachmentDescriptions =
       _attachmentLayout.getVkAttachmentDescriptions();
-  lib::Buffer<VkSubpassDescription2> subpassDescriptions(_subpasses.size());
   if (_multiViewInfo.has_value() && _multiViewInfo->viewMasks.size() != _subpasses.size()) {
     throw EngineException(
         "The number of view masks must be the same as the number of subpasses when using multiview "
         "feature.");
   }
 
+  _subpassDescriptions = lib::Buffer<VkSubpassDescription2>(_subpasses.size());
   for (int i = 0; i < _subpasses.size(); i++) {
-    subpassDescriptions[i] = _subpasses[i]->getVkSubpassDescription(
+    _subpassDescriptions[i] = _subpasses[i]->getVkSubpassDescription(
         _multiViewInfo.has_value() ? _multiViewInfo->viewMasks[i] : 0);
   }
 
-  for (uint32_t i = 0; i < _attachmentLayout.getAttachmentsCount(); i++) {
-    switch (_attachmentLayout.getAttachmentType(i)) {
-      case AttachmentType::FRAGMENT_DENSITY_MAP:
-        {
-          _fragmentDensityMapCreateInfo = VkRenderPassFragmentDensityMapCreateInfoEXT{
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT,
-            .fragmentDensityMapAttachment =
-                VkAttachmentReference{i, _attachmentLayout.getAttachmentVkImageLayout(i)}
-          };
-          chainExtendedField(&_pNext, _fragmentDensityMapCreateInfo);
-          break;
-        }
-    }
+  std::span<const AttachmentType> attachmentTypes = _attachmentLayout.getAttachmentTypes();
+  auto it = std::find(
+      attachmentTypes.cbegin(), attachmentTypes.cend(), AttachmentType::FRAGMENT_DENSITY_MAP);
+  if (it != attachmentTypes.cend()) {
+    const uint32_t attachment = std::distance(attachmentTypes.cbegin(), it);
+    _fragmentDensityMapCreateInfo = VkRenderPassFragmentDensityMapCreateInfoEXT{
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT,
+      .fragmentDensityMapAttachment = VkAttachmentReference{
+                                                            attachment, _attachmentLayout.getAttachmentVkImageLayout(attachment)}
+    };
+    chainExtendedField(&_pNext, *_fragmentDensityMapCreateInfo);
   }
 
-  const VkRenderPassCreateInfo2 renderPassInfo = {
+  const VkRenderPassCreateInfo2 renderPassCreateInfo = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
     .pNext = _pNext,
+    .flags = _flags = flags,
     .attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size()),
     .pAttachments = !attachmentDescriptions.empty() ? attachmentDescriptions.data() : nullptr,
-    .subpassCount = static_cast<uint32_t>(subpassDescriptions.size()),
-    .pSubpasses = !subpassDescriptions.empty() ? subpassDescriptions.data() : nullptr,
+    .subpassCount = static_cast<uint32_t>(_subpassDescriptions.size()),
+    .pSubpasses = !_subpassDescriptions.empty() ? _subpassDescriptions.data() : nullptr,
     .dependencyCount = static_cast<uint32_t>(_subpassDepencies.size()),
     .pDependencies = !_subpassDepencies.empty() ? _subpassDepencies.data() : nullptr,
     .correlatedViewMaskCount = static_cast<uint32_t>(
         _multiViewInfo.has_value() ? _multiViewInfo->correlationMasks.size() : 0),
     .pCorrelatedViewMasks =
         _multiViewInfo.has_value() ? _multiViewInfo->correlationMasks.data() : nullptr};
-  return Renderpass::create(logicalDevice, renderPassInfo);
+  return Renderpass::create(logicalDevice, renderPassCreateInfo);
 }
 
 Renderpass::Renderpass(const LogicalDevice& logicalDeivce, VkRenderPass renderpass) noexcept
   : _logicalDevice(&logicalDeivce), _renderpass(renderpass) {}
 
+Renderpass Renderpass::create(
+    const LogicalDevice& logicalDevice, const VkRenderPassCreateInfo2& createInfo) {
+  VkRenderPass renderpass;
+  CHECK_VKCMD(vkCreateRenderPass2(logicalDevice.getVkDevice(), &createInfo, nullptr, &renderpass),
+              "Failed to create VkRenderPass.");
+  return Renderpass(logicalDevice, renderpass);
+}
+
 Renderpass::Renderpass(Renderpass&& renderpass) noexcept
   : _renderpass(std::exchange(renderpass._renderpass, VK_NULL_HANDLE)),
     _logicalDevice(std::exchange(renderpass._logicalDevice, nullptr)) {}
-
-void Renderpass::destroy() {
-  if (_renderpass != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource([renderpass = _renderpass](DestroyerContext context) {
-      vkDestroyRenderPass(context.device, renderpass, context.allocationCallbacks);
-    });
-  }
-}
 
 Renderpass& Renderpass::operator=(Renderpass&& renderpass) noexcept {
   if (this == &renderpass) [[unlikely]] {
@@ -223,12 +224,12 @@ Renderpass::~Renderpass() {
   destroy();
 }
 
-Renderpass Renderpass::create(
-    const LogicalDevice& logicalDevice, const VkRenderPassCreateInfo2& createInfo) {
-  VkRenderPass renderpass;
-  CHECK_VKCMD(vkCreateRenderPass2(logicalDevice.getVkDevice(), &createInfo, nullptr, &renderpass),
-              "Failed to create VkRenderPass.");
-  return Renderpass(logicalDevice, renderpass);
+void Renderpass::destroy() {
+  if (_renderpass != VK_NULL_HANDLE) {
+    _logicalDevice->destroyResource([renderpass = _renderpass](DestroyerContext context) {
+      vkDestroyRenderPass(context.device, renderpass, context.allocationCallbacks);
+    });
+  }
 }
 
 VkRenderPass Renderpass::getVkRenderPass() const noexcept {

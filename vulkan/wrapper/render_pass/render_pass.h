@@ -15,14 +15,14 @@ class Renderpass {
 public:
   Renderpass() noexcept = default;
 
+  static Renderpass create(
+      const LogicalDevice& logicalDevice, const VkRenderPassCreateInfo2& createInfo);
+
   Renderpass(Renderpass&& renderpass) noexcept;
 
   Renderpass& operator=(Renderpass&& renderpass) noexcept;
 
   ~Renderpass();
-
-  static Renderpass create(
-      const LogicalDevice& logicalDevice, const VkRenderPassCreateInfo2& createInfo);
 
   VkRenderPass getVkRenderPass() const noexcept;
 
@@ -84,21 +84,24 @@ public:
   RenderpassBuilder& withMultiView(
       std::initializer_list<uint32_t> viewMask, std::initializer_list<uint32_t> correlationMask);
 
-  Renderpass build(const LogicalDevice& logicalDevice);
+  Renderpass build(const LogicalDevice& logicalDevice, VkRenderPassCreateFlags flags = 0);
 
 private:
-  AttachmentLayout _attachmentLayout;
+  VkRenderPassCreateFlags _flags;
+  std::optional<VkRenderPassFragmentDensityMapCreateInfoEXT> _fragmentDensityMapCreateInfo;
 
   void* _pNext = nullptr;
+
+  AttachmentLayout _attachmentLayout;
 
   struct MultiViewInfo {
     std::vector<uint32_t> viewMasks;
     std::vector<uint32_t> correlationMasks;
   };
   std::optional<MultiViewInfo> _multiViewInfo;
-  VkRenderPassFragmentDensityMapCreateInfoEXT _fragmentDensityMapCreateInfo;
 
-  std::vector<VkSubpassDependency2> _subpassDepencies;
   // For reference stability use unique_ptr.
   std::vector<std::unique_ptr<Subpass>> _subpasses;
+  std::vector<VkSubpassDependency2> _subpassDepencies;
+  lib::Buffer<VkSubpassDescription2> _subpassDescriptions;
 };

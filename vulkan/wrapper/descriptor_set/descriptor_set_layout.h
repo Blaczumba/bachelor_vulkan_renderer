@@ -38,9 +38,8 @@ public:
       VkShaderStageFlags stageFlags, VkDescriptorBindingFlags bindingFlags = 0,
       const VkSampler* immutableSamplers = nullptr);
 
-  DescriptorSetLayoutBuilder& withFlags(VkDescriptorSetLayoutCreateFlags flags) noexcept;
-
-  DescriptorSetLayout build(const LogicalDevice& logicalDevice) const;
+  DescriptorSetLayout build(
+      const LogicalDevice& logicalDevice, VkDescriptorSetLayoutCreateFlags flags = 0);
 
 private:
   std::vector<VkDescriptorSetLayoutBinding> _bindings;
