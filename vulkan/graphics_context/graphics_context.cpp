@@ -980,16 +980,16 @@ GCONTEXT_CLASS GraphicsContext(
     _pipelineManager(PipelineManager::create(fileLoader)),
     _framebufferAttachmentManager(
         std::make_unique<FramebufferAttachmentManager>(*_gpuBufferManager)),
-    _bindlessDescriptorPool(DescriptorPool::create(
+    _bindlessDescriptorPool(DescriptorPoolBuilder().build(
         *_logicalDevice, 1, VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT)),
     _bindlessDescriptorSet(
         _bindlessDescriptorPool -> createDesriptorSet(
                                     _pipelineManager->getOrCreateBindlessLayout(*_logicalDevice))),
     _bindlessWriter(BindlessDescriptorSetWriter::create(_bindlessDescriptorSet)),
-    _dynamicDescriptorPool(DescriptorPool::create(*_logicalDevice, 1)),
+    _dynamicDescriptorPool(DescriptorPoolBuilder().build(*_logicalDevice, 1)),
     _dynamicDescriptorSet(_dynamicDescriptorPool->createDesriptorSet(
         _pipelineManager->getOrCreateCameraLayout(*_logicalDevice, MULTIVIEW_PRESENTATION))),
-    _computeDescriptorPool(DescriptorPool::create(*_logicalDevice, 1)),
+    _computeDescriptorPool(DescriptorPoolBuilder().build(*_logicalDevice, 1)),
     _computeDescriptorSet(_computeDescriptorPool->createDesriptorSet(
         _pipelineManager->getOrCreateComputeLayout(*_logicalDevice))) {}
 
