@@ -56,4 +56,6 @@ private:
   std::vector<VkDescriptorSetLayoutBinding> _bindings;
   std::vector<VkDescriptorBindingFlags> _bindingFlags;
   VkDescriptorSetLayoutCreateFlags _flags;
+
+  void* _pNext;
 };

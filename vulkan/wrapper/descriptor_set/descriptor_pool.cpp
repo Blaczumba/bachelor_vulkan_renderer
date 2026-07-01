@@ -1,11 +1,12 @@
 #include "descriptor_pool.h"
 
+#include <algorithm>
 #include <cstdint>
+#include <expected>
 #include <initializer_list>
 #include <memory>
 #include <span>
 
-#include "common/util/engine_exception.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
@@ -13,8 +14,8 @@
 DescriptorPool::DescriptorPool(
     const LogicalDevice& logicalDevice, VkDescriptorPool descriptorPool, uint32_t maxNumSets,
     std::span<const VkDescriptorPoolSize> poolSizes) noexcept
-  : _logicalDevice(logicalDevice), _descriptorPool(descriptorPool), _maxNumSets(maxNumSets),
-    _allocatedSets(0), _remainingPoolSizes(poolSizes) {}
+  : _logicalDevice(logicalDevice), _descriptorPool(descriptorPool), _remainingSets(maxNumSets),
+    _remainingPoolSizes(poolSizes) {}
 
 DescriptorPool::~DescriptorPool() {
   _logicalDevice.destroyResource([descriptorPool = _descriptorPool](DestroyerContext context) {
@@ -37,17 +38,36 @@ VkDescriptorPool DescriptorPool::getVkDescriptorPool() const noexcept {
   return _descriptorPool;
 }
 
-DescriptorSet DescriptorPool::createDesriptorSet(VkDescriptorSetLayout layout) const {
-  ++_allocatedSets;
-  if (_allocatedSets > _maxNumSets) {
-    --_allocatedSets;
-    throw EngineException("Cannot allocate more descriptor sets from the descriptor set pool.");
+std::expected<DescriptorSet, DescriptorPool::Error> DescriptorPool::createDesriptorSet(
+    VkDescriptorSetLayout layout, std::span<const VkDescriptorPoolSize> poolSizes) const {
+  if (_remainingSets <= 0) {
+    return std::unexpected(DescriptorPool::Error::MAX_SETS_REACHED);
   }
+
+  // To keep transactionality we need to copy the Buffer and then assign it back.
+  lib::Buffer<VkDescriptorPoolSize> tempPoolSizes = _remainingPoolSizes;
+  for (const auto [type, descriptorCount] : poolSizes) {
+    auto it = std::find_if(
+        tempPoolSizes.begin(), tempPoolSizes.end(), [type](VkDescriptorPoolSize poolSize) {
+          return poolSize.type == type;
+        });
+    if (it == tempPoolSizes.end()) {
+      return std::unexpected(DescriptorPool::Error::DESCRIPTOR_TYPE_NOT_FOUND);
+    }
+
+    if (it->descriptorCount < descriptorCount) {
+      return std::unexpected(DescriptorPool::Error::INSUFFICIENT_DESCRIPTOR_COUNT);
+    }
+
+    it->descriptorCount -= descriptorCount;
+  }
+  _remainingPoolSizes = std::move(tempPoolSizes);
+  --_remainingSets;
   return DescriptorSet::create(shared_from_this(), layout);
 }
 
 bool DescriptorPool::maxSetsReached() const noexcept {
-  return _allocatedSets >= _maxNumSets;
+  return _remainingSets <= 0;
 }
 
 const LogicalDevice& DescriptorPool::getLogicalDevice() const {

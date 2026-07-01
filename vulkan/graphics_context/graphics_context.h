@@ -107,11 +107,9 @@ private:
   DescriptorSet _bindlessDescriptorSet;
   std::unique_ptr<BindlessDescriptorSetWriter> _bindlessWriter;
 
-  std::shared_ptr<DescriptorPool> _dynamicDescriptorPool;
+  std::shared_ptr<DescriptorPool> _descriptorPool;
   DescriptorSet _dynamicDescriptorSet;
   DescriptorSetWriter _dynamicDescriptorSetWriter;
-
-  std::shared_ptr<DescriptorPool> _computeDescriptorPool;
   DescriptorSet _computeDescriptorSet;
   DescriptorSetWriter _computeDescriptorSetWriter;
 

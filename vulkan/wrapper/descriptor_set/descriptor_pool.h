@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
 #include <initializer_list>
 #include <memory>
 #include <span>
@@ -16,6 +17,12 @@ class DescriptorPool : public std::enable_shared_from_this<const DescriptorPool>
                  uint32_t maxNumSets, std::span<const VkDescriptorPoolSize> poolSizes) noexcept;
 
 public:
+  enum class Error : uint8_t {
+    MAX_SETS_REACHED,
+    DESCRIPTOR_TYPE_NOT_FOUND,
+    INSUFFICIENT_DESCRIPTOR_COUNT
+  };
+
   ~DescriptorPool();
 
   static std::unique_ptr<DescriptorPool> create(
@@ -23,7 +30,8 @@ public:
 
   VkDescriptorPool getVkDescriptorPool() const noexcept;
 
-  DescriptorSet createDesriptorSet(VkDescriptorSetLayout layout) const;
+  std::expected<DescriptorSet, DescriptorPool::Error> createDesriptorSet(
+      VkDescriptorSetLayout layout, std::span<const VkDescriptorPoolSize> poolSizes) const;
 
   bool maxSetsReached() const noexcept;
 
@@ -32,8 +40,7 @@ public:
 private:
   VkDescriptorPool _descriptorPool;
 
-  const uint32_t _maxNumSets;
-  mutable uint32_t _allocatedSets;
+  mutable uint32_t _remainingSets;
   mutable lib::Buffer<VkDescriptorPoolSize> _remainingPoolSizes;
 
   const LogicalDevice& _logicalDevice;

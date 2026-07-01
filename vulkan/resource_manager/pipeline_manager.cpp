@@ -30,15 +30,16 @@ const Shader& PipelineManager::addShader(
   return it->second = Shader::create(logicalDevice, shaderData, shaderStages);
 }
 
-VkDescriptorSetLayout PipelineManager::getOrCreateBindlessLayout(
-    const LogicalDevice& logicalDevice) {
+std::pair<VkDescriptorSetLayout, std::reference_wrapper<DescriptorSetLayoutMetadata>>
+PipelineManager::getOrCreateBindlessLayout(const LogicalDevice& logicalDevice) {
   static constexpr DescriptorSetType layoutType = DescriptorSetType::BINDLESS;
   if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
-    return it->second.getVkDescriptorSetLayout();
+    return std::make_pair(it->second.first.getVkDescriptorSetLayout(), std::ref(it->second.second));
   }
 
+  DescriptorSetLayoutBuilder builder;
   DescriptorSetLayout layout =
-      DescriptorSetLayoutBuilder()
+      builder
           .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 200, VK_SHADER_STAGE_ALL_GRAPHICS,
                       VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
                           | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT)
@@ -48,42 +49,46 @@ VkDescriptorSetLayout PipelineManager::getOrCreateBindlessLayout(
                   | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT)
           .build(logicalDevice, VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT);
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
-  _descriptorSetLayouts.emplace(layoutType, std::move(layout));
-  return vkLayout;
+  auto emplaced = _descriptorSetLayouts.emplace(
+      layoutType, std::make_pair(std::move(layout), builder.getMetadata()));
+  return std::make_pair(vkLayout, std::ref(emplaced.first->second.second));
 }
 
-VkDescriptorSetLayout PipelineManager::getOrCreateCameraLayout(
-    const LogicalDevice& logicalDevice, bool multiview) {
+std::pair<VkDescriptorSetLayout, std::reference_wrapper<DescriptorSetLayoutMetadata>>
+PipelineManager::getOrCreateCameraLayout(const LogicalDevice& logicalDevice, bool multiview) {
   static constexpr DescriptorSetType layoutType = DescriptorSetType::CAMERA;
   if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
-    return it->second.getVkDescriptorSetLayout();
+    return std::make_pair(it->second.first.getVkDescriptorSetLayout(), std::ref(it->second.second));
   }
 
+  DescriptorSetLayoutBuilder builder;
   DescriptorSetLayout layout =
-      DescriptorSetLayoutBuilder()
+      builder
           .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, multiview ? 2u : 1u,
                       VK_SHADER_STAGE_ALL_GRAPHICS)
           .build(logicalDevice);
 
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
-  _descriptorSetLayouts.emplace(layoutType, std::move(layout));
-  return vkLayout;
+  auto emplaced = _descriptorSetLayouts.emplace(
+      layoutType, std::make_pair(std::move(layout), builder.getMetadata()));
+  return std::make_pair(vkLayout, std::ref(emplaced.first->second.second));
 }
 
-VkDescriptorSetLayout PipelineManager::getOrCreateComputeLayout(
-    const LogicalDevice& logicalDevice) {
+std::pair<VkDescriptorSetLayout, std::reference_wrapper<DescriptorSetLayoutMetadata>>
+PipelineManager::getOrCreateComputeLayout(const LogicalDevice& logicalDevice) {
   static constexpr DescriptorSetType layoutType = DescriptorSetType::COMPUTE;
   if (auto it = _descriptorSetLayouts.find(layoutType); it != _descriptorSetLayouts.cend()) {
-    return it->second.getVkDescriptorSetLayout();
+    return std::make_pair(it->second.first.getVkDescriptorSetLayout(), std::ref(it->second.second));
   }
 
+  DescriptorSetLayoutBuilder builder;
   DescriptorSetLayout layout =
-      DescriptorSetLayoutBuilder()
-          .addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1u, VK_SHADER_STAGE_COMPUTE_BIT)
+      builder.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT)
           .build(logicalDevice);
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
-  _descriptorSetLayouts.emplace(layoutType, std::move(layout));
-  return vkLayout;
+  auto emplaced = _descriptorSetLayouts.emplace(
+      layoutType, std::make_pair(std::move(layout), builder.getMetadata()));
+  return std::make_pair(vkLayout, std::ref(emplaced.first->second.second));
 }
 
 std::pair<PipelineLayout*, PipelineManager::PipelineLayoutMapIndex> PipelineManager::
@@ -172,8 +177,8 @@ PipelineHandle PipelineManager::createPBRProgram(
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice),
-         getOrCreateCameraLayout(logicalDevice, multiview)},
+        {getOrCreateBindlessLayout(logicalDevice).first,
+         getOrCreateCameraLayout(logicalDevice, multiview).first},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}
   },
       logicalDevice);
@@ -236,8 +241,8 @@ PipelineHandle PipelineManager::createPbrTesselationProgram(
       | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice),
-         getOrCreateCameraLayout(logicalDevice, multiview)},
+        {getOrCreateBindlessLayout(logicalDevice).first,
+         getOrCreateCameraLayout(logicalDevice, multiview).first},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}
   },
       logicalDevice);
@@ -300,8 +305,8 @@ PipelineHandle PipelineManager::createBlinnPhongTesselationProgram(
       | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice),
-         getOrCreateCameraLayout(logicalDevice, multiview)},
+        {getOrCreateBindlessLayout(logicalDevice).first,
+         getOrCreateCameraLayout(logicalDevice, multiview).first},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}
   },
       logicalDevice);
@@ -358,7 +363,7 @@ PipelineHandle PipelineManager::createPbrEnvMappingProgram(
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice)},
+        {getOrCreateBindlessLayout(logicalDevice).first},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}},
       logicalDevice);
 
@@ -412,8 +417,8 @@ PipelineHandle PipelineManager::createEnvMappingProgram(
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
       PipelineLayoutKey{
-        {getOrCreateBindlessLayout(logicalDevice),
-         getOrCreateCameraLayout(logicalDevice, multiview)},
+        {getOrCreateBindlessLayout(logicalDevice).first,
+         getOrCreateCameraLayout(logicalDevice, multiview).first},
         {getPushConstantRange<PushConstantsModelDescriptorHandles32Bit>(shaderStageFlags)}
   },
       logicalDevice);
@@ -462,7 +467,7 @@ PipelineHandle PipelineManager::createSkyboxProgram(
   const VkShaderStageFlags shaderStageFlags =
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
-      PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice)},
+      PipelineLayoutKey{{getOrCreateBindlessLayout(logicalDevice).first},
                         {getPushConstantRange<PushConstantsSkybox>(shaderStageFlags)}},
       logicalDevice);
 
@@ -547,7 +552,7 @@ PipelineHandle PipelineManager::createFragmentShadingRateProgram(
       addShader(logicalDevice, "fov_fragment_shading_rate.comp.spv", VK_SHADER_STAGE_COMPUTE_BIT);
   static constexpr VkShaderStageFlags shaderStageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
   const auto [pipelineLayout, pipelineLayoutIndex] = getOrCreatePipelineLayout(
-      PipelineLayoutKey{{getOrCreateComputeLayout(logicalDevice)},
+      PipelineLayoutKey{{getOrCreateComputeLayout(logicalDevice).first},
                         {getPushConstantRange<PushConstantFov>(shaderStageFlags)}},
       logicalDevice);
   const PipelineHandle pipelineIndex = getNextHandle(_pipelines.size(), _freePipelineIndices);

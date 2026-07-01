@@ -24,6 +24,7 @@
 #include "common/util/primitives.h"
 #include "lib/bitwise.h"
 #include "presentation_graphics_communication/presentation_graphics_communication.h"
+#include "vulkan/graphics_context/graphics_context_lib.h"
 #include "vulkan/graphics_context/presentation_lib.h"
 #include "vulkan/resource_manager/asset_manager.h"
 #include "vulkan/resource_manager/bindless_descriptor_set_writer.h"
@@ -972,26 +973,54 @@ GCONTEXT_CLASS GraphicsContext(
   : _instance(std::move(instance)), _debugMessenger(std::move(debugMessenger)),
     _physicalDevice(std::move(physicalDevice)), _logicalDevice(std::move(logicalDevice)),
     _fileLoader(fileLoader), _communicationLayer(std::move(communicationLayer)),
-    _presentationContext(std::move(presentationContext)),
-    _singleTimeCommandPool(
-        CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)),
-    _assetManager(AssetManager::create(*_logicalDevice, fileLoader, std::launch::async)),
-    _gpuBufferManager(GpuBufferManager::create()), _samplerManager(SamplerManager::create()),
-    _pipelineManager(PipelineManager::create(fileLoader)),
-    _framebufferAttachmentManager(
-        std::make_unique<FramebufferAttachmentManager>(*_gpuBufferManager)),
-    _bindlessDescriptorPool(DescriptorPoolBuilder().build(
-        *_logicalDevice, 1, VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT)),
-    _bindlessDescriptorSet(
-        _bindlessDescriptorPool -> createDesriptorSet(
-                                    _pipelineManager->getOrCreateBindlessLayout(*_logicalDevice))),
-    _bindlessWriter(BindlessDescriptorSetWriter::create(_bindlessDescriptorSet)),
-    _dynamicDescriptorPool(DescriptorPoolBuilder().build(*_logicalDevice, 1)),
-    _dynamicDescriptorSet(_dynamicDescriptorPool->createDesriptorSet(
-        _pipelineManager->getOrCreateCameraLayout(*_logicalDevice, MULTIVIEW_PRESENTATION))),
-    _computeDescriptorPool(DescriptorPoolBuilder().build(*_logicalDevice, 1)),
-    _computeDescriptorSet(_computeDescriptorPool->createDesriptorSet(
-        _pipelineManager->getOrCreateComputeLayout(*_logicalDevice))) {}
+    _presentationContext(std::move(presentationContext)) {
+  _singleTimeCommandPool =
+      CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+  _assetManager = AssetManager::create(*_logicalDevice, fileLoader, std::launch::async);
+  _gpuBufferManager = GpuBufferManager::create();
+  _samplerManager = SamplerManager::create();
+  _pipelineManager = PipelineManager::create(fileLoader);
+  _framebufferAttachmentManager =
+      std::make_unique<FramebufferAttachmentManager>(*_gpuBufferManager);
+
+  {
+    _bindlessDescriptorPool = DescriptorPoolBuilder().build(
+        *_logicalDevice, 1, VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT);
+    const auto [layout, metadata] = _pipelineManager->getOrCreateBindlessLayout(*_logicalDevice);
+    _bindlessDescriptorSet =
+        _bindlessDescriptorPool
+            ->createDesriptorSet(
+                layout, internal::getDescriptorPoolSizesFromBindings(metadata.get().bindings))
+            .value();
+    _bindlessWriter = BindlessDescriptorSetWriter::create(_bindlessDescriptorSet);
+  }
+
+  {
+    _descriptorPool =
+        DescriptorPoolBuilder()
+            .withPoolSizes({
+              {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1},
+              {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          1}
+    })
+            .build(*_logicalDevice, 2);
+    const auto [layout, metadata] =
+        _pipelineManager->getOrCreateCameraLayout(*_logicalDevice, MULTIVIEW_PRESENTATION);
+    _dynamicDescriptorSet =
+        _descriptorPool
+            ->createDesriptorSet(
+                layout, internal::getDescriptorPoolSizesFromBindings(metadata.get().bindings))
+            .value();
+  }
+
+  {
+    const auto [layout, metadata] = _pipelineManager->getOrCreateComputeLayout(*_logicalDevice);
+    _computeDescriptorSet =
+        _descriptorPool
+            ->createDesriptorSet(
+                layout, internal::getDescriptorPoolSizesFromBindings(metadata.get().bindings))
+            .value();
+  }
+}
 
 GCONTEXT_TEMPLATE
 std::unique_ptr<common::GraphicsContext> GCONTEXT_CLASS create(
