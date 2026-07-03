@@ -40,12 +40,61 @@ VkDescriptorPool DescriptorPool::getVkDescriptorPool() const noexcept {
 
 std::expected<DescriptorSet, DescriptorPool::Error> DescriptorPool::createDesriptorSet(
     VkDescriptorSetLayout layout, std::span<const VkDescriptorPoolSize> poolSizes) const {
+  if (_remainingSets < 1) {
+    return std::unexpected(DescriptorPool::Error::MAX_SETS_REACHED);
+  }
+
+  std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error>
+      expectedPoolSizes = getUpdatedPoolSizes(_remainingPoolSizes, poolSizes);
+  if (!expectedPoolSizes.has_value()) {
+    return std::unexpected(expectedPoolSizes.error());
+  }
+  _remainingPoolSizes = std::move(expectedPoolSizes.value());
+  --_remainingSets;
+  return DescriptorSet::create(shared_from_this(), layout);
+}
+
+std::expected<std::vector<DescriptorSet>, DescriptorPool::Error> DescriptorPool::
+    createDesriptorSets(std::span<const VkDescriptorSetLayout> layouts,
+    std::span<const VkDescriptorPoolSize> poolSizes) const {
+  if (_remainingSets < layouts.size()) {
+    return std::unexpected(DescriptorPool::Error::MAX_SETS_REACHED);
+  }
+
+  std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error> expectedPoolSizes =
+      getUpdatedPoolSizes(_remainingPoolSizes, poolSizes);
+  if (!expectedPoolSizes.has_value()) {
+    return std::unexpected(expectedPoolSizes.error());
+  }
+  _remainingPoolSizes = std::move(expectedPoolSizes.value());
+  _remainingSets -= layouts.size();
+  return DescriptorSet::create(shared_from_this(), layouts);
+}
+
+bool DescriptorPool::maxSetsReached() const noexcept {
+  return _remainingSets <= 0;
+}
+
+const LogicalDevice& DescriptorPool::getLogicalDevice() const {
+  return _logicalDevice;
+}
+
+DescriptorPoolBuilder& DescriptorPoolBuilder::addPoolSize(
+    VkDescriptorType type, uint32_t descriptorCount) {
+  _poolSizes.emplace_back(type, descriptorCount);
+  return *this;
+}
+
+std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error>
+DescriptorPool::getUpdatedPoolSizes(
+    std::span<const VkDescriptorPoolSize> remainingPoolSizes,
+    std::span<const VkDescriptorPoolSize> poolSizes) const {
   if (_remainingSets <= 0) {
     return std::unexpected(DescriptorPool::Error::MAX_SETS_REACHED);
   }
 
   // To keep transactionality we need to copy the Buffer and then assign it back.
-  lib::Buffer<VkDescriptorPoolSize> tempPoolSizes = _remainingPoolSizes;
+  lib::Buffer<VkDescriptorPoolSize> tempPoolSizes = remainingPoolSizes;
   for (const auto [type, descriptorCount] : poolSizes) {
     auto it = std::find_if(
         tempPoolSizes.begin(), tempPoolSizes.end(), [type](VkDescriptorPoolSize poolSize) {
@@ -61,23 +110,7 @@ std::expected<DescriptorSet, DescriptorPool::Error> DescriptorPool::createDesrip
 
     it->descriptorCount -= descriptorCount;
   }
-  _remainingPoolSizes = std::move(tempPoolSizes);
-  --_remainingSets;
-  return DescriptorSet::create(shared_from_this(), layout);
-}
-
-bool DescriptorPool::maxSetsReached() const noexcept {
-  return _remainingSets <= 0;
-}
-
-const LogicalDevice& DescriptorPool::getLogicalDevice() const {
-  return _logicalDevice;
-}
-
-DescriptorPoolBuilder& DescriptorPoolBuilder::addPoolSize(
-    VkDescriptorType type, uint32_t descriptorCount) {
-  _poolSizes.emplace_back(type, descriptorCount);
-  return *this;
+  return tempPoolSizes;
 }
 
 DescriptorPoolBuilder& DescriptorPoolBuilder::withPoolSizes(

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <expected>
 #include <initializer_list>
@@ -33,11 +34,22 @@ public:
   std::expected<DescriptorSet, DescriptorPool::Error> createDesriptorSet(
       VkDescriptorSetLayout layout, std::span<const VkDescriptorPoolSize> poolSizes) const;
 
+  template<std::size_t COUNT>
+  std::expected<std::array<DescriptorSet, COUNT>, DescriptorPool::Error> createDesriptorSets(
+      std::span<const VkDescriptorSetLayout> layouts, std::span<const VkDescriptorPoolSize> poolSizes) const;
+
+  std::expected<std::vector<DescriptorSet>, DescriptorPool::Error> createDesriptorSets(
+      std::span<const VkDescriptorSetLayout> layout, std::span<const VkDescriptorPoolSize> poolSizes) const;
+
   bool maxSetsReached() const noexcept;
 
   const LogicalDevice& getLogicalDevice() const;
 
 private:
+  std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error> getUpdatedPoolSizes(
+      std::span<const VkDescriptorPoolSize> remainingPoolSizes,
+      std::span<const VkDescriptorPoolSize> poolSizes) const;
+
   VkDescriptorPool _descriptorPool;
 
   mutable uint32_t _remainingSets;
@@ -45,6 +57,24 @@ private:
 
   const LogicalDevice& _logicalDevice;
 };
+
+template <std::size_t COUNT>
+std::expected<std::array<DescriptorSet, COUNT>, DescriptorPool::Error> DescriptorPool::createDesriptorSets(
+    std::span<const VkDescriptorSetLayout> layouts,
+    std::span<const VkDescriptorPoolSize> poolSizes) const {
+  if (_remainingSets < COUNT) {
+    return std::unexpected(DescriptorPool::Error::MAX_SETS_REACHED);
+  }
+
+  std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error> expectedPoolSizes =
+      getUpdatedPoolSizes(_remainingPoolSizes, poolSizes);
+  if (!expectedPoolSizes.has_value()) {
+    return std::unexpected(expectedPoolSizes.error());
+  }
+  _remainingPoolSizes = std::move(expectedPoolSizes.value());
+  _remainingSets -= COUNT;
+  return DescriptorSet::create<COUNT>(shared_from_this(), layouts);
+}
 
 class DescriptorPoolBuilder {
 public:
