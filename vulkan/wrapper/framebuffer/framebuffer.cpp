@@ -106,7 +106,6 @@ FramebufferBuilder& FramebufferBuilder::withAttachments(
 
 FramebufferMetadata FramebufferBuilder::getMetadata() const noexcept {
   return FramebufferMetadata{
-    .attachments = lib::Buffer<VkImageView>(_attachments.begin(), _attachments.end()),
     .extent = _extent,
     .layers = _layers,
     .flags = _flags};

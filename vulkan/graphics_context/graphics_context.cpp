@@ -53,7 +53,7 @@ namespace vlkn {
 
 namespace {
 
-Framebuffer createFramebufferFromTextures(
+std::pair<Framebuffer, FramebufferMetadata> createFramebufferFromTextures(
     const Renderpass& renderpass, std::span<const Image> textures) {
   FramebufferBuilder builder;
   std::optional<VkExtent2D> extent;
@@ -71,7 +71,8 @@ Framebuffer createFramebufferFromTextures(
     throw EngineException("Framebuffer must have an attachment.");
   }
 
-  return builder.build(renderpass, *extent, 1);
+  Framebuffer framebuffer = builder.build(renderpass, *extent, 1);
+  return std::make_pair(std::move(framebuffer), builder.getMetadata());
 }
 
 Image createSkybox(
@@ -211,11 +212,11 @@ Entity GCONTEXT_CLASS loadObject(VkCommandBuffer commandBuffer, const common::Ve
     msh.indexType = vData.indexType;
   } else if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
     const AssetManager::VertexData& vData = _assetManager->getVertexData(cubeData.vertexResourceID);
-    msh.vertexBufferPrimitiveHandle = _gpuBufferManager->uploadBuffer(
+    msh.vertexBufferPrimitiveHandle = _gpuBufferManager->storeBuffer(
         commandBuffer, vData.buffers.at("P"), GpuBufferManager::BufferType::VERTEX);
-    msh.vertexBufferHandle = _gpuBufferManager->uploadBuffer(
+    msh.vertexBufferHandle = _gpuBufferManager->storeBuffer(
         commandBuffer, vData.buffers.at("PTN"), GpuBufferManager::BufferType::VERTEX);
-    msh.indexBufferHandle = _gpuBufferManager->uploadBuffer(
+    msh.indexBufferHandle = _gpuBufferManager->storeBuffer(
         commandBuffer, vData.indexBuffer, GpuBufferManager::BufferType::INDEX);
     msh.indexType = vData.indexType;
   }
@@ -296,8 +297,10 @@ void GCONTEXT_CLASS createEnvMappingResources() {
               VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
           .build(*_logicalDevice);
 
-  _envMappingFramebuffer =
-      createFramebufferFromTextures(_envMappingRenderPass, _envMappingAttachments);
+  
+  auto [framebuffer, metadata] = createFramebufferFromTextures(_envMappingRenderPass, _envMappingAttachments);
+  _envMappingFramebuffer = _framebufferAttachmentManager->storeFramebuffer(
+      std::move(framebuffer), metadata, {});  // TODO: pass proper attachments
 
   const glm::vec3 pos = glm::vec3(0.0f, 2.0f, 0.0f);
   glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 50.0f);
@@ -360,7 +363,9 @@ void GCONTEXT_CLASS createShadowResources() {
   RenderpassBuilder builder(_shadowAttachmentLayout);
   builder.createSubpass().addOutputAttachment(0);
   _shadowRenderPass = builder.build(*_logicalDevice);
-  _shadowFramebuffer = createFramebufferFromTextures(_shadowRenderPass, std::span(&_shadowMap, 1));
+  auto [framebuffer, metadata] = createFramebufferFromTextures(_shadowRenderPass, std::span(&_shadowMap, 1));
+  _shadowFramebuffer = _framebufferAttachmentManager->storeFramebuffer(
+      std::move(framebuffer), metadata, {}); // TODO pass proper attachments
 }
 
 GCONTEXT_TEMPLATE
@@ -485,11 +490,11 @@ void GCONTEXT_CLASS loadObjects(
     } else if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
       const AssetManager::VertexData& vData =
           _assetManager->getVertexData(sceneObject.vertexResourceID);
-      msh.vertexBufferHandle = _gpuBufferManager->uploadBuffer(
+      msh.vertexBufferHandle = _gpuBufferManager->storeBuffer(
           commandBuffer, vData.buffers.at("PTNT"), GpuBufferManager::BufferType::VERTEX);
-      msh.vertexBufferPrimitiveHandle = _gpuBufferManager->uploadBuffer(
+      msh.vertexBufferPrimitiveHandle = _gpuBufferManager->storeBuffer(
           commandBuffer, vData.buffers.at("P"), GpuBufferManager::BufferType::VERTEX);
-      msh.indexBufferHandle = _gpuBufferManager->uploadBuffer(
+      msh.indexBufferHandle = _gpuBufferManager->storeBuffer(
           commandBuffer, vData.indexBuffer, GpuBufferManager::BufferType::INDEX);
       msh.indexType = vData.indexType;
     }
@@ -531,7 +536,7 @@ void GCONTEXT_CLASS recordShadowCommandBuffer(VkCommandBuffer commandBuffer) {
   const VkRenderPassBeginInfo renderPassInfo = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
     .renderPass = _shadowRenderPass.getVkRenderPass(),
-    .framebuffer = _shadowFramebuffer.getVkFramebuffer(),
+    .framebuffer = _framebufferAttachmentManager->getFramebuffer(_shadowFramebuffer).getVkFramebuffer(),
     .renderArea = {.offset = {0, 0}, .extent = extent},
     .clearValueCount = static_cast<uint32_t>(clearValues.size()),
     .pClearValues = clearValues.data()
@@ -595,7 +600,7 @@ void GCONTEXT_CLASS recordEnvMappingCommandBuffer(VkCommandBuffer commandBuffer)
   const VkRenderPassBeginInfo renderPassInfo = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
     .renderPass = _envMappingRenderPass.getVkRenderPass(),
-    .framebuffer = _envMappingFramebuffer.getVkFramebuffer(),
+    .framebuffer = _framebufferAttachmentManager->getFramebuffer(_envMappingFramebuffer).getVkFramebuffer(),
     .renderArea = {.offset = {0, 0}, .extent = extent},
     .clearValueCount = static_cast<uint32_t>(clearValues.size()),
     .pClearValues = clearValues.data()
@@ -763,7 +768,7 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::mat4& cameraView,
                                         uint32_t imageIndex, glm::u32vec2 screenPos) {
-  const Framebuffer& framebuffer = _framebuffers[imageIndex];
+  const Framebuffer& framebuffer = _framebufferAttachmentManager->getFramebuffer(_framebuffers[imageIndex]);
   const CommandBuffer& primaryCommandBuffer = _primaryCommandBuffer[_currentFrame];
   primaryCommandBuffer.beginAsPrimary();
 
@@ -981,7 +986,7 @@ GCONTEXT_CLASS GraphicsContext(
   _samplerManager = SamplerManager::create();
   _pipelineManager = PipelineManager::create(fileLoader);
   _framebufferAttachmentManager =
-      std::make_unique<FramebufferAttachmentManager>(*_gpuBufferManager);
+      FramebufferAttachmentManager::create(*_gpuBufferManager);
 
   {
     _bindlessDescriptorPool = DescriptorPoolBuilder().build(
@@ -1184,8 +1189,15 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
       reinterpret_cast<const VkImageView*>(presentResources.imageViews.data()),
       presentResources.imageViews.size());
   for (VkImageView imageView : imageViews) {
-    _framebuffers.push_back(_framebufferAttachmentManager->createFramebuffer(
-        _renderPass, attachmentHandles, extent, imageView));
+    FramebufferBuilder framebufferBuilder;
+    framebufferBuilder.addAttachment(imageView);
+    for (GpuImageHandle attachmentHandle : attachmentHandles) {
+      framebufferBuilder.addAttachment(
+          _gpuBufferManager->getImage(attachmentHandle).getVkImageView());
+    }
+    Framebuffer framebuffer = framebufferBuilder.build(_renderPass, extent, 1);
+    _framebuffers.push_back(_framebufferAttachmentManager->storeFramebuffer(
+        std::move(framebuffer), framebufferBuilder.getMetadata(), attachmentHandles, imageView));
   }
 }
 

@@ -99,7 +99,7 @@ void GpuBufferManager::decreaseRefCount(GpuImageHandle index) {
   decreaseRefCountInternal(_imageMap, index);
 }
 
-GpuBufferHandle GpuBufferManager::uploadBuffer(
+GpuBufferHandle GpuBufferManager::storeBuffer(
     VkCommandBuffer commandBuffer, const BufferWithMetadata& stagingBuffer, BufferType bufferType) {
   const LogicalDevice& logicalDevice = stagingBuffer.buffer.getLogicalDevice();
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {

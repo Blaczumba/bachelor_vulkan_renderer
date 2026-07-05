@@ -3,6 +3,8 @@
 #include <span>
 #include <unordered_map>
 #include <vulkan/vulkan.h>
+#include <ranges>
+#include <numeric>
 
 #include "common/util/engine_exception.h"
 #include "common/util/resource_handles.h"
@@ -10,41 +12,46 @@
 #include "vulkan/wrapper/framebuffer/framebuffer.h"
 
 FramebufferAttachmentManager::FramebufferAttachmentManager(
-    GpuBufferManager& gpuBufferManager) noexcept
-  : _gpuBufferManager(gpuBufferManager) {}
+    GpuBufferManager& gpuBufferManager, std::vector<FramebufferHandle>&& freeFramebuffers) noexcept
+  : _gpuBufferManager(gpuBufferManager), _freeFramebufferHandles(std::move(freeFramebuffers)) {}
+
+std::unique_ptr<FramebufferAttachmentManager> FramebufferAttachmentManager::create(
+    GpuBufferManager& gpuBufferManager) {
+  std::vector<FramebufferHandle> freeFramebufferHandles(MAX_FRAMEBUFFERS);
+  std::iota(freeFramebufferHandles.rbegin(), freeFramebufferHandles.rend(), FramebufferHandle(0));
+  return std::unique_ptr<FramebufferAttachmentManager>(new FramebufferAttachmentManager(gpuBufferManager, std::move(freeFramebufferHandles)));
+}
 
 FramebufferAttachmentManager::~FramebufferAttachmentManager() {
-  for (const auto& [framebuffer, attachments] : _framebuffersAttachments) {
-    for (GpuImageHandle imageHandle : attachments) {
+  for (const FramebufferData& framebufferData : std::views::values(_framebuffers.getValues())) {
+    for (GpuImageHandle imageHandle : framebufferData.imageHandles) {
       _gpuBufferManager.decreaseRefCount(imageHandle);
     }
   }
 }
 
-Framebuffer FramebufferAttachmentManager::createFramebuffer(
-    const Renderpass& renderpass, std::span<const GpuImageHandle> attachments, VkExtent2D extent,
-    VkImageView swapchainView) {
-  FramebufferBuilder framebufferBuilder;
-  if (swapchainView != VK_NULL_HANDLE) {
-    framebufferBuilder.addAttachment(swapchainView);
-  }
+FramebufferHandle FramebufferAttachmentManager::storeFramebuffer(Framebuffer&& framebuffer, const FramebufferMetadata& metadata,
+    std::span<const GpuImageHandle> attachments, VkImageView swapchainView) {
+  FramebufferHandle handle = _freeFramebufferHandles.back();
+  _freeFramebufferHandles.pop_back();
 
+  if (swapchainView != VK_NULL_HANDLE) {
+    _framebuffersSwapchainViews.emplace(framebuffer.getVkFramebuffer(), swapchainView);
+  }
   for (GpuImageHandle imageHandle : attachments) {
     _gpuBufferManager.increaseRefCount(imageHandle);
-    framebufferBuilder.addAttachment(_gpuBufferManager.getImage(imageHandle).getVkImageView());
   }
+  _framebuffers.insertUnsafe(
+      *handle, std::make_pair(std::move(framebuffer), FramebufferData{metadata, attachments}));
 
-  Framebuffer framebuffer = framebufferBuilder.build(renderpass, extent, 1);
-  _framebuffersAttachments.emplace(framebuffer.getVkFramebuffer(), attachments);
-  _framebuffersSwapchainViews.emplace(framebuffer.getVkFramebuffer(), swapchainView);
-  return framebuffer;
+  return handle;
 }
 
-std::span<const GpuImageHandle> FramebufferAttachmentManager::getAttachments(
-    VkFramebuffer framebuffer) const {
-  auto it = _framebuffersAttachments.find(framebuffer);
-  if (it == _framebuffersAttachments.end()) [[unlikely]] {
-    throw EngineException("Framebuffer not found in FramebufferAttachmentManager.");
-  }
-  return it->second;
+void FramebufferAttachmentManager::destroyFramebuffer(FramebufferHandle handle) {
+  _freeFramebufferHandles.push_back(handle);
+  _framebuffers.eraseUnsafe(*handle);
+}
+
+const Framebuffer& FramebufferAttachmentManager::getFramebuffer(FramebufferHandle handle) const {
+  return _framebuffers.getValue(*handle).first;
 }

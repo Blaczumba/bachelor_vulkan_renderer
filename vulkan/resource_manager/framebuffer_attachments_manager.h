@@ -3,27 +3,44 @@
 #include <span>
 #include <unordered_map>
 #include <vulkan/vulkan.h>
+#include <vector>
 
 #include "common/util/resource_handles.h"
 #include "lib/buffer/buffer.h"
 #include "vulkan/resource_manager/gpu_buffer_manager.h"
 #include "vulkan/wrapper/framebuffer/framebuffer.h"
+#include "lib/sparse/sparse_map.h"
+#include "common/util/resource_handles.h"
+
 
 class FramebufferAttachmentManager {
+  FramebufferAttachmentManager(
+      GpuBufferManager& gpuBufferManager, std::vector<FramebufferHandle>&& freeFramebuffers) noexcept;
+
 public:
-  FramebufferAttachmentManager(GpuBufferManager& gpuBufferManager) noexcept;
+
+  static std::unique_ptr<FramebufferAttachmentManager> create(GpuBufferManager& gpuBufferManager);
 
   ~FramebufferAttachmentManager();
 
-  Framebuffer createFramebuffer(
-      const Renderpass& renderpass, std::span<const GpuImageHandle> attachments, VkExtent2D extent,
+  FramebufferHandle storeFramebuffer(
+      Framebuffer&& framebuffer, const FramebufferMetadata& metadata, std::span<const GpuImageHandle> attachments,
       VkImageView swapchainView = VK_NULL_HANDLE);
 
-  std::span<const GpuImageHandle> getAttachments(VkFramebuffer framebuffer) const;
+  void destroyFramebuffer(FramebufferHandle handle);
+
+  const Framebuffer& getFramebuffer(FramebufferHandle handle) const;
 
 private:
+  struct FramebufferData {
+    FramebufferMetadata metadata;
+    lib::Buffer<GpuImageHandle> imageHandles;
+  };
+
+  lib::SparseMap<std::pair<Framebuffer, FramebufferData>, MAX_FRAMEBUFFERS> _framebuffers;
+  std::vector<FramebufferHandle> _freeFramebufferHandles;
+
   GpuBufferManager& _gpuBufferManager;
 
-  std::unordered_map<VkFramebuffer, lib::Buffer<GpuImageHandle>> _framebuffersAttachments;
   std::unordered_map<VkFramebuffer, VkImageView> _framebuffersSwapchainViews;
 };

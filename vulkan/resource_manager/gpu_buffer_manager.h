@@ -41,7 +41,7 @@ public:
     INDEX
   };
 
-  GpuBufferHandle uploadBuffer(VkCommandBuffer commandBuffer,
+  GpuBufferHandle storeBuffer(VkCommandBuffer commandBuffer,
                                const BufferWithMetadata& stagingBuffer, BufferType bufferType);
 
   GpuBufferHandle transferBuffer(BufferWithMetadata&& stagingBuffer);

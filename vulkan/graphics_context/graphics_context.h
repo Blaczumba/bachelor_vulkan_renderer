@@ -125,12 +125,12 @@ private:
 
   Renderpass _renderPass;
   AttachmentLayout _attachmentLayout;
-  std::vector<Framebuffer> _framebuffers;
+  std::vector<FramebufferHandle> _framebuffers;
 
   // Shadowmap
   Renderpass _shadowRenderPass;
   AttachmentLayout _shadowAttachmentLayout;
-  Framebuffer _shadowFramebuffer;
+  FramebufferHandle _shadowFramebuffer;
   Image _shadowMap;
   Pipeline* _shadowPipeline;
   UniformTextureHandle _shadowHandle;
@@ -146,7 +146,7 @@ private:
   // First pass.
   Renderpass _envMappingRenderPass;
   AttachmentLayout _envMappingAttachmentLayout;
-  Framebuffer _envMappingFramebuffer;
+  FramebufferHandle _envMappingFramebuffer;
   Pipeline* _envMappingPipeline;
   Buffer _envMappingUniformBuffer;
   UniformBufferHandle _envMappingHandle;

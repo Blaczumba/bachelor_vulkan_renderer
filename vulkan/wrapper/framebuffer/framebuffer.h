@@ -45,7 +45,6 @@ private:
 };
 
 struct FramebufferMetadata {
-  lib::Buffer<VkImageView> attachments;
   VkExtent2D extent;
   uint32_t layers;
   VkFramebufferCreateFlags flags;
