@@ -131,7 +131,7 @@ private:
   Renderpass _shadowRenderPass;
   AttachmentLayout _shadowAttachmentLayout;
   FramebufferHandle _shadowFramebuffer;
-  Image _shadowMap;
+  GpuImageHandle _shadowMapHandle;
   Pipeline* _shadowPipeline;
   UniformTextureHandle _shadowHandle;
 

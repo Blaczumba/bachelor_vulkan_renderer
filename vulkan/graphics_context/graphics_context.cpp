@@ -342,8 +342,8 @@ void GCONTEXT_CLASS createShadowResources() {
     // TODO: Should not be in this function.
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-    _shadowMap =
-        createShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
+    _shadowMapHandle = _gpuBufferManager->transferImage(
+        createShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT));
   }
   Sampler sampler =
       SamplerBuilder()
@@ -353,8 +353,9 @@ void GCONTEXT_CLASS createShadowResources() {
               VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
           .withBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
           .build(*_logicalDevice);
+  const Image& shadowMap = _gpuBufferManager->getImage(_shadowMapHandle);
   _shadowHandle = _bindlessWriter->writeTexture(
-      _shadowMap.getVkImageView(), _shadowMap.getVkImageLayout(), sampler.getVkSampler());
+      shadowMap.getVkImageView(), shadowMap.getVkImageLayout(), sampler.getVkSampler());
   _samplerManager->transferSampler(std::move(sampler));
 
   _shadowAttachmentLayout.addShadowAttachment(
@@ -363,9 +364,9 @@ void GCONTEXT_CLASS createShadowResources() {
   RenderpassBuilder builder(_shadowAttachmentLayout);
   builder.createSubpass().addOutputAttachment(0);
   _shadowRenderPass = builder.build(*_logicalDevice);
-  auto [framebuffer, metadata] = createFramebufferFromTextures(_shadowRenderPass, std::span(&_shadowMap, 1));
+  auto [framebuffer, metadata] = createFramebufferFromTextures(_shadowRenderPass, std::span(&shadowMap, 1));
   _shadowFramebuffer = _framebufferAttachmentManager->storeFramebuffer(
-      std::move(framebuffer), metadata, {}); // TODO pass proper attachments
+      std::move(framebuffer), metadata, {&_shadowMapHandle, 1}); // TODO pass proper attachments
 }
 
 GCONTEXT_TEMPLATE
@@ -529,7 +530,7 @@ GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordShadowCommandBuffer(VkCommandBuffer commandBuffer) {
   const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
 
-  VkExtent2D extent = _shadowMap.getVkExtent2D();
+  VkExtent2D extent = _gpuBufferManager->getImage(_shadowMapHandle).getVkExtent2D();
 
   std::span<const VkClearValue> clearValues = _shadowAttachmentLayout.getVkClearValues();
 
