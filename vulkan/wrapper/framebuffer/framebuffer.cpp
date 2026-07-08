@@ -8,14 +8,12 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
 
-Framebuffer::Framebuffer(const Renderpass& renderpass, VkFramebuffer framebuffer,
-                         const VkViewport& viewport, const VkRect2D& scissor) noexcept
-  : _framebuffer(framebuffer), _renderpass(&renderpass), _viewport(viewport), _scissor(scissor) {}
+Framebuffer::Framebuffer(const Renderpass& renderpass, VkFramebuffer framebuffer) noexcept
+  : _framebuffer(framebuffer), _renderpass(&renderpass) {}
 
 Framebuffer::Framebuffer(Framebuffer&& framebuffer) noexcept
   : _framebuffer(std::exchange(framebuffer._framebuffer, VK_NULL_HANDLE)),
-    _renderpass(framebuffer._renderpass), _viewport(framebuffer._viewport),
-    _scissor(framebuffer._scissor) {}
+    _renderpass(framebuffer._renderpass) {}
 
 void Framebuffer::destroy() {
   if (_framebuffer != VK_NULL_HANDLE) {
@@ -35,8 +33,6 @@ Framebuffer& Framebuffer::operator=(Framebuffer&& framebuffer) noexcept {
 
   _framebuffer = std::exchange(framebuffer._framebuffer, VK_NULL_HANDLE);
   _renderpass = std::exchange(framebuffer._renderpass, nullptr);
-  _viewport = framebuffer._viewport;
-  _scissor = framebuffer._scissor;
   return *this;
 }
 
@@ -51,35 +47,15 @@ Framebuffer Framebuffer::create(
                   renderpass.getLogicalDevice().getVkDevice(), &createInfo, nullptr, &framebuffer),
               "Failed to create VkFramebuffer.");
 
-  return Framebuffer(
-      renderpass, framebuffer,
-      VkViewport{
-        .width = static_cast<float>(createInfo.width),
-        .height = static_cast<float>(createInfo.height),
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f
-  },
-      VkRect2D{.extent = {createInfo.width, createInfo.height}});
-}
-
-VkExtent2D Framebuffer::getVkExtent() const noexcept {
-  return _scissor.extent;
-}
-
-const VkViewport& Framebuffer::getViewport() const noexcept {
-  return _viewport;
-}
-
-const VkRect2D& Framebuffer::getScissor() const noexcept {
-  return _scissor;
-}
-
-const Renderpass& Framebuffer::getRenderpass() const {
-  return *_renderpass;
+  return Framebuffer(renderpass, framebuffer);
 }
 
 VkFramebuffer Framebuffer::getVkFramebuffer() const noexcept {
   return _framebuffer;
+}
+
+const Renderpass& Framebuffer::getRenderpass() const {
+  return *_renderpass;
 }
 
 FramebufferBuilder& FramebufferBuilder::addAttachment(VkImageView attachment) {

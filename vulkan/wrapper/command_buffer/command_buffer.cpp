@@ -115,7 +115,7 @@ std::vector<CommandBuffer> CommandBuffer::create(
 }
 
 void CommandBuffer::beginRenderPass(
-    const Framebuffer& framebuffer, std::span<const VkClearValue> clearValues) const {
+    const Framebuffer& framebuffer, VkExtent2D framebufferExtent, std::span<const VkClearValue> clearValues) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
     throw EngineException(
         "Cannot begin renderpass without VK_COMMAND_BUFFER_LEVEL_PRIMARY specified.");
@@ -126,14 +126,21 @@ void CommandBuffer::beginRenderPass(
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
     .renderPass = renderpass.getVkRenderPass(),
     .framebuffer = framebuffer.getVkFramebuffer(),
-    .renderArea = {.offset = {0, 0}, .extent = framebuffer.getVkExtent()},
+    .renderArea = {.offset = {0, 0}, .extent = framebufferExtent},
     .clearValueCount = static_cast<uint32_t>(clearValues.size()),
     .pClearValues = clearValues.data()
   };
-  vkCmdSetViewport(_commandBuffer, 0, 1, &framebuffer.getViewport());
-  vkCmdSetScissor(_commandBuffer, 0, 1, &framebuffer.getScissor());
   vkCmdBeginRenderPass(
       _commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+}
+
+void CommandBuffer::setVieport(std::span<const VkViewport> viewports, uint32_t firstVieport) const noexcept {
+  vkCmdSetViewport(_commandBuffer, firstVieport, static_cast<uint32_t>(viewports.size()), viewports.data());
+}
+
+void CommandBuffer::setScissor(std::span<const VkRect2D> scissors, uint32_t firstScissor) const noexcept {
+  vkCmdSetScissor(
+      _commandBuffer, firstScissor, static_cast<uint32_t>(scissors.size()), scissors.data());
 }
 
 void CommandBuffer::endRenderPass() const {

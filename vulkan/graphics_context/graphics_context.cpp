@@ -769,7 +769,6 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::mat4& cameraView,
                                         uint32_t imageIndex, glm::u32vec2 screenPos) {
-  const Framebuffer& framebuffer = _framebufferAttachmentManager->getFramebuffer(_framebuffers[imageIndex]);
   const CommandBuffer& primaryCommandBuffer = _primaryCommandBuffer[_currentFrame];
   primaryCommandBuffer.beginAsPrimary();
 
@@ -807,7 +806,19 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
                        VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, 0, 0, nullptr, 0,
                        nullptr, 1, &fsrBarrier);
 
-  primaryCommandBuffer.beginRenderPass(framebuffer, _attachmentLayout.getVkClearValues());
+  const auto& [framebuffer, framebufferData] =
+    _framebufferAttachmentManager->getFramebufferWithMetadata(_framebuffers[imageIndex]);
+  const VkViewport viewports[] = {
+    VkViewport{.width = static_cast<float>(framebufferData.metadata.extent.width),
+               .height = static_cast<float>(framebufferData.metadata.extent.height),
+               .minDepth = 0.0f,
+               .maxDepth = 1.0f}
+  };
+  const VkRect2D scissors[] = {VkRect2D{.extent = framebufferData.metadata.extent}};
+  primaryCommandBuffer.setVieport(viewports);
+  primaryCommandBuffer.setScissor(scissors);
+  primaryCommandBuffer.beginRenderPass(
+      framebuffer, framebufferData.metadata.extent, _attachmentLayout.getVkClearValues());
 
   static const bool viewportScissorInheritance =
       _physicalDevice->hasAvailableExtension(VK_NV_INHERITED_VIEWPORT_SCISSOR_EXTENSION_NAME);
@@ -817,8 +828,8 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
     scissorViewportInheritance = VkCommandBufferInheritanceViewportScissorInfoNV{
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_VIEWPORT_SCISSOR_INFO_NV,
       .viewportScissor2D = VK_TRUE,
-      .viewportDepthCount = 1,
-      .pViewportDepths = &framebuffer.getViewport(),
+      .viewportDepthCount = static_cast<uint32_t>(std::size(viewports)),
+      .pViewportDepths = viewports,
     };
   }
 
@@ -833,8 +844,8 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
           framebuffer, &scissorViewportInheritance);
     } else {
       _secondaryCommandBuffers[0][_currentFrame].beginAsSecondary(framebuffer, nullptr);
-      vkCmdSetViewport(commandBuffer, 0, 1, &framebuffer.getViewport());
-      vkCmdSetScissor(commandBuffer, 0, 1, &framebuffer.getScissor());
+      _secondaryCommandBuffers[0][_currentFrame].setVieport(viewports);
+      _secondaryCommandBuffers[0][_currentFrame].setScissor(scissors);
     }
 
     // vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
@@ -874,8 +885,8 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
           framebuffer, &scissorViewportInheritance);
     } else {
       _secondaryCommandBuffers[1][_currentFrame].beginAsSecondary(framebuffer, nullptr);
-      vkCmdSetViewport(commandBuffer, 0, 1, &framebuffer.getViewport());
-      vkCmdSetScissor(commandBuffer, 0, 1, &framebuffer.getScissor());
+      _secondaryCommandBuffers[1][_currentFrame].setVieport(viewports);
+      _secondaryCommandBuffers[1][_currentFrame].setScissor(scissors);
     }
 
     vkCmdBindPipeline(

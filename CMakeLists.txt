@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 include(FetchContent)
+include(CheckIPOSupported)
 
 set(ENGINE_NAME BejzakEngine)
 
@@ -7,6 +8,14 @@ project(${ENGINE_NAME})
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+check_ipo_supported(RESULT supported OUTPUT error)
+
+if(supported)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+    message(STATUS "IPO / LTO is not supported: ${error}")
+endif()
 
 find_program(CLANG_TIDY_EXE NAMES "clang-tidy")
 

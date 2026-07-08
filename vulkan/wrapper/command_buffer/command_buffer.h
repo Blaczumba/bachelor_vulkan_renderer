@@ -64,8 +64,14 @@ public:
 
   ~CommandBuffer();
 
-  void beginRenderPass(
-      const Framebuffer& framebuffer, std::span<const VkClearValue> clearValues) const;
+  void beginRenderPass(const Framebuffer& framebuffer, VkExtent2D framebufferExtent,
+                       std::span<const VkClearValue> clearValues) const;
+
+  void setVieport(
+      std::span<const VkViewport> viewports, uint32_t firstVieport = 0) const noexcept;
+
+  void setScissor(
+      std::span<const VkRect2D> scissors, uint32_t firstScissor = 0) const noexcept;
 
   void endRenderPass() const;
 

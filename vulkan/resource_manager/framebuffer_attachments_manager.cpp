@@ -55,3 +55,9 @@ void FramebufferAttachmentManager::destroyFramebuffer(FramebufferHandle handle) 
 const Framebuffer& FramebufferAttachmentManager::getFramebuffer(FramebufferHandle handle) const {
   return _framebuffers.getValue(*handle).first;
 }
+
+const std::pair<Framebuffer, FramebufferData>&
+FramebufferAttachmentManager::getFramebufferWithMetadata(
+    FramebufferHandle handle) const {
+  return _framebuffers.getValue(*handle);
+}
