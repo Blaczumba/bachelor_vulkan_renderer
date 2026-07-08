@@ -342,8 +342,8 @@ void GCONTEXT_CLASS createShadowResources() {
     // TODO: Should not be in this function.
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
-    _shadowMap =
-        createShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
+    _shadowMapHandle = _gpuBufferManager->transferImage(
+        createShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT));
   }
   Sampler sampler =
       SamplerBuilder()
@@ -353,8 +353,9 @@ void GCONTEXT_CLASS createShadowResources() {
               VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
           .withBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
           .build(*_logicalDevice);
+  const Image& shadowMap = _gpuBufferManager->getImage(_shadowMapHandle);
   _shadowHandle = _bindlessWriter->writeTexture(
-      _shadowMap.getVkImageView(), _shadowMap.getVkImageLayout(), sampler.getVkSampler());
+      shadowMap.getVkImageView(), shadowMap.getVkImageLayout(), sampler.getVkSampler());
   _samplerManager->transferSampler(std::move(sampler));
 
   _shadowAttachmentLayout.addShadowAttachment(
@@ -363,9 +364,9 @@ void GCONTEXT_CLASS createShadowResources() {
   RenderpassBuilder builder(_shadowAttachmentLayout);
   builder.createSubpass().addOutputAttachment(0);
   _shadowRenderPass = builder.build(*_logicalDevice);
-  auto [framebuffer, metadata] = createFramebufferFromTextures(_shadowRenderPass, std::span(&_shadowMap, 1));
+  auto [framebuffer, metadata] = createFramebufferFromTextures(_shadowRenderPass, std::span(&shadowMap, 1));
   _shadowFramebuffer = _framebufferAttachmentManager->storeFramebuffer(
-      std::move(framebuffer), metadata, {}); // TODO pass proper attachments
+      std::move(framebuffer), metadata, {&_shadowMapHandle, 1}); // TODO pass proper attachments
 }
 
 GCONTEXT_TEMPLATE
@@ -529,7 +530,7 @@ GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordShadowCommandBuffer(VkCommandBuffer commandBuffer) {
   const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
 
-  VkExtent2D extent = _shadowMap.getVkExtent2D();
+  VkExtent2D extent = _gpuBufferManager->getImage(_shadowMapHandle).getVkExtent2D();
 
   std::span<const VkClearValue> clearValues = _shadowAttachmentLayout.getVkClearValues();
 
@@ -768,7 +769,6 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::mat4& cameraView,
                                         uint32_t imageIndex, glm::u32vec2 screenPos) {
-  const Framebuffer& framebuffer = _framebufferAttachmentManager->getFramebuffer(_framebuffers[imageIndex]);
   const CommandBuffer& primaryCommandBuffer = _primaryCommandBuffer[_currentFrame];
   primaryCommandBuffer.beginAsPrimary();
 
@@ -806,7 +806,19 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
                        VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, 0, 0, nullptr, 0,
                        nullptr, 1, &fsrBarrier);
 
-  primaryCommandBuffer.beginRenderPass(framebuffer, _attachmentLayout.getVkClearValues());
+  const auto& [framebuffer, framebufferData] =
+    _framebufferAttachmentManager->getFramebufferWithMetadata(_framebuffers[imageIndex]);
+  const VkViewport viewports[] = {
+    VkViewport{.width = static_cast<float>(framebufferData.metadata.extent.width),
+               .height = static_cast<float>(framebufferData.metadata.extent.height),
+               .minDepth = 0.0f,
+               .maxDepth = 1.0f}
+  };
+  const VkRect2D scissors[] = {VkRect2D{.extent = framebufferData.metadata.extent}};
+  primaryCommandBuffer.setVieport(viewports);
+  primaryCommandBuffer.setScissor(scissors);
+  primaryCommandBuffer.beginRenderPass(
+      framebuffer, framebufferData.metadata.extent, _attachmentLayout.getVkClearValues());
 
   static const bool viewportScissorInheritance =
       _physicalDevice->hasAvailableExtension(VK_NV_INHERITED_VIEWPORT_SCISSOR_EXTENSION_NAME);
@@ -816,8 +828,8 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
     scissorViewportInheritance = VkCommandBufferInheritanceViewportScissorInfoNV{
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_VIEWPORT_SCISSOR_INFO_NV,
       .viewportScissor2D = VK_TRUE,
-      .viewportDepthCount = 1,
-      .pViewportDepths = &framebuffer.getViewport(),
+      .viewportDepthCount = static_cast<uint32_t>(std::size(viewports)),
+      .pViewportDepths = viewports,
     };
   }
 
@@ -832,8 +844,8 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
           framebuffer, &scissorViewportInheritance);
     } else {
       _secondaryCommandBuffers[0][_currentFrame].beginAsSecondary(framebuffer, nullptr);
-      vkCmdSetViewport(commandBuffer, 0, 1, &framebuffer.getViewport());
-      vkCmdSetScissor(commandBuffer, 0, 1, &framebuffer.getScissor());
+      _secondaryCommandBuffers[0][_currentFrame].setVieport(viewports);
+      _secondaryCommandBuffers[0][_currentFrame].setScissor(scissors);
     }
 
     // vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
@@ -873,8 +885,8 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
           framebuffer, &scissorViewportInheritance);
     } else {
       _secondaryCommandBuffers[1][_currentFrame].beginAsSecondary(framebuffer, nullptr);
-      vkCmdSetViewport(commandBuffer, 0, 1, &framebuffer.getViewport());
-      vkCmdSetScissor(commandBuffer, 0, 1, &framebuffer.getScissor());
+      _secondaryCommandBuffers[1][_currentFrame].setVieport(viewports);
+      _secondaryCommandBuffers[1][_currentFrame].setScissor(scissors);
     }
 
     vkCmdBindPipeline(

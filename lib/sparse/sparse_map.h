@@ -128,8 +128,7 @@ bool SparseMap<Type, N>::insert(IndexType index, const Type& value) {
   }
   _sparse[index] = _size;
   _dense[_size] = index;
-  _values[_size] = value;
-  ++_size;
+  _values[_size++] = value;
   return true;
 }
 

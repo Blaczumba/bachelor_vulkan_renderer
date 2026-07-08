@@ -12,6 +12,10 @@
 #include "lib/sparse/sparse_map.h"
 #include "common/util/resource_handles.h"
 
+struct FramebufferData {
+  FramebufferMetadata metadata;
+  lib::Buffer<GpuImageHandle> imageHandles;
+};
 
 class FramebufferAttachmentManager {
   FramebufferAttachmentManager(
@@ -31,12 +35,10 @@ public:
 
   const Framebuffer& getFramebuffer(FramebufferHandle handle) const;
 
-private:
-  struct FramebufferData {
-    FramebufferMetadata metadata;
-    lib::Buffer<GpuImageHandle> imageHandles;
-  };
+  const std::pair<Framebuffer, FramebufferData>& getFramebufferWithMetadata(
+      FramebufferHandle handle) const;
 
+private:
   lib::SparseMap<std::pair<Framebuffer, FramebufferData>, MAX_FRAMEBUFFERS> _framebuffers;
   std::vector<FramebufferHandle> _freeFramebufferHandles;
 

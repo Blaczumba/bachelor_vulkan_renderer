@@ -8,8 +8,7 @@
 #include "vulkan/wrapper/render_pass/render_pass.h"
 
 class Framebuffer {
-  Framebuffer(const Renderpass& renderpass, VkFramebuffer framebuffer, const VkViewport& viewport,
-              const VkRect2D& scissor) noexcept;
+  Framebuffer(const Renderpass& renderpass, VkFramebuffer framebuffer) noexcept;
 
 public:
   Framebuffer() noexcept = default;
@@ -23,15 +22,9 @@ public:
   static Framebuffer create(
       const Renderpass& renderpass, const VkFramebufferCreateInfo& createInfo);
 
-  VkExtent2D getVkExtent() const noexcept;
-
-  const VkViewport& getViewport() const noexcept;
-
-  const VkRect2D& getScissor() const noexcept;
+  VkFramebuffer getVkFramebuffer() const noexcept;
 
   const Renderpass& getRenderpass() const;
-
-  VkFramebuffer getVkFramebuffer() const noexcept;
 
 private:
   void destroy();
@@ -39,9 +32,6 @@ private:
   VkFramebuffer _framebuffer = VK_NULL_HANDLE;
 
   const Renderpass* _renderpass = nullptr;
-
-  VkViewport _viewport;
-  VkRect2D _scissor;
 };
 
 struct FramebufferMetadata {
