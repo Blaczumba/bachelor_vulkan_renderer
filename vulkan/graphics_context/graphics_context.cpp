@@ -1004,7 +1004,7 @@ GCONTEXT_CLASS GraphicsContext(
     _descriptorPool =
         DescriptorPoolBuilder()
             .withPoolSizes({
-              {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1},
+              {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2},
               {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          1}
     })
             .build(*_logicalDevice, 2);
