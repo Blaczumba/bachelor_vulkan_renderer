@@ -3,43 +3,16 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <initializer_list>
 #include <memory>
+#include <optional>
 #include <span>
+#include <vector>
 #include <vulkan/vulkan.h>
 
+#include "vulkan/wrapper/command_buffer/command_pool.h"
 #include "vulkan/wrapper/framebuffer/framebuffer.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
-
-class CommandBuffer;
-
-class CommandPool : public std::enable_shared_from_this<const CommandPool> {
-  CommandPool(const LogicalDevice& logicalDevice, VkCommandPool commandPool) noexcept;
-
-public:
-  static std::unique_ptr<CommandPool> create(
-      const LogicalDevice& logicalDevice, VkCommandPoolCreateFlags flags = 0);
-
-  ~CommandPool();
-
-  CommandBuffer createCommandBuffer(VkCommandBufferLevel level) const;
-
-  std::vector<CommandBuffer> createCommandBuffers(VkCommandBufferLevel level, uint32_t count) const;
-
-  template <size_t COUNT>
-  std::array<CommandBuffer, COUNT> createCommandBuffers(VkCommandBufferLevel level) const;
-
-  void reset() const;
-
-  VkCommandPool getVkCommandPool() const noexcept;
-
-  const LogicalDevice& getLogicalDevice() const;
-
-private:
-  VkCommandPool _commandPool;
-  const LogicalDevice& _logicalDevice;
-};
 
 class CommandBuffer {
   CommandBuffer(const std::shared_ptr<const CommandPool>& commandPool,
@@ -67,27 +40,62 @@ public:
   void beginRenderPass(const Framebuffer& framebuffer, VkExtent2D framebufferExtent,
                        std::span<const VkClearValue> clearValues) const;
 
-  void setVieport(
-      std::span<const VkViewport> viewports, uint32_t firstVieport = 0) const noexcept;
-
-  void setScissor(
-      std::span<const VkRect2D> scissors, uint32_t firstScissor = 0) const noexcept;
-
   void endRenderPass() const;
 
-  void beginAsPrimary(uint32_t subpassIndex = 0) const;
+  void setVieport(std::span<const VkViewport> viewports, uint32_t firstVieport = 0) const noexcept;
 
-  void beginAsSecondary(
-      const Framebuffer& framebuffer,
-      const VkCommandBufferInheritanceViewportScissorInfoNV* scissorViewportInheritance = nullptr,
-      uint32_t subpassIndex = 0) const;
+  void setScissor(std::span<const VkRect2D> scissors, uint32_t firstScissor = 0) const noexcept;
 
-  VkResult end() const;
+  void bindVertexBuffers(std::span<const VkBuffer> buffers, std::span<const VkDeviceSize> offsets,
+                         uint32_t firstBinding = 0) const noexcept;
 
-  void executeSecondaryCommandBuffers(std::initializer_list<VkCommandBuffer> commandBuffers) const;
+  void bindPipeline(VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline) const noexcept;
+
+  void bindIndexBuffer(
+      VkBuffer buffer, VkIndexType indexType, VkDeviceSize offset = 0) const noexcept;
+
+  void bindDescriptorSets(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout,
+                          std::span<const VkDescriptorSet> descriptorSets, uint32_t firstSet = 0,
+                          std::span<const uint32_t> dynamicOffsets = {}) const noexcept;
+
+  void pushConstants(VkPipelineLayout layout, VkShaderStageFlags stageFlags,
+                     std::span<const std::byte> data, uint32_t offset = 0) const noexcept;
+
+  void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex = 0,
+                   int32_t vertexOffset = 0, uint32_t firstInstance = 0) const noexcept;
+
+  void executeSecondaryCommandBuffers(std::span<const VkCommandBuffer> commandBuffers) const;
 
   void submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore,
               const VkFence waitFence) const;
+
+  class BeginInfoBuilder {
+  public:
+    BeginInfoBuilder() noexcept = default;
+
+    ~BeginInfoBuilder() = default;
+
+    BeginInfoBuilder& withViewportScissorInheritenceInfo(std::span<const VkViewport> viewports);
+
+    BeginInfoBuilder& withInheritenceInfo(
+        VkRenderPass renderpass, VkFramebuffer framebuffer, uint32_t subpass,
+        std::optional<VkQueryControlFlags> queryControlFlags = std::nullopt,
+        VkQueryPipelineStatisticFlags pipelineStatistics = 0);
+
+    void beginCommandBuffer(
+        const CommandBuffer& commandBuffer, VkCommandBufferUsageFlags usageFlags = 0);
+
+  private:
+    void* _inheritenceInfoPNext = nullptr;
+    std::optional<VkCommandBufferInheritanceViewportScissorInfoNV> _viewportScissorInheritanceInfo;
+    std::optional<VkCommandBufferInheritanceInfo> _inheritanceInfo;
+
+    void* _pNext = nullptr;
+  };
+
+  void beginAsPrimary() const;
+
+  VkResult end() const;
 
   void resetCommandBuffer() const;
 
@@ -100,15 +108,9 @@ private:
   VkCommandBufferLevel _level;
 };
 
-template <size_t COUNT>
-std::array<CommandBuffer, COUNT> CommandPool::createCommandBuffers(
-    VkCommandBufferLevel level) const {
-  return CommandBuffer::create<COUNT>(shared_from_this(), level);
-}
+namespace internal {
 
-namespace {
-
-VkResult createCommandBuffers(
+inline VkResult allocateCommandBuffers(
     VkDevice device, VkCommandPool commandPool, VkCommandBufferLevel level,
     std::span<VkCommandBuffer> outCommandBuffers) {
   const VkCommandBufferAllocateInfo allocInfo = {
@@ -120,15 +122,16 @@ VkResult createCommandBuffers(
   return vkAllocateCommandBuffers(device, &allocInfo, outCommandBuffers.data());
 }
 
-}  // namespace
+}  // namespace internal
 
 template <size_t COUNT>
 std::array<CommandBuffer, COUNT> CommandBuffer::create(
     const std::shared_ptr<const CommandPool>& commandPool, VkCommandBufferLevel level) {
   VkCommandBuffer vkCommandBuffers[COUNT];
-  CHECK_VKCMD(createCommandBuffers(commandPool->getLogicalDevice().getVkDevice(),
-                                   commandPool->getVkCommandPool(), level, vkCommandBuffers),
-              "Failed to create VkCommandBuffer.");
+  CHECK_VKCMD(
+      internal::allocateCommandBuffers(commandPool->getLogicalDevice().getVkDevice(),
+                                       commandPool->getVkCommandPool(), level, vkCommandBuffers),
+      "Failed to create VkCommandBuffer.");
 
   std::array<CommandBuffer, COUNT> commandBuffers;
   std::transform(std::cbegin(vkCommandBuffers), std::cend(vkCommandBuffers), commandBuffers.begin(),
@@ -136,6 +139,14 @@ std::array<CommandBuffer, COUNT> CommandBuffer::create(
                    return CommandBuffer(commandPool, commandBuffer, level);
                  });
   return commandBuffers;
+}
+
+// Definition of the template declared in command_pool.h. It has to be defined here,
+// after CommandBuffer is a complete type.
+template <size_t COUNT>
+std::array<CommandBuffer, COUNT> CommandPool::createCommandBuffers(
+    VkCommandBufferLevel level) const {
+  return CommandBuffer::create<COUNT>(shared_from_this(), level);
 }
 
 class SingleTimeCommandBuffer {

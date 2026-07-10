@@ -42,7 +42,7 @@ public:
   };
 
   GpuBufferHandle storeBuffer(VkCommandBuffer commandBuffer,
-                               const BufferWithMetadata& stagingBuffer, BufferType bufferType);
+                              const BufferWithMetadata& stagingBuffer, BufferType bufferType);
 
   GpuBufferHandle transferBuffer(BufferWithMetadata&& stagingBuffer);
 

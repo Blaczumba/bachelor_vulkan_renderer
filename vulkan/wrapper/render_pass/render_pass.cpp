@@ -164,8 +164,8 @@ Renderpass RenderpassBuilder::build(
   }
 
   std::span<const AttachmentType> attachmentTypes = _attachmentLayout.getAttachmentTypes();
-  auto it = std::find(
-      std::cbegin(attachmentTypes), std::cend(attachmentTypes), AttachmentType::FRAGMENT_DENSITY_MAP);
+  auto it = std::find(std::cbegin(attachmentTypes), std::cend(attachmentTypes),
+                      AttachmentType::FRAGMENT_DENSITY_MAP);
   if (it != std::cend(attachmentTypes)) {
     const uint32_t attachment = std::distance(std::cbegin(attachmentTypes), it);
     _fragmentDensityMapCreateInfo = VkRenderPassFragmentDensityMapCreateInfoEXT{

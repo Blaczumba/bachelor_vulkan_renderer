@@ -1,10 +1,10 @@
 #include "vulkan/resource_manager/framebuffer_attachments_manager.h"
 
+#include <numeric>
+#include <ranges>
 #include <span>
 #include <unordered_map>
 #include <vulkan/vulkan.h>
-#include <ranges>
-#include <numeric>
 
 #include "common/util/engine_exception.h"
 #include "common/util/resource_handles.h"
@@ -19,7 +19,8 @@ std::unique_ptr<FramebufferAttachmentManager> FramebufferAttachmentManager::crea
     GpuBufferManager& gpuBufferManager) {
   std::vector<FramebufferHandle> freeFramebufferHandles(MAX_FRAMEBUFFERS);
   std::iota(freeFramebufferHandles.rbegin(), freeFramebufferHandles.rend(), FramebufferHandle(0));
-  return std::unique_ptr<FramebufferAttachmentManager>(new FramebufferAttachmentManager(gpuBufferManager, std::move(freeFramebufferHandles)));
+  return std::unique_ptr<FramebufferAttachmentManager>(
+      new FramebufferAttachmentManager(gpuBufferManager, std::move(freeFramebufferHandles)));
 }
 
 FramebufferAttachmentManager::~FramebufferAttachmentManager() {
@@ -30,7 +31,8 @@ FramebufferAttachmentManager::~FramebufferAttachmentManager() {
   }
 }
 
-FramebufferHandle FramebufferAttachmentManager::storeFramebuffer(Framebuffer&& framebuffer, const FramebufferMetadata& metadata,
+FramebufferHandle FramebufferAttachmentManager::storeFramebuffer(
+    Framebuffer&& framebuffer, const FramebufferMetadata& metadata,
     std::span<const GpuImageHandle> attachments, VkImageView swapchainView) {
   FramebufferHandle handle = _freeFramebufferHandles.back();
   _freeFramebufferHandles.pop_back();
@@ -57,7 +59,6 @@ const Framebuffer& FramebufferAttachmentManager::getFramebuffer(FramebufferHandl
 }
 
 const std::pair<Framebuffer, FramebufferData>&
-FramebufferAttachmentManager::getFramebufferWithMetadata(
-    FramebufferHandle handle) const {
+FramebufferAttachmentManager::getFramebufferWithMetadata(FramebufferHandle handle) const {
   return _framebuffers.getValue(*handle);
 }

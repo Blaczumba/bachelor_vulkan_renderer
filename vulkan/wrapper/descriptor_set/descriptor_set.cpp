@@ -5,10 +5,10 @@
 
 #include "descriptor_pool.h"
 #include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
+#include "vulkan/wrapper/descriptor_set/lib.h"
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
-#include "vulkan/wrapper/descriptor_set/lib.h"
-#include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
 
 DescriptorSet::DescriptorSet(VkDescriptorSet descriptorSet,
                              const std::shared_ptr<const DescriptorPool>& descriptorPool) noexcept
@@ -36,14 +36,14 @@ DescriptorSet DescriptorSet::create(
 }
 
 std::vector<DescriptorSet> DescriptorSet::create(
-    const std::shared_ptr<const DescriptorPool>& descriptorPool, std::span<const VkDescriptorSetLayout> layouts) {
+    const std::shared_ptr<const DescriptorPool>& descriptorPool,
+    std::span<const VkDescriptorSetLayout> layouts) {
   lib::Buffer<VkDescriptorSet> vkDescriptorSets(layouts.size());
-  internal::allocateDescriptorSets(
-      *descriptorPool, layouts, vkDescriptorSets.data());
+  internal::allocateDescriptorSets(*descriptorPool, layouts, vkDescriptorSets.data());
   std::vector<DescriptorSet> descriptorSets;
   descriptorSets.reserve(descriptorSets.size());
-  std::transform(vkDescriptorSets.cbegin(), vkDescriptorSets.cend(), std::back_inserter(descriptorSets),
-                 [&](VkDescriptorSet descriptorSet) {
+  std::transform(vkDescriptorSets.cbegin(), vkDescriptorSets.cend(),
+                 std::back_inserter(descriptorSets), [&](VkDescriptorSet descriptorSet) {
                    return DescriptorSet(descriptorSet, descriptorPool);
                  });
   return descriptorSets;

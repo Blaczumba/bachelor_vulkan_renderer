@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <memory>
-#include <vector>
 #include <span>
+#include <vector>
 #include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/descriptor_set/lib.h"
@@ -26,10 +26,12 @@ public:
 
   template <std::size_t COUNT>
   static std::array<DescriptorSet, COUNT> create(
-      const std::shared_ptr<const DescriptorPool>& descriptorPool, std::span<const VkDescriptorSetLayout> layouts);
+      const std::shared_ptr<const DescriptorPool>& descriptorPool,
+      std::span<const VkDescriptorSetLayout> layouts);
 
   static std::vector<DescriptorSet> create(
-      const std::shared_ptr<const DescriptorPool>& descriptorPool, std::span<const VkDescriptorSetLayout> layouts);
+      const std::shared_ptr<const DescriptorPool>& descriptorPool,
+      std::span<const VkDescriptorSetLayout> layouts);
 
   VkDescriptorSet getVkDescriptorSet() const noexcept;
 
@@ -46,13 +48,11 @@ std::array<DescriptorSet, COUNT> DescriptorSet::create(
     const std::shared_ptr<const DescriptorPool>& descriptorPool,
     std::span<const VkDescriptorSetLayout> layouts) {
   std::array<VkDescriptorSet, COUNT> descriptorSets;
-  internal::allocateDescriptorSets(
-      *descriptorPool, layouts, descriptorSets.data());
+  internal::allocateDescriptorSets(*descriptorPool, layouts, descriptorSets.data());
   std::array<DescriptorSet, COUNT> descSets;
-  std::transform(
-      std::cbegin(descriptorSets), std::cend(descriptorSets), descSets.begin(),
-      [&descriptorPool](VkDescriptorSet descriptorSet) {
-        return DescriptorSet(descriptorSet, descriptorPool);
+  std::transform(std::cbegin(descriptorSets), std::cend(descriptorSets), descSets.begin(),
+                 [&descriptorPool](VkDescriptorSet descriptorSet) {
+                   return DescriptorSet(descriptorSet, descriptorPool);
                  });
   return descSets;
 }

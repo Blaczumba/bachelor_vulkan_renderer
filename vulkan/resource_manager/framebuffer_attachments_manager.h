@@ -2,15 +2,14 @@
 
 #include <span>
 #include <unordered_map>
-#include <vulkan/vulkan.h>
 #include <vector>
+#include <vulkan/vulkan.h>
 
 #include "common/util/resource_handles.h"
 #include "lib/buffer/buffer.h"
+#include "lib/sparse/sparse_map.h"
 #include "vulkan/resource_manager/gpu_buffer_manager.h"
 #include "vulkan/wrapper/framebuffer/framebuffer.h"
-#include "lib/sparse/sparse_map.h"
-#include "common/util/resource_handles.h"
 
 struct FramebufferData {
   FramebufferMetadata metadata;
@@ -18,18 +17,17 @@ struct FramebufferData {
 };
 
 class FramebufferAttachmentManager {
-  FramebufferAttachmentManager(
-      GpuBufferManager& gpuBufferManager, std::vector<FramebufferHandle>&& freeFramebuffers) noexcept;
+  FramebufferAttachmentManager(GpuBufferManager& gpuBufferManager,
+                               std::vector<FramebufferHandle>&& freeFramebuffers) noexcept;
 
 public:
-
   static std::unique_ptr<FramebufferAttachmentManager> create(GpuBufferManager& gpuBufferManager);
 
   ~FramebufferAttachmentManager();
 
   FramebufferHandle storeFramebuffer(
-      Framebuffer&& framebuffer, const FramebufferMetadata& metadata, std::span<const GpuImageHandle> attachments,
-      VkImageView swapchainView = VK_NULL_HANDLE);
+      Framebuffer&& framebuffer, const FramebufferMetadata& metadata,
+      std::span<const GpuImageHandle> attachments, VkImageView swapchainView = VK_NULL_HANDLE);
 
   void destroyFramebuffer(FramebufferHandle handle);
 

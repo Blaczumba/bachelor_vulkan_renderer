@@ -34,12 +34,14 @@ public:
   std::expected<DescriptorSet, DescriptorPool::Error> createDesriptorSet(
       VkDescriptorSetLayout layout, std::span<const VkDescriptorPoolSize> poolSizes) const;
 
-  template<std::size_t COUNT>
+  template <std::size_t COUNT>
   std::expected<std::array<DescriptorSet, COUNT>, DescriptorPool::Error> createDesriptorSets(
-      std::span<const VkDescriptorSetLayout> layouts, std::span<const VkDescriptorPoolSize> poolSizes) const;
+      std::span<const VkDescriptorSetLayout> layouts,
+      std::span<const VkDescriptorPoolSize> poolSizes) const;
 
   std::expected<std::vector<DescriptorSet>, DescriptorPool::Error> createDesriptorSets(
-      std::span<const VkDescriptorSetLayout> layout, std::span<const VkDescriptorPoolSize> poolSizes) const;
+      std::span<const VkDescriptorSetLayout> layout,
+      std::span<const VkDescriptorPoolSize> poolSizes) const;
 
   bool maxSetsReached() const noexcept;
 
@@ -59,9 +61,9 @@ private:
 };
 
 template <std::size_t COUNT>
-std::expected<std::array<DescriptorSet, COUNT>, DescriptorPool::Error> DescriptorPool::createDesriptorSets(
-    std::span<const VkDescriptorSetLayout> layouts,
-    std::span<const VkDescriptorPoolSize> poolSizes) const {
+std::expected<std::array<DescriptorSet, COUNT>, DescriptorPool::Error> DescriptorPool::
+    createDesriptorSets(std::span<const VkDescriptorSetLayout> layouts,
+                        std::span<const VkDescriptorPoolSize> poolSizes) const {
   if (_remainingSets < COUNT) {
     return std::unexpected(DescriptorPool::Error::MAX_SETS_REACHED);
   }

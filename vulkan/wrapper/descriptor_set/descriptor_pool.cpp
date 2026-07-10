@@ -44,8 +44,8 @@ std::expected<DescriptorSet, DescriptorPool::Error> DescriptorPool::createDesrip
     return std::unexpected(DescriptorPool::Error::MAX_SETS_REACHED);
   }
 
-  std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error>
-      expectedPoolSizes = getUpdatedPoolSizes(_remainingPoolSizes, poolSizes);
+  std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error> expectedPoolSizes =
+      getUpdatedPoolSizes(_remainingPoolSizes, poolSizes);
   if (!expectedPoolSizes.has_value()) {
     return std::unexpected(expectedPoolSizes.error());
   }
@@ -56,7 +56,7 @@ std::expected<DescriptorSet, DescriptorPool::Error> DescriptorPool::createDesrip
 
 std::expected<std::vector<DescriptorSet>, DescriptorPool::Error> DescriptorPool::
     createDesriptorSets(std::span<const VkDescriptorSetLayout> layouts,
-    std::span<const VkDescriptorPoolSize> poolSizes) const {
+                        std::span<const VkDescriptorPoolSize> poolSizes) const {
   if (_remainingSets < layouts.size()) {
     return std::unexpected(DescriptorPool::Error::MAX_SETS_REACHED);
   }
@@ -85,10 +85,9 @@ DescriptorPoolBuilder& DescriptorPoolBuilder::addPoolSize(
   return *this;
 }
 
-std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error>
-DescriptorPool::getUpdatedPoolSizes(
-    std::span<const VkDescriptorPoolSize> remainingPoolSizes,
-    std::span<const VkDescriptorPoolSize> poolSizes) const {
+std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error> DescriptorPool::
+    getUpdatedPoolSizes(std::span<const VkDescriptorPoolSize> remainingPoolSizes,
+                        std::span<const VkDescriptorPoolSize> poolSizes) const {
   if (_remainingSets <= 0) {
     return std::unexpected(DescriptorPool::Error::MAX_SETS_REACHED);
   }

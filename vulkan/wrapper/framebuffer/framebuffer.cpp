@@ -81,10 +81,7 @@ FramebufferBuilder& FramebufferBuilder::withAttachments(
 }
 
 FramebufferMetadata FramebufferBuilder::getMetadata() const noexcept {
-  return FramebufferMetadata{
-    .extent = _extent,
-    .layers = _layers,
-    .flags = _flags};
+  return FramebufferMetadata{.extent = _extent, .layers = _layers, .flags = _flags};
 }
 
 Framebuffer FramebufferBuilder::build(const Renderpass& renderpass, VkExtent2D extent,

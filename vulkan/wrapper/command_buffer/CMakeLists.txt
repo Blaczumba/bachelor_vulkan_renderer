@@ -1,4 +1,4 @@
-add_library(CommandBuffer command_buffer.h command_buffer.cpp)
+add_library(CommandBuffer command_buffer.h command_buffer.cpp command_pool.h command_pool.cpp)
 
 target_link_libraries(CommandBuffer PUBLIC LogicalDevice Framebuffer)
 

@@ -297,8 +297,8 @@ void GCONTEXT_CLASS createEnvMappingResources() {
               VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
           .build(*_logicalDevice);
 
-  
-  auto [framebuffer, metadata] = createFramebufferFromTextures(_envMappingRenderPass, _envMappingAttachments);
+  auto [framebuffer, metadata] =
+      createFramebufferFromTextures(_envMappingRenderPass, _envMappingAttachments);
   _envMappingFramebuffer = _framebufferAttachmentManager->storeFramebuffer(
       std::move(framebuffer), metadata, {});  // TODO: pass proper attachments
 
@@ -364,9 +364,10 @@ void GCONTEXT_CLASS createShadowResources() {
   RenderpassBuilder builder(_shadowAttachmentLayout);
   builder.createSubpass().addOutputAttachment(0);
   _shadowRenderPass = builder.build(*_logicalDevice);
-  auto [framebuffer, metadata] = createFramebufferFromTextures(_shadowRenderPass, std::span(&shadowMap, 1));
+  auto [framebuffer, metadata] =
+      createFramebufferFromTextures(_shadowRenderPass, std::span(&shadowMap, 1));
   _shadowFramebuffer = _framebufferAttachmentManager->storeFramebuffer(
-      std::move(framebuffer), metadata, {&_shadowMapHandle, 1}); // TODO pass proper attachments
+      std::move(framebuffer), metadata, {&_shadowMapHandle, 1});  // TODO pass proper attachments
 }
 
 GCONTEXT_TEMPLATE
@@ -537,7 +538,8 @@ void GCONTEXT_CLASS recordShadowCommandBuffer(VkCommandBuffer commandBuffer) {
   const VkRenderPassBeginInfo renderPassInfo = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
     .renderPass = _shadowRenderPass.getVkRenderPass(),
-    .framebuffer = _framebufferAttachmentManager->getFramebuffer(_shadowFramebuffer).getVkFramebuffer(),
+    .framebuffer =
+        _framebufferAttachmentManager->getFramebuffer(_shadowFramebuffer).getVkFramebuffer(),
     .renderArea = {.offset = {0, 0}, .extent = extent},
     .clearValueCount = static_cast<uint32_t>(clearValues.size()),
     .pClearValues = clearValues.data()
@@ -601,7 +603,8 @@ void GCONTEXT_CLASS recordEnvMappingCommandBuffer(VkCommandBuffer commandBuffer)
   const VkRenderPassBeginInfo renderPassInfo = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
     .renderPass = _envMappingRenderPass.getVkRenderPass(),
-    .framebuffer = _framebufferAttachmentManager->getFramebuffer(_envMappingFramebuffer).getVkFramebuffer(),
+    .framebuffer =
+        _framebufferAttachmentManager->getFramebuffer(_envMappingFramebuffer).getVkFramebuffer(),
     .renderArea = {.offset = {0, 0}, .extent = extent},
     .clearValueCount = static_cast<uint32_t>(clearValues.size()),
     .pClearValues = clearValues.data()
@@ -807,7 +810,7 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
                        nullptr, 1, &fsrBarrier);
 
   const auto& [framebuffer, framebufferData] =
-    _framebufferAttachmentManager->getFramebufferWithMetadata(_framebuffers[imageIndex]);
+      _framebufferAttachmentManager->getFramebufferWithMetadata(_framebuffers[imageIndex]);
   const VkViewport viewports[] = {
     VkViewport{.width = static_cast<float>(framebufferData.metadata.extent.width),
                .height = static_cast<float>(framebufferData.metadata.extent.height),
@@ -820,17 +823,12 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
   primaryCommandBuffer.beginRenderPass(
       framebuffer, framebufferData.metadata.extent, _attachmentLayout.getVkClearValues());
 
+  auto beginInfoBuilder = CommandBuffer::BeginInfoBuilder().withInheritenceInfo(
+      framebuffer.getRenderpass().getVkRenderPass(), framebuffer.getVkFramebuffer(), 0);
   static const bool viewportScissorInheritance =
       _physicalDevice->hasAvailableExtension(VK_NV_INHERITED_VIEWPORT_SCISSOR_EXTENSION_NAME);
-
-  VkCommandBufferInheritanceViewportScissorInfoNV scissorViewportInheritance;
   if (viewportScissorInheritance) [[likely]] {
-    scissorViewportInheritance = VkCommandBufferInheritanceViewportScissorInfoNV{
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_VIEWPORT_SCISSOR_INFO_NV,
-      .viewportScissor2D = VK_TRUE,
-      .viewportDepthCount = static_cast<uint32_t>(std::size(viewports)),
-      .pViewportDepths = viewports,
-    };
+    beginInfoBuilder.withViewportScissorInheritenceInfo(viewports);
   }
 
   std::future<void> futures[MAX_THREADS_IN_POOL];
@@ -839,11 +837,11 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
     const VkCommandBuffer commandBuffer =
         _secondaryCommandBuffers[0][_currentFrame].getVkCommandBuffer();
 
-    if (viewportScissorInheritance) [[likely]] {
-      _secondaryCommandBuffers[0][_currentFrame].beginAsSecondary(
-          framebuffer, &scissorViewportInheritance);
-    } else {
-      _secondaryCommandBuffers[0][_currentFrame].beginAsSecondary(framebuffer, nullptr);
+    beginInfoBuilder.beginCommandBuffer(
+        _secondaryCommandBuffers[0][_currentFrame],
+        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+            | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    if (!viewportScissorInheritance) [[unlikely]] {
       _secondaryCommandBuffers[0][_currentFrame].setVieport(viewports);
       _secondaryCommandBuffers[0][_currentFrame].setScissor(scissors);
     }
@@ -877,102 +875,61 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
 
   futures[1] = std::async(std::launch::async, [&]() -> void {
     // Skybox
-    const VkCommandBuffer commandBuffer =
-        _secondaryCommandBuffers[1][_currentFrame].getVkCommandBuffer();
+    const CommandBuffer& secondaryCommandBuffer = _secondaryCommandBuffers[1][_currentFrame];
 
-    if (viewportScissorInheritance) [[likely]] {
-      _secondaryCommandBuffers[1][_currentFrame].beginAsSecondary(
-          framebuffer, &scissorViewportInheritance);
-    } else {
-      _secondaryCommandBuffers[1][_currentFrame].beginAsSecondary(framebuffer, nullptr);
-      _secondaryCommandBuffers[1][_currentFrame].setVieport(viewports);
-      _secondaryCommandBuffers[1][_currentFrame].setScissor(scissors);
+    beginInfoBuilder.beginCommandBuffer(
+        secondaryCommandBuffer, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+                                    | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    if (viewportScissorInheritance) [[unlikely]] {
+      secondaryCommandBuffer.setVieport(viewports);
+      secondaryCommandBuffer.setScissor(scissors);
     }
 
-    vkCmdBindPipeline(
-        commandBuffer, _skyboxPipeline->getVkPipelineBindPoint(), _skyboxPipeline->getVkPipeline());
-
-    static constexpr VkDeviceSize offsets[] = {0};
+    secondaryCommandBuffer.bindPipeline(
+        _skyboxPipeline->getVkPipelineBindPoint(), _skyboxPipeline->getVkPipeline());
 
     const MeshComponent& cubeMeshComponent = _registry.getComponent<MeshComponent>(_skyboxEntity);
     const MaterialComponent& cubeMaterialComponent =
         _registry.getComponent<MaterialComponent>(_skyboxEntity);
-    const VkBuffer vertexBuffer =
-        _gpuBufferManager->getBuffer(cubeMeshComponent.vertexBufferPrimitiveHandle)
-            .buffer.getVkBuffer();
-    const BufferWithMetadata& indexBuffer =
+    const VkBuffer vertexBuffers[] = {
+      _gpuBufferManager->getBuffer(cubeMeshComponent.vertexBufferPrimitiveHandle)
+          .buffer.getVkBuffer()};
+    static constexpr VkDeviceSize offsets[] = {0};
+    secondaryCommandBuffer.bindVertexBuffers(vertexBuffers, offsets);
+    const auto& [indexBuffer, indexBufferMetadata] =
         _gpuBufferManager->getBuffer(cubeMeshComponent.indexBufferHandle);
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
-    vkCmdBindIndexBuffer(
-        commandBuffer, indexBuffer.buffer.getVkBuffer(), 0, cubeMeshComponent.indexType);
+    secondaryCommandBuffer.bindIndexBuffer(indexBuffer.getVkBuffer(), cubeMeshComponent.indexType);
 
     const PushConstantsSkybox pc = {
       .proj = cameraProj,
       .view = cameraView,
       .skyboxHandle = static_cast<uint32_t>(*cubeMaterialComponent.diffuse)};
-    vkCmdPushConstants(commandBuffer, _skyboxPipeline->getVkPipelineLayout(),
-                       _skyboxPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
+    secondaryCommandBuffer.pushConstants(
+        _skyboxPipeline->getVkPipelineLayout(),
+        _skyboxPipeline->getPushConstantVkShaderStageFlags(),
+        std::span<const std::byte>(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
 
     const VkDescriptorSet descriptorSets[] = {
       _bindlessDescriptorSet.getVkDescriptorSet(), _dynamicDescriptorSet.getVkDescriptorSet()};
+    secondaryCommandBuffer.bindDescriptorSets(
+        _skyboxPipeline->getVkPipelineBindPoint(), _skyboxPipeline->getVkPipelineLayout(),
+        std::span(descriptorSets, 1));
 
-    vkCmdBindDescriptorSets(
-        commandBuffer, _skyboxPipeline->getVkPipelineBindPoint(),
-        _skyboxPipeline->getVkPipelineLayout(), 0, 1, descriptorSets, 0, nullptr);
+    secondaryCommandBuffer.drawIndexed(
+        indexBufferMetadata.size / getIndexSize(cubeMeshComponent.indexType), 1);
 
-    vkCmdDrawIndexed(
-        commandBuffer, indexBuffer.metadata.size / getIndexSize(cubeMeshComponent.indexType), 1, 0,
-        0, 0);
-
-    // Env mapping
-    /*vkCmdBindPipeline(commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
-                      _phongEnvMappingPipeline->getVkPipeline());
-
-    uint32_t dynamicUniformBufferOffsets[MULTIVIEW_PRESENTATION ? 2 : 1];
-    if constexpr (MULTIVIEW_PRESENTATION) {
-      const uint32_t baseOffset = 2u * _currentFrame;
-      _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-          dynamicUniformBufferOffsets, {baseOffset, baseOffset});
-    } else {
-      _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
-          dynamicUniformBufferOffsets, {_currentFrame});
-    }
-    vkCmdBindDescriptorSets(
-        commandBuffer, _phongEnvMappingPipeline->getVkPipelineBindPoint(),
-        _phongEnvMappingPipeline->getVkPipelineLayout(), 0, std::size(descriptorSets),
-        descriptorSets, std::size(dynamicUniformBufferOffsets), dynamicUniformBufferOffsets);
-
-    const PushConstantsModelDescriptorHandles32Bit envMapPc = {
-      .model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f))
-               * glm::scale(glm::mat4(1.0f), glm::vec3(0.75f, 0.75f, 0.75f)),
-      .descriptorHandles = {
-                            static_cast<uint32_t>(*_envMappingHandle),
-    static_cast<uint32_t>(*_lightHandle)}
-    };
-
-    vkCmdPushConstants(commandBuffer, _phongEnvMappingPipeline->getVkPipelineLayout(),
-                       _phongEnvMappingPipeline->getPushConstantVkShaderStageFlags(), 0,
-                       sizeof(envMapPc), &envMapPc);
-
-    const VkBuffer vertexBufferCubeNormals =
-        _gpuBufferManager->getBuffer(_vertexBufferCubeNormalsHandle).getVkBuffer();
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBufferCubeNormals, offsets);
-
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getVkBuffer(), 0, _indexBufferCubeType);
-
-    vkCmdDrawIndexed(
-        commandBuffer, indexBuffer.getSize() / getIndexSize(_indexBufferCubeType), 1, 0, 0, 0);*/
-
-    CHECK_VKCMD(vkEndCommandBuffer(commandBuffer), "Failed to vkEndCommandBuffer.");
+    CHECK_VKCMD(secondaryCommandBuffer.end(), "Failed to vkEndCommandBuffer.");
   });
 
   std::for_each(std::begin(futures), std::end(futures), [](std::future<void>& future) {
     future.wait();
   });
 
-  primaryCommandBuffer.executeSecondaryCommandBuffers(
-      {_secondaryCommandBuffers[0][_currentFrame].getVkCommandBuffer(),
-       _secondaryCommandBuffers[1][_currentFrame].getVkCommandBuffer()});
+  const VkCommandBuffer secondaryCommandBuffers[] = {
+    _secondaryCommandBuffers[0][_currentFrame].getVkCommandBuffer(),
+    _secondaryCommandBuffers[1][_currentFrame].getVkCommandBuffer()};
+  primaryCommandBuffer.executeSecondaryCommandBuffers(secondaryCommandBuffers);
+
   primaryCommandBuffer.endRenderPass();
 
   if (primaryCommandBuffer.end() != VK_SUCCESS) {
@@ -997,8 +954,7 @@ GCONTEXT_CLASS GraphicsContext(
   _gpuBufferManager = GpuBufferManager::create();
   _samplerManager = SamplerManager::create();
   _pipelineManager = PipelineManager::create(fileLoader);
-  _framebufferAttachmentManager =
-      FramebufferAttachmentManager::create(*_gpuBufferManager);
+  _framebufferAttachmentManager = FramebufferAttachmentManager::create(*_gpuBufferManager);
 
   {
     _bindlessDescriptorPool = DescriptorPoolBuilder().build(
