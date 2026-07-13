@@ -24,7 +24,7 @@ public:
   std::vector<CommandBuffer> createCommandBuffers(VkCommandBufferLevel level, uint32_t count) const;
 
   // NOTE: The definition of this template lives in command_buffer.h (it needs the
-  // full CommandBuffer type). Include command_buffer.h in any TU that calls it.
+  // full CommandBuffer type). Include command_buffer.h in any translation unit that calls it.
   template <size_t COUNT>
   std::array<CommandBuffer, COUNT> createCommandBuffers(VkCommandBufferLevel level) const;
 

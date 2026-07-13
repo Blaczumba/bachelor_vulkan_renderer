@@ -33,6 +33,7 @@
 #include "vulkan/resource_manager/pipeline_manager.h"
 #include "vulkan/resource_manager/sampler_manager.h"
 #include "vulkan/wrapper/command_buffer/command_buffer.h"
+#include "vulkan/wrapper/commands/submit_info_builder.h"
 #include "vulkan/wrapper/debug_messenger/debug_messenger.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set.h"
@@ -692,7 +693,7 @@ void GCONTEXT_CLASS updateUniformBuffer(uint32_t currentFrame) {
 
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
-    const VkCommandBuffer commandBuffer, const OctreeNode* rootNode,
+    const CommandBuffer& commandBuffer, const OctreeNode* rootNode,
     std::span<const glm::vec4> planes, std::span<VkDescriptorSet> descriptorSets,
     std::span<uint32_t> dynamicUniformBufferOffsets) {
   if (!rootNode || !rootNode->getVolume().intersectsFrustum(planes)) {
@@ -728,30 +729,26 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
           || materialComponent.pipelineHandle != *globalPipelineHandle) {
         globalPipelineHandle = materialComponent.pipelineHandle;
         pipeline = _pipelineManager->getPipeline(*globalPipelineHandle);
-        vkCmdBindPipeline(
-            commandBuffer, pipeline->getVkPipelineBindPoint(), pipeline->getVkPipeline());
-        vkCmdBindDescriptorSets(
-            commandBuffer, pipeline->getVkPipelineBindPoint(), pipeline->getVkPipelineLayout(), 0,
-            static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(),
-            static_cast<uint32_t>(dynamicUniformBufferOffsets.size()),
-            dynamicUniformBufferOffsets.data());
+        commandBuffer.bindPipeline(pipeline->getVkPipelineBindPoint(), pipeline->getVkPipeline());
+        commandBuffer.bindDescriptorSets(
+            pipeline->getVkPipelineBindPoint(), pipeline->getVkPipelineLayout(), descriptorSets, 0,
+            dynamicUniformBufferOffsets);
       }
-
-      vkCmdPushConstants(commandBuffer, pipeline->getVkPipelineLayout(),
-                         pipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
-
+      commandBuffer.pushConstants(
+          pipeline->getVkPipelineLayout(), pipeline->getPushConstantVkShaderStageFlags(),
+          std::span(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
       const auto& meshComponent = _registry.getComponent<MeshComponent>(object->getEntity());
       const BufferWithMetadata& indexBuffer =
           _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
       const Buffer& vertexBuffer =
           _gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle).buffer;
+      const VkBuffer vertexBuffers[] = {vertexBuffer.getVkBuffer()};
       static constexpr VkDeviceSize offsets[] = {0};
-      vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer.getVkBuffer(), offsets);
-      vkCmdBindIndexBuffer(
-          commandBuffer, indexBuffer.buffer.getVkBuffer(), 0, meshComponent.indexType);
+      commandBuffer.bindVertexBuffers(vertexBuffers, offsets);
+      commandBuffer.bindIndexBuffer(indexBuffer.buffer.getVkBuffer(), meshComponent.indexType);
       vkCmdDrawIndexed(
-          commandBuffer, indexBuffer.metadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0,
-          0);
+          commandBuffer.getVkCommandBuffer(),
+          indexBuffer.metadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
     }
 
     static constexpr OctreeNode::Subvolume options[] = {
@@ -834,16 +831,14 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
   std::future<void> futures[MAX_THREADS_IN_POOL];
 
   futures[0] = std::async(std::launch::async, [&]() -> void {
-    const VkCommandBuffer commandBuffer =
-        _secondaryCommandBuffers[0][_currentFrame].getVkCommandBuffer();
+    const CommandBuffer& secondaryCommandBuffer = _secondaryCommandBuffers[0][_currentFrame];
 
     beginInfoBuilder.beginCommandBuffer(
-        _secondaryCommandBuffers[0][_currentFrame],
-        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-            | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        secondaryCommandBuffer, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+                                    | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     if (!viewportScissorInheritance) [[unlikely]] {
-      _secondaryCommandBuffers[0][_currentFrame].setVieport(viewports);
-      _secondaryCommandBuffers[0][_currentFrame].setScissor(scissors);
+      secondaryCommandBuffer.setVieport(viewports);
+      secondaryCommandBuffer.setScissor(scissors);
     }
 
     // vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
@@ -861,16 +856,16 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
       _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
           dynamicUniformBufferOffsets, {baseOffset, baseOffset});
       recordOctreeSecondaryCommandBuffer(
-          commandBuffer, root, planes, descriptorSets, dynamicUniformBufferOffsets);
+          secondaryCommandBuffer, root, planes, descriptorSets, dynamicUniformBufferOffsets);
     } else {
       uint32_t dynamicUniformBufferOffset[1];
       _dynamicDescriptorSetWriter.getDynamicBufferSizesWithOffsets(
           dynamicUniformBufferOffset, {_currentFrame});
       recordOctreeSecondaryCommandBuffer(
-          commandBuffer, root, planes, descriptorSets, dynamicUniformBufferOffset);
+          secondaryCommandBuffer, root, planes, descriptorSets, dynamicUniformBufferOffset);
     }
 
-    CHECK_VKCMD(vkEndCommandBuffer(commandBuffer), "Failed to vkEndCommandBuffer.");
+    CHECK_VKCMD(secondaryCommandBuffer.end(), "Failed to vkEndCommandBuffer.");
   });
 
   futures[1] = std::async(std::launch::async, [&]() -> void {
@@ -880,7 +875,7 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
     beginInfoBuilder.beginCommandBuffer(
         secondaryCommandBuffer, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
                                     | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    if (viewportScissorInheritance) [[unlikely]] {
+    if (!viewportScissorInheritance) [[unlikely]] {
       secondaryCommandBuffer.setVieport(viewports);
       secondaryCommandBuffer.setScissor(scissors);
     }
@@ -921,7 +916,7 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
     CHECK_VKCMD(secondaryCommandBuffer.end(), "Failed to vkEndCommandBuffer.");
   });
 
-  std::for_each(std::begin(futures), std::end(futures), [](std::future<void>& future) {
+  std::for_each(std::begin(futures), std::end(futures), [](const std::future<void>& future) {
     future.wait();
   });
 
@@ -1023,36 +1018,30 @@ GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS draw() {
   updateUniformBuffer(_currentFrame);
 
-  _primaryCommandBuffer[_currentFrame].resetCommandBuffer();
+  CHECK_VKCMD(_primaryCommandBuffer[_currentFrame].resetCommandBuffer(),
+              "Failed to reset primary command buffer.");
   for (int i = 0; i < MAX_THREADS_IN_POOL; i++) {
-    _secondaryCommandBuffers[i][_currentFrame].resetCommandBuffer();
+    CHECK_VKCMD(_secondaryCommandBuffers[i][_currentFrame].resetCommandBuffer(),
+                "Failed to reset secondary command buffer.");
   }
 
-  vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_currentFrame]);
+  CHECK_VKCMD(vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_currentFrame]),
+              "Failed to wait for fence.");
 
   const common::CameraContext& cameraContext = _communicationLayer->getCameraContexts()[0];
   const auto [screenx, screeny] = _communicationLayer->getScreenPos();
   recordCommandBuffer(cameraContext.proj, cameraContext.view,
                       _communicationLayer->getCurrentSwapchainImageIndex(), {screenx, screeny});
 
-  VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
-
-  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-  submitInfo.pWaitDstStageMask = waitStages;
-
-  VkCommandBuffer submitCommands[] = {_primaryCommandBuffer[_currentFrame].getVkCommandBuffer()};
-  submitInfo.commandBufferCount = static_cast<uint32_t>(std::size(submitCommands));
-  submitInfo.pCommandBuffers = submitCommands;
-
+  static SubmitInfoBuilder submitInfoBuilder;
   if constexpr (!SYNCED_OUTSIDE) {
-    _presentationContext->synchronizeSubmit(&submitInfo);
+    _presentationContext->synchronizeSubmit(&submitInfoBuilder);
   }
 
-  if (vkQueueSubmit(
-          _logicalDevice->getGraphicsVkQueue(), 1, &submitInfo, _frameFences[_currentFrame])
-      != VK_SUCCESS) {
-    throw std::runtime_error("failed to submit draw command buffer!");
-  }
+  CHECK_VKCMD(submitInfoBuilder
+                  .withCommandBuffers({_primaryCommandBuffer[_currentFrame].getVkCommandBuffer()})
+                  .submitQueue(_logicalDevice->getGraphicsVkQueue(), _frameFences[_currentFrame]),
+              "Failed to submit draw command buffer.");
 
   if (++_currentFrame == MAX_FRAMES_IN_FLIGHT) {
     _currentFrame = 0;

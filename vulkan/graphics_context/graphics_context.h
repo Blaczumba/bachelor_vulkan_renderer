@@ -208,7 +208,7 @@ private:
   void updateUniformBuffer(uint32_t currentFrame);
 
   void recordOctreeSecondaryCommandBuffer(
-      const VkCommandBuffer commandBuffer, const OctreeNode* rootNode,
+      const CommandBuffer& commandBuffer, const OctreeNode* rootNode,
       std::span<const glm::vec4> planes, std::span<VkDescriptorSet> descriptorSets,
       std::span<uint32_t> dynamicUniformBufferOffsets);
 

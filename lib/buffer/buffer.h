@@ -4,6 +4,7 @@
 #include <memory>
 #include <span>
 #include <utility>
+#include <initializer_list>
 
 namespace lib {
 
@@ -63,6 +64,24 @@ public:
     }
     _buffer = std::move(other._buffer);
     _size = std::exchange(other._size, 0);
+    return *this;
+  }
+
+  Buffer& operator=(std::span<const T> other) noexcept {
+    if (_size != other.size()) {
+      _size = other.size();
+      _buffer = std::make_unique_for_overwrite<T[]>(_size);
+    }
+    std::copy(other.begin(), other.end(), _buffer.get());
+    return *this;
+  }
+
+  Buffer& operator=(std::initializer_list<T> other) noexcept {
+    if (_size != other.size()) {
+      _size = other.size();
+      _buffer = std::make_unique_for_overwrite<T[]>(_size);
+    }
+    std::copy(other.begin(), other.end(), _buffer.get());
     return *this;
   }
 

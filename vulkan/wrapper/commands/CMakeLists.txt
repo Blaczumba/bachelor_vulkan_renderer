@@ -1,0 +1,6 @@
+add_library(Commands submit_info_builder.h submit_info_builder.cpp submit_info_view_builder.h submit_info_view_builder.cpp)
+
+target_link_libraries(Commands PUBLIC Vulkan::Vulkan)
+
+target_include_directories(Commands PUBLIC ${PROJECT_SOURCE_DIR})
+target_include_directories(Commands PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

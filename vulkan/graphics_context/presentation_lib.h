@@ -7,6 +7,7 @@
 
 #include "common/abstractions/contexts.h"
 #include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/commands/submit_info_builder.h"
 #include "vulkan/wrapper/swapchain/swapchain.h"
 
 namespace vlkn {
@@ -31,7 +32,7 @@ public:
 
   common::PresentResources getPresentResources() const;
 
-  void synchronizeSubmit(VkSubmitInfo* submitInfo) const;
+  void synchronizeSubmit(SubmitInfoBuilder* submitInfoBuilder) const;
 
   void setCurrentFrame(uint8_t frame);
 

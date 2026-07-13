@@ -7,6 +7,7 @@
 
 #include "common/abstractions/contexts.h"
 #include "lib/buffer/buffer.h"
+#include "vulkan/wrapper/commands/submit_info_builder.h"
 #include "vulkan/wrapper/swapchain/swapchain.h"
 #include "vulkan/wrapper/util/check.h"
 
@@ -57,11 +58,11 @@ common::PresentResources PresentationContext::getPresentResources() const {
   };
 }
 
-void PresentationContext::synchronizeSubmit(VkSubmitInfo* submitInfo) const {
-  submitInfo->waitSemaphoreCount = 1;
-  submitInfo->pWaitSemaphores = &_imageAvailableSemaphores[_currentFrame];
-  submitInfo->signalSemaphoreCount = 1;
-  submitInfo->pSignalSemaphores = &_renderFinishedSemaphores[_imageIndex];
+void PresentationContext::synchronizeSubmit(SubmitInfoBuilder* submitInfoBuilder) const {
+  submitInfoBuilder
+      ->withWaitSemaphores({_imageAvailableSemaphores[_currentFrame]},
+                           {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT})
+      .withSignalSemaphores({_renderFinishedSemaphores[_imageIndex]});
 }
 
 void PresentationContext::setCurrentFrame(uint8_t frame) {

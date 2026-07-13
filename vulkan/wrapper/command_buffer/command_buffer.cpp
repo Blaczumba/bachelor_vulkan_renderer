@@ -253,7 +253,7 @@ CommandBuffer::BeginInfoBuilder& CommandBuffer::BeginInfoBuilder::withInheritenc
   return *this;
 }
 
-void CommandBuffer::BeginInfoBuilder::beginCommandBuffer(
+VkResult CommandBuffer::BeginInfoBuilder::beginCommandBuffer(
     const CommandBuffer& commandBuffer, VkCommandBufferUsageFlags usageFlags) {
   if (commandBuffer._level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
     if (!_inheritanceInfo.has_value()) {
@@ -267,17 +267,15 @@ void CommandBuffer::BeginInfoBuilder::beginCommandBuffer(
     .pNext = _pNext,
     .flags = usageFlags,
     .pInheritanceInfo = _inheritanceInfo.has_value() ? &_inheritanceInfo.value() : nullptr};
-
-  CHECK_VKCMD(vkBeginCommandBuffer(commandBuffer.getVkCommandBuffer(), &beginInfo),
-              "Failed to vkBeginCommandBuffer for secondary command buffer.");
+  return vkBeginCommandBuffer(commandBuffer.getVkCommandBuffer(), &beginInfo);
 }
 
 VkResult CommandBuffer::end() const {
   return vkEndCommandBuffer(_commandBuffer);
 }
 
-void CommandBuffer::resetCommandBuffer() const {
-  vkResetCommandBuffer(_commandBuffer, 0);
+VkResult CommandBuffer::resetCommandBuffer(VkCommandBufferResetFlags flags) const {
+  return vkResetCommandBuffer(_commandBuffer, flags);
 }
 
 VkCommandBuffer CommandBuffer::getVkCommandBuffer() const noexcept {

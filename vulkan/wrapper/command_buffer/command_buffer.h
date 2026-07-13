@@ -82,7 +82,7 @@ public:
         std::optional<VkQueryControlFlags> queryControlFlags = std::nullopt,
         VkQueryPipelineStatisticFlags pipelineStatistics = 0);
 
-    void beginCommandBuffer(
+    VkResult beginCommandBuffer(
         const CommandBuffer& commandBuffer, VkCommandBufferUsageFlags usageFlags = 0);
 
   private:
@@ -97,7 +97,7 @@ public:
 
   VkResult end() const;
 
-  void resetCommandBuffer() const;
+  VkResult resetCommandBuffer(VkCommandBufferResetFlags flags = 0) const;
 
   VkCommandBuffer getVkCommandBuffer() const noexcept;
 
