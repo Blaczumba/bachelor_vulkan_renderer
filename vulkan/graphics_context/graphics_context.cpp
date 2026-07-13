@@ -731,8 +731,7 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
         pipeline = _pipelineManager->getPipeline(*globalPipelineHandle);
         commandBuffer.bindPipeline(pipeline->getVkPipelineBindPoint(), pipeline->getVkPipeline());
         commandBuffer.bindDescriptorSets(
-            pipeline->getVkPipelineBindPoint(), pipeline->getVkPipelineLayout(), descriptorSets, 0,
-            dynamicUniformBufferOffsets);
+            pipeline->getVkPipelineBindPoint(), pipeline->getVkPipelineLayout(), descriptorSets, 0, dynamicUniformBufferOffsets);
       }
       commandBuffer.pushConstants(
           pipeline->getVkPipelineLayout(), pipeline->getPushConstantVkShaderStageFlags(),
@@ -748,7 +747,8 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
       commandBuffer.bindIndexBuffer(indexBuffer.buffer.getVkBuffer(), meshComponent.indexType);
       vkCmdDrawIndexed(
           commandBuffer.getVkCommandBuffer(),
-          indexBuffer.metadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
+          indexBuffer.metadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0,
+          0);
     }
 
     static constexpr OctreeNode::Subvolume options[] = {
@@ -834,8 +834,9 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
     const CommandBuffer& secondaryCommandBuffer = _secondaryCommandBuffers[0][_currentFrame];
 
     beginInfoBuilder.beginCommandBuffer(
-        secondaryCommandBuffer, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-                                    | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        secondaryCommandBuffer,
+        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+            | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     if (!viewportScissorInheritance) [[unlikely]] {
       secondaryCommandBuffer.setVieport(viewports);
       secondaryCommandBuffer.setScissor(scissors);
