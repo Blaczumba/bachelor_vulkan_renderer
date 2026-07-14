@@ -42,7 +42,7 @@ RenderpassBuilder& RenderpassBuilder::addDependency(
 }
 
 RenderpassBuilder::Subpass& RenderpassBuilder::createSubpass() {
-  return *_subpasses.emplace_back(std::make_unique<Subpass>(_attachmentLayout));
+  return _subpasses.emplace_back(_attachmentLayout);
 }
 
 RenderpassBuilder& RenderpassBuilder::withMultiView(
@@ -159,7 +159,7 @@ Renderpass RenderpassBuilder::build(
 
   _subpassDescriptions = lib::Buffer<VkSubpassDescription2>(_subpasses.size());
   for (int i = 0; i < _subpasses.size(); i++) {
-    _subpassDescriptions[i] = _subpasses[i]->getVkSubpassDescription(
+    _subpassDescriptions[i] = _subpasses[i].getVkSubpassDescription(
         _multiViewInfo.has_value() ? _multiViewInfo->viewMasks[i] : 0);
   }
 

@@ -46,6 +46,8 @@
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
 #include "vulkan/wrapper/util/index_buffer_util.h"
+#include "vulkan/wrapper/commands/dependency_info_builder.h"
+#include "vulkan/wrapper/commands/image_memory_barrier_builder.h"
 
 #define GCONTEXT_TEMPLATE template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 #define GCONTEXT_CLASS    GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
@@ -731,7 +733,8 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
         pipeline = _pipelineManager->getPipeline(*globalPipelineHandle);
         commandBuffer.bindPipeline(pipeline->getVkPipelineBindPoint(), pipeline->getVkPipeline());
         commandBuffer.bindDescriptorSets(
-            pipeline->getVkPipelineBindPoint(), pipeline->getVkPipelineLayout(), descriptorSets, 0, dynamicUniformBufferOffsets);
+            pipeline->getVkPipelineBindPoint(), pipeline->getVkPipelineLayout(), descriptorSets, 0,
+            dynamicUniformBufferOffsets);
       }
       commandBuffer.pushConstants(
           pipeline->getVkPipelineLayout(), pipeline->getPushConstantVkShaderStageFlags(),
@@ -747,8 +750,7 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
       commandBuffer.bindIndexBuffer(indexBuffer.buffer.getVkBuffer(), meshComponent.indexType);
       vkCmdDrawIndexed(
           commandBuffer.getVkCommandBuffer(),
-          indexBuffer.metadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0,
-          0);
+          indexBuffer.metadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
     }
 
     static constexpr OctreeNode::Subvolume options[] = {
@@ -770,21 +772,25 @@ GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::mat4& cameraView,
                                         uint32_t imageIndex, glm::u32vec2 screenPos) {
   const CommandBuffer& primaryCommandBuffer = _primaryCommandBuffer[_currentFrame];
-  primaryCommandBuffer.beginAsPrimary();
+  CommandBuffer::BeginInfoBuilder().beginCommandBuffer(
+      primaryCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
   const VkCommandBuffer commandBuffer = primaryCommandBuffer.getVkCommandBuffer();
 
   const PushConstantFov fsrPc = {screenPos};
-  vkCmdPushConstants(commandBuffer, _fsrPipeline->getVkPipelineLayout(),
-                     VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, &fsrPc);
-  vkCmdBindPipeline(
-      commandBuffer, _fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipeline());
+  primaryCommandBuffer.pushConstants(
+      _fsrPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT,
+      std::span{reinterpret_cast<const std::byte*>(&fsrPc), sizeof(fsrPc)});
+  primaryCommandBuffer.bindPipeline(
+      _fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipeline());
   const VkDescriptorSet fsrDescriptorSets[] = {_computeDescriptorSet.getVkDescriptorSet()};
-  vkCmdBindDescriptorSets(commandBuffer, _fsrPipeline->getVkPipelineBindPoint(),
-                          _fsrPipeline->getVkPipelineLayout(), 0, 1, fsrDescriptorSets, 0, nullptr);
-  vkCmdDispatch(commandBuffer, 16, 16, 1);
+  primaryCommandBuffer.bindDescriptorSets(_fsrPipeline->getVkPipelineBindPoint(),
+                                          _fsrPipeline->getVkPipelineLayout(), fsrDescriptorSets);
+  primaryCommandBuffer.dispatchCompute(16, 16);
 
   const Image& fsrTexture = _gpuBufferManager->getImage(_fsrTextureHandle);
+  // VkImageMemoryBarrier2
+
   const VkImageMemoryBarrier fsrBarrier = {
     .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
     .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
@@ -802,6 +808,24 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
                          .layerCount = fsrTexture.getLayersCount(),
                          }
   };
+  static DependencyInfoBuilder dependencyInfoBuilder;
+  dependencyInfoBuilder.clearBuilders()
+      .addImageMemoryBarrier()
+      .withSrcMasks(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT)
+      .withDstMasks(VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
+                    VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR)
+      .withLayouts(
+          VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR)
+      .withImage(fsrTexture.getVkImage(),
+                 VkImageSubresourceRange {
+                   .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                   .baseMipLevel = 0,
+                   .levelCount = fsrTexture.getMipLevelsCount(),
+                   .baseArrayLayer = 0,
+                   .layerCount = fsrTexture.getLayersCount(),
+                 });
+
+  // VkDependencyInfo
   vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                        VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, 0, 0, nullptr, 0,
                        nullptr, 1, &fsrBarrier);
@@ -834,9 +858,8 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
     const CommandBuffer& secondaryCommandBuffer = _secondaryCommandBuffers[0][_currentFrame];
 
     beginInfoBuilder.beginCommandBuffer(
-        secondaryCommandBuffer,
-        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
-            | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        secondaryCommandBuffer, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+                                    | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     if (!viewportScissorInheritance) [[unlikely]] {
       secondaryCommandBuffer.setVieport(viewports);
       secondaryCommandBuffer.setScissor(scissors);

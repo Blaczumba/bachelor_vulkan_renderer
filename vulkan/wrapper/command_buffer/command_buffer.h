@@ -66,8 +66,8 @@ public:
 
   void executeSecondaryCommandBuffers(std::span<const VkCommandBuffer> commandBuffers) const;
 
-  void submit(QueueType type, const VkSemaphore waitSemaphore, const VkSemaphore signalSemaphore,
-              const VkFence waitFence) const;
+  void dispatchCompute(
+      uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ = 1) const noexcept;
 
   class BeginInfoBuilder {
   public:
@@ -92,8 +92,6 @@ public:
 
     void* _pNext = nullptr;
   };
-
-  void beginAsPrimary() const;
 
   VkResult end() const;
 

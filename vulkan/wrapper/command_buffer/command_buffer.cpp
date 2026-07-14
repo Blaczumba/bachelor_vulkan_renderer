@@ -168,53 +168,9 @@ void CommandBuffer::executeSecondaryCommandBuffers(
       _commandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 }
 
-void CommandBuffer::submit(QueueType type, const VkSemaphore waitSemaphore,
-                           const VkSemaphore signalSemaphore, const VkFence waitFence) const {
-  if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
-    throw EngineException("Secondary command buffers cannot be submitted directly to the queue.");
-  }
-
-  VkSubmitInfo submitInfo = {};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-  VkSemaphore waitSemaphores[] = {waitSemaphore};
-  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-  if (waitSemaphore != VK_NULL_HANDLE) {
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = waitSemaphores;
-    submitInfo.pWaitDstStageMask = waitStages;
-  }
-
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &_commandBuffer;
-
-  VkSemaphore signalSemaphores[] = {signalSemaphore};
-  if (signalSemaphore != VK_NULL_HANDLE) {
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = signalSemaphores;
-  }
-
-  const LogicalDevice& logicalDevice = _commandPool->getLogicalDevice();
-  if (waitFence != VK_NULL_HANDLE) {
-    CHECK_VKCMD(vkResetFences(logicalDevice.getVkDevice(), 1, &waitFence),
-                "Failed to vkResetFences in CommandBuffer::submit.");
-  }
-
-  CHECK_VKCMD(vkQueueSubmit(logicalDevice.getVkQueue(type), 1, &submitInfo, waitFence),
-              "Failed to vkQueueSubmit in CommandBuffer::submit.");
-}
-
-void CommandBuffer::beginAsPrimary() const {
-  if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
-    throw EngineException(
-        "Cannot begin command buffer as primary without VK_COMMAND_BUFFER_LEVEL_PRIMARY "
-        "specified.");
-  }
-
-  const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                              .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
-  CHECK_VKCMD(vkBeginCommandBuffer(_commandBuffer, &beginInfo),
-              "Failed to vkBeginCommandBuffer for primary command buffer.");
+void CommandBuffer::dispatchCompute(
+    uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) const noexcept {
+  vkCmdDispatch(_commandBuffer, groupCountX, groupCountY, groupCountZ);
 }
 
 CommandBuffer::BeginInfoBuilder& CommandBuffer::BeginInfoBuilder::

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -100,8 +101,8 @@ private:
   };
   std::optional<MultiViewInfo> _multiViewInfo;
 
-  // For reference stability use unique_ptr.
-  std::vector<std::unique_ptr<Subpass>> _subpasses;
+  // For reference stability use deque.
+  std::deque<Subpass> _subpasses;
   std::vector<VkSubpassDependency2> _subpassDepencies;
   lib::Buffer<VkSubpassDescription2> _subpassDescriptions;
 };
