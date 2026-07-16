@@ -56,8 +56,6 @@ class SamplerBuilder {
 public:
   SamplerBuilder() noexcept = default;
 
-  Sampler build(const LogicalDevice& logicalDevice) const;
-
   SamplerBuilder& withMinMagFilter(VkFilter minFiler, VkFilter magFilter) noexcept;
 
   SamplerBuilder& withMipmapMode(VkSamplerMipmapMode mode) noexcept;
@@ -79,6 +77,8 @@ public:
   SamplerBuilder& withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) noexcept;
 
   const VkSamplerCreateInfo& getVkSamplerCreateInfo() const noexcept;
+
+  Sampler build(const LogicalDevice& logicalDevice) const;
 
 private:
   VkSamplerCreateInfo _samplerInfo = {

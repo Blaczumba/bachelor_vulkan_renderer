@@ -53,10 +53,6 @@ void Sampler::destroy() {
   });
 }
 
-Sampler SamplerBuilder::build(const LogicalDevice& logicalDevice) const {
-  return Sampler::create(logicalDevice, _samplerInfo);
-}
-
 SamplerBuilder& SamplerBuilder::withMinMagFilter(VkFilter minFilter, VkFilter magFilter) noexcept {
   _samplerInfo.minFilter = minFilter;
   _samplerInfo.magFilter = magFilter;
@@ -114,4 +110,8 @@ SamplerBuilder& SamplerBuilder::withUnnormalizedCoordinates(
 
 const VkSamplerCreateInfo& SamplerBuilder::getVkSamplerCreateInfo() const noexcept {
   return _samplerInfo;
+}
+
+Sampler SamplerBuilder::build(const LogicalDevice& logicalDevice) const {
+  return Sampler::create(logicalDevice, _samplerInfo);
 }
