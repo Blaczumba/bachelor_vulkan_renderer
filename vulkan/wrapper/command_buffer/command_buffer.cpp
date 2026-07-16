@@ -124,6 +124,10 @@ void CommandBuffer::bindPipeline(
   vkCmdBindPipeline(_commandBuffer, pipelineBindPoint, pipeline);
 }
 
+void CommandBuffer::pipelineBarrier(const VkDependencyInfo* dependencyInfo) const noexcept {
+  vkCmdPipelineBarrier2(_commandBuffer, dependencyInfo);
+}
+
 void CommandBuffer::bindVertexBuffers(
     std::span<const VkBuffer> buffers, std::span<const VkDeviceSize> offsets,
     uint32_t firstBinding) const noexcept {

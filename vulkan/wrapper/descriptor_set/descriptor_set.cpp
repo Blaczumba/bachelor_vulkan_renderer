@@ -7,8 +7,6 @@
 #include "lib/buffer/buffer.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
 #include "vulkan/wrapper/descriptor_set/lib.h"
-#include "vulkan/wrapper/logical_device/logical_device.h"
-#include "vulkan/wrapper/util/check.h"
 
 DescriptorSet::DescriptorSet(VkDescriptorSet descriptorSet,
                              const std::shared_ptr<const DescriptorPool>& descriptorPool) noexcept

@@ -18,7 +18,7 @@ public:
   VkDependencyInfo build(VkDependencyFlags flags = {});
 
 private:
-  // For reference stability use deque.
+  // Use deque for reference stability.
   std::deque<ImageMemoryBarrierBuilder> _imageBarrierBuilders;
   std::vector<VkImageMemoryBarrier2> _imageMemoryBarriers;
   // And other types of barriers below...

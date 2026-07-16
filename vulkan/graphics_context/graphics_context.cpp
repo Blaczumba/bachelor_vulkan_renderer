@@ -33,6 +33,8 @@
 #include "vulkan/resource_manager/pipeline_manager.h"
 #include "vulkan/resource_manager/sampler_manager.h"
 #include "vulkan/wrapper/command_buffer/command_buffer.h"
+#include "vulkan/wrapper/commands/dependency_info_builder.h"
+#include "vulkan/wrapper/commands/image_memory_barrier_builder.h"
 #include "vulkan/wrapper/commands/submit_info_builder.h"
 #include "vulkan/wrapper/debug_messenger/debug_messenger.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
@@ -46,8 +48,6 @@
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
 #include "vulkan/wrapper/util/index_buffer_util.h"
-#include "vulkan/wrapper/commands/dependency_info_builder.h"
-#include "vulkan/wrapper/commands/image_memory_barrier_builder.h"
 
 #define GCONTEXT_TEMPLATE template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 #define GCONTEXT_CLASS    GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
@@ -775,8 +775,6 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
   CommandBuffer::BeginInfoBuilder().beginCommandBuffer(
       primaryCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-  const VkCommandBuffer commandBuffer = primaryCommandBuffer.getVkCommandBuffer();
-
   const PushConstantFov fsrPc = {screenPos};
   primaryCommandBuffer.pushConstants(
       _fsrPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT,
@@ -789,25 +787,6 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
   primaryCommandBuffer.dispatchCompute(16, 16);
 
   const Image& fsrTexture = _gpuBufferManager->getImage(_fsrTextureHandle);
-  // VkImageMemoryBarrier2
-
-  const VkImageMemoryBarrier fsrBarrier = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-    .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-    .dstAccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
-    .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-    .newLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
-    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    .image = fsrTexture.getVkImage(),
-    .subresourceRange = {
-                         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                         .baseMipLevel = 0,
-                         .levelCount = fsrTexture.getMipLevelsCount(),
-                         .baseArrayLayer = 0,
-                         .layerCount = fsrTexture.getLayersCount(),
-                         }
-  };
   static DependencyInfoBuilder dependencyInfoBuilder;
   dependencyInfoBuilder.clearBuilders()
       .addImageMemoryBarrier()
@@ -817,18 +796,15 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
       .withLayouts(
           VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR)
       .withImage(fsrTexture.getVkImage(),
-                 VkImageSubresourceRange {
+                 VkImageSubresourceRange{
                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                    .baseMipLevel = 0,
                    .levelCount = fsrTexture.getMipLevelsCount(),
                    .baseArrayLayer = 0,
                    .layerCount = fsrTexture.getLayersCount(),
                  });
-
-  // VkDependencyInfo
-  vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                       VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, 0, 0, nullptr, 0,
-                       nullptr, 1, &fsrBarrier);
+  const VkDependencyInfo dependencyInfo = dependencyInfoBuilder.build();
+  primaryCommandBuffer.pipelineBarrier(&dependencyInfo);
 
   const auto& [framebuffer, framebufferData] =
       _framebufferAttachmentManager->getFramebufferWithMetadata(_framebuffers[imageIndex]);
@@ -864,9 +840,6 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
       secondaryCommandBuffer.setVieport(viewports);
       secondaryCommandBuffer.setScissor(scissors);
     }
-
-    // vkCmdBindPipeline(commandBuffer, _graphicsPipeline->getVkPipelineBindPoint(),
-    //                   _graphicsPipeline->getVkPipeline());
 
     const OctreeNode* root = _octree->getRoot();
     const auto& planes = extractFrustumPlanes(cameraProj * cameraView);
