@@ -1,4 +1,4 @@
-#include "vulkan/wrapper/commands/submit_info_builder.h"
+#include "vulkan/wrapper/builders/submit_info_builder.h"
 
 #include <cstdint>
 #include <initializer_list>

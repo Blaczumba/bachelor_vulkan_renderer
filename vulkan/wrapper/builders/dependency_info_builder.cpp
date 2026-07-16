@@ -1,4 +1,4 @@
-#include "vulkan/wrapper/commands/dependency_info_builder.h"
+#include "vulkan/wrapper/builders/dependency_info_builder.h"
 
 #include <algorithm>
 #include <iterator>

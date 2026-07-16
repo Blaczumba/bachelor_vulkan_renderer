@@ -1,4 +1,4 @@
-#include "vulkan/wrapper/commands/image_memory_barrier_builder.h"
+#include "vulkan/wrapper/builders/image_memory_barrier_builder.h"
 
 ImageMemoryBarrierBuilder& ImageMemoryBarrierBuilder::withSrcMasks(
     VkPipelineStageFlags2 stageMask, VkAccessFlags2 accessMask) noexcept {

@@ -7,7 +7,7 @@
 
 #include "common/abstractions/contexts.h"
 #include "lib/buffer/buffer.h"
-#include "vulkan/wrapper/commands/submit_info_builder.h"
+#include "vulkan/wrapper/builders/submit_info_builder.h"
 #include "vulkan/wrapper/swapchain/swapchain.h"
 
 namespace vlkn {

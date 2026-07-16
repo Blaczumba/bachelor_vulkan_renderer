@@ -3,7 +3,7 @@
 #include <deque>
 #include <vector>
 
-#include "vulkan/wrapper/commands/image_memory_barrier_builder.h"
+#include "vulkan/wrapper/builders/image_memory_barrier_builder.h"
 
 /*Builder pattern for safe construction of VkDependencyInfo.
 The class aggregates barrier builders because each builder

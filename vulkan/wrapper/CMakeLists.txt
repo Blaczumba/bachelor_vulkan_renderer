@@ -17,6 +17,6 @@ add_subdirectory(pipeline)
 add_subdirectory(descriptor_set)
 add_subdirectory(framebuffer)
 add_subdirectory(util)
-add_subdirectory(commands)
+add_subdirectory(builders)
 
 add_subdirectory(tests)

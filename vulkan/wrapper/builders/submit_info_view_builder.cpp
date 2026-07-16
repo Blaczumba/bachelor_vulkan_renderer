@@ -1,4 +1,4 @@
-#include "vulkan/wrapper/commands/submit_info_view_builder.h"
+#include "vulkan/wrapper/builders/submit_info_view_builder.h"
 
 SubmitInfoViewBuilder& SubmitInfoViewBuilder::withWaitSemaphores(
     std::span<const VkSemaphore> waitSemaphores,
