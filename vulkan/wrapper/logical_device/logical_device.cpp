@@ -178,6 +178,18 @@ VkImageView LogicalDevice::createImageView(const VkImageViewCreateInfo& imageVie
   return view;
 }
 
+VkResult LogicalDevice::waitForFences(
+    std::span<const VkFence> fences, VkBool32 waitAll, uint64_t timeout) {
+  return vkWaitForFences(
+      _device, static_cast<uint32_t>(fences.size()), fences.data(), waitAll, timeout);
+}
+
+VkResult LogicalDevice::waitForFences(
+    std::initializer_list<VkFence> fences, VkBool32 waitAll, uint64_t timeout) {
+  return vkWaitForFences(
+      _device, static_cast<uint32_t>(fences.size()), fences.data(), waitAll, timeout);
+}
+
 VkDevice LogicalDevice::getVkDevice() const noexcept {
   return _device;
 }

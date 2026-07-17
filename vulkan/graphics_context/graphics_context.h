@@ -37,6 +37,7 @@
 #include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
+#include "vulkan/wrapper/synchronization/fence.h"
 
 inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback1(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -93,7 +94,7 @@ private:
 
   uint8_t _currentFrame = 0;
 
-  std::array<VkFence, MAX_FRAMES_IN_FLIGHT> _frameFences;
+  std::array<Fence, MAX_FRAMES_IN_FLIGHT> _frameFences;
 
   std::shared_ptr<CommandPool> _singleTimeCommandPool;
 

@@ -1,4 +1,4 @@
-add_library(VulkanWrapperSynchronization fence.h fence.cpp)
+add_library(VulkanWrapperSynchronization fence.h fence.cpp semaphore.h semaphore.cpp)
 
 target_link_libraries(VulkanWrapperSynchronization PUBLIC Vulkan::Vulkan)
 

@@ -6,6 +6,7 @@
 #include <span>
 #include <utility>
 #include <vector>
+#include <initializer_list>
 #include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
@@ -113,8 +114,20 @@ void CommandBuffer::setVieport(
       _commandBuffer, firstVieport, static_cast<uint32_t>(viewports.size()), viewports.data());
 }
 
+void CommandBuffer::setVieport(
+    std::initializer_list<VkViewport> viewports, uint32_t firstVieport) const noexcept {
+  vkCmdSetViewport(
+      _commandBuffer, firstVieport, static_cast<uint32_t>(viewports.size()), viewports.data());
+}
+
 void CommandBuffer::setScissor(
     std::span<const VkRect2D> scissors, uint32_t firstScissor) const noexcept {
+  vkCmdSetScissor(
+      _commandBuffer, firstScissor, static_cast<uint32_t>(scissors.size()), scissors.data());
+}
+
+void CommandBuffer::setScissor(
+    std::initializer_list<VkRect2D> scissors, uint32_t firstScissor) const noexcept {
   vkCmdSetScissor(
       _commandBuffer, firstScissor, static_cast<uint32_t>(scissors.size()), scissors.data());
 }
@@ -135,6 +148,13 @@ void CommandBuffer::bindVertexBuffers(
                          buffers.data(), offsets.data());
 }
 
+void CommandBuffer::bindVertexBuffers(
+    std::initializer_list<VkBuffer> buffers, std::initializer_list<VkDeviceSize> offsets,
+    uint32_t firstBinding) const noexcept {
+  vkCmdBindVertexBuffers(_commandBuffer, firstBinding, static_cast<uint32_t>(buffers.size()),
+                         buffers.data(), offsets.data());
+}
+
 void CommandBuffer::bindIndexBuffer(
     VkBuffer buffer, VkIndexType indexType, VkDeviceSize offset) const noexcept {
   vkCmdBindIndexBuffer(_commandBuffer, buffer, offset, indexType);
@@ -146,7 +166,17 @@ void CommandBuffer::bindDescriptorSets(
     std::span<const uint32_t> dynamicOffsets) const noexcept {
   vkCmdBindDescriptorSets(_commandBuffer, pipelineBindPoint, layout, firstSet,
                           static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(),
-                          static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
+                          static_cast<uint32_t>(dynamicOffsets.size()),
+                          dynamicOffsets.size() == 0 ? nullptr : dynamicOffsets.data());
+}
+
+void CommandBuffer::bindDescriptorSets(
+    VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout,
+    std::initializer_list<VkDescriptorSet> descriptorSets, uint32_t firstSet,
+    std::initializer_list<uint32_t> dynamicOffsets) const noexcept {
+  vkCmdBindDescriptorSets(_commandBuffer, pipelineBindPoint, layout, firstSet,
+                          static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(),
+                          static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.size() == 0 ? nullptr : dynamicOffsets.data());
 }
 
 void CommandBuffer::pushConstants(VkPipelineLayout layout, VkShaderStageFlags stageFlags,
@@ -209,7 +239,6 @@ CommandBuffer::BeginInfoBuilder& CommandBuffer::BeginInfoBuilder::withInheritenc
     .occlusionQueryEnable = queryControlFlags.has_value() ? VK_TRUE : VK_FALSE,
     .queryFlags = queryControlFlags.value_or(0),
     .pipelineStatistics = pipelineStatistics};
-
   return *this;
 }
 

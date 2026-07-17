@@ -20,6 +20,8 @@ public:
 
   VkResult wait(uint64_t timeout = UINT64_MAX) const;
 
+  VkResult reset() const;
+
   VkFence getVkFence() const noexcept;
 
 private:
@@ -31,8 +33,10 @@ private:
 
 class FenceBuilder {
 public:
-  Fence build(const LogicalDevice& logicalDevice, VkFenceCreateFlags flags = {}) const;
+  Fence build(const LogicalDevice& logicalDevice, VkFenceCreateFlags flags = {});
 
 private:
+  VkFenceCreateFlags _flags;
+
   void* _pNext = nullptr;
 };

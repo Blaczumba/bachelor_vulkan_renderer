@@ -48,6 +48,7 @@
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
 #include "vulkan/wrapper/util/index_buffer_util.h"
+#include "vulkan/wrapper/synchronization/fence.h"
 
 #define GCONTEXT_TEMPLATE template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 #define GCONTEXT_CLASS    GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
@@ -413,11 +414,8 @@ void GCONTEXT_CLASS createCommandBuffers() {
 
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS createSyncObjects() {
-  static constexpr VkFenceCreateInfo fenceInfo = {
-    .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
-  for (VkFence& fence : _frameFences) {
-    CHECK_VKCMD(vkCreateFence(_logicalDevice->getVkDevice(), &fenceInfo, nullptr, &fence),
-                "Failed to create VkFence.");
+  for (Fence& fence : _frameFences) {
+    fence = FenceBuilder().build(*_logicalDevice, VK_FENCE_CREATE_SIGNALED_BIT);
   }
 }
 
@@ -781,9 +779,8 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
       std::span{reinterpret_cast<const std::byte*>(&fsrPc), sizeof(fsrPc)});
   primaryCommandBuffer.bindPipeline(
       _fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipeline());
-  const VkDescriptorSet fsrDescriptorSets[] = {_computeDescriptorSet.getVkDescriptorSet()};
-  primaryCommandBuffer.bindDescriptorSets(_fsrPipeline->getVkPipelineBindPoint(),
-                                          _fsrPipeline->getVkPipelineLayout(), fsrDescriptorSets);
+  primaryCommandBuffer.bindDescriptorSets(_fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipelineLayout(),
+      {_computeDescriptorSet.getVkDescriptorSet()});
   primaryCommandBuffer.dispatchCompute(16, 16);
 
   const Image& fsrTexture = _gpuBufferManager->getImage(_fsrTextureHandle);
@@ -901,11 +898,9 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
         _skyboxPipeline->getPushConstantVkShaderStageFlags(),
         std::span<const std::byte>(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
 
-    const VkDescriptorSet descriptorSets[] = {
-      _bindlessDescriptorSet.getVkDescriptorSet(), _dynamicDescriptorSet.getVkDescriptorSet()};
     secondaryCommandBuffer.bindDescriptorSets(
         _skyboxPipeline->getVkPipelineBindPoint(), _skyboxPipeline->getVkPipelineLayout(),
-        std::span(descriptorSets, 1));
+        {_bindlessDescriptorSet.getVkDescriptorSet()});
 
     secondaryCommandBuffer.drawIndexed(
         indexBufferMetadata.size / getIndexSize(cubeMeshComponent.indexType), 1);
@@ -1003,11 +998,8 @@ std::unique_ptr<common::GraphicsContext> GCONTEXT_CLASS create(
 
 GCONTEXT_TEMPLATE
 GCONTEXT_CLASS ~GraphicsContext() {
-  const VkDevice device = _logicalDevice->getVkDevice();
-
-  vkWaitForFences(device, MAX_FRAMES_IN_FLIGHT, _frameFences.data(), VK_TRUE, UINT64_MAX);
-  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vkDestroyFence(device, _frameFences[i], nullptr);
+  for (const Fence& fence : _frameFences) {
+    fence.wait();
   }
 }
 
@@ -1022,8 +1014,7 @@ void GCONTEXT_CLASS draw() {
                 "Failed to reset secondary command buffer.");
   }
 
-  CHECK_VKCMD(vkResetFences(_logicalDevice->getVkDevice(), 1, &_frameFences[_currentFrame]),
-              "Failed to wait for fence.");
+  CHECK_VKCMD(_frameFences[_currentFrame].reset(), "Failed to wait for fence.");
 
   const common::CameraContext& cameraContext = _communicationLayer->getCameraContexts()[0];
   const auto [screenx, screeny] = _communicationLayer->getScreenPos();
@@ -1037,7 +1028,7 @@ void GCONTEXT_CLASS draw() {
 
   CHECK_VKCMD(submitInfoBuilder
                   .withCommandBuffers({_primaryCommandBuffer[_currentFrame].getVkCommandBuffer()})
-                  .submitQueue(_logicalDevice->getGraphicsVkQueue(), _frameFences[_currentFrame]),
+                  .submitQueue(_logicalDevice->getGraphicsVkQueue(), _frameFences[_currentFrame].getVkFence()),
               "Failed to submit draw command buffer.");
 
   if (++_currentFrame == MAX_FRAMES_IN_FLIGHT) {
@@ -1056,8 +1047,7 @@ void GCONTEXT_CLASS initializeResources() {
 
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS waitCompleteExecution() const {
-  vkWaitForFences(
-      _logicalDevice->getVkDevice(), 1, &_frameFences[_currentFrame], VK_TRUE, UINT64_MAX);
+  CHECK_VKCMD(_frameFences[_currentFrame].wait(), "Failed to wait on VkFence.");
 }
 
 GCONTEXT_TEMPLATE

@@ -1,6 +1,7 @@
 #include "vulkan/wrapper/synchronization/fence.h"
 
 #include <vulkan/vulkan.h>
+#include <cstdint>
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"
@@ -44,6 +45,10 @@ VkResult Fence::wait(uint64_t timeout) const {
   return vkWaitForFences(_logicalDevice->getVkDevice(), 1, &_fence, VK_FALSE, timeout);
 }
 
+VkResult Fence::reset() const {
+  return vkResetFences(_logicalDevice->getVkDevice(), 1, &_fence);
+}
+
 VkFence Fence::getVkFence() const noexcept {
   return _fence;
 }
@@ -54,7 +59,9 @@ void Fence::destroy() {
   });
 }
 
-Fence FenceBuilder::build(const LogicalDevice& logicalDevice, VkFenceCreateFlags flags) const {
+Fence FenceBuilder::build(const LogicalDevice& logicalDevice, VkFenceCreateFlags flags) {
+  _flags = flags;
+
   const VkFenceCreateInfo createInfo = {
     .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = _pNext, .flags = flags};
   return Fence::create(logicalDevice, createInfo);

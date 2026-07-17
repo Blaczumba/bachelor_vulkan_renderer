@@ -7,6 +7,7 @@
 #include <optional>
 #include <span>
 #include <vector>
+#include <initializer_list>
 #include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/command_buffer/command_pool.h"
@@ -44,9 +45,16 @@ public:
 
   void setVieport(std::span<const VkViewport> viewports, uint32_t firstVieport = 0) const noexcept;
 
+  void setVieport(std::initializer_list<VkViewport> viewports, uint32_t firstVieport = 0) const noexcept;
+
   void setScissor(std::span<const VkRect2D> scissors, uint32_t firstScissor = 0) const noexcept;
+  
+  void setScissor(std::initializer_list<VkRect2D> scissors, uint32_t firstScissor = 0) const noexcept;
 
   void bindVertexBuffers(std::span<const VkBuffer> buffers, std::span<const VkDeviceSize> offsets,
+                         uint32_t firstBinding = 0) const noexcept;
+
+  void bindVertexBuffers(std::initializer_list<VkBuffer> buffers, std::initializer_list<VkDeviceSize> offsets,
                          uint32_t firstBinding = 0) const noexcept;
 
   void bindPipeline(VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline) const noexcept;
@@ -59,6 +67,10 @@ public:
   void bindDescriptorSets(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout,
                           std::span<const VkDescriptorSet> descriptorSets, uint32_t firstSet = 0,
                           std::span<const uint32_t> dynamicOffsets = {}) const noexcept;
+
+  void bindDescriptorSets(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout,
+                          std::initializer_list<VkDescriptorSet> descriptorSets, uint32_t firstSet = 0,
+                          std::initializer_list<uint32_t> dynamicOffsets = {}) const noexcept;
 
   void pushConstants(VkPipelineLayout layout, VkShaderStageFlags stageFlags,
                      std::span<const std::byte> data, uint32_t offset = 0) const noexcept;
