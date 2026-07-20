@@ -355,6 +355,7 @@ void GCONTEXT_CLASS createShadowResources() {
           .withAddressMode(
               VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
               VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
+          .withMinMagFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR)
           .withBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
           .build(*_logicalDevice);
   const Image& shadowMap = _gpuBufferManager->getImage(_shadowMapHandle);

@@ -187,7 +187,7 @@ VkResult LogicalDevice::waitForFences(
 VkResult LogicalDevice::waitForFences(
     std::initializer_list<VkFence> fences, VkBool32 waitAll, uint64_t timeout) {
   return vkWaitForFences(
-      _device, static_cast<uint32_t>(fences.size()), fences.data(), waitAll, timeout);
+      _device, static_cast<uint32_t>(fences.size()), fences.begin(), waitAll, timeout);
 }
 
 VkDevice LogicalDevice::getVkDevice() const noexcept {

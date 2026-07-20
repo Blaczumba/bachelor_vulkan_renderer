@@ -117,7 +117,7 @@ void CommandBuffer::setVieport(
 void CommandBuffer::setVieport(
     std::initializer_list<VkViewport> viewports, uint32_t firstVieport) const noexcept {
   vkCmdSetViewport(
-      _commandBuffer, firstVieport, static_cast<uint32_t>(viewports.size()), viewports.data());
+      _commandBuffer, firstVieport, static_cast<uint32_t>(viewports.size()), viewports.begin());
 }
 
 void CommandBuffer::setScissor(
@@ -129,7 +129,7 @@ void CommandBuffer::setScissor(
 void CommandBuffer::setScissor(
     std::initializer_list<VkRect2D> scissors, uint32_t firstScissor) const noexcept {
   vkCmdSetScissor(
-      _commandBuffer, firstScissor, static_cast<uint32_t>(scissors.size()), scissors.data());
+      _commandBuffer, firstScissor, static_cast<uint32_t>(scissors.size()), scissors.begin());
 }
 
 void CommandBuffer::bindPipeline(
@@ -152,7 +152,7 @@ void CommandBuffer::bindVertexBuffers(
     std::initializer_list<VkBuffer> buffers, std::initializer_list<VkDeviceSize> offsets,
     uint32_t firstBinding) const noexcept {
   vkCmdBindVertexBuffers(_commandBuffer, firstBinding, static_cast<uint32_t>(buffers.size()),
-                         buffers.data(), offsets.data());
+                         buffers.begin(), offsets.begin());
 }
 
 void CommandBuffer::bindIndexBuffer(
@@ -175,8 +175,8 @@ void CommandBuffer::bindDescriptorSets(
     std::initializer_list<VkDescriptorSet> descriptorSets, uint32_t firstSet,
     std::initializer_list<uint32_t> dynamicOffsets) const noexcept {
   vkCmdBindDescriptorSets(_commandBuffer, pipelineBindPoint, layout, firstSet,
-                          static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(),
-                          static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.size() == 0 ? nullptr : dynamicOffsets.data());
+                          static_cast<uint32_t>(descriptorSets.size()), descriptorSets.begin(),
+                          static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.size() == 0 ? nullptr : dynamicOffsets.begin());
 }
 
 void CommandBuffer::pushConstants(VkPipelineLayout layout, VkShaderStageFlags stageFlags,
