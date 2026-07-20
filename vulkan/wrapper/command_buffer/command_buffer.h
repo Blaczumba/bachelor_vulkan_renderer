@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <optional>
 #include <span>
 #include <vector>
-#include <initializer_list>
 #include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/command_buffer/command_pool.h"
@@ -38,24 +38,28 @@ public:
 
   ~CommandBuffer();
 
-  void beginRenderPass(const Framebuffer& framebuffer, VkExtent2D framebufferExtent,
-                       std::span<const VkClearValue> clearValues) const;
+  void beginRenderPass(
+      VkSubpassContents subpassContents, const Framebuffer& framebuffer,
+      VkExtent2D framebufferExtent, std::span<const VkClearValue> clearValues) const;
 
   void endRenderPass() const;
 
   void setVieport(std::span<const VkViewport> viewports, uint32_t firstVieport = 0) const noexcept;
 
-  void setVieport(std::initializer_list<VkViewport> viewports, uint32_t firstVieport = 0) const noexcept;
+  void setVieport(
+      std::initializer_list<VkViewport> viewports, uint32_t firstVieport = 0) const noexcept;
 
   void setScissor(std::span<const VkRect2D> scissors, uint32_t firstScissor = 0) const noexcept;
-  
-  void setScissor(std::initializer_list<VkRect2D> scissors, uint32_t firstScissor = 0) const noexcept;
+
+  void setScissor(
+      std::initializer_list<VkRect2D> scissors, uint32_t firstScissor = 0) const noexcept;
 
   void bindVertexBuffers(std::span<const VkBuffer> buffers, std::span<const VkDeviceSize> offsets,
                          uint32_t firstBinding = 0) const noexcept;
 
-  void bindVertexBuffers(std::initializer_list<VkBuffer> buffers, std::initializer_list<VkDeviceSize> offsets,
-                         uint32_t firstBinding = 0) const noexcept;
+  void bindVertexBuffers(
+      std::initializer_list<VkBuffer> buffers, std::initializer_list<VkDeviceSize> offsets,
+      uint32_t firstBinding = 0) const noexcept;
 
   void bindPipeline(VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline) const noexcept;
 
@@ -68,9 +72,10 @@ public:
                           std::span<const VkDescriptorSet> descriptorSets, uint32_t firstSet = 0,
                           std::span<const uint32_t> dynamicOffsets = {}) const noexcept;
 
-  void bindDescriptorSets(VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout,
-                          std::initializer_list<VkDescriptorSet> descriptorSets, uint32_t firstSet = 0,
-                          std::initializer_list<uint32_t> dynamicOffsets = {}) const noexcept;
+  void bindDescriptorSets(
+      VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout,
+      std::initializer_list<VkDescriptorSet> descriptorSets, uint32_t firstSet = 0,
+      std::initializer_list<uint32_t> dynamicOffsets = {}) const noexcept;
 
   void pushConstants(VkPipelineLayout layout, VkShaderStageFlags stageFlags,
                      std::span<const std::byte> data, uint32_t offset = 0) const noexcept;
@@ -113,11 +118,13 @@ public:
 
   VkCommandBuffer getVkCommandBuffer() const noexcept;
 
-private:
+protected:
   VkCommandBuffer _commandBuffer = VK_NULL_HANDLE;
   std::shared_ptr<const CommandPool> _commandPool;
 
   VkCommandBufferLevel _level;
+
+  void destroy();
 };
 
 namespace internal {
@@ -160,19 +167,3 @@ std::array<CommandBuffer, COUNT> CommandPool::createCommandBuffers(
     VkCommandBufferLevel level) const {
   return CommandBuffer::create<COUNT>(shared_from_this(), level);
 }
-
-class SingleTimeCommandBuffer {
-  VkCommandBuffer _commandBuffer;
-  VkFence _fence;
-  const QueueType _queueType;
-
-  const CommandPool& _commandPool;
-
-public:
-  SingleTimeCommandBuffer(
-      const CommandPool& commandPool, QueueType queueType = QueueType::GRAPHICS);
-
-  ~SingleTimeCommandBuffer();
-
-  VkCommandBuffer getCommandBuffer() const noexcept;
-};

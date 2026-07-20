@@ -1,12 +1,12 @@
 #include "command_buffer.h"
 
 #include <cstdint>
+#include <initializer_list>
 #include <iterator>
 #include <memory>
 #include <span>
 #include <utility>
 #include <vector>
-#include <initializer_list>
 #include <vulkan/vulkan.h>
 
 #include "common/util/engine_exception.h"
@@ -40,6 +40,10 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& other) noexcept {
     return *this;
   }
 
+  if (_commandBuffer != VK_NULL_HANDLE) {
+    destroy();
+  }
+
   _commandPool = std::move(other._commandPool);
   _commandBuffer = std::exchange(other._commandBuffer, VK_NULL_HANDLE);
   _level = other._level;
@@ -48,11 +52,7 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& other) noexcept {
 
 CommandBuffer::~CommandBuffer() {
   if (_commandBuffer != VK_NULL_HANDLE) {
-    _commandPool->getLogicalDevice().destroyResource(
-        [pool = _commandPool->getVkCommandPool(),
-         buffer = _commandBuffer](DestroyerContext context) {
-          vkFreeCommandBuffers(context.device, pool, 1, &buffer);
-        });
+    destroy();
   }
 }
 
@@ -84,8 +84,9 @@ std::vector<CommandBuffer> CommandBuffer::create(
   return commandBuffers;
 }
 
-void CommandBuffer::beginRenderPass(const Framebuffer& framebuffer, VkExtent2D framebufferExtent,
-                                    std::span<const VkClearValue> clearValues) const {
+void CommandBuffer::beginRenderPass(
+    VkSubpassContents subpassContents, const Framebuffer& framebuffer, VkExtent2D framebufferExtent,
+    std::span<const VkClearValue> clearValues) const {
   if (_level != VK_COMMAND_BUFFER_LEVEL_PRIMARY) [[unlikely]] {
     throw EngineException(
         "Cannot begin renderpass without VK_COMMAND_BUFFER_LEVEL_PRIMARY specified.");
@@ -100,8 +101,7 @@ void CommandBuffer::beginRenderPass(const Framebuffer& framebuffer, VkExtent2D f
     .clearValueCount = static_cast<uint32_t>(clearValues.size()),
     .pClearValues = clearValues.data()
   };
-  vkCmdBeginRenderPass(
-      _commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+  vkCmdBeginRenderPass(_commandBuffer, &renderPassInfo, subpassContents);
 }
 
 void CommandBuffer::endRenderPass() const {
@@ -176,7 +176,8 @@ void CommandBuffer::bindDescriptorSets(
     std::initializer_list<uint32_t> dynamicOffsets) const noexcept {
   vkCmdBindDescriptorSets(_commandBuffer, pipelineBindPoint, layout, firstSet,
                           static_cast<uint32_t>(descriptorSets.size()), descriptorSets.begin(),
-                          static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.size() == 0 ? nullptr : dynamicOffsets.begin());
+                          static_cast<uint32_t>(dynamicOffsets.size()),
+                          dynamicOffsets.size() == 0 ? nullptr : dynamicOffsets.begin());
 }
 
 void CommandBuffer::pushConstants(VkPipelineLayout layout, VkShaderStageFlags stageFlags,
@@ -271,46 +272,9 @@ VkCommandBuffer CommandBuffer::getVkCommandBuffer() const noexcept {
   return _commandBuffer;
 }
 
-SingleTimeCommandBuffer::SingleTimeCommandBuffer(
-    const CommandPool& commandPool, QueueType queueType)
-  : _commandPool(commandPool), _queueType(queueType) {
-  const VkDevice device = _commandPool.getLogicalDevice().getVkDevice();
-  const VkFenceCreateInfo fenceInfo = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-
-  vkCreateFence(device, &fenceInfo, nullptr, &_fence);
-
-  const VkCommandBufferAllocateInfo allocInfo = {
-    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-    .commandPool = _commandPool.getVkCommandPool(),
-    .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-    .commandBufferCount = 1};
-
-  vkAllocateCommandBuffers(device, &allocInfo, &_commandBuffer);
-
-  const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                              .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
-
-  vkBeginCommandBuffer(_commandBuffer, &beginInfo);
-}
-
-SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
-  const LogicalDevice& logicalDevice = _commandPool.getLogicalDevice();
-  const VkDevice device = logicalDevice.getVkDevice();
-
-  vkEndCommandBuffer(_commandBuffer);
-
-  const VkSubmitInfo submitInfo = {
-    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-    .commandBufferCount = 1,
-    .pCommandBuffers = &_commandBuffer};
-
-  vkQueueSubmit(logicalDevice.getVkQueue(_queueType), 1, &submitInfo, _fence);
-  vkWaitForFences(device, 1, &_fence, VK_TRUE, UINT64_MAX);
-  vkDestroyFence(device, _fence, nullptr);
-
-  vkFreeCommandBuffers(device, _commandPool.getVkCommandPool(), 1, &_commandBuffer);
-}
-
-VkCommandBuffer SingleTimeCommandBuffer::getCommandBuffer() const noexcept {
-  return _commandBuffer;
+void CommandBuffer::destroy() {
+  _commandPool->getLogicalDevice().destroyResource(
+      [pool = _commandPool->getVkCommandPool(), buffer = _commandBuffer](DestroyerContext context) {
+        vkFreeCommandBuffers(context.device, pool, 1, &buffer);
+      });
 }

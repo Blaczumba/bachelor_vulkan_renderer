@@ -36,6 +36,7 @@
 #include "vulkan/wrapper/builders/image_memory_barrier_builder.h"
 #include "vulkan/wrapper/builders/submit_info_builder.h"
 #include "vulkan/wrapper/command_buffer/command_buffer.h"
+#include "vulkan/wrapper/command_buffer/single_time_command_buffer.h"
 #include "vulkan/wrapper/debug_messenger/debug_messenger.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_pool.h"
 #include "vulkan/wrapper/descriptor_set/descriptor_set.h"
@@ -47,8 +48,8 @@
 #include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
-#include "vulkan/wrapper/util/index_buffer_util.h"
 #include "vulkan/wrapper/synchronization/fence.h"
+#include "vulkan/wrapper/util/index_buffer_util.h"
 
 #define GCONTEXT_TEMPLATE template <bool SYNCED_OUTSIDE, bool MULTIVIEW_PRESENTATION>
 #define GCONTEXT_CLASS    GraphicsContext<SYNCED_OUTSIDE, MULTIVIEW_PRESENTATION>::
@@ -146,7 +147,7 @@ void GCONTEXT_CLASS setup() {
 
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+    const VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
 
     std::string cubeFileContents = _fileLoader.loadFileToString(MODELS_PATH "cube.obj");
     common::VertexData cubeData = common::loadObj(*_assetManager, "cube.obj", cubeFileContents);
@@ -185,8 +186,8 @@ void GCONTEXT_CLASS setup() {
   createOctreeScene();
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-    recordShadowCommandBuffer(handle.getCommandBuffer());
-    recordEnvMappingCommandBuffer(handle.getCommandBuffer());
+    recordShadowCommandBuffer(handle);
+    recordEnvMappingCommandBuffer(handle.getVkCommandBuffer());
   }
 }
 
@@ -275,11 +276,11 @@ void GCONTEXT_CLASS createEnvMappingResources() {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
 
     _envMappingAttachments[0] = createCubemap(
-        *_logicalDevice, handle.getCommandBuffer(), VK_IMAGE_ASPECT_COLOR_BIT,
+        *_logicalDevice, handle.getVkCommandBuffer(), VK_IMAGE_ASPECT_COLOR_BIT,
         VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, samplerAnisotropy);
     _envMappingAttachments[1] = createCubemap(
-        *_logicalDevice, handle.getCommandBuffer(), VK_IMAGE_ASPECT_DEPTH_BIT, VK_FORMAT_D16_UNORM,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, samplerAnisotropy);
+        *_logicalDevice, handle.getVkCommandBuffer(), VK_IMAGE_ASPECT_DEPTH_BIT,
+        VK_FORMAT_D16_UNORM, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, samplerAnisotropy);
   }
 
   _envMappingAttachmentLayout.addColorAttachment(
@@ -345,7 +346,7 @@ void GCONTEXT_CLASS createShadowResources() {
   {
     // TODO: Should not be in this function.
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+    const VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
     _shadowMapHandle = _gpuBufferManager->transferImage(
         createShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT));
   }
@@ -457,7 +458,7 @@ void GCONTEXT_CLASS loadObjects(
           textureCache;
   textureCache.reserve(sceneData.size());
   SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-  const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+  const VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
   Sampler sampler = SamplerBuilder()
                         .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
                         .withLodRange(0.0f, VK_LOD_CLAMP_NONE)
@@ -530,68 +531,51 @@ void GCONTEXT_CLASS createOctreeScene() {
 }
 
 GCONTEXT_TEMPLATE
-void GCONTEXT_CLASS recordShadowCommandBuffer(VkCommandBuffer commandBuffer) {
-  const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+void GCONTEXT_CLASS recordShadowCommandBuffer(const CommandBuffer& commandBuffer) {
+  const VkExtent2D extent = _gpuBufferManager->getImage(_shadowMapHandle).getVkExtent2D();
 
-  VkExtent2D extent = _gpuBufferManager->getImage(_shadowMapHandle).getVkExtent2D();
-
-  std::span<const VkClearValue> clearValues = _shadowAttachmentLayout.getVkClearValues();
-
-  const VkRenderPassBeginInfo renderPassInfo = {
-    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    .renderPass = _shadowRenderPass.getVkRenderPass(),
-    .framebuffer =
-        _framebufferAttachmentManager->getFramebuffer(_shadowFramebuffer).getVkFramebuffer(),
-    .renderArea = {.offset = {0, 0}, .extent = extent},
-    .clearValueCount = static_cast<uint32_t>(clearValues.size()),
-    .pClearValues = clearValues.data()
+  const VkViewport viewports[] = {
+    VkViewport{.width = static_cast<float>(extent.width),
+               .height = static_cast<float>(extent.height),
+               .minDepth = 0.0f,
+               .maxDepth = 1.0f}
   };
+  const VkRect2D scissors[] = {VkRect2D{.extent = extent}};
+  commandBuffer.setVieport(viewports);
+  commandBuffer.setScissor(scissors);
 
-  vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+  const Framebuffer& framebuffer =
+      _framebufferAttachmentManager->getFramebuffer(_shadowFramebuffer);
+  commandBuffer.beginRenderPass(
+      VK_SUBPASS_CONTENTS_INLINE, framebuffer, extent, _shadowAttachmentLayout.getVkClearValues());
 
-  const VkViewport viewport = {
-    .x = 0.0f,
-    .y = 0.0f,
-    .width = static_cast<float>(extent.width),
-    .height = static_cast<float>(extent.height),
-    .minDepth = 0.0f,
-    .maxDepth = 1.0f};
-  vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-  const VkRect2D scissor = {
-    .offset = {0, 0},
-      .extent = extent
-  };
-  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-  const VkDeviceSize offsets[] = {0};
-  vkCmdBindPipeline(
-      commandBuffer, _shadowPipeline->getVkPipelineBindPoint(), _shadowPipeline->getVkPipeline());
+  commandBuffer.bindPipeline(
+      _shadowPipeline->getVkPipelineBindPoint(), _shadowPipeline->getVkPipeline());
 
   PushConstantsShadow pc = {.lightProjView = _ubLight.projView};
+  static constexpr VkDeviceSize offsets[] = {0};
 
   for (const Object& object : _objects) {
     const auto& meshComponent = _registry.getComponent<MeshComponent>(object.getEntity());
     const auto& transformComponent = _registry.getComponent<TransformComponent>(object.getEntity());
 
     pc.model = transformComponent.model;
+    commandBuffer.pushConstants(_shadowPipeline->getVkPipelineLayout(),
+                                _shadowPipeline->getPushConstantVkShaderStageFlags(),
+                                std::span(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
 
-    vkCmdPushConstants(commandBuffer, _shadowPipeline->getVkPipelineLayout(),
-                       _shadowPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
+    const VkBuffer vertexBuffers[] = {
+      _gpuBufferManager->getBuffer(meshComponent.vertexBufferPrimitiveHandle).buffer.getVkBuffer()};
+    commandBuffer.bindVertexBuffers(vertexBuffers, offsets);
 
-    VkBuffer vertexBuffer = _gpuBufferManager->getBuffer(meshComponent.vertexBufferPrimitiveHandle)
-                                .buffer.getVkBuffer();
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
-
-    const BufferWithMetadata& indexBuffer =
+    const auto& [indexBuffer, indexBufferMetadata] =
         _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
-    vkCmdBindIndexBuffer(
-        commandBuffer, indexBuffer.buffer.getVkBuffer(), 0, meshComponent.indexType);
-    vkCmdDrawIndexed(commandBuffer,
-                     indexBuffer.metadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
+    commandBuffer.bindIndexBuffer(indexBuffer.getVkBuffer(), meshComponent.indexType);
+
+    commandBuffer.drawIndexed(indexBufferMetadata.size / getIndexSize(meshComponent.indexType), 1);
   }
 
-  vkCmdEndRenderPass(commandBuffer);
+  commandBuffer.endRenderPass();
 }
 
 GCONTEXT_TEMPLATE
@@ -780,7 +764,8 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
       std::span{reinterpret_cast<const std::byte*>(&fsrPc), sizeof(fsrPc)});
   primaryCommandBuffer.bindPipeline(
       _fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipeline());
-  primaryCommandBuffer.bindDescriptorSets(_fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipelineLayout(),
+  primaryCommandBuffer.bindDescriptorSets(
+      _fsrPipeline->getVkPipelineBindPoint(), _fsrPipeline->getVkPipelineLayout(),
       {_computeDescriptorSet.getVkDescriptorSet()});
   primaryCommandBuffer.dispatchCompute(16, 16);
 
@@ -816,7 +801,8 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
   primaryCommandBuffer.setVieport(viewports);
   primaryCommandBuffer.setScissor(scissors);
   primaryCommandBuffer.beginRenderPass(
-      framebuffer, framebufferData.metadata.extent, _attachmentLayout.getVkClearValues());
+      VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS, framebuffer, framebufferData.metadata.extent,
+      _attachmentLayout.getVkClearValues());
 
   auto beginInfoBuilder = CommandBuffer::BeginInfoBuilder().withInheritenceInfo(
       framebuffer.getRenderpass().getVkRenderPass(), framebuffer.getVkFramebuffer(), 0);
@@ -1029,7 +1015,8 @@ void GCONTEXT_CLASS draw() {
 
   CHECK_VKCMD(submitInfoBuilder
                   .withCommandBuffers({_primaryCommandBuffer[_currentFrame].getVkCommandBuffer()})
-                  .submitQueue(_logicalDevice->getGraphicsVkQueue(), _frameFences[_currentFrame].getVkFence()),
+                  .submitQueue(_logicalDevice->getGraphicsVkQueue(),
+                               _frameFences[_currentFrame].getVkFence()),
               "Failed to submit draw command buffer.");
 
   if (++_currentFrame == MAX_FRAMES_IN_FLIGHT) {
@@ -1071,7 +1058,7 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
   lib::Buffer<GpuImageHandle> attachmentHandles;
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-    const VkCommandBuffer commandBuffer = handle.getCommandBuffer();
+    const VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
     GpuImageHandle collorAttachmentHandle = _gpuBufferManager->transferImage(createAttachment(
         *_logicalDevice, commandBuffer, swapchainImageFormat, msaaSamples, extent,
         presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
@@ -1262,8 +1249,8 @@ void createFsrContents(
     };
   }
   SingleTimeCommandBuffer handle(commandPool);
-  texture.copyFromBuffer(handle.getCommandBuffer(), stagingBuffer.getVkBuffer(), imageCopy);
-  texture.transitionLayout(handle.getCommandBuffer(), VK_IMAGE_LAYOUT_GENERAL);
+  texture.copyFromBuffer(handle.getVkCommandBuffer(), stagingBuffer.getVkBuffer(), imageCopy);
+  texture.transitionLayout(handle.getVkCommandBuffer(), VK_IMAGE_LAYOUT_GENERAL);
 }
 
 }  // namespace

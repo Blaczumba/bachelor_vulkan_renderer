@@ -202,7 +202,7 @@ private:
 
   void createOctreeScene();
 
-  void recordShadowCommandBuffer(VkCommandBuffer commandBuffer);
+  void recordShadowCommandBuffer(const CommandBuffer& commandBuffer);
 
   void recordEnvMappingCommandBuffer(VkCommandBuffer commandBuffer);
 

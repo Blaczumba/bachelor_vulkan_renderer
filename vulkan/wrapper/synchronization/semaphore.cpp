@@ -1,6 +1,7 @@
 #include "vulkan/wrapper/synchronization/semaphore.h"
 
 #include <vulkan/vulkan.h>
+
 #include "vulkan/wrapper/util/check.h"
 
 namespace {
@@ -75,8 +76,6 @@ Semaphore SemaphoreBuilder::build(
   }
 
   const VkSemaphoreCreateInfo createInfo = {
-      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-      .pNext = _pNext,
-      .flags = _flags};
+    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = _pNext, .flags = _flags};
   return Semaphore::create(logicalDevice, createInfo);
 }

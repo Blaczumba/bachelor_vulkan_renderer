@@ -1,7 +1,7 @@
 #include "vulkan/wrapper/synchronization/fence.h"
 
-#include <vulkan/vulkan.h>
 #include <cstdint>
+#include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/util/check.h"

@@ -12,7 +12,8 @@ class Semaphore {
 public:
   Semaphore() noexcept = default;
 
-  static Semaphore create(const LogicalDevice& logicalDevice, const VkSemaphoreCreateInfo& createInfo);
+  static Semaphore create(
+      const LogicalDevice& logicalDevice, const VkSemaphoreCreateInfo& createInfo);
 
   Semaphore(Semaphore&& other) noexcept;
 
