@@ -204,7 +204,7 @@ private:
 
   void recordShadowCommandBuffer(const CommandBuffer& commandBuffer);
 
-  void recordEnvMappingCommandBuffer(VkCommandBuffer commandBuffer);
+  void recordEnvMappingCommandBuffer(const CommandBuffer& commandBuffer);
 
   void updateUniformBuffer(uint32_t currentFrame);
 

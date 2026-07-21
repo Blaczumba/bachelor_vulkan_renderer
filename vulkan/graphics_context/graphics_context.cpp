@@ -187,7 +187,7 @@ void GCONTEXT_CLASS setup() {
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     recordShadowCommandBuffer(handle);
-    recordEnvMappingCommandBuffer(handle.getVkCommandBuffer());
+    recordEnvMappingCommandBuffer(handle);
   }
 }
 
@@ -533,16 +533,13 @@ void GCONTEXT_CLASS createOctreeScene() {
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordShadowCommandBuffer(const CommandBuffer& commandBuffer) {
   const VkExtent2D extent = _gpuBufferManager->getImage(_shadowMapHandle).getVkExtent2D();
-
-  const VkViewport viewports[] = {
+  commandBuffer.setVieport({
     VkViewport{.width = static_cast<float>(extent.width),
                .height = static_cast<float>(extent.height),
                .minDepth = 0.0f,
                .maxDepth = 1.0f}
-  };
-  const VkRect2D scissors[] = {VkRect2D{.extent = extent}};
-  commandBuffer.setVieport(viewports);
-  commandBuffer.setScissor(scissors);
+  });
+  commandBuffer.setScissor({VkRect2D{.extent = extent}});
 
   const Framebuffer& framebuffer =
       _framebufferAttachmentManager->getFramebuffer(_shadowFramebuffer);
@@ -553,81 +550,59 @@ void GCONTEXT_CLASS recordShadowCommandBuffer(const CommandBuffer& commandBuffer
       _shadowPipeline->getVkPipelineBindPoint(), _shadowPipeline->getVkPipeline());
 
   PushConstantsShadow pc = {.lightProjView = _ubLight.projView};
-  static constexpr VkDeviceSize offsets[] = {0};
 
   for (const Object& object : _objects) {
-    const auto& meshComponent = _registry.getComponent<MeshComponent>(object.getEntity());
-    const auto& transformComponent = _registry.getComponent<TransformComponent>(object.getEntity());
+    const MeshComponent& meshComponent = _registry.getComponent<MeshComponent>(object.getEntity());
+    const TransformComponent& transformComponent =
+        _registry.getComponent<TransformComponent>(object.getEntity());
 
     pc.model = transformComponent.model;
     commandBuffer.pushConstants(_shadowPipeline->getVkPipelineLayout(),
                                 _shadowPipeline->getPushConstantVkShaderStageFlags(),
                                 std::span(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
 
-    const VkBuffer vertexBuffers[] = {
-      _gpuBufferManager->getBuffer(meshComponent.vertexBufferPrimitiveHandle).buffer.getVkBuffer()};
-    commandBuffer.bindVertexBuffers(vertexBuffers, offsets);
+    commandBuffer.bindVertexBuffers(
+        {_gpuBufferManager->getBuffer(meshComponent.vertexBufferPrimitiveHandle)
+             .buffer.getVkBuffer()},
+        {0});
 
     const auto& [indexBuffer, indexBufferMetadata] =
         _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
     commandBuffer.bindIndexBuffer(indexBuffer.getVkBuffer(), meshComponent.indexType);
-
     commandBuffer.drawIndexed(indexBufferMetadata.size / getIndexSize(meshComponent.indexType), 1);
   }
-
   commandBuffer.endRenderPass();
 }
 
 GCONTEXT_TEMPLATE
-void GCONTEXT_CLASS recordEnvMappingCommandBuffer(VkCommandBuffer commandBuffer) {
-  const VkCommandBufferBeginInfo beginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+void GCONTEXT_CLASS recordEnvMappingCommandBuffer(const CommandBuffer& commandBuffer) {
+  const VkExtent2D extent = _envMappingAttachments[0].getVkExtent2D();
+  commandBuffer.setVieport({
+    VkViewport{.width = static_cast<float>(extent.width),
+               .height = static_cast<float>(extent.height),
+               .minDepth = 0.0f,
+               .maxDepth = 1.0f}
+  });
+  commandBuffer.setScissor({VkRect2D{.extent = extent}});
 
-  VkExtent2D extent = _envMappingAttachments[0].getVkExtent2D();
+  const Framebuffer& framebuffer =
+      _framebufferAttachmentManager->getFramebuffer(_envMappingFramebuffer);
+  commandBuffer.beginRenderPass(VK_SUBPASS_CONTENTS_INLINE, framebuffer, extent,
+                                _envMappingAttachmentLayout.getVkClearValues());
 
-  std::span<const VkClearValue> clearValues = _envMappingAttachmentLayout.getVkClearValues();
+  commandBuffer.bindPipeline(
+      _envMappingPipeline->getVkPipelineBindPoint(), _envMappingPipeline->getVkPipeline());
 
-  const VkRenderPassBeginInfo renderPassInfo = {
-    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    .renderPass = _envMappingRenderPass.getVkRenderPass(),
-    .framebuffer =
-        _framebufferAttachmentManager->getFramebuffer(_envMappingFramebuffer).getVkFramebuffer(),
-    .renderArea = {.offset = {0, 0}, .extent = extent},
-    .clearValueCount = static_cast<uint32_t>(clearValues.size()),
-    .pClearValues = clearValues.data()
-  };
-
-  vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-  const VkViewport viewport = {
-    .x = 0.0f,
-    .y = 0.0f,
-    .width = static_cast<float>(extent.width),
-    .height = static_cast<float>(extent.height),
-    .minDepth = 0.0f,
-    .maxDepth = 1.0f};
-  vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-  const VkRect2D scissor = {
-    .offset = {0, 0},
-      .extent = extent
-  };
-  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-  const VkDescriptorSet descriptorSets[] = {_bindlessDescriptorSet.getVkDescriptorSet()};
-
-  vkCmdBindPipeline(commandBuffer, _envMappingPipeline->getVkPipelineBindPoint(),
-                    _envMappingPipeline->getVkPipeline());
-
-  vkCmdBindDescriptorSets(
-      commandBuffer, _envMappingPipeline->getVkPipelineBindPoint(),
-      _envMappingPipeline->getVkPipelineLayout(), 0, 1, descriptorSets, 0, nullptr);
-
-  const VkDeviceSize offsets[] = {0};
+  commandBuffer.bindDescriptorSets(
+      _envMappingPipeline->getVkPipelineBindPoint(), _envMappingPipeline->getVkPipelineLayout(),
+      {_bindlessDescriptorSet.getVkDescriptorSet()});
 
   for (const Object& object : _objects) {
-    const auto& meshComponent = _registry.getComponent<MeshComponent>(object.getEntity());
-    const auto& transformComponent = _registry.getComponent<TransformComponent>(object.getEntity());
-    const auto& materialComponent = _registry.getComponent<MaterialComponent>(object.getEntity());
+    const MeshComponent& meshComponent = _registry.getComponent<MeshComponent>(object.getEntity());
+    const TransformComponent& transformComponent =
+        _registry.getComponent<TransformComponent>(object.getEntity());
+    const MaterialComponent& materialComponent =
+        _registry.getComponent<MaterialComponent>(object.getEntity());
 
     const PushConstantsModelDescriptorHandles32Bit pc = {
       .model = transformComponent.model,
@@ -637,25 +612,19 @@ void GCONTEXT_CLASS recordEnvMappingCommandBuffer(VkCommandBuffer commandBuffer)
                             static_cast<uint32_t>(*materialComponent.metallicRoughness),
                             static_cast<uint32_t>(*_shadowHandle)}
     };
+    commandBuffer.pushConstants(_envMappingPipeline->getVkPipelineLayout(),
+                                _envMappingPipeline->getPushConstantVkShaderStageFlags(),
+                                std::span(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
 
-    vkCmdPushConstants(
-        commandBuffer, _envMappingPipeline->getVkPipelineLayout(),
-        _envMappingPipeline->getPushConstantVkShaderStageFlags(), 0, sizeof(pc), &pc);
+    commandBuffer.bindVertexBuffers(
+        {_gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle).buffer.getVkBuffer()}, {0});
 
-    VkBuffer vertexBuffer =
-        _gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle).buffer.getVkBuffer();
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
-
-    const BufferWithMetadata& indexBuffer =
+    const auto& [indexBuffer, indexBufferMetadata] =
         _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
-    vkCmdBindIndexBuffer(
-        commandBuffer, indexBuffer.buffer.getVkBuffer(), 0, meshComponent.indexType);
-
-    vkCmdDrawIndexed(commandBuffer,
-                     indexBuffer.metadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
+    commandBuffer.bindIndexBuffer(indexBuffer.getVkBuffer(), meshComponent.indexType);
+    commandBuffer.drawIndexed(indexBufferMetadata.size / getIndexSize(meshComponent.indexType), 1);
   }
-
-  vkCmdEndRenderPass(commandBuffer);
+  commandBuffer.endRenderPass();
 }
 
 GCONTEXT_TEMPLATE

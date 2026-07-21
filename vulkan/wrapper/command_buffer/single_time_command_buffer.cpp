@@ -14,9 +14,11 @@ SingleTimeCommandBuffer::SingleTimeCommandBuffer(
 }
 
 SingleTimeCommandBuffer::~SingleTimeCommandBuffer() {
-  end();
-  SubmitInfoBuilder()
-      .withCommandBuffers({_commandBuffer})
-      .submitQueue(_commandPool->getLogicalDevice().getVkQueue(_queueType), _fence.getVkFence());
-  _fence.wait();
+  CHECK_VKCMD(end(), "Failed to end single time command buffer.");
+  CHECK_VKCMD(SubmitInfoBuilder()
+                  .withCommandBuffers({_commandBuffer})
+                  .submitQueue(
+                      _commandPool->getLogicalDevice().getVkQueue(_queueType), _fence.getVkFence()),
+              "Failed to submit single time command buffer.");
+  CHECK_VKCMD(_fence.wait(), "Failed to wait for fence.");
 }
