@@ -12,22 +12,13 @@
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
 #include "vulkan/wrapper/memory_objects/memory_objects_lib.h"
 
-Image::Image(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
-             VkImageType type, VkFormat format, VkExtent3D extent, VkImageAspectFlags aspect,
-             VkImageCreateFlags createFlags, uint32_t mipLevels, uint32_t layerCount,
-             VkImageLayout layout) noexcept
-  : _logicalDevice(&logicalDevice), _image(image), _allocation(allocation), _imageType(type),
-    _imageFormat(format), _imageExtent(extent), _imageAspect(aspect),
-    _imageCreateFlags(createFlags), _mipLevels(mipLevels), _layerCount(layerCount),
-    _layout(layout) {}
+Image::Image(
+    const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation) noexcept
+  : _logicalDevice(&logicalDevice), _image(image), _allocation(allocation) {}
 
 Image::Image(Image&& image) noexcept
   : _allocation(image._allocation), _image(std::exchange(image._image, VK_NULL_HANDLE)),
-    _views(std::move(image._views)), _layout(image._layout), _logicalDevice(image._logicalDevice),
-    _imageType(image._imageType), _imageFormat(image._imageFormat),
-    _imageExtent(image._imageExtent), _imageAspect(image._imageAspect),
-    _imageCreateFlags(image._imageCreateFlags), _mipLevels(image._mipLevels),
-    _layerCount(image._layerCount) {}
+    _views(std::move(image._views)), _logicalDevice(image._logicalDevice) {}
 
 Image& Image::operator=(Image&& image) noexcept {
   if (this == &image) [[unlikely]] {
@@ -39,15 +30,7 @@ Image& Image::operator=(Image&& image) noexcept {
   _allocation = image._allocation;
   _image = std::exchange(image._image, VK_NULL_HANDLE);
   _views = std::move(image._views);
-  _layout = image._layout;
   _logicalDevice = image._logicalDevice;
-  _imageType = image._imageType;
-  _imageFormat = image._imageFormat;
-  _imageExtent = image._imageExtent;
-  _imageAspect = image._imageAspect;
-  _imageCreateFlags = image._imageCreateFlags;
-  _mipLevels = image._mipLevels;
-  _layerCount = image._layerCount;
   return *this;
 }
 
@@ -105,28 +88,12 @@ VkImage Image::getVkImage() const noexcept {
   return _image;
 }
 
-VkImageView Image::getVkImageView(size_t index) const {
+VkImageView Image::getVkImageView(size_t index) const noexcept {
   return index < _views.size() ? _views[index] : VK_NULL_HANDLE;
 }
 
-VkExtent2D Image::getVkExtent2D() const noexcept {
-  return VkExtent2D{_imageExtent.width, _imageExtent.height};
-}
-
-VkExtent3D Image::getVkExtent3D() const noexcept {
-  return _imageExtent;
-}
-
-uint32_t Image::getLayersCount() const noexcept {
-  return _layerCount;
-}
-
-uint32_t Image::getMipLevelsCount() const noexcept {
-  return _mipLevels;
-}
-
-VkImageLayout Image::getVkImageLayout() const noexcept {
-  return _layout;
+std::span<const VkImageView> Image::getVkImageViews() const noexcept {
+  return _views;
 }
 
 namespace {
@@ -158,13 +125,14 @@ VkImageViewType getImageViewType(VkImageType type, uint32_t layerCount, VkImageC
 }  // namespace
 
 VkImageView Image::addCreateVkImageView(
-    uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount) {
-  if (baseMipLevel + levelCount > _mipLevels) [[unlikely]] {
+    const ImageMetadata& metadata, uint32_t baseMipLevel, uint32_t levelCount,
+    uint32_t baseArrayLayer, uint32_t layerCount) {
+  if (baseMipLevel + levelCount > metadata.mipLevels) [[unlikely]] {
     throw EngineException(
         "Base mip level + mip level count is greater than mip levels count of the image.");
   }
 
-  if (baseArrayLayer + layerCount > _layerCount) [[unlikely]] {
+  if (baseArrayLayer + layerCount > metadata.arrayLayers) [[unlikely]] {
     throw EngineException(
         "Base array layer + layer count is greater than layer count of the image.");
   }
@@ -172,9 +140,9 @@ VkImageView Image::addCreateVkImageView(
   const VkImageViewCreateInfo imageViewInfo = {
     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
     .image = _image,
-    .viewType = getImageViewType(_imageType, layerCount, _imageCreateFlags),
-    .format = _imageFormat,
-    .subresourceRange = {.aspectMask = _imageAspect,
+    .viewType = getImageViewType(metadata.imageType, layerCount, metadata.imageCreateFlags),
+    .format = metadata.imageFormat,
+    .subresourceRange = {.aspectMask = metadata.imageAspect,
                          .baseMipLevel = baseMipLevel,
                          .levelCount = levelCount,
                          .baseArrayLayer = baseArrayLayer,
@@ -186,117 +154,103 @@ VkImageView Image::addCreateVkImageView(
   return view;
 }
 
-void Image::generateMipmaps(VkCommandBuffer commandBuffer, VkImageLayout dstLayout) {
-  transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  generateImageMipmaps(commandBuffer, _image, _imageFormat, dstLayout, _imageExtent.width,
-                       _imageExtent.height, _mipLevels, _layerCount);
-  _layout = dstLayout;
-}
-
-void Image::copyFromBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
-                           std::span<const VkBufferImageCopy> copyRegions) {
-  transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  vkCmdCopyBufferToImage(commandBuffer, copyBuffer, _image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                         static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
-}
-
-void Image::transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout) {
-  if (_layout == newLayout) [[unlikely]] {
-    return;
-  }
-
-  transitionImageLayout(
-      commandBuffer, _image, _layout, newLayout, _imageAspect, 0, _mipLevels, 0, _layerCount);
-  _layout = newLayout;
-}
-
-void Image::transitionLayout(
-    VkCommandBuffer commandBuffer, VkImageLayout newLayout, uint32_t baseMipLevel,
-    uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount) {
-  if (_layout == newLayout) [[unlikely]] {
-    return;
-  }
-
-  transitionImageLayout(commandBuffer, _image, _layout, newLayout, _imageAspect, baseMipLevel,
-                        levelCount, baseArrayLayer, layerCount);
-  _layout = newLayout;
-}
-
 ImageBuilder& ImageBuilder::withType(VkImageType type) noexcept {
-  _imageCreateInfo.imageType = type;
+  _imageType = type;
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withFormat(VkFormat format) noexcept {
-  _imageCreateInfo.format = format;
+  _format = format;
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withExtent(uint32_t width) noexcept {
-  _imageCreateInfo.extent = {width, 1, 1};
+  _imageExtent = {width, 1, 1};
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withExtent(uint32_t width, uint32_t height) noexcept {
-  _imageCreateInfo.extent = {width, height, 1};
+  _imageExtent = {width, height, 1};
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withExtent(VkExtent2D extent) noexcept {
-  _imageCreateInfo.extent = {extent.width, extent.height, 1};
+  _imageExtent = {extent.width, extent.height, 1};
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withExtent(uint32_t width, uint32_t height, uint32_t depth) noexcept {
-  _imageCreateInfo.extent = {width, height, depth};
+  _imageExtent = {width, height, depth};
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withExtent(VkExtent3D extent) noexcept {
-  _imageCreateInfo.extent = extent;
+  _imageExtent = extent;
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withAspect(VkImageAspectFlags aspect) noexcept {
-  _aspect = aspect;
+  _imageAspect = aspect;
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withMipLevels(uint32_t mipLevels) noexcept {
-  _imageCreateInfo.mipLevels = mipLevels;
+  _mipLevels = mipLevels;
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withNumSamples(VkSampleCountFlagBits numSamples) noexcept {
-  _imageCreateInfo.samples = numSamples;
+  _samples = numSamples;
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withTiling(VkImageTiling tiling) noexcept {
-  _imageCreateInfo.tiling = tiling;
+  _tiling = tiling;
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withUsage(VkImageUsageFlags usage) noexcept {
-  _imageCreateInfo.usage = usage;
+  _usage = usage;
   return *this;
 }
 
 ImageBuilder& ImageBuilder::withLayerCount(uint32_t layerCount) noexcept {
-  _imageCreateInfo.arrayLayers = layerCount;
+  _arrayLayers = layerCount;
   return *this;
 }
 
-ImageBuilder& ImageBuilder::withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept {
-  _imageCreateInfo.flags |= flags;
-  return *this;
+ImageMetadata ImageBuilder::getMetadata() const noexcept {
+  return ImageMetadata{
+    .imageCreateFlags = _imageCreateFlags,
+    .imageType = _imageType,
+    .imageFormat = _format,
+    .imageExtent = _imageExtent,
+    .mipLevels = _mipLevels,
+    .arrayLayers = _arrayLayers,
+    .samples = _samples,
+    .tiling = _tiling,
+    .usage = _usage,
+    .sharingMode = _sharingMode,
+    .imageAspect = _imageAspect};
 }
 
-Image ImageBuilder::buildImage(const LogicalDevice& logicalDevice) const {
+Image ImageBuilder::buildImage(const LogicalDevice& logicalDevice, VkImageCreateFlags flags) {
+  const VkImageCreateInfo createInfo{
+    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .pNext = _pNext,
+    .flags = _imageCreateFlags = flags,
+    .imageType = _imageType,
+    .format = _format,
+    .extent = _imageExtent,
+    .mipLevels = _mipLevels,
+    .arrayLayers = _arrayLayers,
+    .samples = _samples,
+    .tiling = _tiling,
+    .usage = _usage,
+    .sharingMode = _sharingMode,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
   Allocation allocation;
   const VkImage image =
-      std::visit(ImageCreator{allocation, _imageCreateInfo}, logicalDevice.getMemoryAllocator());
-  return Image(logicalDevice, image, allocation, _imageCreateInfo.imageType,
-               _imageCreateInfo.format, _imageCreateInfo.extent, _aspect, _imageCreateInfo.flags,
-               _imageCreateInfo.mipLevels, _imageCreateInfo.arrayLayers, VK_IMAGE_LAYOUT_UNDEFINED);
+      std::visit(ImageCreator{allocation, createInfo}, logicalDevice.getMemoryAllocator());
+  return Image(logicalDevice, image, allocation);
 }

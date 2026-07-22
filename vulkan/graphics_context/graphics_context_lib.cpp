@@ -13,28 +13,60 @@
 #include "vulkan/wrapper/memory_objects/image.h"
 
 namespace vlkn::internal {
+namespace {
 
-// Framebuffer createFramebufferFromTextures(
-//     const Renderpass& renderpass, std::span<const Image> textures) {
-//   std::vector<VkImageView> imageViews;
-//   imageViews.reserve(textures.size());
-//   std::optional<VkExtent2D> extent;
-//   for (const Image& texture : textures) {
-//     imageViews.push_back(texture.getVkImageView());
-//     if (!extent.has_value()) {
-//       extent = texture.getVkExtent2D();
-//     } else if (VkExtent2D tmpExtent = texture.getVkExtent2D();
-//                extent->width != tmpExtent.width || extent->height != tmpExtent.height) {
-//       throw EngineException("All images must have the same size to create a Framebuffer.");
-//     }
-//   }
-//
-//   if (!extent.has_value()) {
-//     throw EngineException("Framebuffer must have an attachment.");
-//   }
-//
-//   return Framebuffer::create(renderpass, *extent, imageViews);
-// }
+struct PipelineStageInfo {
+  VkAccessFlags accessFlags;
+  VkPipelineStageFlags stageFlags;
+};
+
+constexpr PipelineStageInfo sourceStageAndAccessMask(VkImageLayout layout) {
+  switch (layout) {
+    case VK_IMAGE_LAYOUT_UNDEFINED:
+      return {0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
+    case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+      return {VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+      return {VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
+    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+      return {VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
+    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+      return {VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+      return {VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
+              VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR};
+    default:
+      return {0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
+  }
+}
+
+constexpr PipelineStageInfo destinationStageAndAccessMask(VkImageLayout layout) {
+  switch (layout) {
+    case VK_IMAGE_LAYOUT_GENERAL:
+      return {VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
+    case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+      return {VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+      return {VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+      return {VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT};
+    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+      return {VK_ACCESS_COLOR_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT};
+    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+      return {
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT};
+    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+      return {VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
+    case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+      return {VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR,
+              VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR};
+    default:
+      return {0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
+  }
+}
+
+}  // namespace
 
 lib::Buffer<VkDescriptorPoolSize> getDescriptorPoolSizesFromBindings(
     std::span<const std::pair<VkDescriptorSetLayoutBinding, VkDescriptorBindingFlags>> bindings) {

@@ -63,41 +63,41 @@ void BindlessDescriptorSetWriter::overwriteTexture(
 std::vector<UniformTextureHandle> BindlessDescriptorSetWriter::storeTextures(
     std::span<const Image> textures) {
   std::vector<UniformTextureHandle> handles;
-  handles.reserve(textures.size());
-  for (uint32_t i = 0; i < textures.size(); i++) {
-    const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
-    if (!_texturesMap.insert(*handle)) [[unlikely]] {
-      throw EngineException(std::format(
-          "BindlessDescriptorSetWriter::storeTextures: Failed to insert Texture Handle = {}.",
-          *handle));
-    }
+  // handles.reserve(textures.size());
+  // for (uint32_t i = 0; i < textures.size(); i++) {
+  //   const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
+  //   if (!_texturesMap.insert(*handle)) [[unlikely]] {
+  //     throw EngineException(std::format(
+  //         "BindlessDescriptorSetWriter::storeTextures: Failed to insert Texture Handle = {}.",
+  //         *handle));
+  //   }
 
-    handles.push_back(handle);
-  }
+  //  handles.push_back(handle);
+  //}
 
-  lib::Buffer<VkDescriptorImageInfo> imageInfos(textures.size());
-  lib::Buffer<VkWriteDescriptorSet> writes(textures.size());
+  // lib::Buffer<VkDescriptorImageInfo> imageInfos(textures.size());
+  // lib::Buffer<VkWriteDescriptorSet> writes(textures.size());
 
-  for (auto&& [imageInfo, write, handle, texture] :
-       std::views::zip(imageInfos, writes, handles, textures)) {
-    imageInfo = VkDescriptorImageInfo{
-      // TODO: Use samplers.
-      .sampler = VK_NULL_HANDLE,
-      .imageView = texture.getVkImageView(),
-      .imageLayout = texture.getVkImageLayout()};
+  // for (auto&& [imageInfo, write, handle, texture] :
+  //      std::views::zip(imageInfos, writes, handles, textures)) {
+  //   imageInfo = VkDescriptorImageInfo{
+  //     // TODO: Use samplers.
+  //     .sampler = VK_NULL_HANDLE,
+  //     .imageView = texture.getVkImageView(),
+  //     .imageLayout = texture.getVkImageLayout()};
 
-    write = VkWriteDescriptorSet{
-      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .dstSet = _descriptorSet.getVkDescriptorSet(),
-      .dstBinding = TEXTURE_BINDING,
-      .dstArrayElement = static_cast<uint32_t>(*handle),
-      .descriptorCount = 1,
-      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .pImageInfo = &imageInfo};
-  }
+  //  write = VkWriteDescriptorSet{
+  //    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+  //    .dstSet = _descriptorSet.getVkDescriptorSet(),
+  //    .dstBinding = TEXTURE_BINDING,
+  //    .dstArrayElement = static_cast<uint32_t>(*handle),
+  //    .descriptorCount = 1,
+  //    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+  //    .pImageInfo = &imageInfo};
+  //}
 
-  vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
-                         static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+  // vkUpdateDescriptorSets(_descriptorSet.getDescriptorPool().getLogicalDevice().getVkDevice(),
+  //                        static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
   return handles;
 }
 

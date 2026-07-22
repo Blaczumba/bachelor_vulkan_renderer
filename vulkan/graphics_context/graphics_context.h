@@ -178,7 +178,7 @@ private:
   void setup();
 
   Entity loadObject(VkCommandBuffer commandBuffer, const common::VertexData& cubeData,
-                    PipelineHandle pipelineHandle, Image&& image);
+                    PipelineHandle pipelineHandle, Image&& image, const ImageMetadata& metadata);
 
   void createDescriptorSets();
 
@@ -195,7 +195,7 @@ private:
   std::tuple<UniformTextureHandle, GpuImageHandle> getOrLoadTexture(
       std::unordered_map<StagingImageDataResourceHandle,
                          std::pair<UniformTextureHandle, GpuImageHandle>>& textureCache,
-      StagingImageDataResourceHandle textureID, VkFormat format, VkCommandBuffer commandBuffer,
+      StagingImageDataResourceHandle textureID, VkFormat format, const CommandBuffer& commandBuffer,
       float maxSamplerAnisotropy, SamplerHandle samplerHandle);
 
   void loadObjects(std::span<const common::VertexData> sceneData, PipelineHandle pipelineHandle);

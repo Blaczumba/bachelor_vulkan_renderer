@@ -88,6 +88,20 @@ public:
   void dispatchCompute(
       uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ = 1) const noexcept;
 
+  void transitionImageLayout(VkImage image, VkImageAspectFlags aspectFlags, VkImageLayout oldLayout,
+                             VkImageLayout newLayout, uint32_t baseMipLevel, uint32_t levelCount,
+                             uint32_t baseArraylayer, uint32_t layerCount) const noexcept;
+
+  void generateMipmaps(
+      VkImage image, VkFormat imageFormat, VkImageLayout finalLayout, int32_t texWidth,
+      int32_t texHeight, uint32_t mipLevels, uint32_t layerCount) const noexcept;
+
+  void copyBufferToImage(VkBuffer buffer, VkImage image,
+                         std::span<const VkBufferImageCopy> copyRegions) const noexcept;
+
+  void copyBufferToImage(VkBuffer buffer, VkImage image, VkImageLayout layout,
+                         std::initializer_list<VkBufferImageCopy> copyRegions) const noexcept;
+
   class BeginInfoBuilder {
   public:
     BeginInfoBuilder() noexcept = default;

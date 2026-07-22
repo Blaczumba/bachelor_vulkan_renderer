@@ -23,15 +23,15 @@ void DescriptorSetWriter::storeImage(
     .pImageInfo = &_imageInfos.back()});
 }
 
-DescriptorSetWriter& DescriptorSetWriter::storeTexture(const Image& image, const Sampler& sampler) {
-  storeImage(image.getVkImageView(), image.getVkImageLayout(), sampler.getVkSampler(),
-             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+DescriptorSetWriter& DescriptorSetWriter::storeTexture(
+    VkImageView imageView, VkImageLayout layout, VkSampler sampler) {
+  storeImage(imageView, layout, sampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
   return *this;
 }
 
-DescriptorSetWriter& DescriptorSetWriter::storeImageStorage(const Image& image) {
-  storeImage(
-      image.getVkImageView(), image.getVkImageLayout(), nullptr, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+DescriptorSetWriter& DescriptorSetWriter::storeImageStorage(
+    VkImageView imageView, VkImageLayout layout) {
+  storeImage(imageView, layout, nullptr, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
   return *this;
 }
 

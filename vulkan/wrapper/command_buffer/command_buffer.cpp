@@ -16,6 +16,7 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/logical_device/resource_destroyer.h"
 #include "vulkan/wrapper/util/check.h"
+#include "vulkan/wrapper/util/pipeline_stage_helper.h"
 
 namespace {
 
@@ -206,6 +207,124 @@ void CommandBuffer::executeSecondaryCommandBuffers(
 void CommandBuffer::dispatchCompute(
     uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) const noexcept {
   vkCmdDispatch(_commandBuffer, groupCountX, groupCountY, groupCountZ);
+}
+
+void CommandBuffer::transitionImageLayout(
+    VkImage image, VkImageAspectFlags aspectFlags, VkImageLayout oldLayout, VkImageLayout newLayout,
+    uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArraylayer,
+    uint32_t layerCount) const noexcept {
+  const PipelineStageInfo srcStageInfo = sourceStageAndAccessMask(oldLayout);
+  const PipelineStageInfo dstStageInfo = sourceStageAndAccessMask(newLayout);
+
+  const VkImageMemoryBarrier barrier = {
+    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+    .srcAccessMask = srcStageInfo.accessFlags,
+    .dstAccessMask = dstStageInfo.accessFlags,
+    .oldLayout = oldLayout,
+    .newLayout = newLayout,
+    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    .image = image,
+    .subresourceRange = VkImageSubresourceRange{
+                                                .aspectMask = aspectFlags,
+                                                .baseMipLevel = baseMipLevel,
+                                                .levelCount = levelCount,
+                                                .baseArrayLayer = baseArraylayer,
+                                                .layerCount = layerCount}
+  };
+  vkCmdPipelineBarrier(_commandBuffer, srcStageInfo.stageFlags, dstStageInfo.stageFlags, 0, 0,
+                       nullptr, 0, nullptr, 1, &barrier);
+}
+
+void CommandBuffer::generateMipmaps(
+    VkImage image, VkFormat imageFormat, VkImageLayout finalLayout, int32_t texWidth,
+    int32_t texHeight, uint32_t mipLevels, uint32_t layerCount) const noexcept {
+  VkImageMemoryBarrier barrier = {
+    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+    .image = image,
+    .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                         .levelCount = 1,
+                         .baseArrayLayer = 0,
+                         .layerCount = layerCount}
+  };
+
+  int32_t mipWidth = texWidth;
+  int32_t mipHeight = texHeight;
+
+  for (uint32_t i = 1; i < mipLevels; i++) {
+    {
+      static const PipelineStageInfo srcStageInfo =
+          sourceStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+      static const PipelineStageInfo dstStageInfo =
+          destinationStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+      barrier.subresourceRange.baseMipLevel = i - 1;
+      barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+      barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+      barrier.srcAccessMask = srcStageInfo.accessFlags;
+      barrier.dstAccessMask = dstStageInfo.accessFlags;
+      vkCmdPipelineBarrier(_commandBuffer, srcStageInfo.stageFlags, dstStageInfo.stageFlags, 0, 0,
+                           nullptr, 0, nullptr, 1, &barrier);
+    }
+
+    const VkImageBlit blit = {
+      .srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                         .mipLevel = i - 1,
+                         .baseArrayLayer = 0,
+                         .layerCount = layerCount},
+      .srcOffsets = {{0, 0, 0}, {mipWidth, mipHeight, 1}},
+      .dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                         .mipLevel = i,
+                         .baseArrayLayer = 0,
+                         .layerCount = layerCount},
+      .dstOffsets = {{0, 0, 0},
+                         {mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1}},
+    };
+    vkCmdBlitImage(_commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+
+    static const PipelineStageInfo srcStageInfo =
+        sourceStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    const PipelineStageInfo dstStageInfo = destinationStageAndAccessMask(finalLayout);
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    barrier.newLayout = finalLayout;
+    barrier.srcAccessMask = srcStageInfo.accessFlags;
+    barrier.dstAccessMask = dstStageInfo.accessFlags;
+
+    vkCmdPipelineBarrier(_commandBuffer, srcStageInfo.stageFlags, dstStageInfo.stageFlags, 0, 0,
+                         nullptr, 0, nullptr, 1, &barrier);
+
+    if (mipWidth > 1) {
+      mipWidth /= 2;
+    }
+
+    if (mipHeight > 1) {
+      mipHeight /= 2;
+    }
+  }
+
+  static const PipelineStageInfo srcStageInfo =
+      sourceStageAndAccessMask(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  const PipelineStageInfo dstStageInfo = destinationStageAndAccessMask(finalLayout);
+  barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+  barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  barrier.newLayout = finalLayout;
+  barrier.srcAccessMask = srcStageInfo.accessFlags;
+  barrier.dstAccessMask = dstStageInfo.accessFlags;
+  vkCmdPipelineBarrier(_commandBuffer, srcStageInfo.stageFlags, dstStageInfo.stageFlags, 0, 0,
+                       nullptr, 0, nullptr, 1, &barrier);
+}
+
+void CommandBuffer::copyBufferToImage(
+    VkBuffer buffer, VkImage image, std::span<const VkBufferImageCopy> copyRegions) const noexcept {
+  vkCmdCopyBufferToImage(_commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                         static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
+}
+
+void CommandBuffer::copyBufferToImage(
+    VkBuffer buffer, VkImage image, VkImageLayout layout,
+    std::initializer_list<VkBufferImageCopy> copyRegions) const noexcept {
+  vkCmdCopyBufferToImage(_commandBuffer, buffer, image, layout,
+                         static_cast<uint32_t>(copyRegions.size()), copyRegions.begin());
 }
 
 CommandBuffer::BeginInfoBuilder& CommandBuffer::BeginInfoBuilder::

@@ -62,7 +62,7 @@ void Fence::destroy() {
 Fence FenceBuilder::build(const LogicalDevice& logicalDevice, VkFenceCreateFlags flags) {
   _flags = flags;
 
-  const VkFenceCreateInfo createInfo = {
+  const VkFenceCreateInfo createInfo{
     .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = _pNext, .flags = flags};
   return Fence::create(logicalDevice, createInfo);
 }

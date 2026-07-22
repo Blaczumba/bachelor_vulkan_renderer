@@ -6,13 +6,23 @@
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"
-#include "vulkan/wrapper/memory_allocator/memory_allocator.h"
+
+struct ImageMetadata {
+  VkImageCreateFlags imageCreateFlags;
+  VkImageType imageType;
+  VkFormat imageFormat;
+  VkExtent3D imageExtent;
+  uint32_t mipLevels;
+  uint32_t arrayLayers;
+  VkSampleCountFlagBits samples;
+  VkImageTiling tiling;
+  VkImageUsageFlags usage;
+  VkSharingMode sharingMode;
+  VkImageAspectFlags imageAspect;
+};
 
 class Image {
-  Image(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation,
-        VkImageType type, VkFormat format, VkExtent3D extent, VkImageAspectFlags aspect,
-        VkImageCreateFlags createFlags, uint32_t mipLevels, uint32_t arrayLevels,
-        VkImageLayout layout) noexcept;
+  Image(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation) noexcept;
 
 public:
   Image() noexcept = default;
@@ -24,46 +34,20 @@ public:
   ~Image();
 
   VkImageView addCreateVkImageView(
-      uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
-
-  void generateMipmaps(VkCommandBuffer commandBuffer, VkImageLayout dstLayout);
-
-  void copyFromBuffer(VkCommandBuffer commandBuffer, VkBuffer copyBuffer,
-                      std::span<const VkBufferImageCopy> copyRegions);
-
-  void transitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout);
-
-  void transitionLayout(
-      VkCommandBuffer commandBuffer, VkImageLayout newLayout, uint32_t baseMipLevel,
-      uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
+      const ImageMetadata& metadata, uint32_t baseMipLevel, uint32_t levelCount,
+      uint32_t baseArrayLayer, uint32_t layerCount);
 
   VkImage getVkImage() const noexcept;
 
-  VkImageView getVkImageView(size_t index = 0) const;
+  VkImageView getVkImageView(size_t index = 0) const noexcept;
 
-  VkExtent2D getVkExtent2D() const noexcept;
-
-  VkExtent3D getVkExtent3D() const noexcept;
-
-  uint32_t getLayersCount() const noexcept;
-
-  uint32_t getMipLevelsCount() const noexcept;
-
-  VkImageLayout getVkImageLayout() const noexcept;
+  std::span<const VkImageView> getVkImageViews() const noexcept;
 
 private:
   void destroy();
 
   VkImage _image = VK_NULL_HANDLE;
   Allocation _allocation;
-  VkImageType _imageType;
-  VkFormat _imageFormat;
-  VkExtent3D _imageExtent;
-  VkImageAspectFlags _imageAspect;
-  VkImageCreateFlags _imageCreateFlags;
-  uint32_t _mipLevels;
-  uint32_t _layerCount;
-  VkImageLayout _layout;
   std::vector<VkImageView> _views;
 
   const LogicalDevice* _logicalDevice = nullptr;
@@ -99,23 +83,22 @@ public:
 
   ImageBuilder& withLayerCount(uint32_t layerCount) noexcept;
 
-  ImageBuilder& withAdditionalCreateInfoFlags(VkImageCreateFlags flags) noexcept;
+  ImageMetadata getMetadata() const noexcept;
 
-  Image buildImage(const LogicalDevice& logicalDevice) const;
+  Image buildImage(const LogicalDevice& logicalDevice, VkImageCreateFlags flags = {});
 
 private:
-  VkImageCreateInfo _imageCreateInfo = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-    .imageType = VK_IMAGE_TYPE_2D,
-    .format = VK_FORMAT_UNDEFINED,
-    .extent = {1, 1, 1},
-    .mipLevels = 1,
-    .arrayLayers = 1,
-    .samples = VK_SAMPLE_COUNT_1_BIT,
-    .tiling = VK_IMAGE_TILING_OPTIMAL,
-    .usage = 0,
-    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
-  };
-  VkImageAspectFlags _aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+  VkImageCreateFlags _imageCreateFlags = {};
+  VkImageType _imageType = VK_IMAGE_TYPE_2D;
+  VkFormat _format = VK_FORMAT_UNDEFINED;
+  VkExtent3D _imageExtent = {1, 1, 1};
+  uint32_t _mipLevels = 1;
+  uint32_t _arrayLayers = 1;
+  VkSampleCountFlagBits _samples = VK_SAMPLE_COUNT_1_BIT;
+  VkImageTiling _tiling = VK_IMAGE_TILING_OPTIMAL;
+  VkImageUsageFlags _usage = {};
+  VkSharingMode _sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  VkImageAspectFlags _imageAspect = VK_IMAGE_ASPECT_COLOR_BIT;
+
+  void* _pNext = nullptr;
 };

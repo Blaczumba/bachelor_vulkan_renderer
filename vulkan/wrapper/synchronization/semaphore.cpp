@@ -75,7 +75,7 @@ Semaphore SemaphoreBuilder::build(
     withType(VK_SEMAPHORE_TYPE_BINARY);
   }
 
-  const VkSemaphoreCreateInfo createInfo = {
+  const VkSemaphoreCreateInfo createInfo{
     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = _pNext, .flags = _flags};
   return Semaphore::create(logicalDevice, createInfo);
 }

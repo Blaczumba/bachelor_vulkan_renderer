@@ -17,9 +17,9 @@ class DescriptorSetWriter {
 public:
   DescriptorSetWriter() noexcept = default;
 
-  DescriptorSetWriter& storeTexture(const Image& image, const Sampler& sampler);
+  DescriptorSetWriter& storeTexture(VkImageView imageView, VkImageLayout layout, VkSampler sampler);
 
-  DescriptorSetWriter& storeImageStorage(const Image& image);
+  DescriptorSetWriter& storeImageStorage(VkImageView imageView, VkImageLayout layout);
 
   DescriptorSetWriter& storeBuffer(
       const Buffer& buffer, VkBufferUsageFlags usage, VkDeviceSize range, VkDeviceSize offset = 0);

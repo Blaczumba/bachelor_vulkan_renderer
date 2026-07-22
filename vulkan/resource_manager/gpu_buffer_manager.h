@@ -1,5 +1,8 @@
 #pragma once
 
+#include <tuple>
+#include <vector>
+
 #include "common/util/resource_handles.h"
 #include "lib/sparse/sparse_map.h"
 #include "lib/types/strong_int.h"
@@ -15,7 +18,7 @@ class GpuBufferManager {
   using GpuBufferMap = lib::SparseMap<BufferResource, MAX_GPU_BUFFERS>;
 
   struct ImageResource {
-    Image image;
+    std::tuple<Image, ImageMetadata> image;
     size_t refCount = 0;
   };
 
@@ -50,9 +53,9 @@ public:
 
   bool removeBuffer(GpuBufferHandle index);
 
-  GpuImageHandle transferImage(Image&& stagingBuffer);
+  GpuImageHandle transferImage(Image&& stagingBuffer, const ImageMetadata& metadata);
 
-  const Image& getImage(GpuImageHandle index) const;
+  const std::tuple<Image, ImageMetadata>& getImage(GpuImageHandle index) const;
 
   bool removeImage(GpuImageHandle index);
 

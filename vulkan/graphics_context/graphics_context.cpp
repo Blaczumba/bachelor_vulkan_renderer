@@ -59,15 +59,16 @@ namespace vlkn {
 namespace {
 
 std::pair<Framebuffer, FramebufferMetadata> createFramebufferFromTextures(
-    const Renderpass& renderpass, std::span<const Image> textures) {
+    const Renderpass& renderpass, std::span<const std::tuple<Image, ImageMetadata>> textures) {
   FramebufferBuilder builder;
   std::optional<VkExtent2D> extent;
-  for (const Image& texture : textures) {
+  for (const auto& [texture, metadata] : textures) {
     builder.addAttachment(texture.getVkImageView());
     if (!extent.has_value()) {
-      extent = texture.getVkExtent2D();
-    } else if (VkExtent2D tmpExtent = texture.getVkExtent2D();
-               extent->width != tmpExtent.width || extent->height != tmpExtent.height) {
+      extent = VkExtent2D{metadata.imageExtent.width, metadata.imageExtent.height};
+    } else if (
+        VkExtent2D tmpExtent = VkExtent2D{metadata.imageExtent.width, metadata.imageExtent.height};
+        extent->width != tmpExtent.width || extent->height != tmpExtent.height) {
       throw EngineException("All images must have the same size to create a Framebuffer.");
     }
   }
@@ -80,28 +81,31 @@ std::pair<Framebuffer, FramebufferMetadata> createFramebufferFromTextures(
   return std::make_pair(std::move(framebuffer), builder.getMetadata());
 }
 
-Image createSkybox(
-    const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+std::tuple<Image, ImageMetadata> createSkybox(
+    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy);
 
-Image createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+std::tuple<Image, ImageMetadata> createCubemap(
+    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer,
 
-                    VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags additionalUsage,
-                    float samplerAnisotropy);
+    VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags additionalUsage,
+    float samplerAnisotropy);
 
-Image createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                      uint32_t width, uint32_t height, VkFormat format);
+std::tuple<Image, ImageMetadata> createShadowmap(
+    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer, uint32_t width,
+    uint32_t height, VkFormat format);
 
-Image createTexture2D(
-    const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+std::tuple<Image, ImageMetadata> createTexture2D(
+    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy);
 
-Image createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                       VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent,
-                       uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage);
+std::tuple<Image, ImageMetadata> createAttachment(
+    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer, VkFormat format,
+    VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers, VkImageAspectFlags aspect,
+    VkImageUsageFlags usage);
 
-void createFsrContents(
-    Image& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool);
+void createFsrContents(const LogicalDevice& logicalDevice, Image& image,
+                       const ImageMetadata& metadata, const CommandPool& commandPool);
 
 }  // namespace
 
@@ -157,11 +161,11 @@ void GCONTEXT_CLASS setup() {
     const AssetManager::ImageData& imageData =
         _assetManager->getImageData(cubeData.diffuseTexture.ID);
 
-    Image skyboxTexture =
-        createSkybox(*_logicalDevice, commandBuffer, imageData, VK_FORMAT_R8G8B8A8_SRGB,
+    auto [skyboxImage, skyboxMetadata] =
+        createSkybox(*_logicalDevice, handle, imageData, VK_FORMAT_R8G8B8A8_SRGB,
                      _physicalDevice->getMaxSamplerAnisotropy());
-    _skyboxEntity =
-        loadObject(commandBuffer, cubeData, PipelineHandle(0), std::move(skyboxTexture));
+    _skyboxEntity = loadObject(
+        commandBuffer, cubeData, PipelineHandle(0), std::move(skyboxImage), skyboxMetadata);
 
     // std::string razielFileContents = _fileLoader.loadFileToString(MODELS_PATH "Raziel.obj");
     // common::VertexData razielData =
@@ -192,20 +196,22 @@ void GCONTEXT_CLASS setup() {
 }
 
 GCONTEXT_TEMPLATE
-Entity GCONTEXT_CLASS loadObject(VkCommandBuffer commandBuffer, const common::VertexData& cubeData,
-                                 PipelineHandle pipelineHandle, Image&& image) {
+Entity GCONTEXT_CLASS loadObject(
+    VkCommandBuffer commandBuffer, const common::VertexData& cubeData,
+    PipelineHandle pipelineHandle, Image&& image, const ImageMetadata& metadata) {
   Entity entity = _registry.createEntity();
 
   Sampler sampler = SamplerBuilder()
                         .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
                         .build(*_logicalDevice);
   _registry.addComponent<MaterialComponent>(
-      entity, MaterialComponent{
-                .diffuse = _bindlessWriter->writeTexture(
-                    image.getVkImageView(), image.getVkImageLayout(), sampler.getVkSampler()),
-                .pipelineHandle = pipelineHandle});
+      entity,
+      MaterialComponent{.diffuse = _bindlessWriter->writeTexture(
+                            image.getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                            sampler.getVkSampler()),
+                        .pipelineHandle = pipelineHandle});
   _samplerManager->transferSampler(std::move(sampler));
-  _gpuBufferManager->transferImage(std::move(image));
+  _gpuBufferManager->transferImage(std::move(image), metadata);
 
   MeshComponent msh = {.aabb = createAABBfromVertices(cubeData.positions, glm::mat4(1.0f))};
   if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
@@ -271,64 +277,68 @@ void GCONTEXT_CLASS createDescriptorSets() {
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS createEnvMappingResources() {
   // First pass for rendering the environment map.
-  const float samplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
-  {
-    SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
+  // const float samplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
+  //{
+  //  SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
 
-    _envMappingAttachments[0] = createCubemap(
-        *_logicalDevice, handle.getVkCommandBuffer(), VK_IMAGE_ASPECT_COLOR_BIT,
-        VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, samplerAnisotropy);
-    _envMappingAttachments[1] = createCubemap(
-        *_logicalDevice, handle.getVkCommandBuffer(), VK_IMAGE_ASPECT_DEPTH_BIT,
-        VK_FORMAT_D16_UNORM, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, samplerAnisotropy);
-  }
+  //  _envMappingAttachments = createCubemap(
+  //      *_logicalDevice, handle.getVkCommandBuffer(), VK_IMAGE_ASPECT_COLOR_BIT,
+  //      VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, samplerAnisotropy);
+  //  _envMappingAttachments[1] = createCubemap(
+  //      *_logicalDevice, handle.getVkCommandBuffer(), VK_IMAGE_ASPECT_DEPTH_BIT,
+  //      VK_FORMAT_D16_UNORM, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, samplerAnisotropy);
+  //}
 
-  _envMappingAttachmentLayout.addColorAttachment(
-      VK_FORMAT_R8G8B8A8_SRGB, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
-  _envMappingAttachmentLayout.addDepthAttachment(
-      VK_FORMAT_D16_UNORM, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+  //_envMappingAttachmentLayout.addColorAttachment(
+  //    VK_FORMAT_R8G8B8A8_SRGB, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
+  //_envMappingAttachmentLayout.addDepthAttachment(
+  //    VK_FORMAT_D16_UNORM, VK_ATTACHMENT_STORE_OP_DONT_CARE);
 
-  RenderpassBuilder renderpassBuilder(_envMappingAttachmentLayout);
-  renderpassBuilder.createSubpass().addOutputAttachment(0).addOutputAttachment(1);
-  _envMappingRenderPass =
-      renderpassBuilder.withMultiView({0b111111}, {0b111111})
-          .addDependency(
-              VK_SUBPASS_EXTERNAL, 0,
-              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                  | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                  | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-          .build(*_logicalDevice);
+  // RenderpassBuilder renderpassBuilder(_envMappingAttachmentLayout);
+  // renderpassBuilder.createSubpass().addOutputAttachment(0).addOutputAttachment(1);
+  //_envMappingRenderPass =
+  //     renderpassBuilder.withMultiView({0b111111}, {0b111111})
+  //         .addDependency(
+  //             VK_SUBPASS_EXTERNAL, 0,
+  //             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+  //                 | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+  //             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+  //             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+  //             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+  //                 | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+  //             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+  //             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+  //         .build(*_logicalDevice);
 
-  auto [framebuffer, metadata] =
-      createFramebufferFromTextures(_envMappingRenderPass, _envMappingAttachments);
-  _envMappingFramebuffer = _framebufferAttachmentManager->storeFramebuffer(
-      std::move(framebuffer), metadata, {});  // TODO: pass proper attachments
+  // auto [framebuffer, metadata] =
+  //     createFramebufferFromTextures(_envMappingRenderPass, _envMappingAttachments);
+  //_envMappingFramebuffer = _framebufferAttachmentManager->storeFramebuffer(
+  //     std::move(framebuffer), metadata, {});  // TODO: pass proper attachments
 
-  const glm::vec3 pos = glm::vec3(0.0f, 2.0f, 0.0f);
-  glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 50.0f);
+  // const glm::vec3 pos = glm::vec3(0.0f, 2.0f, 0.0f);
+  // glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 50.0f);
 
-  struct {
-    alignas(16) glm::mat4 projView[6];
-    alignas(16) glm::vec3 viewPos;
-    alignas(16) glm::mat4 lightProjView;
-    alignas(16) glm::vec3 lightPos;
-  } const faceTransform = {
-    .projView =
-        {
-                   proj * glm::lookAt(pos, pos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-                   proj * glm::lookAt(pos, pos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-                   proj * glm::lookAt(pos, pos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
-                   proj * glm::lookAt(pos, pos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
-                   proj * glm::lookAt(pos, pos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-                   proj * glm::lookAt(pos, pos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-                   },
-    .viewPos = pos,
-    .lightProjView = _ubLight.projView,
-    .lightPos = _ubLight.pos
-  };
+  // struct {
+  //   alignas(16) glm::mat4 projView[6];
+  //   alignas(16) glm::vec3 viewPos;
+  //   alignas(16) glm::mat4 lightProjView;
+  //   alignas(16) glm::vec3 lightPos;
+  // } const faceTransform = {
+  //   .projView =
+  //       {
+  //                  proj * glm::lookAt(pos, pos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f,
+  //                  -1.0f, 0.0f)), proj * glm::lookAt(pos, pos + glm::vec3(-1.0f, 0.0f, 0.0f),
+  //                  glm::vec3(0.0f, -1.0f, 0.0f)), proj * glm::lookAt(pos, pos +
+  //                  glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)), proj *
+  //                  glm::lookAt(pos, pos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f,
+  //                  -1.0f)), proj * glm::lookAt(pos, pos + glm::vec3(0.0f, 0.0f, 1.0f),
+  //                  glm::vec3(0.0f, -1.0f, 0.0f)), proj * glm::lookAt(pos, pos + glm::vec3(0.0f,
+  //                  0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+  //                  },
+  //   .viewPos = pos,
+  //   .lightProjView = _ubLight.projView,
+  //   .lightPos = _ubLight.pos
+  // };
 
   // TODO:
   //_envMappingUniformBuffer = Buffer::createUniformBuffer(*_logicalDevice, sizeof(faceTransform));
@@ -347,8 +357,9 @@ void GCONTEXT_CLASS createShadowResources() {
     // TODO: Should not be in this function.
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     const VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
-    _shadowMapHandle = _gpuBufferManager->transferImage(
-        createShadowmap(*_logicalDevice, commandBuffer, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT));
+    auto [image, metadata] =
+        createShadowmap(*_logicalDevice, handle, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
+    _shadowMapHandle = _gpuBufferManager->transferImage(std::move(image), metadata);
   }
   Sampler sampler =
       SamplerBuilder()
@@ -359,9 +370,11 @@ void GCONTEXT_CLASS createShadowResources() {
           .withMinMagFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR)
           .withBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
           .build(*_logicalDevice);
-  const Image& shadowMap = _gpuBufferManager->getImage(_shadowMapHandle);
+  const std::tuple<Image, ImageMetadata>& shadowMapData =
+      _gpuBufferManager->getImage(_shadowMapHandle);
   _shadowHandle = _bindlessWriter->writeTexture(
-      shadowMap.getVkImageView(), shadowMap.getVkImageLayout(), sampler.getVkSampler());
+      std::get<Image>(shadowMapData).getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      sampler.getVkSampler());
   _samplerManager->transferSampler(std::move(sampler));
 
   _shadowAttachmentLayout.addShadowAttachment(
@@ -370,10 +383,11 @@ void GCONTEXT_CLASS createShadowResources() {
   RenderpassBuilder builder(_shadowAttachmentLayout);
   builder.createSubpass().addOutputAttachment(0);
   _shadowRenderPass = builder.build(*_logicalDevice);
-  auto [framebuffer, metadata] =
-      createFramebufferFromTextures(_shadowRenderPass, std::span(&shadowMap, 1));
+  auto [framebuffer, framebufferMetadata] =
+      createFramebufferFromTextures(_shadowRenderPass, std::span(&shadowMapData, 1));
   _shadowFramebuffer = _framebufferAttachmentManager->storeFramebuffer(
-      std::move(framebuffer), metadata, {&_shadowMapHandle, 1});  // TODO pass proper attachments
+      std::move(framebuffer), framebufferMetadata, {&_shadowMapHandle, 1});  // TODO pass proper
+                                                                             // attachments
 }
 
 GCONTEXT_TEMPLATE
@@ -393,8 +407,9 @@ void GCONTEXT_CLASS createGraphicsPipelines() {
           _renderPass, _attachmentLayout, MULTIVIEW_PRESENTATION));
   _shadowPipeline = _pipelineManager->getPipeline(
       _pipelineManager->createShadowProgram(_shadowRenderPass, _shadowAttachmentLayout));
-  _envMappingPipeline = _pipelineManager->getPipeline(_pipelineManager->createPbrEnvMappingProgram(
-      _envMappingRenderPass, _envMappingAttachmentLayout));
+  //_envMappingPipeline =
+  //_pipelineManager->getPipeline(_pipelineManager->createPbrEnvMappingProgram(
+  //    _envMappingRenderPass, _envMappingAttachmentLayout));
   _fsrPipeline = _pipelineManager->getPipeline(
       _pipelineManager->createFragmentShadingRateProgram(*_logicalDevice));
 }
@@ -425,7 +440,7 @@ GCONTEXT_TEMPLATE
 std::tuple<UniformTextureHandle, GpuImageHandle> GCONTEXT_CLASS getOrLoadTexture(
     std::unordered_map<StagingImageDataResourceHandle,
                        std::pair<UniformTextureHandle, GpuImageHandle>>& textureCache,
-    StagingImageDataResourceHandle textureID, VkFormat format, VkCommandBuffer commandBuffer,
+    StagingImageDataResourceHandle textureID, VkFormat format, const CommandBuffer& commandBuffer,
     float maxSamplerAnisotropy, SamplerHandle samplerHandle) {
   auto [it, inserted] = textureCache.try_emplace(textureID);
 
@@ -435,12 +450,12 @@ std::tuple<UniformTextureHandle, GpuImageHandle> GCONTEXT_CLASS getOrLoadTexture
   }
 
   const AssetManager::ImageData& imgData = _assetManager->getImageData(textureID);
-  Image texture =
+  auto [image, metadata] =
       createTexture2D(*_logicalDevice, commandBuffer, imgData, format, maxSamplerAnisotropy);
   UniformTextureHandle handle = _bindlessWriter->writeTexture(
-      texture.getVkImageView(), texture.getVkImageLayout(),
+      image.getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       _samplerManager->getSampler(samplerHandle).getVkSampler());
-  const GpuImageHandle index = _gpuBufferManager->transferImage(std::move(texture));
+  const GpuImageHandle index = _gpuBufferManager->transferImage(std::move(image), metadata);
 
   const auto result = std::make_tuple(handle, index);
   it->second = result;
@@ -458,7 +473,7 @@ void GCONTEXT_CLASS loadObjects(
           textureCache;
   textureCache.reserve(sceneData.size());
   SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-  const VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
+  VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
   Sampler sampler = SamplerBuilder()
                         .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
                         .withLodRange(0.0f, VK_LOD_CLAMP_NONE)
@@ -468,15 +483,15 @@ void GCONTEXT_CLASS loadObjects(
   for (const common::VertexData& sceneObject : sceneData) {
     const auto [diffuseHandle, diffuseTextureIndex] =
         getOrLoadTexture(textureCache, sceneObject.diffuseTexture.ID, VK_FORMAT_R8G8B8A8_SRGB,
-                         commandBuffer, maxSamplerAnisotropy, samplerHandle);
+                         handle, maxSamplerAnisotropy, samplerHandle);
 
     const auto [normalHandle, normalTextureIndex] =
         getOrLoadTexture(textureCache, sceneObject.normalTexture.ID, VK_FORMAT_R8G8B8A8_UNORM,
-                         commandBuffer, maxSamplerAnisotropy, samplerHandle);
+                         handle, maxSamplerAnisotropy, samplerHandle);
 
-    const auto [metallicRoughnessHandle, metallicRoughnessTextureIndex] = getOrLoadTexture(
-        textureCache, sceneObject.metallicRoughnessTexture.ID, VK_FORMAT_R8G8B8A8_UNORM,
-        commandBuffer, maxSamplerAnisotropy, samplerHandle);
+    const auto [metallicRoughnessHandle, metallicRoughnessTextureIndex] =
+        getOrLoadTexture(textureCache, sceneObject.metallicRoughnessTexture.ID,
+                         VK_FORMAT_R8G8B8A8_UNORM, handle, maxSamplerAnisotropy, samplerHandle);
 
     Entity e = _registry.createEntity();
     _objects.emplace_back("", e);
@@ -532,13 +547,14 @@ void GCONTEXT_CLASS createOctreeScene() {
 
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordShadowCommandBuffer(const CommandBuffer& commandBuffer) {
-  const VkExtent2D extent = _gpuBufferManager->getImage(_shadowMapHandle).getVkExtent2D();
+  const auto& [image, metadata] = _gpuBufferManager->getImage(_shadowMapHandle);
   commandBuffer.setVieport({
-    VkViewport{.width = static_cast<float>(extent.width),
-               .height = static_cast<float>(extent.height),
+    VkViewport{.width = static_cast<float>(metadata.imageExtent.width),
+               .height = static_cast<float>(metadata.imageExtent.height),
                .minDepth = 0.0f,
                .maxDepth = 1.0f}
   });
+  const VkExtent2D extent{metadata.imageExtent.width, metadata.imageExtent.height};
   commandBuffer.setScissor({VkRect2D{.extent = extent}});
 
   const Framebuffer& framebuffer =
@@ -576,55 +592,58 @@ void GCONTEXT_CLASS recordShadowCommandBuffer(const CommandBuffer& commandBuffer
 
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordEnvMappingCommandBuffer(const CommandBuffer& commandBuffer) {
-  const VkExtent2D extent = _envMappingAttachments[0].getVkExtent2D();
-  commandBuffer.setVieport({
-    VkViewport{.width = static_cast<float>(extent.width),
-               .height = static_cast<float>(extent.height),
-               .minDepth = 0.0f,
-               .maxDepth = 1.0f}
-  });
-  commandBuffer.setScissor({VkRect2D{.extent = extent}});
+  // const VkExtent2D extent = _envMappingAttachments[0].getVkExtent2D();
+  // commandBuffer.setVieport({
+  //   VkViewport{.width = static_cast<float>(extent.width),
+  //              .height = static_cast<float>(extent.height),
+  //              .minDepth = 0.0f,
+  //              .maxDepth = 1.0f}
+  // });
+  // commandBuffer.setScissor({VkRect2D{.extent = extent}});
 
-  const Framebuffer& framebuffer =
-      _framebufferAttachmentManager->getFramebuffer(_envMappingFramebuffer);
-  commandBuffer.beginRenderPass(VK_SUBPASS_CONTENTS_INLINE, framebuffer, extent,
-                                _envMappingAttachmentLayout.getVkClearValues());
+  // const Framebuffer& framebuffer =
+  //     _framebufferAttachmentManager->getFramebuffer(_envMappingFramebuffer);
+  // commandBuffer.beginRenderPass(VK_SUBPASS_CONTENTS_INLINE, framebuffer, extent,
+  //                               _envMappingAttachmentLayout.getVkClearValues());
 
-  commandBuffer.bindPipeline(
-      _envMappingPipeline->getVkPipelineBindPoint(), _envMappingPipeline->getVkPipeline());
+  // commandBuffer.bindPipeline(
+  //     _envMappingPipeline->getVkPipelineBindPoint(), _envMappingPipeline->getVkPipeline());
 
-  commandBuffer.bindDescriptorSets(
-      _envMappingPipeline->getVkPipelineBindPoint(), _envMappingPipeline->getVkPipelineLayout(),
-      {_bindlessDescriptorSet.getVkDescriptorSet()});
+  // commandBuffer.bindDescriptorSets(
+  //     _envMappingPipeline->getVkPipelineBindPoint(), _envMappingPipeline->getVkPipelineLayout(),
+  //     {_bindlessDescriptorSet.getVkDescriptorSet()});
 
-  for (const Object& object : _objects) {
-    const MeshComponent& meshComponent = _registry.getComponent<MeshComponent>(object.getEntity());
-    const TransformComponent& transformComponent =
-        _registry.getComponent<TransformComponent>(object.getEntity());
-    const MaterialComponent& materialComponent =
-        _registry.getComponent<MaterialComponent>(object.getEntity());
+  // for (const Object& object : _objects) {
+  //   const MeshComponent& meshComponent =
+  //   _registry.getComponent<MeshComponent>(object.getEntity()); const TransformComponent&
+  //   transformComponent =
+  //       _registry.getComponent<TransformComponent>(object.getEntity());
+  //   const MaterialComponent& materialComponent =
+  //       _registry.getComponent<MaterialComponent>(object.getEntity());
 
-    const PushConstantsModelDescriptorHandles32Bit pc = {
-      .model = transformComponent.model,
-      .descriptorHandles = {static_cast<uint32_t>(*_envMappingHandle),
-                            static_cast<uint32_t>(*materialComponent.diffuse),
-                            static_cast<uint32_t>(*materialComponent.normal),
-                            static_cast<uint32_t>(*materialComponent.metallicRoughness),
-                            static_cast<uint32_t>(*_shadowHandle)}
-    };
-    commandBuffer.pushConstants(_envMappingPipeline->getVkPipelineLayout(),
-                                _envMappingPipeline->getPushConstantVkShaderStageFlags(),
-                                std::span(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
+  //  const PushConstantsModelDescriptorHandles32Bit pc = {
+  //    .model = transformComponent.model,
+  //    .descriptorHandles = {static_cast<uint32_t>(*_envMappingHandle),
+  //                          static_cast<uint32_t>(*materialComponent.diffuse),
+  //                          static_cast<uint32_t>(*materialComponent.normal),
+  //                          static_cast<uint32_t>(*materialComponent.metallicRoughness),
+  //                          static_cast<uint32_t>(*_shadowHandle)}
+  //  };
+  //  commandBuffer.pushConstants(_envMappingPipeline->getVkPipelineLayout(),
+  //                              _envMappingPipeline->getPushConstantVkShaderStageFlags(),
+  //                              std::span(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
 
-    commandBuffer.bindVertexBuffers(
-        {_gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle).buffer.getVkBuffer()}, {0});
+  //  commandBuffer.bindVertexBuffers(
+  //      {_gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle).buffer.getVkBuffer()},
+  //      {0});
 
-    const auto& [indexBuffer, indexBufferMetadata] =
-        _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
-    commandBuffer.bindIndexBuffer(indexBuffer.getVkBuffer(), meshComponent.indexType);
-    commandBuffer.drawIndexed(indexBufferMetadata.size / getIndexSize(meshComponent.indexType), 1);
-  }
-  commandBuffer.endRenderPass();
+  //  const auto& [indexBuffer, indexBufferMetadata] =
+  //      _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
+  //  commandBuffer.bindIndexBuffer(indexBuffer.getVkBuffer(), meshComponent.indexType);
+  //  commandBuffer.drawIndexed(indexBufferMetadata.size / getIndexSize(meshComponent.indexType),
+  //  1);
+  //}
+  // commandBuffer.endRenderPass();
 }
 
 GCONTEXT_TEMPLATE
@@ -738,7 +757,7 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
       {_computeDescriptorSet.getVkDescriptorSet()});
   primaryCommandBuffer.dispatchCompute(16, 16);
 
-  const Image& fsrTexture = _gpuBufferManager->getImage(_fsrTextureHandle);
+  const auto& [fsrTexture, fsrTextureMetadata] = _gpuBufferManager->getImage(_fsrTextureHandle);
   static DependencyInfoBuilder dependencyInfoBuilder;
   dependencyInfoBuilder.clearBuilders()
       .addImageMemoryBarrier()
@@ -751,9 +770,9 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
                  VkImageSubresourceRange{
                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                    .baseMipLevel = 0,
-                   .levelCount = fsrTexture.getMipLevelsCount(),
+                   .levelCount = fsrTextureMetadata.mipLevels,
                    .baseArrayLayer = 0,
-                   .layerCount = fsrTexture.getLayersCount(),
+                   .layerCount = fsrTextureMetadata.arrayLayers,
                  });
   const VkDependencyInfo dependencyInfo = dependencyInfoBuilder.build();
   primaryCommandBuffer.pipelineBarrier(&dependencyInfo);
@@ -1028,14 +1047,30 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     const VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
-    GpuImageHandle collorAttachmentHandle = _gpuBufferManager->transferImage(createAttachment(
-        *_logicalDevice, commandBuffer, swapchainImageFormat, msaaSamples, extent,
-        presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
-    GpuImageHandle depthAttachmentHandle = _gpuBufferManager->transferImage(createAttachment(
-        *_logicalDevice, commandBuffer, VK_FORMAT_D24_UNORM_S8_UINT, msaaSamples, extent,
-        presentResources.numLayers, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT));
+    GpuImageHandle collorAttachmentHandle = std::apply(
+        &GpuBufferManager::transferImage,
+        std::tuple_cat(
+            std::tie(*_gpuBufferManager),
+            createAttachment(*_logicalDevice, handle, swapchainImageFormat, msaaSamples, extent,
+                             presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
+                             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)));
+    // GpuImageHandle collorAttachmentHandle = _gpuBufferManager->transferImage(createAttachment(
+    //     *_logicalDevice, commandBuffer, swapchainImageFormat, msaaSamples, extent,
+    //     presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
+    //     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+    GpuImageHandle depthAttachmentHandle = std::apply(
+        &GpuBufferManager::transferImage,
+        std::tuple_cat(
+            std::tie(*_gpuBufferManager),
+            createAttachment(
+                *_logicalDevice, handle, VK_FORMAT_D24_UNORM_S8_UINT, msaaSamples, extent,
+                presentResources.numLayers, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+                    | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)));
+    // GpuImageHandle depthAttachmentHandle = _gpuBufferManager->transferImage(createAttachment(
+    //     *_logicalDevice, commandBuffer, VK_FORMAT_D24_UNORM_S8_UINT, msaaSamples, extent,
+    //     presentResources.numLayers, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+    //     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT));
 
     const VkPhysicalDeviceFragmentShadingRatePropertiesKHR& fsrProperties =
         _physicalDevice->getFragmentShadingRateProperties();
@@ -1043,19 +1078,21 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
     const VkExtent2D fsrExtent = VkExtent2D{
       static_cast<uint32_t>(std::ceil(extent.width / static_cast<float>(fsrTexelExtent.width))),
       static_cast<uint32_t>(std::ceil(extent.height / static_cast<float>(fsrTexelExtent.height)))};
-    Image fsrTexture = createAttachment(
-        *_logicalDevice, commandBuffer, VK_FORMAT_R8_UINT, VK_SAMPLE_COUNT_1_BIT, fsrExtent,
+    auto [fsrTexture, fsrTextureMetadata] = createAttachment(
+        *_logicalDevice, handle, VK_FORMAT_R8_UINT, VK_SAMPLE_COUNT_1_BIT, fsrExtent,
         presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
         VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | VK_IMAGE_USAGE_TRANSFER_DST_BIT
             | VK_IMAGE_USAGE_STORAGE_BIT);
-    createFsrContents(fsrTexture, *_logicalDevice, *_singleTimeCommandPool);
+    // TODO: pass the commandbuffer.
+    createFsrContents(*_logicalDevice, fsrTexture, fsrTextureMetadata, *_singleTimeCommandPool);
 
-    _computeDescriptorSetWriter.storeImageStorage(fsrTexture);
+    _computeDescriptorSetWriter.storeImageStorage(
+        fsrTexture.getVkImageView(), VK_IMAGE_LAYOUT_GENERAL);
     _computeDescriptorSetWriter.writeDescriptorSet(
         _logicalDevice->getVkDevice(), _computeDescriptorSet.getVkDescriptorSet());
 
     GpuImageHandle fsrAttachmentHandle = _fsrTextureHandle =
-        _gpuBufferManager->transferImage(std::move(fsrTexture));
+        _gpuBufferManager->transferImage(std::move(fsrTexture), fsrTextureMetadata);
 
     attachmentHandles = lib::Buffer<GpuImageHandle>{
       collorAttachmentHandle, depthAttachmentHandle, fsrAttachmentHandle};
@@ -1093,8 +1130,8 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
     FramebufferBuilder framebufferBuilder;
     framebufferBuilder.addAttachment(imageView);
     for (GpuImageHandle attachmentHandle : attachmentHandles) {
-      framebufferBuilder.addAttachment(
-          _gpuBufferManager->getImage(attachmentHandle).getVkImageView());
+      const auto& [image, metadata] = _gpuBufferManager->getImage(attachmentHandle);
+      framebufferBuilder.addAttachment(image.getVkImageView());
     }
     Framebuffer framebuffer = framebufferBuilder.build(_renderPass, extent, 1);
     _framebuffers.push_back(_framebufferAttachmentManager->storeFramebuffer(
@@ -1109,117 +1146,144 @@ void GCONTEXT_CLASS waitDeviceIdle() const {
 
 namespace {
 
-Image createSkybox(
-    const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+std::tuple<Image, ImageMetadata> createSkybox(
+    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy) {
-  Image texture =
+  auto imageBuilder =
       ImageBuilder()
           .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
           .withExtent(imageData.width, imageData.height)
           .withFormat(format)
           .withMipLevels(imageData.mipLevels)
           .withUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
-          .withLayerCount(6)
-          .withAdditionalCreateInfoFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-          .buildImage(logicalDevice);
-  texture.copyFromBuffer(
-      commandBuffer, imageData.stagingBuffer.buffer.getVkBuffer(), imageData.copyRegions);
-  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  texture.addCreateVkImageView(0, imageData.mipLevels, 0, 6);
-  return texture;
+          .withLayerCount(6);
+  Image image = imageBuilder.buildImage(logicalDevice, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+  const ImageMetadata metadata = imageBuilder.getMetadata();
+
+  commandBuffer.transitionImageLayout(
+      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
+  commandBuffer.copyBufferToImage(
+      imageData.stagingBuffer.buffer.getVkBuffer(), image.getVkImage(), imageData.copyRegions);
+  commandBuffer.transitionImageLayout(
+      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
+  image.addCreateVkImageView(metadata, 0, imageData.mipLevels, 0, 6);
+  return std::make_tuple(std::move(image), imageBuilder.getMetadata());
 }
 
-Image createCubemap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+std::tuple<Image, ImageMetadata> createCubemap(
+    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer,
 
-                    VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags additionalUsage,
-                    float samplerAnisotropy) {
-  Image texture =
+    VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags additionalUsage,
+    float samplerAnisotropy) {
+  auto imageBuilder =
       ImageBuilder()
           .withAspect(aspect)
           .withExtent(1024 * 4, 1024 * 4)
           .withFormat(format)
           .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | additionalUsage)
-          .withLayerCount(6)
-          .withAdditionalCreateInfoFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-          .buildImage(logicalDevice);
-  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  texture.addCreateVkImageView(0, 1, 0, 6);
-  return texture;
+          .withLayerCount(6);
+  Image image = imageBuilder.buildImage(logicalDevice, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+  const ImageMetadata metadata = imageBuilder.getMetadata();
+  commandBuffer.transitionImageLayout(
+      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
+  image.addCreateVkImageView(metadata, 0, 1, 0, 6);
+  return std::make_tuple(std::move(image), metadata);
 }
 
-Image createShadowmap(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                      uint32_t width, uint32_t height, VkFormat format) {
-  Image texture =
+std::tuple<Image, ImageMetadata> createShadowmap(
+    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer, uint32_t width,
+    uint32_t height, VkFormat format) {
+  auto imageBuilder =
       ImageBuilder()
           .withAspect(VK_IMAGE_ASPECT_DEPTH_BIT)
           .withExtent(width, height)
           .withFormat(format)
-          .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-          .buildImage(logicalDevice);
-  texture.transitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  texture.addCreateVkImageView(0, 1, 0, 1);
-  return texture;
+          .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+
+  Image image = imageBuilder.buildImage(logicalDevice);
+  const ImageMetadata metadata = imageBuilder.getMetadata();
+  commandBuffer.transitionImageLayout(
+      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
+  image.addCreateVkImageView(metadata, 0, 1, 0, 1);
+  return std::make_tuple(std::move(image), metadata);
 }
 
-Image createTexture2D(
-    const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
+std::tuple<Image, ImageMetadata> createTexture2D(
+    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy) {
-  Image texture =
+  auto imageBuilder =
       ImageBuilder()
           .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
           .withExtent(imageData.width, imageData.height)
           .withFormat(format)
           .withMipLevels(imageData.mipLevels)
           .withUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-                     | VK_IMAGE_USAGE_SAMPLED_BIT)
-          .buildImage(logicalDevice);
-  texture.copyFromBuffer(
-      commandBuffer, imageData.stagingBuffer.buffer.getVkBuffer(), imageData.copyRegions);
-  texture.generateMipmaps(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  texture.addCreateVkImageView(0, imageData.mipLevels, 0, 1);
+                     | VK_IMAGE_USAGE_SAMPLED_BIT);
+  Image image = imageBuilder.buildImage(logicalDevice);
+  const ImageMetadata metadata = imageBuilder.getMetadata();
+  commandBuffer.transitionImageLayout(
+      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
+  commandBuffer.copyBufferToImage(
+      imageData.stagingBuffer.buffer.getVkBuffer(), image.getVkImage(), imageData.copyRegions);
+  commandBuffer.generateMipmaps(
+      image.getVkImage(), metadata.imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      metadata.imageExtent.width, metadata.imageExtent.height, metadata.mipLevels,
+      metadata.arrayLayers);
+  image.addCreateVkImageView(metadata, 0, imageData.mipLevels, 0, 1);
 
-  return texture;
+  return std::make_tuple(std::move(image), imageBuilder.getMetadata());
 }
 
-Image createAttachment(const LogicalDevice& logicalDevice, VkCommandBuffer commandBuffer,
-                       VkFormat format, VkSampleCountFlagBits samples, VkExtent2D extent,
-                       uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage) {
-  Image texture =
+std::tuple<Image, ImageMetadata> createAttachment(
+    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer, VkFormat format,
+    VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers, VkImageAspectFlags aspect,
+    VkImageUsageFlags usage) {
+  auto imageBuilder =
       ImageBuilder()
           .withFormat(format)
           .withNumSamples(samples)
           .withExtent(extent)
           .withLayerCount(numLayers)
           .withAspect(aspect)
-          .withUsage(usage)
-          .buildImage(logicalDevice);
-  texture.addCreateVkImageView(0, 1, 0, numLayers);
-  return texture;
+          .withUsage(usage);
+  Image image = imageBuilder.buildImage(logicalDevice);
+  const ImageMetadata metadata = imageBuilder.getMetadata();
+  image.addCreateVkImageView(metadata, 0, 1, 0, numLayers);
+  return std::make_tuple(std::move(image), metadata);
 }
 
-void createFsrContents(
-    Image& texture, const LogicalDevice& logicalDevice, const CommandPool& commandPool) {
-  const VkExtent2D extent = texture.getVkExtent2D();
+void createFsrContents(const LogicalDevice& logicalDevice, Image& image,
+                       const ImageMetadata& metadata, const CommandPool& commandPool) {
   const lib::Buffer<std::byte> buffer(
-      static_cast<size_t>(extent.width * extent.height), std::byte{10});
+      static_cast<size_t>(metadata.imageExtent.width * metadata.imageExtent.height), std::byte{10});
   BufferBuilder bufferBuilder;
   Buffer stagingBuffer = bufferBuilder.withSize(buffer.size())
                              .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
                              .createStagingBuffer(logicalDevice);
   common::copyData(bufferBuilder.getMetadata().getMappedMemoryAsSpan(), 0, std::span(buffer));
-  lib::Buffer<VkBufferImageCopy> imageCopy(texture.getLayersCount());
+  lib::Buffer<VkBufferImageCopy> imageCopy(metadata.arrayLayers);
   for (uint32_t layer = 0; layer < imageCopy.size(); layer++) {
     imageCopy[layer] = VkBufferImageCopy{
       .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                            .mipLevel = 0,
                            .baseArrayLayer = layer,
                            .layerCount = 1},
-      .imageExtent = VkExtent3D{extent.width, extent.height, 1},
+      .imageExtent = metadata.imageExtent,
     };
   }
   SingleTimeCommandBuffer handle(commandPool);
-  texture.copyFromBuffer(handle.getVkCommandBuffer(), stagingBuffer.getVkBuffer(), imageCopy);
-  texture.transitionLayout(handle.getVkCommandBuffer(), VK_IMAGE_LAYOUT_GENERAL);
+  handle.transitionImageLayout(
+      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
+  handle.copyBufferToImage(stagingBuffer.getVkBuffer(), image.getVkImage(), imageCopy);
+  handle.transitionImageLayout(
+      image.getVkImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_GENERAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
 }
 
 }  // namespace

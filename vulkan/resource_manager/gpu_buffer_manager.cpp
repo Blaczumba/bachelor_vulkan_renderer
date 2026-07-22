@@ -159,7 +159,7 @@ bool GpuBufferManager::removeBuffer(GpuBufferHandle index) {
   return true;
 }
 
-GpuImageHandle GpuBufferManager::transferImage(Image&& image) {
+GpuImageHandle GpuBufferManager::transferImage(Image&& image, const ImageMetadata& metadata) {
   GpuImageHandle index = getNextHandle(_imageMap.size(), _freeImageIndices);
   if (_imageMap.size() == MAX_GPU_IMAGES) [[unlikely]] {
     throw EngineException(std::format(
@@ -167,11 +167,11 @@ GpuImageHandle GpuBufferManager::transferImage(Image&& image) {
         MAX_GPU_IMAGES));
   }
 
-  _imageMap.insertUnsafe(*index, ImageResource(std::move(image), 1));
+  _imageMap.insertUnsafe(*index, ImageResource(std::make_tuple(std::move(image), metadata), 1));
   return index;
 }
 
-const Image& GpuBufferManager::getImage(GpuImageHandle index) const {
+const std::tuple<Image, ImageMetadata>& GpuBufferManager::getImage(GpuImageHandle index) const {
   const ImageResource* resource = _imageMap.tryGetValue(*index);
   if (resource == nullptr) [[unlikely]] {
     throw EngineException(
