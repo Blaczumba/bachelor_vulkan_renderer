@@ -54,64 +54,106 @@ void Sampler::destroy() {
 }
 
 SamplerBuilder& SamplerBuilder::withMinMagFilter(VkFilter minFilter, VkFilter magFilter) noexcept {
-  _samplerInfo.minFilter = minFilter;
-  _samplerInfo.magFilter = magFilter;
+  _minFilter = minFilter;
+  _magFilter = magFilter;
   return *this;
 }
 
 SamplerBuilder& SamplerBuilder::withMipmapMode(VkSamplerMipmapMode mode) noexcept {
-  _samplerInfo.mipmapMode = mode;
+  _mipmapMode = mode;
   return *this;
 }
 
 SamplerBuilder& SamplerBuilder::withAddressMode(
     VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV,
     VkSamplerAddressMode addressModeW) noexcept {
-  _samplerInfo.addressModeU = addressModeU;
-  _samplerInfo.addressModeV = addressModeV;
-  _samplerInfo.addressModeW = addressModeW;
+  _addressModeU = addressModeU;
+  _addressModeV = addressModeV;
+  _addressModeW = addressModeW;
   return *this;
 }
 
 SamplerBuilder& SamplerBuilder::withMipLodBias(float mipLodBias) noexcept {
-  _samplerInfo.mipLodBias = mipLodBias;
+  _mipLodBias = mipLodBias;
   return *this;
 }
 
 SamplerBuilder& SamplerBuilder::withAnisotropy(float maxAnisotropy) noexcept {
-  _samplerInfo.anisotropyEnable = VK_TRUE;
-  _samplerInfo.maxAnisotropy = maxAnisotropy;
+  _anisotropyEnable = VK_TRUE;
+  _maxAnisotropy = maxAnisotropy;
   return *this;
 }
 
 SamplerBuilder& SamplerBuilder::withCompareOp(VkCompareOp compareOp) noexcept {
-  _samplerInfo.compareEnable = VK_TRUE;
-  _samplerInfo.compareOp = compareOp;
+  _compareEnable = VK_TRUE;
+  _compareOp = compareOp;
   return *this;
 }
 
 SamplerBuilder& SamplerBuilder::withLodRange(float minLod, float maxLod) noexcept {
-  _samplerInfo.minLod = minLod;
-  _samplerInfo.maxLod = maxLod;
-  _samplerInfo.unnormalizedCoordinates = VK_FALSE;
+  _minLod = minLod;
+  _maxLod = maxLod;
+  _unnormalizedCoordinates = VK_FALSE;
   return *this;
 }
 
 SamplerBuilder& SamplerBuilder::withBorderColor(VkBorderColor borderColor) noexcept {
-  _samplerInfo.borderColor = borderColor;
+  _borderColor = borderColor;
   return *this;
 }
 
 SamplerBuilder& SamplerBuilder::withUnnormalizedCoordinates(
     VkBool32 unnormalizedCoordinates) noexcept {
-  _samplerInfo.unnormalizedCoordinates = unnormalizedCoordinates;
+  _unnormalizedCoordinates = unnormalizedCoordinates;
   return *this;
 }
 
-const VkSamplerCreateInfo& SamplerBuilder::getVkSamplerCreateInfo() const noexcept {
-  return _samplerInfo;
+SamplerBuilder& SamplerBuilder::withFlags(VkSamplerCreateFlags flags) noexcept {
+  _flags = flags;
+  return *this;
+}
+
+SamplerMetadata SamplerBuilder::getMetadata() const noexcept {
+  return SamplerMetadata{
+    .flags = _flags,
+    .magFilter = _magFilter,
+    .minFilter = _minFilter,
+    .mipmapMode = _mipmapMode,
+    .addressModeU = _addressModeU,
+    .addressModeV = _addressModeV,
+    .addressModeW = _addressModeW,
+    .mipLodBias = _mipLodBias,
+    .anisotropyEnable = _anisotropyEnable,
+    .maxAnisotropy = _maxAnisotropy,
+    .compareEnable = _compareEnable,
+    .compareOp = _compareOp,
+    .minLod = _minLod,
+    .maxLod = _maxLod,
+    .borderColor = _borderColor,
+    .unnormalizedCoordinates = _unnormalizedCoordinates,
+  };
 }
 
 Sampler SamplerBuilder::build(const LogicalDevice& logicalDevice) const {
-  return Sampler::create(logicalDevice, _samplerInfo);
+  const VkSamplerCreateInfo createInfo {
+    .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+    .pNext = _pNext,
+    .flags = _flags,
+    .magFilter = _magFilter,
+    .minFilter = _minFilter,
+    .mipmapMode = _mipmapMode,
+    .addressModeU = _addressModeU,
+    .addressModeV = _addressModeV,
+    .addressModeW = _addressModeW,
+    .mipLodBias = _mipLodBias,
+    .anisotropyEnable = _anisotropyEnable,
+    .maxAnisotropy = _maxAnisotropy,
+    .compareEnable = _compareEnable,
+    .compareOp = _compareOp,
+    .minLod = _minLod,
+    .maxLod = _maxLod,
+    .borderColor = _borderColor,
+    .unnormalizedCoordinates = _unnormalizedCoordinates,
+  };
+  return Sampler::create(logicalDevice, createInfo);
 }

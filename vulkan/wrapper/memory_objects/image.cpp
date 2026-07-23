@@ -11,30 +11,15 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_allocator/memory_allocator.h"
 #include "vulkan/wrapper/memory_objects/memory_objects_lib.h"
-
-Image::Image(
-    const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation) noexcept
-  : _logicalDevice(&logicalDevice), _image(image), _allocation(allocation) {}
-
-Image::Image(Image&& image) noexcept
-  : _allocation(image._allocation), _image(std::exchange(image._image, VK_NULL_HANDLE)),
-    _views(std::move(image._views)), _logicalDevice(image._logicalDevice) {}
-
-Image& Image::operator=(Image&& image) noexcept {
-  if (this == &image) [[unlikely]] {
-    return *this;
-  }
-
-  destroy();
-
-  _allocation = image._allocation;
-  _image = std::exchange(image._image, VK_NULL_HANDLE);
-  _views = std::move(image._views);
-  _logicalDevice = image._logicalDevice;
-  return *this;
-}
+#include "vulkan/wrapper/util/check.h"
 
 namespace {
+
+template <typename T>
+void chainExtendedField(void** next, T& feature) {
+  feature.pNext = *next;
+  *next = (void*)&feature;
+}
 
 struct ImageCreator {
   Allocation& allocation;
@@ -63,6 +48,35 @@ struct ImageDeleter {
 };
 
 }  // namespace
+
+Image::Image(
+    const LogicalDevice& logicalDevice, VkImage image, Allocation&& allocation) noexcept
+  : _logicalDevice(&logicalDevice), _image(image), _allocation(std::move(allocation)) {}
+
+Image Image::create(const LogicalDevice& logicalDevice, const VkImageCreateInfo& createInfo) {
+  Allocation allocation;
+  const VkImage image =
+      std::visit(ImageCreator{allocation, createInfo}, logicalDevice.getMemoryAllocator());
+  return Image(logicalDevice, image, std::move(allocation));
+}
+
+Image::Image(Image&& image) noexcept
+  : _allocation(image._allocation), _image(std::exchange(image._image, VK_NULL_HANDLE)),
+    _views(std::move(image._views)), _logicalDevice(image._logicalDevice) {}
+
+Image& Image::operator=(Image&& image) noexcept {
+  if (this == &image) [[unlikely]] {
+    return *this;
+  }
+
+  destroy();
+
+  _allocation = image._allocation;
+  _image = std::exchange(image._image, VK_NULL_HANDLE);
+  _views = std::move(image._views);
+  _logicalDevice = image._logicalDevice;
+  return *this;
+}
 
 void Image::destroy() {
   if (_image != VK_NULL_HANDLE) {
@@ -93,6 +107,10 @@ std::span<const VkImageView> Image::getVkImageViews() const noexcept {
   return _views;
 }
 
+const LogicalDevice* Image::getLogicalDevice() const noexcept {
+  return _logicalDevice;
+}
+
 namespace {
 
 VkImageViewType getImageViewType(VkImageType type, uint32_t layerCount, VkImageCreateFlags flags) {
@@ -121,34 +139,8 @@ VkImageViewType getImageViewType(VkImageType type, uint32_t layerCount, VkImageC
 
 }  // namespace
 
-VkImageView Image::addCreateVkImageView(
-    const ImageMetadata& metadata, uint32_t baseMipLevel, uint32_t levelCount,
-    uint32_t baseArrayLayer, uint32_t layerCount) {
-  if (baseMipLevel + levelCount > metadata.mipLevels) [[unlikely]] {
-    throw EngineException(
-        "Base mip level + mip level count is greater than mip levels count of the image.");
-  }
-
-  if (baseArrayLayer + layerCount > metadata.arrayLayers) [[unlikely]] {
-    throw EngineException(
-        "Base array layer + layer count is greater than layer count of the image.");
-  }
-
-  const VkImageViewCreateInfo imageViewInfo = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .image = _image,
-    .viewType = getImageViewType(metadata.imageType, layerCount, metadata.imageCreateFlags),
-    .format = metadata.imageFormat,
-    .subresourceRange = {.aspectMask = metadata.imageAspect,
-                         .baseMipLevel = baseMipLevel,
-                         .levelCount = levelCount,
-                         .baseArrayLayer = baseArrayLayer,
-                         .layerCount = layerCount}
-  };
-
-  const VkImageView view = _logicalDevice->createImageView(imageViewInfo);
-  _views.push_back(view);
-  return view;
+void Image::addImageView(VkImageView imageView) {
+  _views.push_back(imageView);
 }
 
 ImageBuilder& ImageBuilder::withType(VkImageType type) noexcept {
@@ -246,8 +238,42 @@ Image ImageBuilder::buildImage(const LogicalDevice& logicalDevice, VkImageCreate
     .usage = _usage,
     .sharingMode = _sharingMode,
     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
-  Allocation allocation;
-  const VkImage image =
-      std::visit(ImageCreator{allocation, createInfo}, logicalDevice.getMemoryAllocator());
-  return Image(logicalDevice, image, allocation);
+  return Image::create(logicalDevice, createInfo);
+}
+
+ImageViewBuilder& ImageViewBuilder::withFlags(VkImageViewCreateFlags flags) noexcept {
+  _flags = flags;
+  return *this;
+}
+
+ImageViewBuilder& ImageViewBuilder::withComponentMapping(VkComponentMapping components) noexcept {
+  _components = components;
+  return *this;
+}
+
+VkImageView ImageViewBuilder::buildAndAddToImage(
+    Image& image, const ImageMetadata& metadata, uint32_t baseMipLevel, uint32_t levelCount,
+    uint32_t baseArrayLayer, uint32_t layerCount) {
+  if (image.getVkImage() == VK_NULL_HANDLE) {
+    throw EngineException("VkImageView must created from a valid Image.");
+  }
+
+  const VkImageViewCreateInfo createInfo = {
+    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+    .pNext = _pNext,
+    .image = image.getVkImage(),
+    .viewType = getImageViewType(metadata.imageType, layerCount, metadata.imageCreateFlags),
+    .format = metadata.imageFormat,
+    .subresourceRange = {.aspectMask = metadata.imageAspect,
+                         .baseMipLevel = baseMipLevel,
+                         .levelCount = levelCount,
+                         .baseArrayLayer = baseArrayLayer,
+                         .layerCount = layerCount}
+  };
+  VkImageView imageView;
+  CHECK_VKCMD(
+      vkCreateImageView(image.getLogicalDevice()->getVkDevice(), &createInfo, nullptr, &imageView),
+      "Failed to create VkImageView.");
+  image.addImageView(imageView);
+  return imageView;
 }

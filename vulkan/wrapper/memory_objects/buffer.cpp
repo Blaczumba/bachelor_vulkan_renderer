@@ -116,43 +116,12 @@ struct UniformBufferAllocator {
 };
 
 template <typename Allocator>
-BufferResources createBuffer(const LogicalDevice& logicalDevice, const BufferMetadata& metadata) {
-  const VkBufferCreateInfo bufferCreateInfo = {
-    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-    .pNext = nullptr,
-    .flags = metadata.flags,
-    .size = metadata.size,
-    .usage = metadata.usage,
-    .sharingMode = metadata.sharingMode,
-    .queueFamilyIndexCount = static_cast<uint32_t>(metadata.queueFamilyIndices.size()),
-    .pQueueFamilyIndices =
-        metadata.queueFamilyIndices.empty() ? nullptr : metadata.queueFamilyIndices.data(),
-  };
-  return std::visit(Allocator{bufferCreateInfo}, logicalDevice.getMemoryAllocator());
+BufferResources createBuffer(
+    const LogicalDevice& logicalDevice, const VkBufferCreateInfo& createInfo) {
+  return std::visit(Allocator{createInfo}, logicalDevice.getMemoryAllocator());
 }
 
 }  // namespace
-
-Buffer BufferBuilder::createVertexInputBuffer(const LogicalDevice& logicalDevice) {
-  const BufferResources bufferResources =
-      createBuffer<VertexInputBufferAllocator>(logicalDevice, _metadata);
-  _metadata.mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
-  return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
-}
-
-Buffer BufferBuilder::createStagingBuffer(const LogicalDevice& logicalDevice) {
-  const BufferResources bufferResources =
-      createBuffer<StagingBufferAllocator>(logicalDevice, _metadata);
-  _metadata.mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
-  return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
-}
-
-Buffer BufferBuilder::createUniformBuffer(const LogicalDevice& logicalDevice) {
-  const BufferResources bufferResources =
-      createBuffer<UniformBufferAllocator>(logicalDevice, _metadata);
-  _metadata.mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
-  return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
-}
 
 const VkBuffer& Buffer::getVkBuffer() const noexcept {
   return _buffer;
@@ -163,28 +132,69 @@ const LogicalDevice& Buffer::getLogicalDevice() const noexcept {
 }
 
 BufferBuilder& BufferBuilder::withUsage(VkBufferUsageFlags usage) noexcept {
-  _metadata.usage = usage;
+  _usage = usage;
   return *this;
 }
 
 BufferBuilder& BufferBuilder::withSize(VkDeviceSize size) noexcept {
-  _metadata.size = size;
+  _size = size;
   return *this;
 }
 
 BufferBuilder& BufferBuilder::withFlags(VkBufferCreateFlags flags) noexcept {
-  _metadata.flags = flags;
+  _flags = flags;
   return *this;
 }
 
 BufferBuilder& BufferBuilder::withQueueFamilyIndices(
     std::span<const uint32_t> queueFamilyIndices) noexcept {
-  _metadata.sharingMode = VK_SHARING_MODE_CONCURRENT;
-  _metadata.queueFamilyIndices.assign(
+  _sharingMode = VK_SHARING_MODE_CONCURRENT;
+  _queueFamilyIndices.assign(
       std::cbegin(queueFamilyIndices), std::cend(queueFamilyIndices));
   return *this;
 }
 
 BufferMetadata BufferBuilder::getMetadata() const noexcept {
-  return _metadata;
+  return BufferMetadata{
+    .usage = _usage,
+    .size = _size,
+    .mappedMemory = _mappedMemory,
+    .flags = _flags,
+    .sharingMode = _sharingMode,
+    .queueFamilyIndices = _queueFamilyIndices,
+  };
+}
+
+VkBufferCreateInfo BufferBuilder::getCreateInfo() const noexcept {
+  return VkBufferCreateInfo {
+    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = _flags,
+    .size = _size,
+    .usage = _usage,
+    .sharingMode = _sharingMode,
+    .queueFamilyIndexCount = static_cast<uint32_t>(_queueFamilyIndices.size()),
+    .pQueueFamilyIndices = _queueFamilyIndices.empty() ? nullptr : _queueFamilyIndices.data(),
+  };
+}
+
+Buffer BufferBuilder::createVertexInputBuffer(const LogicalDevice& logicalDevice) {
+  const BufferResources bufferResources =
+      createBuffer<VertexInputBufferAllocator>(logicalDevice, getCreateInfo());
+  _mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
+  return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
+}
+
+Buffer BufferBuilder::createStagingBuffer(const LogicalDevice& logicalDevice) {
+  const BufferResources bufferResources =
+      createBuffer<StagingBufferAllocator>(logicalDevice, getCreateInfo());
+  _mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
+  return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
+}
+
+Buffer BufferBuilder::createUniformBuffer(const LogicalDevice& logicalDevice) {
+  const BufferResources bufferResources =
+      createBuffer<UniformBufferAllocator>(logicalDevice, getCreateInfo());
+  _mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
+  return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
 }

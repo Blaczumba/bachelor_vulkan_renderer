@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -22,10 +23,12 @@ struct ImageMetadata {
 };
 
 class Image {
-  Image(const LogicalDevice& logicalDevice, VkImage image, const Allocation allocation) noexcept;
+  Image(const LogicalDevice& logicalDevice, VkImage image, Allocation&& allocation) noexcept;
 
 public:
   Image() noexcept = default;
+
+  static Image create(const LogicalDevice& logicalDevice, const VkImageCreateInfo& createInfo);
 
   Image(Image&& image) noexcept;
 
@@ -33,17 +36,17 @@ public:
 
   ~Image();
 
-  VkImageView addCreateVkImageView(
-      const ImageMetadata& metadata, uint32_t baseMipLevel, uint32_t levelCount,
-      uint32_t baseArrayLayer, uint32_t layerCount);
-
   VkImage getVkImage() const noexcept;
 
   VkImageView getVkImageView(size_t index = 0) const noexcept;
 
   std::span<const VkImageView> getVkImageViews() const noexcept;
 
+  const LogicalDevice* getLogicalDevice() const noexcept;
+
 private:
+  void addImageView(VkImageView imageView);
+
   void destroy();
 
   VkImage _image = VK_NULL_HANDLE;
@@ -52,7 +55,7 @@ private:
 
   const LogicalDevice* _logicalDevice = nullptr;
 
-  friend class ImageBuilder;
+  friend class ImageViewBuilder;
 };
 
 class ImageBuilder {
@@ -99,6 +102,23 @@ private:
   VkImageUsageFlags _usage = {};
   VkSharingMode _sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   VkImageAspectFlags _imageAspect = VK_IMAGE_ASPECT_COLOR_BIT;
+
+  void* _pNext = nullptr;
+};
+
+class ImageViewBuilder {
+public:
+  ImageViewBuilder& withFlags(VkImageViewCreateFlags flags) noexcept;
+
+  ImageViewBuilder& withComponentMapping(VkComponentMapping components) noexcept;
+
+  VkImageView buildAndAddToImage(Image& image, const ImageMetadata& metadata, uint32_t baseMipLevel,
+                    uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
+
+private:
+  VkImageViewCreateFlags _flags = {};
+  VkComponentMapping _components = {};
+  VkImageSubresourceRange _subresourceRange = {};
 
   void* _pNext = nullptr;
 };

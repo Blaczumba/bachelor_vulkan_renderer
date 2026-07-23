@@ -100,12 +100,12 @@ std::tuple<Image, ImageMetadata> createTexture2D(
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy);
 
 std::tuple<Image, ImageMetadata> createAttachment(
-    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer, VkFormat format,
+    const LogicalDevice& logicalDevice, VkFormat format,
     VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers, VkImageAspectFlags aspect,
     VkImageUsageFlags usage);
 
 void createFsrContents(const LogicalDevice& logicalDevice, Image& image,
-                       const ImageMetadata& metadata, const CommandPool& commandPool);
+                       const ImageMetadata& metadata, const CommandBuffer& commandBuffer);
 
 }  // namespace
 
@@ -1046,31 +1046,18 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
   lib::Buffer<GpuImageHandle> attachmentHandles;
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
-    const VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
-    GpuImageHandle collorAttachmentHandle = std::apply(
-        &GpuBufferManager::transferImage,
-        std::tuple_cat(
-            std::tie(*_gpuBufferManager),
-            createAttachment(*_logicalDevice, handle, swapchainImageFormat, msaaSamples, extent,
-                             presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
-                             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)));
-    // GpuImageHandle collorAttachmentHandle = _gpuBufferManager->transferImage(createAttachment(
-    //     *_logicalDevice, commandBuffer, swapchainImageFormat, msaaSamples, extent,
-    //     presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
-    //     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
-    GpuImageHandle depthAttachmentHandle = std::apply(
-        &GpuBufferManager::transferImage,
-        std::tuple_cat(
-            std::tie(*_gpuBufferManager),
-            createAttachment(
-                *_logicalDevice, handle, VK_FORMAT_D24_UNORM_S8_UINT, msaaSamples, extent,
-                presentResources.numLayers, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
-                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-                    | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)));
-    // GpuImageHandle depthAttachmentHandle = _gpuBufferManager->transferImage(createAttachment(
-    //     *_logicalDevice, commandBuffer, VK_FORMAT_D24_UNORM_S8_UINT, msaaSamples, extent,
-    //     presentResources.numLayers, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
-    //     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT));
+    auto [colorAttachment, colorAttachmentMetadata] = createAttachment(
+        *_logicalDevice, swapchainImageFormat, msaaSamples, extent,
+        presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    GpuImageHandle collorAttachmentHandle =
+        _gpuBufferManager->transferImage(std::move(colorAttachment), colorAttachmentMetadata);
+
+    auto [depthAtachment, depthAtachmentMetadata] = createAttachment(
+        *_logicalDevice, VK_FORMAT_D24_UNORM_S8_UINT, msaaSamples, extent,
+        presentResources.numLayers, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT);
+    GpuImageHandle depthAttachmentHandle =
+        _gpuBufferManager->transferImage(std::move(depthAtachment), depthAtachmentMetadata);
 
     const VkPhysicalDeviceFragmentShadingRatePropertiesKHR& fsrProperties =
         _physicalDevice->getFragmentShadingRateProperties();
@@ -1079,12 +1066,11 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
       static_cast<uint32_t>(std::ceil(extent.width / static_cast<float>(fsrTexelExtent.width))),
       static_cast<uint32_t>(std::ceil(extent.height / static_cast<float>(fsrTexelExtent.height)))};
     auto [fsrTexture, fsrTextureMetadata] = createAttachment(
-        *_logicalDevice, handle, VK_FORMAT_R8_UINT, VK_SAMPLE_COUNT_1_BIT, fsrExtent,
+        *_logicalDevice, VK_FORMAT_R8_UINT, VK_SAMPLE_COUNT_1_BIT, fsrExtent,
         presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT,
         VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | VK_IMAGE_USAGE_TRANSFER_DST_BIT
             | VK_IMAGE_USAGE_STORAGE_BIT);
-    // TODO: pass the commandbuffer.
-    createFsrContents(*_logicalDevice, fsrTexture, fsrTextureMetadata, *_singleTimeCommandPool);
+    createFsrContents(*_logicalDevice, fsrTexture, fsrTextureMetadata, handle);
 
     _computeDescriptorSetWriter.storeImageStorage(
         fsrTexture.getVkImageView(), VK_IMAGE_LAYOUT_GENERAL);
@@ -1168,7 +1154,8 @@ std::tuple<Image, ImageMetadata> createSkybox(
   commandBuffer.transitionImageLayout(
       image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
-  image.addCreateVkImageView(metadata, 0, imageData.mipLevels, 0, 6);
+  ImageViewBuilder().buildAndAddToImage(
+      image, metadata, 0, imageData.mipLevels, 0, 6);
   return std::make_tuple(std::move(image), imageBuilder.getMetadata());
 }
 
@@ -1189,7 +1176,7 @@ std::tuple<Image, ImageMetadata> createCubemap(
   commandBuffer.transitionImageLayout(
       image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
-  image.addCreateVkImageView(metadata, 0, 1, 0, 6);
+  ImageViewBuilder().buildAndAddToImage(image, metadata, 0, 1, 0, 6);
   return std::make_tuple(std::move(image), metadata);
 }
 
@@ -1208,7 +1195,7 @@ std::tuple<Image, ImageMetadata> createShadowmap(
   commandBuffer.transitionImageLayout(
       image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
-  image.addCreateVkImageView(metadata, 0, 1, 0, 1);
+  ImageViewBuilder().buildAndAddToImage(image, metadata, 0, 1, 0, 1);
   return std::make_tuple(std::move(image), metadata);
 }
 
@@ -1234,13 +1221,12 @@ std::tuple<Image, ImageMetadata> createTexture2D(
       image.getVkImage(), metadata.imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       metadata.imageExtent.width, metadata.imageExtent.height, metadata.mipLevels,
       metadata.arrayLayers);
-  image.addCreateVkImageView(metadata, 0, imageData.mipLevels, 0, 1);
-
+  ImageViewBuilder().buildAndAddToImage(image, metadata, 0, imageData.mipLevels, 0, 1);
   return std::make_tuple(std::move(image), imageBuilder.getMetadata());
 }
 
 std::tuple<Image, ImageMetadata> createAttachment(
-    const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer, VkFormat format,
+    const LogicalDevice& logicalDevice, VkFormat format,
     VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers, VkImageAspectFlags aspect,
     VkImageUsageFlags usage) {
   auto imageBuilder =
@@ -1253,12 +1239,12 @@ std::tuple<Image, ImageMetadata> createAttachment(
           .withUsage(usage);
   Image image = imageBuilder.buildImage(logicalDevice);
   const ImageMetadata metadata = imageBuilder.getMetadata();
-  image.addCreateVkImageView(metadata, 0, 1, 0, numLayers);
+  ImageViewBuilder().buildAndAddToImage(image, metadata, 0, 1, 0, numLayers);
   return std::make_tuple(std::move(image), metadata);
 }
 
 void createFsrContents(const LogicalDevice& logicalDevice, Image& image,
-                       const ImageMetadata& metadata, const CommandPool& commandPool) {
+                       const ImageMetadata& metadata, const CommandBuffer& commandBuffer) {
   const lib::Buffer<std::byte> buffer(
       static_cast<size_t>(metadata.imageExtent.width * metadata.imageExtent.height), std::byte{10});
   BufferBuilder bufferBuilder;
@@ -1276,13 +1262,13 @@ void createFsrContents(const LogicalDevice& logicalDevice, Image& image,
       .imageExtent = metadata.imageExtent,
     };
   }
-  SingleTimeCommandBuffer handle(commandPool);
-  handle.transitionImageLayout(
+
+  commandBuffer.transitionImageLayout(
       image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
-  handle.copyBufferToImage(stagingBuffer.getVkBuffer(), image.getVkImage(), imageCopy);
-  handle.transitionImageLayout(
-      image.getVkImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+  commandBuffer.copyBufferToImage(stagingBuffer.getVkBuffer(), image.getVkImage(), imageCopy);
+  commandBuffer.transitionImageLayout(
+      image.getVkImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       VK_IMAGE_LAYOUT_GENERAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
 }
 

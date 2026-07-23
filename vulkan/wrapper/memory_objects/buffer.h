@@ -71,7 +71,15 @@ public:
   Buffer createUniformBuffer(const LogicalDevice& logicalDevice);
 
 private:
-  BufferMetadata _metadata = {
-    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-  };
+  // Auxiliary used by the create methods.
+  VkBufferCreateInfo getCreateInfo() const noexcept;
+
+  VkBufferCreateFlags _flags = {};
+  VkBufferUsageFlags _usage = {};
+  VkDeviceSize _size = 0;
+  std::byte* _mappedMemory = nullptr;
+  VkSharingMode _sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  std::vector<uint32_t> _queueFamilyIndices;
+
+  void* _pNext = nullptr;
 };

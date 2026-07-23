@@ -76,21 +76,29 @@ public:
 
   SamplerBuilder& withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) noexcept;
 
-  const VkSamplerCreateInfo& getVkSamplerCreateInfo() const noexcept;
+  SamplerBuilder& withFlags(VkSamplerCreateFlags flags) noexcept;
+
+  SamplerMetadata getMetadata() const noexcept;
 
   Sampler build(const LogicalDevice& logicalDevice) const;
 
 private:
-  VkSamplerCreateInfo _samplerInfo = {
-    .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-    .magFilter = VK_FILTER_NEAREST,
-    .minFilter = VK_FILTER_NEAREST,
-    .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
-    .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .minLod = 0.0f,
-    .maxLod = VK_LOD_CLAMP_NONE};
+  VkSamplerCreateFlags _flags = {};
+  VkFilter _magFilter = VK_FILTER_LINEAR;
+  VkFilter _minFilter = VK_FILTER_LINEAR;
+  VkSamplerMipmapMode _mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  VkSamplerAddressMode _addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkSamplerAddressMode _addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  VkSamplerAddressMode _addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  float _mipLodBias = 0.0f;
+  VkBool32 _anisotropyEnable = VK_FALSE;
+  float _maxAnisotropy = 0.0f;
+  VkBool32 _compareEnable = VK_FALSE;
+  VkCompareOp _compareOp = VK_COMPARE_OP_NEVER;
+  float _minLod = 0.0f;
+  float _maxLod = VK_LOD_CLAMP_NONE;
+  VkBorderColor _borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+  VkBool32 _unnormalizedCoordinates = VK_FALSE;
 
   void* _pNext = nullptr;
 };
