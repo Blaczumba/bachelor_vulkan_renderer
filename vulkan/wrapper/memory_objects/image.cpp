@@ -65,17 +65,14 @@ struct ImageDeleter {
 }  // namespace
 
 void Image::destroy() {
-  for (VkImageView view : _views) {
-    _logicalDevice->destroyResource([view](DestroyerContext context) {
-      vkDestroyImageView(context.device, view, context.allocationCallbacks);
-    });
-  }
-
   if (_image != VK_NULL_HANDLE) {
-    _logicalDevice->destroyResource(
-        [image = _image, allocation = std::move(_allocation)](DestroyerContext context) {
-          std::visit(ImageDeleter{image}, *context.memoryAllocator, allocation);
-        });
+    _logicalDevice->destroyResource([image = _image, allocation = std::move(_allocation),
+                                     views = std::move(_views)](DestroyerContext context) {
+      for (VkImageView view : views) {
+        vkDestroyImageView(context.device, view, context.allocationCallbacks);
+      }
+      std::visit(ImageDeleter{image}, *context.memoryAllocator, allocation);
+    });
     _image = VK_NULL_HANDLE;
   }
 }
