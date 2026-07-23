@@ -177,8 +177,8 @@ std::unique_ptr<Instance> createInstance(
     .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
     .pApplicationName = "VrApp",
     .pEngineName = "BejzakEngine",
-    .engineVersion = VK_MAKE_VERSION(1, 2, 0),
-    .apiVersion = VK_API_VERSION_1_2};
+    .engineVersion = VK_MAKE_VERSION(1, 3, 0),
+    .apiVersion = VK_API_VERSION_1_3};
 
 #ifdef VALIDATION_LAYERS_ENABLED
   const VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo =
