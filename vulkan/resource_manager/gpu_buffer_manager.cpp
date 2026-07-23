@@ -10,10 +10,6 @@
 #include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/memory_objects/memory_objects_lib.h"
 
-std::unique_ptr<GpuBufferManager> GpuBufferManager::create() {
-  return std::unique_ptr<GpuBufferManager>(new GpuBufferManager());
-}
-
 namespace {
 
 template <typename T>
@@ -35,17 +31,19 @@ inline void increaseRefCountInternal(MapType& map, IndexType index) {
 }
 
 template <typename MapType, typename IndexType>
-inline void decreaseRefCountInternal(MapType& map, IndexType index) {
+inline bool decreaseRefCountInternal(MapType& map, IndexType index) {
   auto* resource = map.tryGetValue(*index);
   if (resource == nullptr) [[unlikely]] {
-    return;
+    return false;
   }
 
   --resource->refCount;
 
   if (resource->refCount == 0) {
     map.eraseUnsafe(*index);
+    return true;
   }
+  return false;
 }
 
 void copyBuffer(
@@ -83,12 +81,18 @@ void copyBuffer(
 
 }  // namespace
 
+std::unique_ptr<GpuBufferManager> GpuBufferManager::create() {
+  return std::unique_ptr<GpuBufferManager>(new GpuBufferManager());
+}
+
 void GpuBufferManager::increaseRefCount(GpuBufferHandle index) {
   increaseRefCountInternal(_bufferMap, index);
 }
 
 void GpuBufferManager::decreaseRefCount(GpuBufferHandle index) {
-  decreaseRefCountInternal(_bufferMap, index);
+  if (decreaseRefCountInternal(_bufferMap, index)) {
+    _freeBufferIndices.push_back(index);
+  }
 }
 
 void GpuBufferManager::increaseRefCount(GpuImageHandle index) {
@@ -96,7 +100,9 @@ void GpuBufferManager::increaseRefCount(GpuImageHandle index) {
 }
 
 void GpuBufferManager::decreaseRefCount(GpuImageHandle index) {
-  decreaseRefCountInternal(_imageMap, index);
+  if (decreaseRefCountInternal(_imageMap, index)) {
+    _freeImageIndices.push_back(index);
+  }
 }
 
 GpuBufferHandle GpuBufferManager::storeBuffer(
@@ -128,8 +134,8 @@ GpuBufferHandle GpuBufferManager::storeBuffer(
 GpuBufferHandle GpuBufferManager::transferBuffer(BufferWithMetadata&& stagingBuffer) {
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(
-        std::format("GpuBufferManager::transferBuffer: Cannot upload more buffers, maximum limit "
-                    "of {} reached.",
+        std::format(
+            "GpuBufferManager::transferBuffer: Cannot upload more buffers, maximum limit of {} reached.",
             MAX_GPU_BUFFERS));
   }
 
