@@ -1137,27 +1137,28 @@ namespace {
 std::tuple<Image, ImageMetadata> createSkybox(
     const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy) {
-  auto imageBuilder =
+  auto [image, imageMetadata] =
       ImageBuilder()
           .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
           .withExtent(imageData.width, imageData.height)
           .withFormat(format)
           .withMipLevels(imageData.mipLevels)
           .withUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
-          .withLayerCount(6);
-  Image image = imageBuilder.buildImage(logicalDevice, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-  const ImageMetadata metadata = imageBuilder.getMetadata();
-
+          .withLayerCount(6)
+          .withFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
+          .buildImageWithMetadata(logicalDevice);
   commandBuffer.transitionImageLayout(
-      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
+      image.getVkImage(), imageMetadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, imageMetadata.mipLevels, 0,
+      imageMetadata.arrayLayers);
   commandBuffer.copyBufferToImage(
       imageData.stagingBuffer.buffer.getVkBuffer(), image.getVkImage(), imageData.copyRegions);
   commandBuffer.transitionImageLayout(
-      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
-  ImageViewBuilder().buildAndAddToImage(image, metadata, 0, imageData.mipLevels, 0, 6);
-  return std::make_tuple(std::move(image), imageBuilder.getMetadata());
+      image.getVkImage(), imageMetadata.imageAspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, imageMetadata.mipLevels, 0,
+      imageMetadata.arrayLayers);
+  ImageViewBuilder().buildAndAddToImage(image, imageMetadata, 0, imageData.mipLevels, 0, 6);
+  return std::make_tuple(std::move(image), imageMetadata);
 }
 
 std::tuple<Image, ImageMetadata> createCubemap(
@@ -1165,82 +1166,81 @@ std::tuple<Image, ImageMetadata> createCubemap(
 
     VkImageAspectFlags aspect, VkFormat format, VkImageUsageFlags additionalUsage,
     float samplerAnisotropy) {
-  auto imageBuilder =
+  auto [image, imageMetadata] =
       ImageBuilder()
           .withAspect(aspect)
           .withExtent(1024 * 4, 1024 * 4)
           .withFormat(format)
           .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | additionalUsage)
-          .withLayerCount(6);
-  Image image = imageBuilder.buildImage(logicalDevice, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-  const ImageMetadata metadata = imageBuilder.getMetadata();
+          .withLayerCount(6)
+          .withFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
+          .buildImageWithMetadata(logicalDevice);
   commandBuffer.transitionImageLayout(
-      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
-  ImageViewBuilder().buildAndAddToImage(image, metadata, 0, 1, 0, 6);
-  return std::make_tuple(std::move(image), metadata);
+      image.getVkImage(), imageMetadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, imageMetadata.mipLevels, 0,
+      imageMetadata.arrayLayers);
+  ImageViewBuilder().buildAndAddToImage(image, imageMetadata, 0, 1, 0, 6);
+  return std::make_tuple(std::move(image), imageMetadata);
 }
 
 std::tuple<Image, ImageMetadata> createShadowmap(
     const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer, uint32_t width,
     uint32_t height, VkFormat format) {
-  auto imageBuilder =
+  auto [image, imageMetadata] =
       ImageBuilder()
           .withAspect(VK_IMAGE_ASPECT_DEPTH_BIT)
           .withExtent(width, height)
           .withFormat(format)
-          .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-
-  Image image = imageBuilder.buildImage(logicalDevice);
-  const ImageMetadata metadata = imageBuilder.getMetadata();
+          .withUsage(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+          .buildImageWithMetadata(logicalDevice);
   commandBuffer.transitionImageLayout(
-      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
-  ImageViewBuilder().buildAndAddToImage(image, metadata, 0, 1, 0, 1);
-  return std::make_tuple(std::move(image), metadata);
+      image.getVkImage(), imageMetadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, imageMetadata.mipLevels, 0,
+      imageMetadata.arrayLayers);
+  ImageViewBuilder().buildAndAddToImage(image, imageMetadata, 0, 1, 0, 1);
+  return std::make_tuple(std::move(image), imageMetadata);
 }
 
 std::tuple<Image, ImageMetadata> createTexture2D(
     const LogicalDevice& logicalDevice, const CommandBuffer& commandBuffer,
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy) {
-  auto imageBuilder =
+  auto [image, imageMetadata] =
       ImageBuilder()
           .withAspect(VK_IMAGE_ASPECT_COLOR_BIT)
           .withExtent(imageData.width, imageData.height)
           .withFormat(format)
           .withMipLevels(imageData.mipLevels)
           .withUsage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-                     | VK_IMAGE_USAGE_SAMPLED_BIT);
-  Image image = imageBuilder.buildImage(logicalDevice);
-  const ImageMetadata metadata = imageBuilder.getMetadata();
+                     | VK_IMAGE_USAGE_SAMPLED_BIT)
+          .buildImageWithMetadata(logicalDevice);
   commandBuffer.transitionImageLayout(
-      image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
+      image.getVkImage(), imageMetadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, imageMetadata.mipLevels, 0,
+      imageMetadata.arrayLayers);
   commandBuffer.copyBufferToImage(
       imageData.stagingBuffer.buffer.getVkBuffer(), image.getVkImage(), imageData.copyRegions);
   commandBuffer.generateMipmaps(
-      image.getVkImage(), metadata.imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      metadata.imageExtent.width, metadata.imageExtent.height, metadata.mipLevels,
-      metadata.arrayLayers);
-  ImageViewBuilder().buildAndAddToImage(image, metadata, 0, imageData.mipLevels, 0, 1);
-  return std::make_tuple(std::move(image), imageBuilder.getMetadata());
+      image.getVkImage(), imageMetadata.imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      imageMetadata.imageExtent.width, imageMetadata.imageExtent.height, imageMetadata.mipLevels,
+      imageMetadata.arrayLayers);
+  ImageViewBuilder().buildAndAddToImage(image, imageMetadata, 0, imageData.mipLevels, 0, 1);
+  return std::make_tuple(std::move(image), imageMetadata);
 }
 
 std::tuple<Image, ImageMetadata> createAttachment(
     const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples,
     VkExtent2D extent, uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage) {
-  auto imageBuilder =
+  auto [image, imageMetadata] =
       ImageBuilder()
           .withFormat(format)
           .withNumSamples(samples)
           .withExtent(extent)
           .withLayerCount(numLayers)
           .withAspect(aspect)
-          .withUsage(usage);
-  Image image = imageBuilder.buildImage(logicalDevice);
-  const ImageMetadata metadata = imageBuilder.getMetadata();
-  ImageViewBuilder().buildAndAddToImage(image, metadata, 0, 1, 0, numLayers);
-  return std::make_tuple(std::move(image), metadata);
+          .withUsage(usage)
+          .buildImageWithMetadata(logicalDevice);
+  ImageViewBuilder().buildAndAddToImage(image, imageMetadata, 0, 1, 0, numLayers);
+  return std::make_tuple(std::move(image), imageMetadata);
 }
 
 void createFsrContents(const LogicalDevice& logicalDevice, Image& image,

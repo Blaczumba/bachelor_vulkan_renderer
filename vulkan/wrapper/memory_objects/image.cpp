@@ -142,102 +142,100 @@ void Image::addImageView(VkImageView imageView) {
   _views.push_back(imageView);
 }
 
-ImageBuilder& ImageBuilder::withType(VkImageType type) noexcept {
-  _imageType = type;
-  return *this;
+ImageBuilder&& ImageBuilder::withType(VkImageType type) && noexcept {
+  _createInfo.imageType = type;
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withFormat(VkFormat format) noexcept {
-  _format = format;
-  return *this;
+ImageBuilder&& ImageBuilder::withFormat(VkFormat format) && noexcept {
+  _createInfo.format = format;
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withExtent(uint32_t width) noexcept {
-  _imageExtent = {width, 1, 1};
-  return *this;
+ImageBuilder&& ImageBuilder::withExtent(uint32_t width) && noexcept {
+  _createInfo.extent = {width, 1, 1};
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withExtent(uint32_t width, uint32_t height) noexcept {
-  _imageExtent = {width, height, 1};
-  return *this;
+ImageBuilder&& ImageBuilder::withExtent(uint32_t width, uint32_t height) && noexcept {
+  _createInfo.extent = {width, height, 1};
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withExtent(VkExtent2D extent) noexcept {
-  _imageExtent = {extent.width, extent.height, 1};
-  return *this;
+ImageBuilder&& ImageBuilder::withExtent(VkExtent2D extent) && noexcept {
+  _createInfo.extent = {extent.width, extent.height, 1};
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withExtent(uint32_t width, uint32_t height, uint32_t depth) noexcept {
-  _imageExtent = {width, height, depth};
-  return *this;
+ImageBuilder&& ImageBuilder::withExtent(
+    uint32_t width, uint32_t height, uint32_t depth) && noexcept {
+  _createInfo.extent = {width, height, depth};
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withExtent(VkExtent3D extent) noexcept {
-  _imageExtent = extent;
-  return *this;
+ImageBuilder&& ImageBuilder::withExtent(VkExtent3D extent) && noexcept {
+  _createInfo.extent = extent;
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withAspect(VkImageAspectFlags aspect) noexcept {
+ImageBuilder&& ImageBuilder::withAspect(VkImageAspectFlags aspect) && noexcept {
   _imageAspect = aspect;
-  return *this;
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withMipLevels(uint32_t mipLevels) noexcept {
-  _mipLevels = mipLevels;
-  return *this;
+ImageBuilder&& ImageBuilder::withMipLevels(uint32_t mipLevels) && noexcept {
+  _createInfo.mipLevels = mipLevels;
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withNumSamples(VkSampleCountFlagBits numSamples) noexcept {
-  _samples = numSamples;
-  return *this;
+ImageBuilder&& ImageBuilder::withNumSamples(VkSampleCountFlagBits numSamples) && noexcept {
+  _createInfo.samples = numSamples;
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withTiling(VkImageTiling tiling) noexcept {
-  _tiling = tiling;
-  return *this;
+ImageBuilder&& ImageBuilder::withTiling(VkImageTiling tiling) && noexcept {
+  _createInfo.tiling = tiling;
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withUsage(VkImageUsageFlags usage) noexcept {
-  _usage = usage;
-  return *this;
+ImageBuilder&& ImageBuilder::withUsage(VkImageUsageFlags usage) && noexcept {
+  _createInfo.usage = usage;
+  return std::move(*this);
 }
 
-ImageBuilder& ImageBuilder::withLayerCount(uint32_t layerCount) noexcept {
-  _arrayLayers = layerCount;
-  return *this;
+ImageBuilder&& ImageBuilder::withLayerCount(uint32_t layerCount) && noexcept {
+  _createInfo.arrayLayers = layerCount;
+  return std::move(*this);
 }
 
-ImageMetadata ImageBuilder::getMetadata() const noexcept {
+ImageBuilder&& ImageBuilder::withFlags(VkImageCreateFlags flags) && noexcept {
+  _createInfo.flags = flags;
+  return std::move(*this);
+}
+
+std::tuple<Image, ImageMetadata> ImageBuilder::buildImageWithMetadata(
+    const LogicalDevice& logicalDevice) const {
+  return std::make_tuple(buildImage(logicalDevice), buildMetadata());
+}
+
+ImageMetadata ImageBuilder::buildMetadata() const noexcept {
   return ImageMetadata{
-    .imageCreateFlags = _imageCreateFlags,
-    .imageType = _imageType,
-    .imageFormat = _format,
-    .imageExtent = _imageExtent,
-    .mipLevels = _mipLevels,
-    .arrayLayers = _arrayLayers,
-    .samples = _samples,
-    .tiling = _tiling,
-    .usage = _usage,
-    .sharingMode = _sharingMode,
-    .imageAspect = _imageAspect};
+    .imageCreateFlags = _createInfo.flags,
+    .imageType = _createInfo.imageType,
+    .imageFormat = _createInfo.format,
+    .imageExtent = _createInfo.extent,
+    .mipLevels = _createInfo.mipLevels,
+    .arrayLayers = _createInfo.arrayLayers,
+    .samples = _createInfo.samples,
+    .tiling = _createInfo.tiling,
+    .usage = _createInfo.usage,
+    .sharingMode = _createInfo.sharingMode,
+    .imageAspect = _imageAspect,
+  };
 }
 
-Image ImageBuilder::buildImage(const LogicalDevice& logicalDevice, VkImageCreateFlags flags) {
-  const VkImageCreateInfo createInfo{
-    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-    .pNext = _pNext,
-    .flags = _imageCreateFlags = flags,
-    .imageType = _imageType,
-    .format = _format,
-    .extent = _imageExtent,
-    .mipLevels = _mipLevels,
-    .arrayLayers = _arrayLayers,
-    .samples = _samples,
-    .tiling = _tiling,
-    .usage = _usage,
-    .sharingMode = _sharingMode,
-    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
-  return Image::create(logicalDevice, createInfo);
+Image ImageBuilder::buildImage(const LogicalDevice& logicalDevice) const {
+  return Image::create(logicalDevice, _createInfo);
 }
 
 ImageViewBuilder& ImageViewBuilder::withFlags(VkImageViewCreateFlags flags) noexcept {
@@ -254,7 +252,7 @@ VkImageView ImageViewBuilder::buildAndAddToImage(
     Image& image, const ImageMetadata& metadata, uint32_t baseMipLevel, uint32_t levelCount,
     uint32_t baseArrayLayer, uint32_t layerCount) {
   if (image.getVkImage() == VK_NULL_HANDLE) {
-    throw EngineException("VkImageView must created from a valid Image.");
+    throw EngineException("VkImageView must be created from a valid Image.");
   }
 
   const VkImageViewCreateInfo createInfo = {

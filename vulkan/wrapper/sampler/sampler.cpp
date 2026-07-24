@@ -54,9 +54,6 @@ void Sampler::destroy() {
   });
 }
 
-VkSamplerCreateInfo convertSamplerMetadataToVkSamplerCreateInfo(
-    const SamplerMetadata& metadata) noexcept {}
-
 SamplerBuilder&& SamplerBuilder::withMinMagFilter(
     VkFilter minFilter, VkFilter magFilter) && noexcept {
   _createInfo.minFilter = minFilter;

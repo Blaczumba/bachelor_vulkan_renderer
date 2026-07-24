@@ -8,20 +8,6 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_allocator/allocation.h"
 
-struct ImageMetadata {
-  VkImageCreateFlags imageCreateFlags;
-  VkImageType imageType;
-  VkFormat imageFormat;
-  VkExtent3D imageExtent;
-  uint32_t mipLevels;
-  uint32_t arrayLayers;
-  VkSampleCountFlagBits samples;
-  VkImageTiling tiling;
-  VkImageUsageFlags usage;
-  VkSharingMode sharingMode;
-  VkImageAspectFlags imageAspect;
-};
-
 class Image {
   Image(const LogicalDevice& logicalDevice, VkImage image, Allocation&& allocation) noexcept;
 
@@ -58,49 +44,77 @@ private:
   friend class ImageViewBuilder;
 };
 
+struct ImageMetadata {
+  VkImageCreateFlags imageCreateFlags;
+  VkImageType imageType;
+  VkFormat imageFormat;
+  VkExtent3D imageExtent;
+  uint32_t mipLevels;
+  uint32_t arrayLayers;
+  VkSampleCountFlagBits samples;
+  VkImageTiling tiling;
+  VkImageUsageFlags usage;
+  VkSharingMode sharingMode;
+  VkImageAspectFlags imageAspect;
+
+  bool operator==(const ImageMetadata&) const = default;
+};
+
 class ImageBuilder {
 public:
-  ImageBuilder& withType(VkImageType type) noexcept;
+  ImageBuilder&& withType(VkImageType type) && noexcept;
 
-  ImageBuilder& withFormat(VkFormat format) noexcept;
+  ImageBuilder&& withFormat(VkFormat format) && noexcept;
 
-  ImageBuilder& withExtent(uint32_t width) noexcept;
+  ImageBuilder&& withExtent(uint32_t width) && noexcept;
 
-  ImageBuilder& withExtent(uint32_t width, uint32_t height) noexcept;
+  ImageBuilder&& withExtent(uint32_t width, uint32_t height) && noexcept;
 
-  ImageBuilder& withExtent(VkExtent2D extent) noexcept;
+  ImageBuilder&& withExtent(VkExtent2D extent) && noexcept;
 
-  ImageBuilder& withExtent(uint32_t width, uint32_t height, uint32_t depth) noexcept;
+  ImageBuilder&& withExtent(uint32_t width, uint32_t height, uint32_t depth) && noexcept;
 
-  ImageBuilder& withExtent(VkExtent3D extent) noexcept;
+  ImageBuilder&& withExtent(VkExtent3D extent) && noexcept;
 
-  ImageBuilder& withAspect(VkImageAspectFlags aspect) noexcept;
+  ImageBuilder&& withAspect(VkImageAspectFlags aspect) && noexcept;
 
-  ImageBuilder& withMipLevels(uint32_t mipLevels) noexcept;
+  ImageBuilder&& withMipLevels(uint32_t mipLevels) && noexcept;
 
-  ImageBuilder& withNumSamples(VkSampleCountFlagBits numSamples) noexcept;
+  ImageBuilder&& withNumSamples(VkSampleCountFlagBits numSamples) && noexcept;
 
-  ImageBuilder& withTiling(VkImageTiling tiling) noexcept;
+  ImageBuilder&& withTiling(VkImageTiling tiling) && noexcept;
 
-  ImageBuilder& withUsage(VkImageUsageFlags usage) noexcept;
+  ImageBuilder&& withUsage(VkImageUsageFlags usage) && noexcept;
 
-  ImageBuilder& withLayerCount(uint32_t layerCount) noexcept;
+  ImageBuilder&& withLayerCount(uint32_t layerCount) && noexcept;
 
-  ImageMetadata getMetadata() const noexcept;
+  ImageBuilder&& withFlags(VkImageCreateFlags flags) && noexcept;
 
-  Image buildImage(const LogicalDevice& logicalDevice, VkImageCreateFlags flags = {});
+  std::tuple<Image, ImageMetadata> buildImageWithMetadata(const LogicalDevice& logicalDevice) const;
+
+  ImageMetadata buildMetadata() const noexcept;
+
+  Image buildImage(const LogicalDevice& logicalDevice) const;
 
 private:
-  VkImageCreateFlags _imageCreateFlags = {};
-  VkImageType _imageType = VK_IMAGE_TYPE_2D;
-  VkFormat _format = VK_FORMAT_UNDEFINED;
-  VkExtent3D _imageExtent = {1, 1, 1};
-  uint32_t _mipLevels = 1;
-  uint32_t _arrayLayers = 1;
-  VkSampleCountFlagBits _samples = VK_SAMPLE_COUNT_1_BIT;
-  VkImageTiling _tiling = VK_IMAGE_TILING_OPTIMAL;
-  VkImageUsageFlags _usage = {};
-  VkSharingMode _sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  VkImageCreateInfo _createInfo{
+    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .imageType = VK_IMAGE_TYPE_2D,
+    .format = VK_FORMAT_UNDEFINED,
+    .extent = {1, 1, 1},
+    .mipLevels = 1,
+    .arrayLayers = 1,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+    .tiling = VK_IMAGE_TILING_OPTIMAL,
+    .usage = 0,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    .queueFamilyIndexCount = 0,
+    .pQueueFamilyIndices = nullptr,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+  };
+
   VkImageAspectFlags _imageAspect = VK_IMAGE_ASPECT_COLOR_BIT;
 
   void* _pNext = nullptr;
