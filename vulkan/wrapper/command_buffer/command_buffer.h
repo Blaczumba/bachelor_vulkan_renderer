@@ -96,6 +96,12 @@ public:
       VkImage image, VkFormat imageFormat, VkImageLayout finalLayout, int32_t texWidth,
       int32_t texHeight, uint32_t mipLevels, uint32_t layerCount) const noexcept;
 
+  void copyBufferToBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
+                          std::span<const VkBufferCopy> copyRegions) const noexcept;
+
+  void copyBufferToBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
+                          std::initializer_list<VkBufferCopy> copyRegions) const noexcept;
+
   void copyBufferToImage(VkBuffer buffer, VkImage image,
                          std::span<const VkBufferImageCopy> copyRegions) const noexcept;
 

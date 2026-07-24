@@ -7,20 +7,22 @@ std::unique_ptr<SamplerManager> SamplerManager::create() {
   return std::unique_ptr<SamplerManager>(new SamplerManager());
 }
 
-SamplerHandle SamplerManager::transferSampler(Sampler&& sampler) {
-  SamplerHandle handle = getNextHandle(_samplerMap.size(), _freeSamplerHandles);
-  if (!_samplerMap.insert(*handle, std::move(sampler))) {
-    throw EngineException("Failed to transfer the sampler into SamplerManager.");
+SamplerHandle SamplerManager::transferSampler(Sampler&& sampler, const SamplerMetadata& metadata) {
+  auto [it, inserted] = _samplerCollisionMap.try_emplace(metadata);
+  if (!inserted) {
+    return it->second;
   }
-
-  return handle;
+  SamplerHandle handle = getNextHandle(_samplerMap.size(), _freeSamplerHandles);
+  _samplerMap.insertUnsafe(*handle, std::make_tuple(std::move(sampler), &it->first));
+  return it->second = handle;
 }
 
 void SamplerManager::removeSampler(SamplerHandle handle) {
   _freeSamplerHandles.push_back(handle);
+  _samplerCollisionMap.erase(*std::get<const SamplerMetadata*>(_samplerMap.getValue(*handle)));
   _samplerMap.eraseUnsafe(*handle);
 }
 
 const Sampler& SamplerManager::getSampler(SamplerHandle handle) const {
-  return _samplerMap.getValue(*handle);
+  return std::get<Sampler>(_samplerMap.getValue(*handle));
 }

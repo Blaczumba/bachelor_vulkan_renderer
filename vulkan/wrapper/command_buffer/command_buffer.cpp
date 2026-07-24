@@ -314,6 +314,19 @@ void CommandBuffer::generateMipmaps(
                        nullptr, 0, nullptr, 1, &barrier);
 }
 
+void CommandBuffer::copyBufferToBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
+                                       std::span<const VkBufferCopy> copyRegions) const noexcept {
+  vkCmdCopyBuffer(_commandBuffer, srcBuffer, dstBuffer, static_cast<uint32_t>(copyRegions.size()),
+                  copyRegions.data());
+}
+
+void CommandBuffer::copyBufferToBuffer(
+    VkBuffer srcBuffer, VkBuffer dstBuffer,
+    std::initializer_list<VkBufferCopy> copyRegions) const noexcept {
+  vkCmdCopyBuffer(_commandBuffer, srcBuffer, dstBuffer, static_cast<uint32_t>(copyRegions.size()),
+                  copyRegions.begin());
+}
+
 void CommandBuffer::copyBufferToImage(
     VkBuffer buffer, VkImage image, std::span<const VkBufferImageCopy> copyRegions) const noexcept {
   vkCmdCopyBufferToImage(_commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,

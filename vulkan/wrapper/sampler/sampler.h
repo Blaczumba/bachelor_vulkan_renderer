@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tuple>
 #include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
@@ -45,60 +46,64 @@ struct SamplerMetadata {
   VkBorderColor borderColor;
   VkBool32 unnormalizedCoordinates;
   // Other std::optional fields representing pNext metadata.
-};
 
-struct SamplerWithMetadata {
-  Sampler sampler;
-  SamplerMetadata metadata;
+  bool operator==(const SamplerMetadata&) const = default;
 };
 
 class SamplerBuilder {
 public:
   SamplerBuilder() noexcept = default;
 
-  SamplerBuilder& withMinMagFilter(VkFilter minFiler, VkFilter magFilter) noexcept;
+  SamplerBuilder&& withMinMagFilter(VkFilter minFiler, VkFilter magFilter) && noexcept;
 
-  SamplerBuilder& withMipmapMode(VkSamplerMipmapMode mode) noexcept;
+  SamplerBuilder&& withMipmapMode(VkSamplerMipmapMode mode) && noexcept;
 
-  SamplerBuilder& withAddressMode(
+  SamplerBuilder&& withAddressMode(
       VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV,
-      VkSamplerAddressMode addressModeW) noexcept;
+      VkSamplerAddressMode addressModeW) && noexcept;
 
-  SamplerBuilder& withMipLodBias(float mipLodBias) noexcept;
+  SamplerBuilder&& withMipLodBias(float mipLodBias) && noexcept;
 
-  SamplerBuilder& withAnisotropy(float maxAnisotropy) noexcept;
+  SamplerBuilder&& withAnisotropy(float maxAnisotropy) && noexcept;
 
-  SamplerBuilder& withCompareOp(VkCompareOp compareOp) noexcept;
+  SamplerBuilder&& withCompareOp(VkCompareOp compareOp) && noexcept;
 
-  SamplerBuilder& withLodRange(float minLod, float maxLod) noexcept;
+  SamplerBuilder&& withLodRange(float minLod, float maxLod) && noexcept;
 
-  SamplerBuilder& withBorderColor(VkBorderColor borderColor) noexcept;
+  SamplerBuilder&& withBorderColor(VkBorderColor borderColor) && noexcept;
 
-  SamplerBuilder& withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) noexcept;
+  SamplerBuilder&& withUnnormalizedCoordinates(VkBool32 unnormalizedCoordinates) && noexcept;
 
-  SamplerBuilder& withFlags(VkSamplerCreateFlags flags) noexcept;
+  SamplerBuilder&& withFlags(VkSamplerCreateFlags flags) && noexcept;
 
-  SamplerMetadata getMetadata() const noexcept;
+  std::tuple<Sampler, SamplerMetadata> buildSamplerWithMetadata(
+      const LogicalDevice& logicalDevice) const;
 
-  Sampler build(const LogicalDevice& logicalDevice) const;
+  SamplerMetadata buildMetadata() const noexcept;
+
+  Sampler buildSampler(const LogicalDevice& logicalDevice) const;
 
 private:
-  VkSamplerCreateFlags _flags = {};
-  VkFilter _magFilter = VK_FILTER_LINEAR;
-  VkFilter _minFilter = VK_FILTER_LINEAR;
-  VkSamplerMipmapMode _mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-  VkSamplerAddressMode _addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  VkSamplerAddressMode _addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  VkSamplerAddressMode _addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  float _mipLodBias = 0.0f;
-  VkBool32 _anisotropyEnable = VK_FALSE;
-  float _maxAnisotropy = 0.0f;
-  VkBool32 _compareEnable = VK_FALSE;
-  VkCompareOp _compareOp = VK_COMPARE_OP_NEVER;
-  float _minLod = 0.0f;
-  float _maxLod = VK_LOD_CLAMP_NONE;
-  VkBorderColor _borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-  VkBool32 _unnormalizedCoordinates = VK_FALSE;
+  VkSamplerCreateInfo _createInfo{
+    .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .magFilter = VK_FILTER_LINEAR,
+    .minFilter = VK_FILTER_LINEAR,
+    .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+    .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .mipLodBias = 0.0f,
+    .anisotropyEnable = VK_FALSE,
+    .maxAnisotropy = 0.0f,
+    .compareEnable = VK_FALSE,
+    .compareOp = VK_COMPARE_OP_NEVER,
+    .minLod = 0.0f,
+    .maxLod = VK_LOD_CLAMP_NONE,
+    .borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+    .unnormalizedCoordinates = VK_FALSE,
+  };
 
   void* _pNext = nullptr;
 };

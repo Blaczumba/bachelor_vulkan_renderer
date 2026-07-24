@@ -149,8 +149,7 @@ BufferBuilder& BufferBuilder::withFlags(VkBufferCreateFlags flags) noexcept {
 BufferBuilder& BufferBuilder::withQueueFamilyIndices(
     std::span<const uint32_t> queueFamilyIndices) noexcept {
   _sharingMode = VK_SHARING_MODE_CONCURRENT;
-  _queueFamilyIndices.assign(
-      std::cbegin(queueFamilyIndices), std::cend(queueFamilyIndices));
+  _queueFamilyIndices.assign(std::cbegin(queueFamilyIndices), std::cend(queueFamilyIndices));
   return *this;
 }
 
@@ -166,7 +165,7 @@ BufferMetadata BufferBuilder::getMetadata() const noexcept {
 }
 
 VkBufferCreateInfo BufferBuilder::getCreateInfo() const noexcept {
-  return VkBufferCreateInfo {
+  return VkBufferCreateInfo{
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
     .pNext = nullptr,
     .flags = _flags,

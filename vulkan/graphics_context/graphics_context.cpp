@@ -100,9 +100,8 @@ std::tuple<Image, ImageMetadata> createTexture2D(
     const AssetManager::ImageData& imageData, VkFormat format, float samplerAnisotropy);
 
 std::tuple<Image, ImageMetadata> createAttachment(
-    const LogicalDevice& logicalDevice, VkFormat format,
-    VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers, VkImageAspectFlags aspect,
-    VkImageUsageFlags usage);
+    const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples,
+    VkExtent2D extent, uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage);
 
 void createFsrContents(const LogicalDevice& logicalDevice, Image& image,
                        const ImageMetadata& metadata, const CommandBuffer& commandBuffer);
@@ -201,16 +200,17 @@ Entity GCONTEXT_CLASS loadObject(
     PipelineHandle pipelineHandle, Image&& image, const ImageMetadata& metadata) {
   Entity entity = _registry.createEntity();
 
-  Sampler sampler = SamplerBuilder()
-                        .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
-                        .build(*_logicalDevice);
+  auto [sampler, samplerMetadata] =
+      SamplerBuilder()
+          .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
+          .buildSamplerWithMetadata(*_logicalDevice);
   _registry.addComponent<MaterialComponent>(
       entity,
       MaterialComponent{.diffuse = _bindlessWriter->writeTexture(
                             image.getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             sampler.getVkSampler()),
                         .pipelineHandle = pipelineHandle});
-  _samplerManager->transferSampler(std::move(sampler));
+  _samplerManager->transferSampler(std::move(sampler), samplerMetadata);
   _gpuBufferManager->transferImage(std::move(image), metadata);
 
   MeshComponent msh = {.aabb = createAABBfromVertices(cubeData.positions, glm::mat4(1.0f))};
@@ -361,7 +361,7 @@ void GCONTEXT_CLASS createShadowResources() {
         createShadowmap(*_logicalDevice, handle, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
     _shadowMapHandle = _gpuBufferManager->transferImage(std::move(image), metadata);
   }
-  Sampler sampler =
+  auto [sampler, samplerMetadata] =
       SamplerBuilder()
           .withCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
           .withAddressMode(
@@ -369,13 +369,13 @@ void GCONTEXT_CLASS createShadowResources() {
               VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
           .withMinMagFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR)
           .withBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
-          .build(*_logicalDevice);
+          .buildSamplerWithMetadata(*_logicalDevice);
   const std::tuple<Image, ImageMetadata>& shadowMapData =
       _gpuBufferManager->getImage(_shadowMapHandle);
   _shadowHandle = _bindlessWriter->writeTexture(
       std::get<Image>(shadowMapData).getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       sampler.getVkSampler());
-  _samplerManager->transferSampler(std::move(sampler));
+  _samplerManager->transferSampler(std::move(sampler), samplerMetadata);
 
   _shadowAttachmentLayout.addShadowAttachment(
       VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -474,11 +474,13 @@ void GCONTEXT_CLASS loadObjects(
   textureCache.reserve(sceneData.size());
   SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
   VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
-  Sampler sampler = SamplerBuilder()
-                        .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
-                        .withLodRange(0.0f, VK_LOD_CLAMP_NONE)
-                        .build(*_logicalDevice);
-  SamplerHandle samplerHandle = _samplerManager->transferSampler(std::move(sampler));
+  auto [sampler, samplerMetadata] =
+      SamplerBuilder()
+          .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
+          .withLodRange(0.0f, VK_LOD_CLAMP_NONE)
+          .buildSamplerWithMetadata(*_logicalDevice);
+  SamplerHandle samplerHandle =
+      _samplerManager->transferSampler(std::move(sampler), samplerMetadata);
 
   for (const common::VertexData& sceneObject : sceneData) {
     const auto [diffuseHandle, diffuseTextureIndex] =
@@ -1047,8 +1049,8 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     auto [colorAttachment, colorAttachmentMetadata] = createAttachment(
-        *_logicalDevice, swapchainImageFormat, msaaSamples, extent,
-        presentResources.numLayers, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+        *_logicalDevice, swapchainImageFormat, msaaSamples, extent, presentResources.numLayers,
+        VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     GpuImageHandle collorAttachmentHandle =
         _gpuBufferManager->transferImage(std::move(colorAttachment), colorAttachmentMetadata);
 
@@ -1154,8 +1156,7 @@ std::tuple<Image, ImageMetadata> createSkybox(
   commandBuffer.transitionImageLayout(
       image.getVkImage(), metadata.imageAspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, metadata.mipLevels, 0, metadata.arrayLayers);
-  ImageViewBuilder().buildAndAddToImage(
-      image, metadata, 0, imageData.mipLevels, 0, 6);
+  ImageViewBuilder().buildAndAddToImage(image, metadata, 0, imageData.mipLevels, 0, 6);
   return std::make_tuple(std::move(image), imageBuilder.getMetadata());
 }
 
@@ -1226,9 +1227,8 @@ std::tuple<Image, ImageMetadata> createTexture2D(
 }
 
 std::tuple<Image, ImageMetadata> createAttachment(
-    const LogicalDevice& logicalDevice, VkFormat format,
-    VkSampleCountFlagBits samples, VkExtent2D extent, uint32_t numLayers, VkImageAspectFlags aspect,
-    VkImageUsageFlags usage) {
+    const LogicalDevice& logicalDevice, VkFormat format, VkSampleCountFlagBits samples,
+    VkExtent2D extent, uint32_t numLayers, VkImageAspectFlags aspect, VkImageUsageFlags usage) {
   auto imageBuilder =
       ImageBuilder()
           .withFormat(format)

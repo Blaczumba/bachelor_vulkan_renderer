@@ -49,8 +49,7 @@ struct ImageDeleter {
 
 }  // namespace
 
-Image::Image(
-    const LogicalDevice& logicalDevice, VkImage image, Allocation&& allocation) noexcept
+Image::Image(const LogicalDevice& logicalDevice, VkImage image, Allocation&& allocation) noexcept
   : _logicalDevice(&logicalDevice), _image(image), _allocation(std::move(allocation)) {}
 
 Image Image::create(const LogicalDevice& logicalDevice, const VkImageCreateInfo& createInfo) {

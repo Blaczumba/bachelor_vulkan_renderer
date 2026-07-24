@@ -113,7 +113,7 @@ public:
   ImageViewBuilder& withComponentMapping(VkComponentMapping components) noexcept;
 
   VkImageView buildAndAddToImage(Image& image, const ImageMetadata& metadata, uint32_t baseMipLevel,
-                    uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
+                                 uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount);
 
 private:
   VkImageViewCreateFlags _flags = {};

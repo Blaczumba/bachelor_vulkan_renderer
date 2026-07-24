@@ -114,7 +114,6 @@ GpuBufferHandle GpuBufferManager::storeBuffer(
         MAX_GPU_BUFFERS));
   }
 
-  GpuBufferHandle index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
   BufferBuilder bufferBuilder;
   Buffer buffer =
       bufferBuilder
@@ -125,6 +124,7 @@ GpuBufferHandle GpuBufferManager::storeBuffer(
           .createVertexInputBuffer(logicalDevice);
   copyBuffer(commandBuffer, buffer.getVkBuffer(), bufferBuilder.getMetadata(),
              stagingBuffer.buffer.getVkBuffer(), stagingBuffer.metadata);
+  GpuBufferHandle index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
   _bufferMap.insertUnsafe(
       *index,
       BufferResource(BufferWithMetadata{std::move(buffer), bufferBuilder.getMetadata()}, 1));
@@ -134,9 +134,10 @@ GpuBufferHandle GpuBufferManager::storeBuffer(
 GpuBufferHandle GpuBufferManager::transferBuffer(BufferWithMetadata&& stagingBuffer) {
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(
-        std::format(
-            "GpuBufferManager::transferBuffer: Cannot upload more buffers, maximum limit of {} reached.",
-            MAX_GPU_BUFFERS));
+        std::format("GpuBufferManager::transferBuffer: Cannot upload more " "buffers, maximum "
+                                                                            "limit " "of {} "
+                                                                                     "reached.",
+                    MAX_GPU_BUFFERS));
   }
 
   GpuBufferHandle index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
@@ -155,14 +156,11 @@ const BufferWithMetadata& GpuBufferManager::getBuffer(GpuBufferHandle index) con
 }
 
 bool GpuBufferManager::removeBuffer(GpuBufferHandle index) {
-  if (!_bufferMap.exists(*index)) [[unlikely]] {
-    return false;
+  if (_bufferMap.erase(*index)) {
+    _freeBufferIndices.push_back(index);
+    return true;
   }
-
-  _bufferMap.eraseUnsafe(*index);
-  _freeBufferIndices.push_back(index);
-
-  return true;
+  return false;
 }
 
 GpuImageHandle GpuBufferManager::transferImage(Image&& image, const ImageMetadata& metadata) {
