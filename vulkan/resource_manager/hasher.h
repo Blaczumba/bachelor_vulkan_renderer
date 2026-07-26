@@ -62,6 +62,14 @@ struct SamplerHasher {
       hashCombine(normalized, seed);
     };
 
+    // Helper lambda to hash optional fields
+    auto hashOptionalFloat = [&seed, &hashFloat](const std::optional<float>& opt) {
+      hashCombine(opt.has_value(), seed);
+      if (opt.has_value()) {
+        hashFloat(*opt);
+      }
+    };
+
     hashCombine(static_cast<uint32_t>(key.flags), seed);
     hashCombine(static_cast<uint32_t>(key.magFilter), seed);
     hashCombine(static_cast<uint32_t>(key.minFilter), seed);
@@ -71,10 +79,16 @@ struct SamplerHasher {
     hashCombine(static_cast<uint32_t>(key.addressModeW), seed);
 
     hashFloat(key.mipLodBias);
-    hashCombine(static_cast<uint32_t>(key.anisotropyEnable), seed);
-    hashFloat(key.maxAnisotropy);
-    hashCombine(static_cast<uint32_t>(key.compareEnable), seed);
-    hashCombine(static_cast<uint32_t>(key.compareOp), seed);
+
+    // Optional maxAnisotropy
+    hashOptionalFloat(key.maxAnisotropy);
+
+    // Optional compareOp
+    hashCombine(key.compareOp.has_value(), seed);
+    if (key.compareOp.has_value()) {
+      hashCombine(static_cast<uint32_t>(*key.compareOp), seed);
+    }
+
     hashFloat(key.minLod);
     hashFloat(key.maxLod);
     hashCombine(static_cast<uint32_t>(key.borderColor), seed);

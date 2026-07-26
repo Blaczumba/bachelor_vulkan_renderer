@@ -199,18 +199,17 @@ Entity GCONTEXT_CLASS loadObject(
     VkCommandBuffer commandBuffer, const common::VertexData& cubeData,
     PipelineHandle pipelineHandle, Image&& image, const ImageMetadata& metadata) {
   Entity entity = _registry.createEntity();
-
-  auto [sampler, samplerMetadata] =
-      SamplerBuilder()
-          .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
-          .buildSamplerWithMetadata(*_logicalDevice);
+  SamplerHandle handle = _samplerManager->getOrCreateSampler(
+      *_logicalDevice, SamplerBuilder()
+                           .withMaxAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
+                           .buildMetadata());
   _registry.addComponent<MaterialComponent>(
       entity,
       MaterialComponent{.diffuse = _bindlessWriter->writeTexture(
                             image.getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                            sampler.getVkSampler()),
+                            _samplerManager->getSampler(handle).getVkSampler()),
                         .pipelineHandle = pipelineHandle});
-  _samplerManager->transferSampler(std::move(sampler), samplerMetadata);
+
   _gpuBufferManager->transferImage(std::move(image), metadata);
 
   MeshComponent msh = {.aabb = createAABBfromVertices(cubeData.positions, glm::mat4(1.0f))};
@@ -361,7 +360,8 @@ void GCONTEXT_CLASS createShadowResources() {
         createShadowmap(*_logicalDevice, handle, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
     _shadowMapHandle = _gpuBufferManager->transferImage(std::move(image), metadata);
   }
-  auto [sampler, samplerMetadata] =
+  SamplerHandle handle = _samplerManager->getOrCreateSampler(
+      *_logicalDevice,
       SamplerBuilder()
           .withCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
           .withAddressMode(
@@ -369,14 +369,12 @@ void GCONTEXT_CLASS createShadowResources() {
               VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
           .withMinMagFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR)
           .withBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
-          .buildSamplerWithMetadata(*_logicalDevice);
+          .buildMetadata());
   const std::tuple<Image, ImageMetadata>& shadowMapData =
       _gpuBufferManager->getImage(_shadowMapHandle);
   _shadowHandle = _bindlessWriter->writeTexture(
       std::get<Image>(shadowMapData).getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      sampler.getVkSampler());
-  _samplerManager->transferSampler(std::move(sampler), samplerMetadata);
-
+      _samplerManager->getSampler(handle).getVkSampler());
   _shadowAttachmentLayout.addShadowAttachment(
       VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -474,13 +472,11 @@ void GCONTEXT_CLASS loadObjects(
   textureCache.reserve(sceneData.size());
   SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
   VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
-  auto [sampler, samplerMetadata] =
-      SamplerBuilder()
-          .withAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
-          .withLodRange(0.0f, VK_LOD_CLAMP_NONE)
-          .buildSamplerWithMetadata(*_logicalDevice);
-  SamplerHandle samplerHandle =
-      _samplerManager->transferSampler(std::move(sampler), samplerMetadata);
+  SamplerHandle samplerHandle = _samplerManager->getOrCreateSampler(
+      *_logicalDevice, SamplerBuilder()
+                           // .withMaxAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
+                           .withLodRange(0.0f, VK_LOD_CLAMP_NONE)
+                           .buildMetadata());
 
   for (const common::VertexData& sceneObject : sceneData) {
     const auto [diffuseHandle, diffuseTextureIndex] =

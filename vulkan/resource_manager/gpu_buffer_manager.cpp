@@ -135,12 +135,7 @@ GpuBufferHandle GpuBufferManager::transferBuffer(BufferWithMetadata&& stagingBuf
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(
         std::format(
-            "GpuBufferManager::transferBuffer: Cannot upload more " "buffers, maximum " "limit " "o"
-                                                                                                 "f"
-                                                                                                 " "
-                                                                                                 "{"
-                                                                                                 "}"
-                                                                                                 " " "reached.",
+            "GpuBufferManager::transferBuffer: Cannot upload more " "buffers, maximum " "limit " "o" "f" " " "{" "}" " " "reached.",
             MAX_GPU_BUFFERS));
   }
 

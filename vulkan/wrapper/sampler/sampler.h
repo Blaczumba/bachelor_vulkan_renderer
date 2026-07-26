@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <tuple>
 #include <vulkan/vulkan.h>
 
@@ -37,10 +38,8 @@ struct SamplerMetadata {
   VkSamplerAddressMode addressModeV;
   VkSamplerAddressMode addressModeW;
   float mipLodBias;
-  VkBool32 anisotropyEnable;
-  float maxAnisotropy;
-  VkBool32 compareEnable;
-  VkCompareOp compareOp;
+  std::optional<float> maxAnisotropy;
+  std::optional<VkCompareOp> compareOp;
   float minLod;
   float maxLod;
   VkBorderColor borderColor;
@@ -64,9 +63,13 @@ public:
 
   SamplerBuilder&& withMipLodBias(float mipLodBias) && noexcept;
 
-  SamplerBuilder&& withAnisotropy(float maxAnisotropy) && noexcept;
+  SamplerBuilder&& withMaxAnisotropy(float maxAnisotropy) && noexcept;
+
+  SamplerBuilder&& withMaxAnisotropy(std::optional<float> maxAnisotropy) && noexcept;
 
   SamplerBuilder&& withCompareOp(VkCompareOp compareOp) && noexcept;
+
+  SamplerBuilder&& withCompareOp(std::optional<VkCompareOp> compareOp) && noexcept;
 
   SamplerBuilder&& withLodRange(float minLod, float maxLod) && noexcept;
 

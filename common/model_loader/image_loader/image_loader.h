@@ -8,16 +8,6 @@
 #include <tuple>
 #include <variant>
 
-struct ImageSubresource {
-  size_t offset;
-  uint32_t mipLevel;
-  uint32_t baseArrayLayer;
-  uint32_t layerCount;
-  uint32_t width;
-  uint32_t height;
-  uint32_t depth;
-};
-
 struct StbiDeleter {
   void operator()(stbi_uc* p) const {
     stbi_image_free(p);
@@ -33,6 +23,16 @@ struct KtxDeleter {
 using StbUniquePtr = std::unique_ptr<stbi_uc, StbiDeleter>;
 using KtxUniquePtr = std::unique_ptr<ktxTexture, KtxDeleter>;
 using OwnedImageResources = std::variant<StbUniquePtr, KtxUniquePtr>;
+
+struct ImageSubresource {
+  size_t offset;
+  uint32_t mipLevel;
+  uint32_t baseArrayLayer;
+  uint32_t layerCount;
+  uint32_t width;
+  uint32_t height;
+  uint32_t depth;
+};
 
 struct ImageResource {
   uint32_t width;

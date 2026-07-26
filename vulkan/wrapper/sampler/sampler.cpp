@@ -1,5 +1,6 @@
 #include "sampler.h"
 
+#include <optional>
 #include <tuple>
 #include <utility>
 #include <vulkan/vulkan.h>
@@ -80,15 +81,36 @@ SamplerBuilder&& SamplerBuilder::withMipLodBias(float mipLodBias) && noexcept {
   return std::move(*this);
 }
 
-SamplerBuilder&& SamplerBuilder::withAnisotropy(float maxAnisotropy) && noexcept {
+SamplerBuilder&& SamplerBuilder::withMaxAnisotropy(float maxAnisotropy) && noexcept {
   _createInfo.anisotropyEnable = VK_TRUE;
   _createInfo.maxAnisotropy = maxAnisotropy;
+  return std::move(*this);
+}
+
+SamplerBuilder&& SamplerBuilder::withMaxAnisotropy(std::optional<float> maxAnisotropy) && noexcept {
+  if (maxAnisotropy.has_value()) {
+    _createInfo.anisotropyEnable = VK_TRUE;
+    _createInfo.maxAnisotropy = maxAnisotropy.value();
+    return std::move(*this);
+  }
+  _createInfo.anisotropyEnable = VK_FALSE;
+  _createInfo.maxAnisotropy = 0;
   return std::move(*this);
 }
 
 SamplerBuilder&& SamplerBuilder::withCompareOp(VkCompareOp compareOp) && noexcept {
   _createInfo.compareEnable = VK_TRUE;
   _createInfo.compareOp = compareOp;
+  return std::move(*this);
+}
+
+SamplerBuilder&& SamplerBuilder::withCompareOp(std::optional<VkCompareOp> compareOp) && noexcept {
+  if (compareOp.has_value()) {
+    _createInfo.compareEnable = VK_TRUE;
+    _createInfo.compareOp = compareOp.value();
+  }
+  _createInfo.compareEnable = VK_FALSE;
+  _createInfo.compareOp = VK_COMPARE_OP_NEVER;
   return std::move(*this);
 }
 
@@ -130,10 +152,9 @@ SamplerMetadata SamplerBuilder::buildMetadata() const noexcept {
     .addressModeV = _createInfo.addressModeV,
     .addressModeW = _createInfo.addressModeW,
     .mipLodBias = _createInfo.mipLodBias,
-    .anisotropyEnable = _createInfo.anisotropyEnable,
-    .maxAnisotropy = _createInfo.maxAnisotropy,
-    .compareEnable = _createInfo.compareEnable,
-    .compareOp = _createInfo.compareOp,
+    .maxAnisotropy =
+        _createInfo.anisotropyEnable ? _createInfo.maxAnisotropy : std::optional<float>{},
+    .compareOp = _createInfo.compareEnable ? _createInfo.compareOp : std::optional<VkCompareOp>{},
     .minLod = _createInfo.minLod,
     .maxLod = _createInfo.maxLod,
     .borderColor = _createInfo.borderColor,

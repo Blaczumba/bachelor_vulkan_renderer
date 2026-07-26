@@ -16,11 +16,17 @@ public:
 
   ~SamplerManager() = default;
 
-  SamplerHandle transferSampler(Sampler&& sampler, const SamplerMetadata& metadata);
+  SamplerHandle getOrCreateSampler(
+      const LogicalDevice& logicalDevice, const SamplerMetadata& metadata);
 
   void removeSampler(SamplerHandle handle);
 
   const Sampler& getSampler(SamplerHandle handle) const;
+
+  const SamplerMetadata& getSamplerMetadata(SamplerHandle handle) const;
+
+  std::tuple<const Sampler&, const SamplerMetadata&> getSamplerWithMetadata(
+      SamplerHandle handle) const;
 
 private:
   lib::SparseMap<std::tuple<Sampler, const SamplerMetadata*>, MAX_SAMPLERS> _samplerMap;
