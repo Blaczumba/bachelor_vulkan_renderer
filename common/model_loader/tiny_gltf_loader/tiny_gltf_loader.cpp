@@ -98,7 +98,7 @@ std::span<const std::byte> getIndices(
 }
 
 ImageID getOrLoadTexture(
-    std::shared_ptr<SharedData>& sharedData, std::string_view baseDir, int textureIndex,
+    std::shared_ptr<SharedData>& sharedData, const FileLoader& fileLoader, std::string_view baseDir, int textureIndex,
     AssetManager& assetManager,
     std::unordered_map<std::string, StagingImageDataResourceHandle>& textureIndexMap) {
   if (textureIndex < 0) {
@@ -131,7 +131,9 @@ ImageID getOrLoadTexture(
       };
       it->second = assetManager.loadImageAsync(sharedData, std::move(imageResource));
     } else if (!img.uri.empty()) {
-      it->second = assetManager.loadImageAsync(joinPaths(baseDir, img.uri));
+      it->second = assetManager.loadImageAsync([&, filePath = joinPaths(baseDir, img.uri)]() {
+        return loadImage(fileLoader.loadFileToBuffer(filePath), filePath);
+      });
     }
   }
   return ImageID{it->second, std::move(key)};
@@ -148,7 +150,7 @@ std::string getTextureUri(const tinygltf::Model& model, const tinygltf::Paramete
   return image.uri;
 }
 
-void processNode(common::AssetManager& assetManager, std::shared_ptr<SharedData>& sharedData,
+void processNode(common::AssetManager& assetManager, const FileLoader& fileLoader, std::shared_ptr<SharedData>& sharedData,
                  const tinygltf::Node& node, const glm::mat4& parentTransform,
                  std::vector<VertexData>& vertexDataList,
                  std::unordered_map<std::string, StagingImageDataResourceHandle>& textureIndexMap,
@@ -157,7 +159,7 @@ void processNode(common::AssetManager& assetManager, std::shared_ptr<SharedData>
 
   if (node.mesh < 0) {
     for (int childIndex : node.children) {
-      processNode(assetManager, sharedData, sharedData->model.nodes[childIndex], currentTransform,
+      processNode(assetManager, fileLoader, sharedData, sharedData->model.nodes[childIndex], currentTransform,
                   vertexDataList, textureIndexMap, baseDir);
     }
     return;
@@ -185,13 +187,13 @@ void processNode(common::AssetManager& assetManager, std::shared_ptr<SharedData>
     if (primitive.material >= 0) {
       const tinygltf::Material& mat = sharedData->model.materials[primitive.material];
       diffuseID =
-          getOrLoadTexture(sharedData, baseDir, mat.pbrMetallicRoughness.baseColorTexture.index,
+          getOrLoadTexture(sharedData, fileLoader, baseDir, mat.pbrMetallicRoughness.baseColorTexture.index,
                            assetManager, textureIndexMap);
       metallicRoughnessID = getOrLoadTexture(
-          sharedData, baseDir, mat.pbrMetallicRoughness.metallicRoughnessTexture.index,
+          sharedData, fileLoader, baseDir, mat.pbrMetallicRoughness.metallicRoughnessTexture.index,
           assetManager, textureIndexMap);
       normalID = getOrLoadTexture(
-          sharedData, baseDir, mat.normalTexture.index, assetManager, textureIndexMap);
+          sharedData, fileLoader, baseDir, mat.normalTexture.index, assetManager, textureIndexMap);
     }
 
     if (diffuseID.path.empty() || normalID.path.empty() || metallicRoughnessID.path.empty()) {
@@ -228,7 +230,7 @@ void processNode(common::AssetManager& assetManager, std::shared_ptr<SharedData>
   }
 
   for (int childIndex : node.children) {
-    processNode(assetManager, sharedData, sharedData->model.nodes[childIndex], currentTransform,
+    processNode(assetManager, fileLoader, sharedData, sharedData->model.nodes[childIndex], currentTransform,
                 vertexDataList, textureIndexMap, baseDir);
   }
 }
@@ -236,12 +238,12 @@ void processNode(common::AssetManager& assetManager, std::shared_ptr<SharedData>
 }  // namespace
 
 std::vector<VertexData> LoadGltfFromFile(
-    common::AssetManager& assetManager, const std::string& filePath) {
+    common::AssetManager& assetManager, const FileLoader& fileLoader, const std::string& filePath) {
   auto sharedData = std::make_shared<SharedData>();
   tinygltf::TinyGLTF loader;
-//  if (!std::filesystem::exists(std::filesystem::path(filePath))) {
-//    throw EngineException(std::format("{} does not exists in the filesystem.", filePath));
-//  }
+  //  if (!std::filesystem::exists(std::filesystem::path(filePath))) {
+  //    throw EngineException(std::format("{} does not exists in the filesystem.", filePath));
+  //  }
 
   // loader.SetImageLoader(nullptr, nullptr);
   if (filePath.ends_with(".glb")) {
@@ -259,7 +261,7 @@ std::vector<VertexData> LoadGltfFromFile(
   for (const tinygltf::Scene& scene : sharedData->model.scenes) {
     for (int nodeIndex : scene.nodes) {
       const tinygltf::Node& node = sharedData->model.nodes[nodeIndex];
-      processNode(assetManager, sharedData, node, glm::mat4(1.0f), vertexDataList, textureIndexMap,
+      processNode(assetManager, fileLoader, sharedData, node, glm::mat4(1.0f), vertexDataList, textureIndexMap,
                   baseDir);
     }
   }
@@ -267,7 +269,8 @@ std::vector<VertexData> LoadGltfFromFile(
 }
 
 std::vector<VertexData> LoadGltfFromString(
-    common::AssetManager& assetManager, const std::string& dataString, const std::string& baseDir) {
+    common::AssetManager& assetManager, const FileLoader& fileLoader, const std::string& dataString,
+    const std::string& baseDir) {
   auto sharedData = std::make_shared<SharedData>();
   tinygltf::TinyGLTF loader;
   std::string error, warning;
@@ -281,7 +284,7 @@ std::vector<VertexData> LoadGltfFromString(
   for (const tinygltf::Scene& scene : sharedData->model.scenes) {
     for (int nodeIndex : scene.nodes) {
       const tinygltf::Node& node = sharedData->model.nodes[nodeIndex];
-      processNode(assetManager, sharedData, node, glm::mat4(1.0f), vertexDataList, textureIndexMap,
+      processNode(assetManager, fileLoader, sharedData, node, glm::mat4(1.0f), vertexDataList, textureIndexMap,
                   baseDir);
     }
   }

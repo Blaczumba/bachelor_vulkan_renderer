@@ -3,12 +3,12 @@
 #include <future>
 #include <span>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vulkan/vulkan.h>
 
 #include "common/buffer/buffer.h"
-#include "common/file/file_loader.h"
-#include "common/model_loader/image_loader/image_loader.h"
+#include "common/model_loader/image_loader/types.h"
 #include "common/util/asset_manager.h"
 #include "common/util/buffer_manip.h"
 #include "common/util/resource_handles.h"
@@ -19,13 +19,11 @@
 #include "vulkan/wrapper/memory_objects/buffer.h"
 
 class AssetManager : public common::AssetManager {
-  AssetManager(
-      const LogicalDevice& logicalDevice, const FileLoader& fileLoader, std::launch launchPolicy);
+  AssetManager(const LogicalDevice& logicalDevice, std::launch launchPolicy);
 
 public:
   static std::unique_ptr<AssetManager> create(
-      const LogicalDevice& logicalDevice, const FileLoader& fileLoader,
-      std::launch launchPolicy = std::launch::async);
+      const LogicalDevice& logicalDevice, std::launch launchPolicy = std::launch::async);
 
   ~AssetManager() = default;
 
@@ -44,7 +42,8 @@ public:
     VkIndexType indexType;
   };
 
-  StagingImageDataResourceHandle loadImageAsync(const std::string& filePath) override;
+  StagingImageDataResourceHandle loadImageAsync(
+      std::function<std::tuple<ImageResource, OwnedImageData>(void)>&& imageFunction) override;
 
   StagingImageDataResourceHandle loadImageAsync(
       std::shared_ptr<void> modelPtr, std::span<const std::byte> data) override;
@@ -71,7 +70,6 @@ private:
   std::launch _launchPolicy;
 
   const LogicalDevice& _logicalDevice;
-  const FileLoader& _fileLoader;
 
   std::vector<StagingImageDataResourceHandle> _freeImageDataIndices;
   std::unordered_map<StagingImageDataResourceHandle, std::future<ImageData>>

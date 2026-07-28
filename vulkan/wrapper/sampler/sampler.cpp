@@ -108,6 +108,7 @@ SamplerBuilder&& SamplerBuilder::withCompareOp(std::optional<VkCompareOp> compar
   if (compareOp.has_value()) {
     _createInfo.compareEnable = VK_TRUE;
     _createInfo.compareOp = compareOp.value();
+    return std::move(*this);
   }
   _createInfo.compareEnable = VK_FALSE;
   _createInfo.compareOp = VK_COMPARE_OP_NEVER;

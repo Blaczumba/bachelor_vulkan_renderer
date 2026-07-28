@@ -111,7 +111,7 @@ void createFsrContents(const LogicalDevice& logicalDevice, Image& image,
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS setup() {
   const std::vector<common::VertexData> sponzaData =
-      common::LoadGltfFromFile(*_assetManager, MODELS_PATH "sponza/scene.gltf");
+      common::LoadGltfFromFile(*_assetManager, _fileLoader, MODELS_PATH "sponza/scene.gltf");
   //     std::vector<common::VertexData> antiqueCandleStickData = common::LoadGltfFromFile(
   //         *_assetManager, MODELS_PATH "ornate_antique_candlestick/scene.gltf");
   //     std::for_each(
@@ -155,7 +155,10 @@ void GCONTEXT_CLASS setup() {
     std::string cubeFileContents = _fileLoader.loadFileToString(MODELS_PATH "cube.obj");
     common::VertexData cubeData = common::loadObj(*_assetManager, "cube.obj", cubeFileContents);
     cubeData.diffuseTexture = {
-      _assetManager->loadImageAsync(TEXTURES_PATH "cubemap_yokohama_rgba.ktx"),
+      _assetManager->loadImageAsync([this]() {
+        static constexpr std::string_view filePath = TEXTURES_PATH "cubemap_yokohama_rgba.ktx";
+        return loadImage(_fileLoader.loadFileToBuffer(filePath), filePath);
+      }),
       TEXTURES_PATH "cubemap_yokohama_rgba.ktx"};
     const AssetManager::ImageData& imageData =
         _assetManager->getImageData(cubeData.diffuseTexture.ID);
@@ -474,7 +477,7 @@ void GCONTEXT_CLASS loadObjects(
   VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
   SamplerHandle samplerHandle = _samplerManager->getOrCreateSampler(
       *_logicalDevice, SamplerBuilder()
-                           // .withMaxAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
+                           .withMaxAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
                            .withLodRange(0.0f, VK_LOD_CLAMP_NONE)
                            .buildMetadata());
 
@@ -910,7 +913,7 @@ GCONTEXT_CLASS GraphicsContext(
     _presentationContext(std::move(presentationContext)) {
   _singleTimeCommandPool =
       CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-  _assetManager = AssetManager::create(*_logicalDevice, fileLoader, std::launch::async);
+  _assetManager = AssetManager::create(*_logicalDevice, std::launch::async);
   _gpuBufferManager = GpuBufferManager::create();
   _samplerManager = SamplerManager::create();
   _pipelineManager = PipelineManager::create(fileLoader);

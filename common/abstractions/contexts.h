@@ -1,7 +1,7 @@
 #pragma once
 
-#include <span>
 #include <glm/glm.hpp>
+#include <span>
 
 #include "common/camera/camera.h"
 #include "common/util/resource_handles.h"

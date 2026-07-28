@@ -83,8 +83,8 @@ VertexData loadObj(
   static constexpr uint8_t indexSize = 4;
 
   static std::pair<std::string, std::string> orders[] = {
-    {"P",  "0" },
-    {"PN", "02"},
+    {"P",   "0"  },
+    {"PN",  "02" },
     {"PTN", "012"}
   };
 
@@ -100,8 +100,9 @@ VertexData loadObj(
                     model->indices.size() * indexSize),
           indexSize, common::analyzeConfig(orders, attributeDescriptions));
 
-  return VertexData{
-    .positions = lib::Buffer<glm::vec3>(model->positions), .indexSize = indexSize, .vertexResourceID = vertexResourceID};
+  return VertexData{.positions = lib::Buffer<glm::vec3>(model->positions),
+                    .indexSize = indexSize,
+                    .vertexResourceID = vertexResourceID};
 }
 
 }  // namespace common

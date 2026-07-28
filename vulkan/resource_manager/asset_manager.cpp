@@ -7,7 +7,7 @@
 #include <memory>
 #include <numeric>
 #include <span>
-#include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vulkan/vulkan.h>
 
@@ -18,9 +18,8 @@
 using ImageData = AssetManager::ImageData;
 using VertexData = AssetManager::VertexData;
 
-AssetManager::AssetManager(
-    const LogicalDevice& logicalDevice, const FileLoader& fileLoader, std::launch launchPolicy)
-  : _logicalDevice(logicalDevice), _fileLoader(fileLoader), _launchPolicy(launchPolicy),
+AssetManager::AssetManager(const LogicalDevice& logicalDevice, std::launch launchPolicy)
+  : _logicalDevice(logicalDevice), _launchPolicy(launchPolicy),
     _freeImageDataIndices(MAX_STAGING_IMAGE_DATA_RESOURCES),
     _freeVertexDataIndices(MAX_STAGING_VERTEX_DATA_RESOURCES) {
   std::iota(_freeImageDataIndices.rbegin(), _freeImageDataIndices.rend(),
@@ -30,8 +29,8 @@ AssetManager::AssetManager(
 }
 
 std::unique_ptr<AssetManager> AssetManager::create(
-    const LogicalDevice& logicalDevice, const FileLoader& fileLoader, std::launch launchPolicy) {
-  return std::unique_ptr<AssetManager>(new AssetManager(logicalDevice, fileLoader, launchPolicy));
+    const LogicalDevice& logicalDevice, std::launch launchPolicy) {
+  return std::unique_ptr<AssetManager>(new AssetManager(logicalDevice, launchPolicy));
 }
 
 namespace {
@@ -57,13 +56,14 @@ lib::Buffer<VkBufferImageCopy> translateToVkBufferImageCopy(
 
 }  // namespace
 
-StagingImageDataResourceHandle AssetManager::loadImageAsync(const std::string& filePath) {
+StagingImageDataResourceHandle AssetManager::loadImageAsync(
+    std::function<std::tuple<ImageResource, OwnedImageData>(void)>&& imageFunction) {
   const StagingImageDataResourceHandle index = _freeImageDataIndices.back();
   _freeImageDataIndices.pop_back();
   _awaitingImageDataResources.emplace(
-      index, std::async(_launchPolicy, [this, filePath]() -> ImageData {
-        const auto [resource, dataPtr] =
-            loadImage(_fileLoader.loadFileToBuffer(filePath), filePath);
+      index,
+      std::async(_launchPolicy, [this, imageFunction = std::move(imageFunction)]() -> ImageData {
+        const auto [resource, dataPtr] = imageFunction();
         BufferBuilder bufferBuilder;
         ImageData imageData = {
           .stagingBuffer = BufferWithMetadata{bufferBuilder.withSize(resource.size)
@@ -193,7 +193,6 @@ StagingVertexDataResourceHandle AssetManager::loadVertexDataInterleavingAsync(
             common::copyAndShrinkIndexData(vertexData.indexBuffer.metadata.getMappedMemoryAsSpan(),
                                            indices, shrunkIndexSize, indexSize);
             vertexData.indexType = getIndexType(shrunkIndexSize);
-
             return vertexData;
           }));
 
