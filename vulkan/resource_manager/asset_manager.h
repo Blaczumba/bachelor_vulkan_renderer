@@ -28,7 +28,7 @@ public:
   ~AssetManager() = default;
 
   struct ImageData {
-    BufferWithMetadata stagingBuffer;
+    std::tuple<Buffer, BufferMetadata> stagingBuffer;
     uint32_t width;
     uint32_t height;
     uint32_t mipLevels;
@@ -37,8 +37,8 @@ public:
   };
 
   struct VertexData {
-    lib::DynamicAssociationList<std::string, BufferWithMetadata> buffers;
-    BufferWithMetadata indexBuffer;
+    lib::DynamicAssociationList<std::string, std::tuple<Buffer, BufferMetadata>> buffers;
+    std::tuple<Buffer, BufferMetadata> indexBuffer;
     VkIndexType indexType;
   };
 

@@ -54,10 +54,10 @@ VkDescriptorSetLayout DescriptorSetLayout::getVkDescriptorSetLayout() const noex
   return _descriptorSetLayout;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::addBinding(
+DescriptorSetLayoutBuilder&& DescriptorSetLayoutBuilder::addBinding(
     uint32_t binding, VkDescriptorType descriptorType, uint32_t descriptorCount,
     VkShaderStageFlags stageFlags, VkDescriptorBindingFlags bindingFlags,
-    const VkSampler* immutableSamplers) {
+    const VkSampler* immutableSamplers) && {
   const VkDescriptorSetLayoutBinding newBinding{
     .binding = binding,
     .descriptorType = descriptorType,
@@ -69,16 +69,22 @@ DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::addBinding(
     if (_bindings[i].binding == binding) {
       _bindings[i] = newBinding;
       _bindingFlags[i] = bindingFlags;
-      return *this;
+      return std::move(*this);
     }
   }
 
   _bindings.push_back(newBinding);
   _bindingFlags.push_back(bindingFlags);
-  return *this;
+  return std::move(*this);
 }
 
-DescriptorSetLayoutMetadata DescriptorSetLayoutBuilder::getMetadata() const {
+DescriptorSetLayoutBuilder&& DescriptorSetLayoutBuilder::withFlags(
+    VkDescriptorSetLayoutCreateFlags flags) && noexcept {
+  _flags = flags;
+  return std::move(*this);
+}
+
+DescriptorSetLayoutMetadata DescriptorSetLayoutBuilder::buildMetadata() const noexcept {
   DescriptorSetLayoutMetadata metadata = {
     .bindings = lib::Buffer<std::pair<VkDescriptorSetLayoutBinding, VkDescriptorBindingFlags>>(
         _bindings.size()),
@@ -91,8 +97,7 @@ DescriptorSetLayoutMetadata DescriptorSetLayoutBuilder::getMetadata() const {
   return metadata;
 }
 
-DescriptorSetLayout DescriptorSetLayoutBuilder::build(
-    const LogicalDevice& logicalDevice, VkDescriptorSetLayoutCreateFlags flags) {
+DescriptorSetLayout DescriptorSetLayoutBuilder::build(const LogicalDevice& logicalDevice) const {
   const VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
     .bindingCount = static_cast<uint32_t>(_bindingFlags.size()),
@@ -100,8 +105,13 @@ DescriptorSetLayout DescriptorSetLayoutBuilder::build(
   const VkDescriptorSetLayoutCreateInfo createInfo = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
     .pNext = &bindingFlagsCreateInfo,
-    .flags = _flags = flags,
+    .flags = _flags,
     .bindingCount = static_cast<uint32_t>(_bindings.size()),
     .pBindings = _bindings.data()};
   return DescriptorSetLayout::create(logicalDevice, createInfo);
+}
+
+std::tuple<DescriptorSetLayout, DescriptorSetLayoutMetadata>
+DescriptorSetLayoutBuilder::buildWithMetadata(const LogicalDevice& logicalDevice) const {
+  return std::make_tuple(build(logicalDevice), buildMetadata());
 }

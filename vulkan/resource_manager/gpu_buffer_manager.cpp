@@ -106,32 +106,32 @@ void GpuBufferManager::decreaseRefCount(GpuImageHandle index) {
 }
 
 GpuBufferHandle GpuBufferManager::storeBuffer(
-    VkCommandBuffer commandBuffer, const BufferWithMetadata& stagingBuffer, BufferType bufferType) {
-  const LogicalDevice& logicalDevice = stagingBuffer.buffer.getLogicalDevice();
+    VkCommandBuffer commandBuffer, const std::tuple<Buffer, BufferMetadata>& stagingBuffer,
+    BufferType bufferType) {
+  const LogicalDevice& logicalDevice = std::get<Buffer>(stagingBuffer).getLogicalDevice();
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(std::format(
         "GpuBufferManager::uploadBuffer: Cannot upload more buffers, maximum limit of {} reached.",
         MAX_GPU_BUFFERS));
   }
 
-  BufferBuilder bufferBuilder;
-  Buffer buffer =
-      bufferBuilder
+  auto [buffer, metadata] =
+      BufferBuilder()
           .withUsage(bufferType == BufferType::VERTEX ?
                          VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT :
                          VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
-          .withSize(stagingBuffer.metadata.size)
-          .createVertexInputBuffer(logicalDevice);
-  copyBuffer(commandBuffer, buffer.getVkBuffer(), bufferBuilder.getMetadata(),
-             stagingBuffer.buffer.getVkBuffer(), stagingBuffer.metadata);
+          .withSize(std::get<BufferMetadata>(stagingBuffer).size)
+          .buildVertexInputBufferWithMetadata(logicalDevice);
+  copyBuffer(commandBuffer, buffer.getVkBuffer(), metadata,
+             std::get<Buffer>(stagingBuffer).getVkBuffer(),
+             std::get<BufferMetadata>(stagingBuffer));
   GpuBufferHandle index = getNextHandle(_bufferMap.size(), _freeBufferIndices);
-  _bufferMap.insertUnsafe(
-      *index,
-      BufferResource(BufferWithMetadata{std::move(buffer), bufferBuilder.getMetadata()}, 1));
+  _bufferMap.insertUnsafe(*index, BufferResource(std::make_tuple(std::move(buffer), metadata), 1));
   return index;
 }
 
-GpuBufferHandle GpuBufferManager::transferBuffer(BufferWithMetadata&& stagingBuffer) {
+GpuBufferHandle GpuBufferManager::transferBuffer(
+    std::tuple<Buffer, BufferMetadata>&& stagingBuffer) {
   if (_bufferMap.size() == MAX_GPU_BUFFERS) [[unlikely]] {
     throw EngineException(
         std::format(
@@ -144,14 +144,15 @@ GpuBufferHandle GpuBufferManager::transferBuffer(BufferWithMetadata&& stagingBuf
   return index;
 }
 
-const BufferWithMetadata& GpuBufferManager::getBuffer(GpuBufferHandle index) const {
+std::tuple<VkBuffer, BufferMetadata> GpuBufferManager::getBuffer(GpuBufferHandle index) const {
   const BufferResource* resource = _bufferMap.tryGetValue(*index);
   if (resource == nullptr) [[unlikely]] {
     throw EngineException(
         std::format("GpuBufferManager::getBuffer: Buffer with index {} does not exist.", *index));
   }
 
-  return resource->buffer;
+  return std::make_tuple(
+      std::get<Buffer>(resource->buffer).getVkBuffer(), std::get<BufferMetadata>(resource->buffer));
 }
 
 bool GpuBufferManager::removeBuffer(GpuBufferHandle index) {

@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <span>
+#include <tuple>
 #include <variant>
 #include <vulkan/vulkan.h>
 
@@ -131,69 +132,79 @@ const LogicalDevice& Buffer::getLogicalDevice() const noexcept {
   return *_logicalDevice;
 }
 
-BufferBuilder& BufferBuilder::withUsage(VkBufferUsageFlags usage) noexcept {
-  _usage = usage;
-  return *this;
+BufferBuilder&& BufferBuilder::withUsage(VkBufferUsageFlags usage) && noexcept {
+  _createInfo.usage = usage;
+  return std::move(*this);
 }
 
-BufferBuilder& BufferBuilder::withSize(VkDeviceSize size) noexcept {
-  _size = size;
-  return *this;
+BufferBuilder&& BufferBuilder::withSize(VkDeviceSize size) && noexcept {
+  _createInfo.size = size;
+  return std::move(*this);
 }
 
-BufferBuilder& BufferBuilder::withFlags(VkBufferCreateFlags flags) noexcept {
-  _flags = flags;
-  return *this;
-}
-
-BufferBuilder& BufferBuilder::withQueueFamilyIndices(
-    std::span<const uint32_t> queueFamilyIndices) noexcept {
-  _sharingMode = VK_SHARING_MODE_CONCURRENT;
+BufferBuilder&& BufferBuilder::withQueueFamilyIndices(
+    std::span<const uint32_t> queueFamilyIndices) && noexcept {
   _queueFamilyIndices.assign(std::cbegin(queueFamilyIndices), std::cend(queueFamilyIndices));
-  return *this;
+  _createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+  _createInfo.queueFamilyIndexCount = static_cast<uint32_t>(_queueFamilyIndices.size());
+  _createInfo.pQueueFamilyIndices = _queueFamilyIndices.data();
+  return std::move(*this);
 }
 
-BufferMetadata BufferBuilder::getMetadata() const noexcept {
+BufferBuilder&& BufferBuilder::withFlags(VkBufferCreateFlags flags) && noexcept {
+  _createInfo.flags = flags;
+  return std::move(*this);
+}
+
+BufferMetadata BufferBuilder::buildMetadata() const noexcept {
   return BufferMetadata{
-    .usage = _usage,
-    .size = _size,
+    .usage = _createInfo.usage,
+    .size = _createInfo.size,
     .mappedMemory = _mappedMemory,
-    .flags = _flags,
-    .sharingMode = _sharingMode,
+    .flags = _createInfo.flags,
+    .sharingMode = _createInfo.sharingMode,
     .queueFamilyIndices = _queueFamilyIndices,
   };
 }
 
-VkBufferCreateInfo BufferBuilder::getCreateInfo() const noexcept {
-  return VkBufferCreateInfo{
-    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-    .pNext = nullptr,
-    .flags = _flags,
-    .size = _size,
-    .usage = _usage,
-    .sharingMode = _sharingMode,
-    .queueFamilyIndexCount = static_cast<uint32_t>(_queueFamilyIndices.size()),
-    .pQueueFamilyIndices = _queueFamilyIndices.empty() ? nullptr : _queueFamilyIndices.data(),
-  };
-}
-
-Buffer BufferBuilder::createVertexInputBuffer(const LogicalDevice& logicalDevice) {
+Buffer BufferBuilder::buildVertexInputBuffer(const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
-      createBuffer<VertexInputBufferAllocator>(logicalDevice, getCreateInfo());
+      createBuffer<VertexInputBufferAllocator>(logicalDevice, _createInfo);
   _mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
   return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
 }
 
-Buffer BufferBuilder::createStagingBuffer(const LogicalDevice& logicalDevice) {
+Buffer BufferBuilder::buildStagingBuffer(const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
-      createBuffer<StagingBufferAllocator>(logicalDevice, getCreateInfo());
+      createBuffer<StagingBufferAllocator>(logicalDevice, _createInfo);
   _mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
   return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
 }
 
-Buffer BufferBuilder::createUniformBuffer(const LogicalDevice& logicalDevice) {
+Buffer BufferBuilder::buildUniformBuffer(const LogicalDevice& logicalDevice) {
   const BufferResources bufferResources =
-      createBuffer<UniformBufferAllocator>(logicalDevice, getCreateInfo());
+      createBuffer<UniformBufferAllocator>(logicalDevice, _createInfo);
   _mappedMemory = reinterpret_cast<std::byte*>(bufferResources.mappedMemory);
   return Buffer(logicalDevice, bufferResources.buffer, bufferResources.allocation);
+}
+
+std::tuple<Buffer, BufferMetadata> BufferBuilder::buildVertexInputBufferWithMetadata(
+    const LogicalDevice& logicalDevice) {
+  // Do not inline to guarantee the order of execution.
+  Buffer buffer = buildVertexInputBuffer(logicalDevice);
+  return std::make_tuple(std::move(buffer), buildMetadata());
+}
+
+std::tuple<Buffer, BufferMetadata> BufferBuilder::buildStagingBufferWithMetadata(
+    const LogicalDevice& logicalDevice) {
+  // Do not inline to guarantee the order of execution.
+  Buffer buffer = buildStagingBuffer(logicalDevice);
+  return std::make_tuple(std::move(buffer), buildMetadata());
+}
+
+std::tuple<Buffer, BufferMetadata> BufferBuilder::buildUniformBufferWithMetadata(
+    const LogicalDevice& logicalDevice) {
+  // Do not inline to guarantee the order of execution.
+  Buffer buffer = buildUniformBuffer(logicalDevice);
+  return std::make_tuple(std::move(buffer), buildMetadata());
 }

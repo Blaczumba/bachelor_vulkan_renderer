@@ -91,11 +91,11 @@ public:
 
   ImageBuilder&& withFlags(VkImageCreateFlags flags) && noexcept;
 
-  std::tuple<Image, ImageMetadata> buildImageWithMetadata(const LogicalDevice& logicalDevice) const;
-
   ImageMetadata buildMetadata() const noexcept;
 
   Image buildImage(const LogicalDevice& logicalDevice) const;
+
+  std::tuple<Image, ImageMetadata> buildImageWithMetadata(const LogicalDevice& logicalDevice) const;
 
 private:
   VkImageCreateInfo _createInfo{

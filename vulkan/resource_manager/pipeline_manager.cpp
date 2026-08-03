@@ -37,9 +37,8 @@ PipelineManager::getOrCreateBindlessLayout(const LogicalDevice& logicalDevice) {
     return std::make_pair(it->second.first.getVkDescriptorSetLayout(), std::ref(it->second.second));
   }
 
-  DescriptorSetLayoutBuilder builder;
-  DescriptorSetLayout layout =
-      builder
+  auto [layout, metadata] =
+      DescriptorSetLayoutBuilder()
           .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 200, VK_SHADER_STAGE_ALL_GRAPHICS,
                       VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
                           | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT)
@@ -47,10 +46,11 @@ PipelineManager::getOrCreateBindlessLayout(const LogicalDevice& logicalDevice) {
               1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 200, VK_SHADER_STAGE_ALL_GRAPHICS,
               VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
                   | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT)
-          .build(logicalDevice, VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT);
+          .withFlags(VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT)
+          .buildWithMetadata(logicalDevice);
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
-  auto emplaced = _descriptorSetLayouts.emplace(
-      layoutType, std::make_pair(std::move(layout), builder.getMetadata()));
+  auto emplaced =
+      _descriptorSetLayouts.emplace(layoutType, std::make_pair(std::move(layout), metadata));
   return std::make_pair(vkLayout, std::ref(emplaced.first->second.second));
 }
 
@@ -61,16 +61,15 @@ PipelineManager::getOrCreateCameraLayout(const LogicalDevice& logicalDevice, boo
     return std::make_pair(it->second.first.getVkDescriptorSetLayout(), std::ref(it->second.second));
   }
 
-  DescriptorSetLayoutBuilder builder;
-  DescriptorSetLayout layout =
-      builder
+  auto [layout, metadata] =
+      DescriptorSetLayoutBuilder()
           .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, multiview ? 2u : 1u,
                       VK_SHADER_STAGE_ALL_GRAPHICS)
-          .build(logicalDevice);
+          .buildWithMetadata(logicalDevice);
 
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
-  auto emplaced = _descriptorSetLayouts.emplace(
-      layoutType, std::make_pair(std::move(layout), builder.getMetadata()));
+  auto emplaced =
+      _descriptorSetLayouts.emplace(layoutType, std::make_pair(std::move(layout), metadata));
   return std::make_pair(vkLayout, std::ref(emplaced.first->second.second));
 }
 
@@ -81,13 +80,13 @@ PipelineManager::getOrCreateComputeLayout(const LogicalDevice& logicalDevice) {
     return std::make_pair(it->second.first.getVkDescriptorSetLayout(), std::ref(it->second.second));
   }
 
-  DescriptorSetLayoutBuilder builder;
-  DescriptorSetLayout layout =
-      builder.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT)
-          .build(logicalDevice);
+  auto [layout, metadata] =
+      DescriptorSetLayoutBuilder()
+          .addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT)
+          .buildWithMetadata(logicalDevice);
   const VkDescriptorSetLayout vkLayout = layout.getVkDescriptorSetLayout();
-  auto emplaced = _descriptorSetLayouts.emplace(
-      layoutType, std::make_pair(std::move(layout), builder.getMetadata()));
+  auto emplaced =
+      _descriptorSetLayouts.emplace(layoutType, std::make_pair(std::move(layout), metadata));
   return std::make_pair(vkLayout, std::ref(emplaced.first->second.second));
 }
 

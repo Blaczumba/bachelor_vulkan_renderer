@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <tuple>
 #include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
@@ -47,38 +48,46 @@ struct BufferMetadata {
   std::span<std::byte> getMappedMemoryAsSpan() noexcept;
 };
 
-struct BufferWithMetadata {
-  Buffer buffer;
-  BufferMetadata metadata;
-};
-
 class BufferBuilder {
 public:
-  BufferBuilder& withUsage(VkBufferUsageFlags usage) noexcept;
+  BufferBuilder&& withUsage(VkBufferUsageFlags usage) && noexcept;
 
-  BufferBuilder& withSize(VkDeviceSize size) noexcept;
+  BufferBuilder&& withSize(VkDeviceSize size) && noexcept;
 
-  BufferBuilder& withFlags(VkBufferCreateFlags flags) noexcept;
+  BufferBuilder&& withQueueFamilyIndices(std::span<const uint32_t> queueFamilyIndices) && noexcept;
 
-  BufferBuilder& withQueueFamilyIndices(std::span<const uint32_t> queueFamilyIndices) noexcept;
+  BufferBuilder&& withFlags(VkBufferCreateFlags flags) && noexcept;
 
-  BufferMetadata getMetadata() const noexcept;
+  BufferMetadata buildMetadata() const noexcept;
 
-  Buffer createVertexInputBuffer(const LogicalDevice& logicalDevice);
+  Buffer buildVertexInputBuffer(const LogicalDevice& logicalDevice);
 
-  Buffer createStagingBuffer(const LogicalDevice& logicalDevice);
+  Buffer buildStagingBuffer(const LogicalDevice& logicalDevice);
 
-  Buffer createUniformBuffer(const LogicalDevice& logicalDevice);
+  Buffer buildUniformBuffer(const LogicalDevice& logicalDevice);
+
+  std::tuple<Buffer, BufferMetadata> buildVertexInputBufferWithMetadata(
+      const LogicalDevice& logicalDevice);
+
+  std::tuple<Buffer, BufferMetadata> buildStagingBufferWithMetadata(
+      const LogicalDevice& logicalDevice);
+
+  std::tuple<Buffer, BufferMetadata> buildUniformBufferWithMetadata(
+      const LogicalDevice& logicalDevice);
 
 private:
-  // Auxiliary used by the create methods.
-  VkBufferCreateInfo getCreateInfo() const noexcept;
+  VkBufferCreateInfo _createInfo{
+    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .size = 0,
+    .usage = 0,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    .queueFamilyIndexCount = 0,
+    .pQueueFamilyIndices = nullptr,
+  };
 
-  VkBufferCreateFlags _flags = {};
-  VkBufferUsageFlags _usage = {};
-  VkDeviceSize _size = 0;
   std::byte* _mappedMemory = nullptr;
-  VkSharingMode _sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   std::vector<uint32_t> _queueFamilyIndices;
 
   void* _pNext = nullptr;

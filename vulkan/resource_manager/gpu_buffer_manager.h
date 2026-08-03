@@ -11,17 +11,15 @@
 
 class GpuBufferManager {
   struct BufferResource {
-    BufferWithMetadata buffer;
+    std::tuple<Buffer, BufferMetadata> buffer;
     size_t refCount = 0;
   };
-
   using GpuBufferMap = lib::SparseMap<BufferResource, MAX_GPU_BUFFERS>;
 
   struct ImageResource {
     std::tuple<Image, ImageMetadata> image;
     size_t refCount = 0;
   };
-
   using GpuTextureMap = lib::SparseMap<ImageResource, MAX_GPU_IMAGES>;
 
   GpuBufferManager() noexcept = default;
@@ -44,12 +42,13 @@ public:
     INDEX
   };
 
-  GpuBufferHandle storeBuffer(VkCommandBuffer commandBuffer,
-                              const BufferWithMetadata& stagingBuffer, BufferType bufferType);
+  GpuBufferHandle storeBuffer(
+      VkCommandBuffer commandBuffer, const std::tuple<Buffer, BufferMetadata>& stagingBuffer,
+      BufferType bufferType);
 
-  GpuBufferHandle transferBuffer(BufferWithMetadata&& stagingBuffer);
+  GpuBufferHandle transferBuffer(std::tuple<Buffer, BufferMetadata>&& stagingBuffer);
 
-  const BufferWithMetadata& getBuffer(GpuBufferHandle index) const;
+  std::tuple<VkBuffer, BufferMetadata> getBuffer(GpuBufferHandle index) const;
 
   bool removeBuffer(GpuBufferHandle index);
 

@@ -42,15 +42,19 @@ struct DescriptorSetLayoutMetadata {
 
 class DescriptorSetLayoutBuilder {
 public:
-  DescriptorSetLayoutBuilder& addBinding(
+  DescriptorSetLayoutBuilder&& addBinding(
       uint32_t binding, VkDescriptorType descriptorType, uint32_t descriptorCount,
       VkShaderStageFlags stageFlags, VkDescriptorBindingFlags bindingFlags = 0,
-      const VkSampler* immutableSamplers = nullptr);
+      const VkSampler* immutableSamplers = nullptr) &&;
 
-  DescriptorSetLayoutMetadata getMetadata() const;
+  DescriptorSetLayoutBuilder&& withFlags(VkDescriptorSetLayoutCreateFlags flags) && noexcept;
 
-  DescriptorSetLayout build(
-      const LogicalDevice& logicalDevice, VkDescriptorSetLayoutCreateFlags flags = 0);
+  DescriptorSetLayoutMetadata buildMetadata() const noexcept;
+
+  DescriptorSetLayout build(const LogicalDevice& logicalDevice) const;
+
+  std::tuple<DescriptorSetLayout, DescriptorSetLayoutMetadata> buildWithMetadata(
+      const LogicalDevice& logicalDevice) const;
 
 private:
   std::vector<VkDescriptorSetLayoutBinding> _bindings;

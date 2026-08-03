@@ -244,26 +244,27 @@ void GCONTEXT_CLASS createDescriptorSets() {
   const uint32_t size =
       _logicalDevice->getPhysicalDevice().getMemoryAlignment(sizeof(UniformBufferCamera));
   {
-    BufferBuilder builder;
-    _dynamicUniformBuffersCamera = BufferWithMetadata{
-      builder.withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
-          .withSize((MULTIVIEW_PRESENTATION ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size)
-          .createUniformBuffer(*_logicalDevice),
-      builder.getMetadata()};
+    _dynamicUniformBuffersCamera =
+        BufferBuilder()
+            .withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+            .withSize((MULTIVIEW_PRESENTATION ? 2 : 1) * MAX_FRAMES_IN_FLIGHT * size)
+            .buildUniformBufferWithMetadata(*_logicalDevice);
   }
 
   _dynamicDescriptorSetWriter.storeDynamicBuffer(
-      _dynamicUniformBuffersCamera.buffer, _dynamicUniformBuffersCamera.metadata.usage, size,
+      std::get<Buffer>(_dynamicUniformBuffersCamera),
+      std::get<BufferMetadata>(_dynamicUniformBuffersCamera).usage, size,
       MULTIVIEW_PRESENTATION ? 2 : 1);
   _dynamicDescriptorSetWriter.writeDescriptorSet(
       _logicalDevice->getVkDevice(), _dynamicDescriptorSet.getVkDescriptorSet());
 
   {
-    BufferBuilder builder;
-    Buffer lightBuffer = builder.withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
-                             .withSize(sizeof(UniformBufferLight))
-                             .createUniformBuffer(*_logicalDevice);
-    _lightHandle = _bindlessWriter->writeBuffer(lightBuffer, builder.getMetadata());
+    auto [buffer, metadata] =
+        BufferBuilder()
+            .withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+            .withSize(sizeof(UniformBufferLight))
+            .buildUniformBufferWithMetadata(*_logicalDevice);
+    _lightHandle = _bindlessWriter->writeBuffer(buffer, metadata);
 
     _ubLight.pos = glm::vec3(15.1891f, 2.66408f, -0.841221f);
     _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.1f, 40.0f);
@@ -271,8 +272,8 @@ void GCONTEXT_CLASS createDescriptorSets() {
     _ubLight.projView = _ubLight.projView
                         * glm::lookAt(_ubLight.pos, glm::vec3(-3.82383f, 3.66503f, 1.30751f),
                                       glm::vec3(0.0f, 1.0f, 0.0f));
-    common::copyData(builder.getMetadata().getMappedMemoryAsSpan(), 0, _ubLight);
-    _lightBuffer = std::move(lightBuffer);
+    common::copyData(metadata.getMappedMemoryAsSpan(), 0, _ubLight);
+    _lightBuffer = std::move(buffer);
   }
 }
 
@@ -579,13 +580,13 @@ void GCONTEXT_CLASS recordShadowCommandBuffer(const CommandBuffer& commandBuffer
                                 std::span(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
 
     commandBuffer.bindVertexBuffers(
-        {_gpuBufferManager->getBuffer(meshComponent.vertexBufferPrimitiveHandle)
-             .buffer.getVkBuffer()},
+        {std::get<VkBuffer>(
+            _gpuBufferManager->getBuffer(meshComponent.vertexBufferPrimitiveHandle))},
         {0});
 
     const auto& [indexBuffer, indexBufferMetadata] =
         _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
-    commandBuffer.bindIndexBuffer(indexBuffer.getVkBuffer(), meshComponent.indexType);
+    commandBuffer.bindIndexBuffer(indexBuffer, meshComponent.indexType);
     commandBuffer.drawIndexed(indexBufferMetadata.size / getIndexSize(meshComponent.indexType), 1);
   }
   commandBuffer.endRenderPass();
@@ -658,7 +659,7 @@ void GCONTEXT_CLASS updateUniformBuffer(uint32_t currentFrame) {
     _ubCamera.proj = cameraContext.proj;
     _ubCamera.pos = cameraContext.position;
     _ubCamera.viewDir = cameraContext.viewDir;
-    common::copyData(_dynamicUniformBuffersCamera.metadata.getMappedMemoryAsSpan(),
+    common::copyData(std::get<BufferMetadata>(_dynamicUniformBuffersCamera).getMappedMemoryAsSpan(),
                      (cameraContexts.size() * currentFrame + i)
                          * _physicalDevice->getMemoryAlignment(sizeof(_ubCamera)),
                      _ubCamera);
@@ -712,17 +713,16 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
           pipeline->getVkPipelineLayout(), pipeline->getPushConstantVkShaderStageFlags(),
           std::span(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
       const auto& meshComponent = _registry.getComponent<MeshComponent>(object->getEntity());
-      const BufferWithMetadata& indexBuffer =
+      const auto& [indexBuffer, indexBufferMetadata] =
           _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
-      const Buffer& vertexBuffer =
-          _gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle).buffer;
-      const VkBuffer vertexBuffers[] = {vertexBuffer.getVkBuffer()};
+      const VkBuffer vertexBuffers[] = {
+        std::get<VkBuffer>(_gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle))};
       static constexpr VkDeviceSize offsets[] = {0};
       commandBuffer.bindVertexBuffers(vertexBuffers, offsets);
-      commandBuffer.bindIndexBuffer(indexBuffer.buffer.getVkBuffer(), meshComponent.indexType);
+      commandBuffer.bindIndexBuffer(indexBuffer, meshComponent.indexType);
       vkCmdDrawIndexed(
           commandBuffer.getVkCommandBuffer(),
-          indexBuffer.metadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
+          indexBufferMetadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
     }
 
     static constexpr OctreeNode::Subvolume options[] = {
@@ -856,14 +856,13 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
     const MeshComponent& cubeMeshComponent = _registry.getComponent<MeshComponent>(_skyboxEntity);
     const MaterialComponent& cubeMaterialComponent =
         _registry.getComponent<MaterialComponent>(_skyboxEntity);
-    const VkBuffer vertexBuffers[] = {
-      _gpuBufferManager->getBuffer(cubeMeshComponent.vertexBufferPrimitiveHandle)
-          .buffer.getVkBuffer()};
+    const VkBuffer vertexBuffers[] = {std::get<VkBuffer>(
+        _gpuBufferManager->getBuffer(cubeMeshComponent.vertexBufferPrimitiveHandle))};
     static constexpr VkDeviceSize offsets[] = {0};
     secondaryCommandBuffer.bindVertexBuffers(vertexBuffers, offsets);
     const auto& [indexBuffer, indexBufferMetadata] =
         _gpuBufferManager->getBuffer(cubeMeshComponent.indexBufferHandle);
-    secondaryCommandBuffer.bindIndexBuffer(indexBuffer.getVkBuffer(), cubeMeshComponent.indexType);
+    secondaryCommandBuffer.bindIndexBuffer(indexBuffer, cubeMeshComponent.indexType);
 
     const PushConstantsSkybox pc = {
       .proj = cameraProj,
@@ -1150,8 +1149,8 @@ std::tuple<Image, ImageMetadata> createSkybox(
       image.getVkImage(), imageMetadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, imageMetadata.mipLevels, 0,
       imageMetadata.arrayLayers);
-  commandBuffer.copyBufferToImage(
-      imageData.stagingBuffer.buffer.getVkBuffer(), image.getVkImage(), imageData.copyRegions);
+  commandBuffer.copyBufferToImage(std::get<Buffer>(imageData.stagingBuffer).getVkBuffer(),
+                                  image.getVkImage(), imageData.copyRegions);
   commandBuffer.transitionImageLayout(
       image.getVkImage(), imageMetadata.imageAspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, imageMetadata.mipLevels, 0,
@@ -1216,8 +1215,8 @@ std::tuple<Image, ImageMetadata> createTexture2D(
       image.getVkImage(), imageMetadata.imageAspect, VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, imageMetadata.mipLevels, 0,
       imageMetadata.arrayLayers);
-  commandBuffer.copyBufferToImage(
-      imageData.stagingBuffer.buffer.getVkBuffer(), image.getVkImage(), imageData.copyRegions);
+  commandBuffer.copyBufferToImage(std::get<Buffer>(imageData.stagingBuffer).getVkBuffer(),
+                                  image.getVkImage(), imageData.copyRegions);
   commandBuffer.generateMipmaps(
       image.getVkImage(), imageMetadata.imageFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       imageMetadata.imageExtent.width, imageMetadata.imageExtent.height, imageMetadata.mipLevels,
@@ -1246,11 +1245,12 @@ void createFsrContents(const LogicalDevice& logicalDevice, Image& image,
                        const ImageMetadata& metadata, const CommandBuffer& commandBuffer) {
   const lib::Buffer<std::byte> buffer(
       static_cast<size_t>(metadata.imageExtent.width * metadata.imageExtent.height), std::byte{10});
-  BufferBuilder bufferBuilder;
-  Buffer stagingBuffer = bufferBuilder.withSize(buffer.size())
-                             .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-                             .createStagingBuffer(logicalDevice);
-  common::copyData(bufferBuilder.getMetadata().getMappedMemoryAsSpan(), 0, std::span(buffer));
+  auto [stagingBuffer, stagingMetadata] =
+      BufferBuilder()
+          .withSize(buffer.size())
+          .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+          .buildStagingBufferWithMetadata(logicalDevice);
+  common::copyData(stagingMetadata.getMappedMemoryAsSpan(), 0, std::span(buffer));
   lib::Buffer<VkBufferImageCopy> imageCopy(metadata.arrayLayers);
   for (uint32_t layer = 0; layer < imageCopy.size(); layer++) {
     imageCopy[layer] = VkBufferImageCopy{

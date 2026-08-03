@@ -14,11 +14,11 @@ class Worker {
 public:
   using Context = std::tuple<Args...>;
 // TODO: Change after std::move_only_function becomes a standard.
-#ifdef ANDROID
-  using Job = std::function<void(Args...)>;
-#else
+#ifdef __cpp_lib_move_only_function
   using Job = std::move_only_function<void(Args...)>;
-#endif  // ANDROID
+#else
+  using Job = std::function<void(Args...)>;
+#endif  // __cpp_lib_move_only_function
 
   Worker() = default;
 
