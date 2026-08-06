@@ -13,15 +13,10 @@
 CommandPool::CommandPool(const LogicalDevice& logicalDevice, VkCommandPool commandPool) noexcept
   : _logicalDevice(logicalDevice), _commandPool(commandPool) {}
 
-std::unique_ptr<CommandPool> CommandPool::create(
-    const LogicalDevice& logicalDevice, VkCommandPoolCreateFlags flags) {
-  const VkCommandPoolCreateInfo poolInfo = {
-    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-    .flags = flags,
-    .queueFamilyIndex = *logicalDevice.getPhysicalDevice().getQueueFamilyIndices().graphicsFamily};
-
+std::unique_ptr<CommandPool> CommandPool::createPtr(
+    const LogicalDevice& logicalDevice, const VkCommandPoolCreateInfo& createInfo) {
   VkCommandPool commandPool;
-  CHECK_VKCMD(vkCreateCommandPool(logicalDevice.getVkDevice(), &poolInfo, nullptr, &commandPool),
+  CHECK_VKCMD(vkCreateCommandPool(logicalDevice.getVkDevice(), &createInfo, nullptr, &commandPool),
               "Failed to create VkCommandPool in CommandPool::create.");
   return std::unique_ptr<CommandPool>(new CommandPool(logicalDevice, commandPool));
 }
@@ -51,4 +46,18 @@ VkCommandPool CommandPool::getVkCommandPool() const noexcept {
 
 const LogicalDevice& CommandPool::getLogicalDevice() const {
   return _logicalDevice;
+}
+
+CommandPoolBuilder&& CommandPoolBuilder::withQueueFamilyIndex(uint32_t index) && noexcept {
+  _createInfo.queueFamilyIndex = index;
+  return std::move(*this);
+}
+
+CommandPoolBuilder&& CommandPoolBuilder::withFlags(VkCommandPoolCreateFlags flags) && noexcept {
+  _createInfo.flags = flags;
+  return std::move(*this);
+}
+
+std::unique_ptr<CommandPool> CommandPoolBuilder::build(const LogicalDevice& logicalDevice) const {
+  return CommandPool::createPtr(logicalDevice, _createInfo);
 }

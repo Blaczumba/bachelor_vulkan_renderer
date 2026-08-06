@@ -41,6 +41,7 @@ Sampler& Sampler::operator=(Sampler&& other) noexcept {
 Sampler::~Sampler() {
   if (_sampler != VK_NULL_HANDLE) {
     destroy();
+    // TODO: Remove it once we enhance the collections of data.
     _sampler = VK_NULL_HANDLE;
   }
 }
@@ -50,9 +51,9 @@ VkSampler Sampler::getVkSampler() const noexcept {
 }
 
 void Sampler::destroy() {
-  _logicalDevice->destroyResource([sampler = _sampler](DestroyerContext context) {
-    vkDestroySampler(context.device, sampler, context.allocationCallbacks);
-  });
+    _logicalDevice->destroyResource([sampler = _sampler](DestroyerContext context) {
+        vkDestroySampler(context.device, sampler, context.allocationCallbacks);
+    });
 }
 
 SamplerBuilder&& SamplerBuilder::withMinMagFilter(

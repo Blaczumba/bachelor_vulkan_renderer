@@ -68,7 +68,9 @@ Image& Image::operator=(Image&& image) noexcept {
     return *this;
   }
 
-  destroy();
+  if (_image != VK_NULL_HANDLE) {
+    destroy();
+  }
 
   _allocation = image._allocation;
   _image = std::exchange(image._image, VK_NULL_HANDLE);
@@ -78,7 +80,6 @@ Image& Image::operator=(Image&& image) noexcept {
 }
 
 void Image::destroy() {
-  if (_image != VK_NULL_HANDLE) {
     _logicalDevice->destroyResource([image = _image, allocation = std::move(_allocation),
                                      views = std::move(_views)](DestroyerContext context) {
       for (VkImageView view : views) {
@@ -86,12 +87,14 @@ void Image::destroy() {
       }
       std::visit(ImageDeleter{image}, *context.memoryAllocator, allocation);
     });
-    _image = VK_NULL_HANDLE;
-  }
 }
 
 Image::~Image() {
-  destroy();
+  if (_image != VK_NULL_HANDLE) {
+    destroy();
+    // TODO: Remove it once we enhance the collections of data.
+    _image = VK_NULL_HANDLE;
+  }
 }
 
 VkImage Image::getVkImage() const noexcept {

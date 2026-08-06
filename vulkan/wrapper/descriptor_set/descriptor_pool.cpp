@@ -79,10 +79,10 @@ const LogicalDevice& DescriptorPool::getLogicalDevice() const {
   return _logicalDevice;
 }
 
-DescriptorPoolBuilder& DescriptorPoolBuilder::addPoolSize(
-    VkDescriptorType type, uint32_t descriptorCount) {
+DescriptorPoolBuilder&& DescriptorPoolBuilder::addPoolSize(
+    VkDescriptorType type, uint32_t descriptorCount) && {
   _poolSizes.emplace_back(type, descriptorCount);
-  return *this;
+  return std::move(*this);
 }
 
 std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error> DescriptorPool::
@@ -112,30 +112,36 @@ std::expected<lib::Buffer<VkDescriptorPoolSize>, DescriptorPool::Error> Descript
   return tempPoolSizes;
 }
 
-DescriptorPoolBuilder& DescriptorPoolBuilder::withPoolSizes(
-    std::span<const VkDescriptorPoolSize> poolSizes) {
+DescriptorPoolBuilder&& DescriptorPoolBuilder::withPoolSizes(
+    std::span<const VkDescriptorPoolSize> poolSizes) && {
   _poolSizes.assign_range(poolSizes);
-  return *this;
+  return std::move(*this);
 }
 
-DescriptorPoolBuilder& DescriptorPoolBuilder::withPoolSizes(
-    std::initializer_list<VkDescriptorPoolSize> poolSizes) {
+DescriptorPoolBuilder&& DescriptorPoolBuilder::withPoolSizes(
+    std::initializer_list<VkDescriptorPoolSize> poolSizes) && {
   _poolSizes.assign_range(poolSizes);
-  return *this;
+  return std::move(*this);
 }
 
-DescriptorPoolBuilder& DescriptorPoolBuilder::withPoolSizes(
-    std::vector<VkDescriptorPoolSize>&& poolSizes) noexcept {
+DescriptorPoolBuilder&& DescriptorPoolBuilder::withPoolSizes(
+    std::vector<VkDescriptorPoolSize>&& poolSizes) && noexcept {
   _poolSizes = std::move(poolSizes);
-  return *this;
+  return std::move(*this);
+}
+
+DescriptorPoolBuilder&& DescriptorPoolBuilder::withFlags(
+    VkDescriptorPoolCreateFlags flags) && noexcept {
+  _flags = flags;
+  return std::move(*this);
 }
 
 std::unique_ptr<DescriptorPool> DescriptorPoolBuilder::build(
-    const LogicalDevice& logicalDevice, uint32_t maxNumSets, VkDescriptorPoolCreateFlags flags) {
+    const LogicalDevice& logicalDevice, uint32_t maxNumSets) && {
   const VkDescriptorPoolCreateInfo createInfo = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
     .pNext = _pNext,
-    .flags = _flags = flags,
+    .flags = _flags,
     .maxSets = _maxNumSets = maxNumSets,
     .poolSizeCount = static_cast<uint32_t>(_poolSizes.size()),
     .pPoolSizes = !_poolSizes.empty() ? _poolSizes.data() : nullptr};

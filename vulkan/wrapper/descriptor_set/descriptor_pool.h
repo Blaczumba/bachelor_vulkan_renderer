@@ -80,16 +80,17 @@ std::expected<std::array<DescriptorSet, COUNT>, DescriptorPool::Error> Descripto
 
 class DescriptorPoolBuilder {
 public:
-  DescriptorPoolBuilder& addPoolSize(VkDescriptorType type, uint32_t descriptorCount);
+  DescriptorPoolBuilder&& addPoolSize(VkDescriptorType type, uint32_t descriptorCount) &&;
 
-  DescriptorPoolBuilder& withPoolSizes(std::span<const VkDescriptorPoolSize> poolSizes);
+  DescriptorPoolBuilder&& withPoolSizes(std::span<const VkDescriptorPoolSize> poolSizes) &&;
 
-  DescriptorPoolBuilder& withPoolSizes(std::initializer_list<VkDescriptorPoolSize> poolSizes);
+  DescriptorPoolBuilder&& withPoolSizes(std::initializer_list<VkDescriptorPoolSize> poolSizes) &&;
 
-  DescriptorPoolBuilder& withPoolSizes(std::vector<VkDescriptorPoolSize>&& poolSizes) noexcept;
+  DescriptorPoolBuilder&& withPoolSizes(std::vector<VkDescriptorPoolSize>&& poolSizes) && noexcept;
 
-  std::unique_ptr<DescriptorPool> build(const LogicalDevice& logicalDevice, uint32_t maxNumSets,
-                                        VkDescriptorPoolCreateFlags flags = 0);
+  DescriptorPoolBuilder&& withFlags(VkDescriptorPoolCreateFlags flags) && noexcept;
+
+  std::unique_ptr<DescriptorPool> build(const LogicalDevice& logicalDevice, uint32_t maxNumSets) &&;
 
 private:
   uint32_t _maxNumSets;

@@ -420,7 +420,10 @@ GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS createCommandBuffers() {
   for (int i = 0; i <= MAX_THREADS_IN_POOL; i++) {
     _commandPools[i] =
-        CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+        CommandPoolBuilder()
+            .withFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
+            .withQueueFamilyIndex(*_physicalDevice->getQueueFamilyIndices().graphicsFamily)
+            .build(*_logicalDevice);
   }
   _primaryCommandBuffer =
       _commandPools[MAX_THREADS_IN_POOL]->createCommandBuffers<MAX_FRAMES_IN_FLIGHT>(
@@ -911,7 +914,10 @@ GCONTEXT_CLASS GraphicsContext(
     _fileLoader(fileLoader), _communicationLayer(std::move(communicationLayer)),
     _presentationContext(std::move(presentationContext)) {
   _singleTimeCommandPool =
-      CommandPool::create(*_logicalDevice, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+      CommandPoolBuilder()
+          .withFlags(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT)
+          .withQueueFamilyIndex(*_physicalDevice->getQueueFamilyIndices().graphicsFamily)
+          .build(*_logicalDevice);
   _assetManager = AssetManager::create(*_logicalDevice, std::launch::async);
   _gpuBufferManager = GpuBufferManager::create();
   _samplerManager = SamplerManager::create();
@@ -919,8 +925,10 @@ GCONTEXT_CLASS GraphicsContext(
   _framebufferAttachmentManager = FramebufferAttachmentManager::create(*_gpuBufferManager);
 
   {
-    _bindlessDescriptorPool = DescriptorPoolBuilder().build(
-        *_logicalDevice, 1, VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT);
+    _bindlessDescriptorPool =
+        DescriptorPoolBuilder()
+            .withFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT)
+            .build(*_logicalDevice, 1);
     const auto [layout, metadata] = _pipelineManager->getOrCreateBindlessLayout(*_logicalDevice);
     _bindlessDescriptorSet =
         _bindlessDescriptorPool

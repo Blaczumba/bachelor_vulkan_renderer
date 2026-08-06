@@ -34,3 +34,4 @@ private:
 
   std::unordered_map<SamplerMetadata, SamplerHandle, SamplerHasher> _samplerCollisionMap;
 };
+

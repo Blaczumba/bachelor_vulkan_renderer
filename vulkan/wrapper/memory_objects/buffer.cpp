@@ -60,6 +60,7 @@ void Buffer::destroy() {
 Buffer::~Buffer() {
   if (_buffer != VK_NULL_HANDLE) {
     destroy();
+    // TODO: Remove it once we enhance the collections of data.
     _buffer = VK_NULL_HANDLE;
   }
 }
