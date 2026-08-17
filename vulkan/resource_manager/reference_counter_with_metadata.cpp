@@ -18,29 +18,38 @@ template <typename Resource>
 Ref<Resource> ReferenceCounterWithMetadata<Resource>::transferResource(
     Resource&& resource, const MetadataFor<Resource>& metadata) {
   HandleFor<Resource> handle;
-  std::unique_lock lock(_mutex);
-  if (_freeHandles.empty()) [[unlikely]] {
-    throw EngineException(
-        std::format("No free handles available for {} transfer.", Handle<Resource>::name));
+  {
+    std::lock_guard lock(_mutex);
+    if (_freeHandles.empty()) [[unlikely]] {
+      throw EngineException(
+          std::format("No free handles available for {} transfer.", Handle<Resource>::name));
+    }
+    handle = _freeHandles.back();
+    _freeHandles.pop_back();
+    _resourceMap.insertUnsafe(*handle, Entry{std::move(resource), metadata});
   }
-  handle = _freeHandles.back();
-  _freeHandles.pop_back();
-  _resourceMap.insertUnsafe(*handle, Entry{std::move(resource), 1});
-
+  _refCounts[*handle].store(1, std::memory_order_relaxed);
   return Ref<Resource>(*this, handle);
 }
 
 template <typename Resource>
 void ReferenceCounterWithMetadata<Resource>::incrementRefCount(HandleFor<Resource> handle) {
-  std::shared_lock lock(_mutex);
-  _resourceMap.getValue(*handle).refCount.fetch_add(1, std::memory_order_relaxed);
+  _refCounts[*handle].fetch_add(1, std::memory_order_relaxed);
 }
 
 template <typename Resource>
 void ReferenceCounterWithMetadata<Resource>::decrementRefCount(HandleFor<Resource> handle) {
-  std::unique_lock lock(_mutex);
-  if (_resourceMap.getValue(*handle).refCount.fetch_sub(1, std::memory_order_relaxed) == 1) {
-    _resourceMap.erase(*handle);
+  if (_refCounts[*handle].fetch_sub(1, std::memory_order_release) != 1) [[likely]] {
+    return;
+  }
+
+  std::atomic_thread_fence(std::memory_order_acquire);
+
+  Resource objectToBeDestroyed;  // Destroyed after the lock is released.
+  {
+    std::lock_guard lock(_mutex);
+    objectToBeDestroyed = std::move(_resourceMap.getValue(*handle).resource);
+    _resourceMap.eraseUnsafe(*handle);
     _freeHandles.push_back(handle);
   }
 }

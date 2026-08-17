@@ -5,9 +5,9 @@
 
 template <typename Resource>
 class Ref {
+public:
   Ref(ReferenceCounter<Resource>& counter, HandleFor<Resource> handle);
 
-public:
   Ref(const Ref& other);
 
   Ref(Ref&& other) noexcept;

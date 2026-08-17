@@ -29,7 +29,7 @@ Ref<Resource>& Ref<Resource>::operator=(const Ref& other) {
     _counter->decrementRefCount(_handle);
   }
 
-  _counter = std::exchange(other._counter, nullptr);
+  _counter = other._counter;
   _handle = other._handle;
 
   if (_counter) {

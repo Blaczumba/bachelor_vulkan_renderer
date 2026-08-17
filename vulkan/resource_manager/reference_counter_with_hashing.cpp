@@ -16,15 +16,22 @@ ReferenceCounterWithHashing<Resource>::ReferenceCounterWithHashing()
 
 template <typename Resource>
 void ReferenceCounterWithHashing<Resource>::incrementRefCount(HandleFor<Resource> handle) {
-  std::shared_lock lock(_mutex);
-  _resourceMap.getValue(*handle).refCount.fetch_add(1, std::memory_order_relaxed);
+  _refCounts[*handle].fetch_add(1, std::memory_order_relaxed);
 }
 
 template <typename Resource>
 void ReferenceCounterWithHashing<Resource>::decrementRefCount(HandleFor<Resource> handle) {
-  std::unique_lock lock(_mutex);
-  Entry& entry = _resourceMap.getValue(*handle);
-  if (entry.refCount.fetch_sub(1, std::memory_order_relaxed) == 1) {
+  if (_refCounts[*handle].fetch_sub(1, std::memory_order_release) != 1) [[likely]] {
+    return;
+  }
+
+  std::atomic_thread_fence(std::memory_order_acquire);
+
+  Resource objectToBeDestroyed;  // Destroyed after the lock is released.
+  {
+    std::lock_guard lock(_mutex);
+    Entry& entry = _resourceMap.getValue(*handle);
+    objectToBeDestroyed = std::move(entry.resource);
     _collisionMap.erase(*entry.metadata);
     _resourceMap.eraseUnsafe(*handle);
     _freeHandles.push_back(handle);
