@@ -1,19 +1,50 @@
 #pragma once
 
-#include "common/util/resource_handles.h"
+#include <string_view>
 
+#include "common/util/resource_handles.h"
+#include "vulkan/resource_manager/hasher.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/sampler/sampler.h"
 
 namespace {
 
-template <typename T> struct Handle;
-template <> struct Handle<Sampler> { using type = SamplerHandle; };
-template <> struct Handle<Buffer> { using type = GpuBufferHandle; };
-template <> struct Handle<Image> { using type = GpuImageHandle; };
+template <typename T>
+struct Handle;
+template <>
+struct Handle<Sampler> {
+  using type = SamplerHandle;
+  using metadata = SamplerMetadata;
+  using hasher = SamplerHasher;
+  static constexpr size_t size = MAX_SAMPLERS;
+  static constexpr std::string_view name = "Sampler";
+};
+template <>
+struct Handle<Buffer> {
+  using type = GpuBufferHandle;
+  using metadata = BufferMetadata;
+  static constexpr size_t size = MAX_GPU_BUFFERS;
+  static constexpr std::string_view name = "Buffer";
+};
+template <>
+struct Handle<Image> {
+  using type = GpuImageHandle;
+  using metadata = ImageMetadata;
+  static constexpr size_t size = MAX_GPU_IMAGES;
+  static constexpr std::string_view name = "Image";
+};
 
 }  // namespace
 
 template <typename T>
 using HandleFor = typename Handle<T>::type;
+
+template <typename T>
+using MetadataFor = typename Handle<T>::metadata;
+
+template <typename T>
+using HasherFor = typename Handle<T>::hasher;
+
+template <typename T>
+constexpr size_t MAX_NUMBER_OF = Handle<T>::size;

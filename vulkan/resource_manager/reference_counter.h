@@ -2,10 +2,10 @@
 
 #include "vulkan/resource_manager/handle.h"
 
-template<typename T>
+template <typename Resource>
 class ReferenceCounter {
-protected:
+public:
+  virtual void incrementRefCount(HandleFor<Resource> handle) = 0;
 
-private:
-
+  virtual void decrementRefCount(HandleFor<Resource> handle) = 0;
 };

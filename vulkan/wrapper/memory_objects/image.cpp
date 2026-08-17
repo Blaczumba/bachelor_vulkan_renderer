@@ -80,13 +80,13 @@ Image& Image::operator=(Image&& image) noexcept {
 }
 
 void Image::destroy() {
-    _logicalDevice->destroyResource([image = _image, allocation = std::move(_allocation),
-                                     views = std::move(_views)](DestroyerContext context) {
-      for (VkImageView view : views) {
-        vkDestroyImageView(context.device, view, context.allocationCallbacks);
-      }
-      std::visit(ImageDeleter{image}, *context.memoryAllocator, allocation);
-    });
+  _logicalDevice->destroyResource([image = _image, allocation = std::move(_allocation),
+                                   views = std::move(_views)](DestroyerContext context) {
+    for (VkImageView view : views) {
+      vkDestroyImageView(context.device, view, context.allocationCallbacks);
+    }
+    std::visit(ImageDeleter{image}, *context.memoryAllocator, allocation);
+  });
 }
 
 Image::~Image() {

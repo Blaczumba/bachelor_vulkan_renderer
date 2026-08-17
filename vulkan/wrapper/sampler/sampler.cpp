@@ -51,9 +51,9 @@ VkSampler Sampler::getVkSampler() const noexcept {
 }
 
 void Sampler::destroy() {
-    _logicalDevice->destroyResource([sampler = _sampler](DestroyerContext context) {
-        vkDestroySampler(context.device, sampler, context.allocationCallbacks);
-    });
+  _logicalDevice->destroyResource([sampler = _sampler](DestroyerContext context) {
+    vkDestroySampler(context.device, sampler, context.allocationCallbacks);
+  });
 }
 
 SamplerBuilder&& SamplerBuilder::withMinMagFilter(
