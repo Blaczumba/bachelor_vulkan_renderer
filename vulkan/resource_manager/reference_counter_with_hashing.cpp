@@ -1,12 +1,9 @@
 #include "vulkan/resource_manager/reference_counter_with_hashing.h"
 
-#include <format>
 #include <mutex>
 #include <numeric>
 
-#include "common/util/engine_exception.h"
 #include "vulkan/resource_manager/handle.h"
-#include "vulkan/resource_manager/ref.h"
 
 template <typename Resource>
 ReferenceCounterWithHashing<Resource>::ReferenceCounterWithHashing()

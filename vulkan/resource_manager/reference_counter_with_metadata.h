@@ -11,22 +11,21 @@
 
 template <typename Resource>
 class ReferenceCounterWithMetadata : public ReferenceCounter<Resource> {
-  void incrementRefCount(HandleFor<Resource> handle) override;
-
-  void decrementRefCount(HandleFor<Resource> handle) override;
-
 public:
   ReferenceCounterWithMetadata();
 
   Ref<Resource> transferResource(Resource&& resource, const MetadataFor<Resource>& metadata);
 
 protected:
+  void incrementRefCount(HandleFor<Resource> handle) override;
+
+  void decrementRefCount(HandleFor<Resource> handle) override;
+
   struct Entry {
     Resource resource;
     MetadataFor<Resource> metadata;
   };
 
-private:
   lib::SparseMap<Entry, MAX_NUMBER_OF<Resource>> _resourceMap;
   std::array<std::atomic<uint64_t>, MAX_NUMBER_OF<Resource>> _refCounts;
   std::vector<HandleFor<Resource>> _freeHandles;  // TODO: Change to std::inplace_vector.

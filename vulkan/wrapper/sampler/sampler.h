@@ -1,7 +1,6 @@
 #pragma once
 
 #include <optional>
-#include <tuple>
 #include <vulkan/vulkan.h>
 
 #include "vulkan/wrapper/logical_device/logical_device.h"
