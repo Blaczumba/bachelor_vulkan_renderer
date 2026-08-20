@@ -25,6 +25,8 @@ public:
 
   VkImage getVkImage() const noexcept;
 
+  VkImage getVkResource() const noexcept;
+
   VkImageView getVkImageView(size_t index = 0) const noexcept;
 
   std::span<const VkImageView> getVkImageViews() const noexcept;

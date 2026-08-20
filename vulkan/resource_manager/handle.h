@@ -12,24 +12,30 @@ namespace {
 
 template <typename T>
 struct Handle;
+
 template <>
 struct Handle<Sampler> {
   using type = SamplerHandle;
+  using vulkan_object = VkSampler;
   using metadata = SamplerMetadata;
   using hasher = SamplerHasher;
   static constexpr size_t size = MAX_SAMPLERS;
   static constexpr std::string_view name = "Sampler";
 };
+
 template <>
 struct Handle<Buffer> {
   using type = GpuBufferHandle;
+  using vulkan_object = VkBuffer;
   using metadata = BufferMetadata;
   static constexpr size_t size = MAX_GPU_BUFFERS;
   static constexpr std::string_view name = "Buffer";
 };
+
 template <>
 struct Handle<Image> {
   using type = GpuImageHandle;
+  using vulkan_object = VkImage;
   using metadata = ImageMetadata;
   static constexpr size_t size = MAX_GPU_IMAGES;
   static constexpr std::string_view name = "Image";
@@ -41,10 +47,16 @@ template <typename T>
 using HandleFor = typename Handle<T>::type;
 
 template <typename T>
+using VulkanObjectFor = typename Handle<T>::vulkan_object;
+
+template <typename T>
 using MetadataFor = typename Handle<T>::metadata;
 
 template <typename T>
 using HasherFor = typename Handle<T>::hasher;
+
+template <typename T>
+constexpr std::string_view NAME_OF = Handle<T>::name;
 
 template <typename T>
 constexpr size_t MAX_NUMBER_OF = Handle<T>::size;

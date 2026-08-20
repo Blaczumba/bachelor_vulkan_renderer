@@ -21,6 +21,8 @@ public:
 
   VkSampler getVkSampler() const noexcept;
 
+  VkSampler getVkResource() const noexcept;
+
 private:
   VkSampler _sampler = VK_NULL_HANDLE;
   const LogicalDevice* _logicalDevice = nullptr;

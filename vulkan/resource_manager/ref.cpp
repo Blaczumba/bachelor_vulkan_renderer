@@ -6,7 +6,9 @@
 
 template <typename Resource>
 Ref<Resource>::Ref(ReferenceCounter<Resource>& counter, HandleFor<Resource> handle)
-  : _counter(&counter), _handle(handle) {}
+  : _counter(&counter), _handle(handle) {
+  _counter->incrementRefCount(_handle);
+}
 
 template <typename Resource>
 Ref<Resource>::Ref(const Ref& other) : _counter(other._counter), _handle(other._handle) {
@@ -59,4 +61,9 @@ Ref<Resource>::~Ref() {
   if (_counter) {
     _counter->decrementRefCount(_handle);
   }
+}
+
+template <typename Resource>
+HandleFor<Resource> Ref<Resource>::getHandle() const noexcept {
+  return _handle;
 }

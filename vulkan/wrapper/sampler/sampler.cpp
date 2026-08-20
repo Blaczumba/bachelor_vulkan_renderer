@@ -50,6 +50,10 @@ VkSampler Sampler::getVkSampler() const noexcept {
   return _sampler;
 }
 
+VkSampler Sampler::getVkResource() const noexcept {
+  return _sampler;
+}
+
 void Sampler::destroy() {
   _logicalDevice->destroyResource([sampler = _sampler](DestroyerContext context) {
     vkDestroySampler(context.device, sampler, context.allocationCallbacks);

@@ -4,7 +4,6 @@
 #include <numeric>
 
 #include "common/util/engine_exception.h"
-#include "lib/sparse/sparse_map.h"
 #include "vulkan/resource_manager/handle.h"
 #include "vulkan/resource_manager/ref.h"
 
@@ -22,14 +21,31 @@ Ref<Resource> ReferenceCounterWithMetadata<Resource>::transferResource(
     std::lock_guard lock(_mutex);
     if (_freeHandles.empty()) [[unlikely]] {
       throw EngineException(
-          std::format("No free handles available for {} transfer.", Handle<Resource>::name));
+          std::format("No free handles available for {} transfer.", NAME_OF<Resource>));
     }
     handle = _freeHandles.back();
     _freeHandles.pop_back();
-    _resourceMap.insertUnsafe(*handle, Entry{std::move(resource), metadata});
   }
-  _refCounts[*handle].store(1, std::memory_order_relaxed);
+  _entries[*handle] = Entry{std::move(resource), metadata};
   return Ref<Resource>(*this, handle);
+}
+
+template <typename Resource>
+VulkanObjectFor<Resource> ReferenceCounterWithMetadata<Resource>::getVulkanObject(
+    HandleFor<Resource> handle) const {
+  return _entries[*handle].resource.getVkResource();
+}
+
+template <typename Resource>
+const MetadataFor<Resource>& ReferenceCounterWithMetadata<Resource>::getMetadata(
+    HandleFor<Resource> handle) const noexcept {
+  return _entries[*handle].metadata;
+}
+
+template <typename Resource>
+size_t ReferenceCounterWithMetadata<Resource>::size() const {
+  std::lock_guard lock(_mutex);
+  return MAX_NUMBER_OF<Resource> - _freeHandles.size();
 }
 
 template <typename Resource>
@@ -42,14 +58,14 @@ void ReferenceCounterWithMetadata<Resource>::decrementRefCount(HandleFor<Resourc
   if (_refCounts[*handle].fetch_sub(1, std::memory_order_release) != 1) [[likely]] {
     return;
   }
-
   std::atomic_thread_fence(std::memory_order_acquire);
 
-  Resource objectToBeDestroyed;  // Destroyed after the lock is released.
+  Resource objectToBeDestroyed = std::move(_entries[*handle].resource);
   {
     std::lock_guard lock(_mutex);
-    objectToBeDestroyed = std::move(_resourceMap.getValue(*handle).resource);
-    _resourceMap.eraseUnsafe(*handle);
     _freeHandles.push_back(handle);
   }
 }
+
+template class ReferenceCounterWithMetadata<Buffer>;
+template class ReferenceCounterWithMetadata<Image>;

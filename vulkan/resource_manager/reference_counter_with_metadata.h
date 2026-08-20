@@ -16,6 +16,13 @@ public:
 
   Ref<Resource> transferResource(Resource&& resource, const MetadataFor<Resource>& metadata);
 
+  VulkanObjectFor<Resource> getVulkanObject(HandleFor<Resource> handle) const;
+
+  // Must be called when related Ref<Resource> is still alive.
+  const MetadataFor<Resource>& getMetadata(HandleFor<Resource> handle) const noexcept;
+
+  size_t size() const;
+
 protected:
   void incrementRefCount(HandleFor<Resource> handle) override;
 
@@ -26,8 +33,8 @@ protected:
     MetadataFor<Resource> metadata;
   };
 
-  lib::SparseMap<Entry, MAX_NUMBER_OF<Resource>> _resourceMap;
-  std::array<std::atomic<uint64_t>, MAX_NUMBER_OF<Resource>> _refCounts;
+  std::array<Entry, MAX_NUMBER_OF<Resource>> _entries;
+  std::array<std::atomic<uint16_t>, MAX_NUMBER_OF<Resource>> _refCounts;
   std::vector<HandleFor<Resource>> _freeHandles;  // TODO: Change to std::inplace_vector.
 
   mutable std::mutex _mutex;

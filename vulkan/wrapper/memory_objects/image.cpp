@@ -101,6 +101,10 @@ VkImage Image::getVkImage() const noexcept {
   return _image;
 }
 
+VkImage Image::getVkResource() const noexcept {
+  return _image;
+}
+
 VkImageView Image::getVkImageView(size_t index) const noexcept {
   return index < _views.size() ? _views[index] : VK_NULL_HANDLE;
 }
