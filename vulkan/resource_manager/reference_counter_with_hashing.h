@@ -18,7 +18,8 @@ public:
           function<Resource(const LogicalDevice&, const MetadataFor<Resource>&)>&& creationFunction,
       const LogicalDevice& logicalDevice, const MetadataFor<Resource>& metadata);
 
-  VulkanObjectFor<Resource> getVulkanObject(HandleFor<Resource> handle) const;
+  // Must be called when related Ref<Resource> is still alive.
+  VulkanObjectFor<Resource> getVkResource(HandleFor<Resource> handle) const;
 
   // Must be called when related Ref<Resource> is still alive.
   const MetadataFor<Resource>& getMetadata(HandleFor<Resource> handle) const;

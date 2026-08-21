@@ -16,10 +16,11 @@ public:
 
   Ref<Resource> transferResource(Resource&& resource, const MetadataFor<Resource>& metadata);
 
-  VulkanObjectFor<Resource> getVulkanObject(HandleFor<Resource> handle) const;
+  // Must be called when related Ref<Resource> is still alive.
+  VulkanObjectFor<Resource> getVkResource(HandleFor<Resource> handle) const;
 
   // Must be called when related Ref<Resource> is still alive.
-  const MetadataFor<Resource>& getMetadata(HandleFor<Resource> handle) const noexcept;
+  const MetadataFor<Resource>& getMetadata(HandleFor<Resource> handle) const;
 
   size_t size() const;
 

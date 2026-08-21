@@ -46,7 +46,7 @@ Ref<Resource> ReferenceCounterWithHashing<Resource>::getOrCreateResource(
 }
 
 template <typename Resource>
-VulkanObjectFor<Resource> ReferenceCounterWithHashing<Resource>::getVulkanObject(
+VulkanObjectFor<Resource> ReferenceCounterWithHashing<Resource>::getVkResource(
     HandleFor<Resource> handle) const {
   return _entries[*handle].resource.getVkResource();
 }

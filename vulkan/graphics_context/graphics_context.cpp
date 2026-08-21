@@ -202,15 +202,15 @@ Entity GCONTEXT_CLASS loadObject(
     VkCommandBuffer commandBuffer, const common::VertexData& cubeData,
     PipelineHandle pipelineHandle, Image&& image, const ImageMetadata& metadata) {
   Entity entity = _registry.createEntity();
-  SamplerHandle handle = _samplerManager->getOrCreateSampler(
+  Ref<Sampler>& samplerRef = _samplerRefs.emplace_back(_samplerManager->getOrCreateSampler(
       *_logicalDevice, SamplerBuilder()
                            .withMaxAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
-                           .buildMetadata());
+                           .buildMetadata()));
   _registry.addComponent<MaterialComponent>(
       entity,
       MaterialComponent{.diffuse = _bindlessWriter->writeTexture(
                             image.getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                            _samplerManager->getSampler(handle).getVkSampler()),
+                            _samplerManager->getVkResource(samplerRef.getHandle())),
                         .pipelineHandle = pipelineHandle});
 
   _gpuBufferManager->transferImage(std::move(image), metadata);
@@ -364,7 +364,7 @@ void GCONTEXT_CLASS createShadowResources() {
         createShadowmap(*_logicalDevice, handle, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
     _shadowMapHandle = _gpuBufferManager->transferImage(std::move(image), metadata);
   }
-  SamplerHandle handle = _samplerManager->getOrCreateSampler(
+  Ref<Sampler>& samplerRef = _samplerRefs.emplace_back(_samplerManager->getOrCreateSampler(
       *_logicalDevice,
       SamplerBuilder()
           .withCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
@@ -373,12 +373,12 @@ void GCONTEXT_CLASS createShadowResources() {
               VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
           .withMinMagFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR)
           .withBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
-          .buildMetadata());
+          .buildMetadata()));
   const std::tuple<Image, ImageMetadata>& shadowMapData =
       _gpuBufferManager->getImage(_shadowMapHandle);
   _shadowHandle = _bindlessWriter->writeTexture(
       std::get<Image>(shadowMapData).getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      _samplerManager->getSampler(handle).getVkSampler());
+      _samplerManager->getVkResource(samplerRef.getHandle()));
   _shadowAttachmentLayout.addShadowAttachment(
       VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -459,7 +459,7 @@ std::tuple<UniformTextureHandle, GpuImageHandle> GCONTEXT_CLASS getOrLoadTexture
       createTexture2D(*_logicalDevice, commandBuffer, imgData, format, maxSamplerAnisotropy);
   UniformTextureHandle handle = _bindlessWriter->writeTexture(
       image.getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      _samplerManager->getSampler(samplerHandle).getVkSampler());
+      _samplerManager->getVkResource(samplerHandle));
   const GpuImageHandle index = _gpuBufferManager->transferImage(std::move(image), metadata);
 
   const auto result = std::make_tuple(handle, index);
@@ -479,24 +479,24 @@ void GCONTEXT_CLASS loadObjects(
   textureCache.reserve(sceneData.size());
   SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
   VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
-  SamplerHandle samplerHandle = _samplerManager->getOrCreateSampler(
+  Ref<Sampler>& samplerRef = _samplerRefs.emplace_back(_samplerManager->getOrCreateSampler(
       *_logicalDevice, SamplerBuilder()
                            .withMaxAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
                            .withLodRange(0.0f, VK_LOD_CLAMP_NONE)
-                           .buildMetadata());
+                           .buildMetadata()));
 
   for (const common::VertexData& sceneObject : sceneData) {
     const auto [diffuseHandle, diffuseTextureIndex] =
         getOrLoadTexture(textureCache, sceneObject.diffuseTexture.ID, VK_FORMAT_R8G8B8A8_SRGB,
-                         handle, maxSamplerAnisotropy, samplerHandle);
+                         handle, maxSamplerAnisotropy, samplerRef.getHandle());
 
     const auto [normalHandle, normalTextureIndex] =
         getOrLoadTexture(textureCache, sceneObject.normalTexture.ID, VK_FORMAT_R8G8B8A8_UNORM,
-                         handle, maxSamplerAnisotropy, samplerHandle);
+                         handle, maxSamplerAnisotropy, samplerRef.getHandle());
 
-    const auto [metallicRoughnessHandle, metallicRoughnessTextureIndex] =
-        getOrLoadTexture(textureCache, sceneObject.metallicRoughnessTexture.ID,
-                         VK_FORMAT_R8G8B8A8_UNORM, handle, maxSamplerAnisotropy, samplerHandle);
+    const auto [metallicRoughnessHandle, metallicRoughnessTextureIndex] = getOrLoadTexture(
+        textureCache, sceneObject.metallicRoughnessTexture.ID, VK_FORMAT_R8G8B8A8_UNORM, handle,
+        maxSamplerAnisotropy, samplerRef.getHandle());
 
     Entity e = _registry.createEntity();
     _objects.emplace_back("", e);

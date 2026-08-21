@@ -18,9 +18,7 @@ public:
 
   ~Ref();
 
-  HandleFor<Resource> getHandle() const noexcept {
-    return _handle;
-  }
+  HandleFor<Resource> getHandle() const noexcept;
 
 private:
   ReferenceCounter<Resource>* _counter = nullptr;

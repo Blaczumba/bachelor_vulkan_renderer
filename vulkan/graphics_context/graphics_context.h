@@ -101,6 +101,7 @@ private:
   std::unique_ptr<AssetManager> _assetManager;
   std::unique_ptr<GpuBufferManager> _gpuBufferManager;
   std::unique_ptr<SamplerManager> _samplerManager;
+  std::vector<Ref<Sampler>> _samplerRefs;
   std::unique_ptr<PipelineManager> _pipelineManager;
   std::unique_ptr<FramebufferAttachmentManager> _framebufferAttachmentManager;
 

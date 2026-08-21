@@ -31,14 +31,14 @@ Ref<Resource> ReferenceCounterWithMetadata<Resource>::transferResource(
 }
 
 template <typename Resource>
-VulkanObjectFor<Resource> ReferenceCounterWithMetadata<Resource>::getVulkanObject(
+VulkanObjectFor<Resource> ReferenceCounterWithMetadata<Resource>::getVkResource(
     HandleFor<Resource> handle) const {
   return _entries[*handle].resource.getVkResource();
 }
 
 template <typename Resource>
 const MetadataFor<Resource>& ReferenceCounterWithMetadata<Resource>::getMetadata(
-    HandleFor<Resource> handle) const noexcept {
+    HandleFor<Resource> handle) const {
   return _entries[*handle].metadata;
 }
 

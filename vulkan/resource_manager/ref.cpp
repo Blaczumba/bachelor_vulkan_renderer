@@ -67,3 +67,5 @@ template <typename Resource>
 HandleFor<Resource> Ref<Resource>::getHandle() const noexcept {
   return _handle;
 }
+
+template class Ref<Sampler>;
