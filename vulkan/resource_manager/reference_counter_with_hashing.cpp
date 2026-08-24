@@ -19,30 +19,48 @@ template <typename Resource>
 Ref<Resource> ReferenceCounterWithHashing<Resource>::getOrCreateResource(
     std::function<Resource(const LogicalDevice&, const MetadataFor<Resource>&)>&& creationFunction,
     const LogicalDevice& logicalDevice, const MetadataFor<Resource>& metadata) {
-  std::lock_guard lock(_mutex);
+  HandleFor<Resource> handle;
+  const MetadataFor<Resource>* metadataPtr;
+  bool* readyPtr;
 
-  auto [it, inserted] = _collisionMap.try_emplace(metadata);
-  if (!inserted) [[likely]] {
-    return Ref<Resource>(*this, it->second);
+  {
+    std::unique_lock lock(_mutex);
+
+    auto [it, inserted] = _collisionMap.try_emplace(metadata);
+    while (!inserted && !it->second.ready) {
+      _creationDone.wait(lock);
+      std::tie(it, inserted) = _collisionMap.try_emplace(metadata);
+    }
+
+    if (!inserted) [[likely]] {
+      return Ref<Resource>(*this, it->second.handle);
+    }
+
+    if (_freeHandles.empty()) [[unlikely]] {
+      _collisionMap.erase(it);
+      throw EngineException(
+          std::format("No free handles available for {} creation.", NAME_OF<Resource>));
+    }
+
+    handle = _freeHandles.back();
+    _freeHandles.pop_back();
+    it->second.handle = handle;
+    metadataPtr = &it->first;
+    readyPtr = &it->second.ready;
   }
 
-  if (_freeHandles.empty()) [[unlikely]] {
-    _collisionMap.erase(it);
-    throw EngineException(
-        std::format("No free handles available for {} creation.", NAME_OF<Resource>));
-  }
-
-  const HandleFor<Resource> handle = _freeHandles.back();
-
-  // Creating the resource under the lock is not ideal, but it is necessary to ensure that the
-  // resource is created only once. The other blocked thread instead of wasting time on creating the
-  // resource just waits for it to be created.
   Resource created = creationFunction(logicalDevice, metadata);
 
-  _freeHandles.pop_back();
-  it->second = handle;
-  _entries[*handle] = Entry{std::move(created), &it->first};
-  return Ref<Resource>(*this, handle);
+  Ref<Resource> ref;
+  {
+    std::lock_guard lock(_mutex);
+    _entries[*handle] = Entry{std::move(created), metadataPtr};
+    *readyPtr = true;
+    ref = Ref<Resource>(*this, handle);
+  }
+
+  _creationDone.notify_all();
+  return ref;
 }
 
 template <typename Resource>

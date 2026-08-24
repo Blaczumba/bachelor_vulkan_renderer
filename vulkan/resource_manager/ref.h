@@ -6,6 +6,8 @@
 template <typename Resource>
 class Ref {
 public:
+  Ref() noexcept = default;
+
   Ref(ReferenceCounter<Resource>& counter, HandleFor<Resource> handle);
 
   Ref(const Ref& other);

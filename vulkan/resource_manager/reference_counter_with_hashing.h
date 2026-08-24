@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <mutex>
 
 #include "lib/sparse/sparse_map.h"
@@ -34,11 +35,17 @@ protected:
     const MetadataFor<Resource>* metadata;
   };
 
+  struct CacheSlot {
+    HandleFor<Resource> handle;
+    bool ready = false;
+  };
+
   std::array<Entry, MAX_NUMBER_OF<Resource>> _entries;
   std::array<std::atomic<uint16_t>, MAX_NUMBER_OF<Resource>> _refCounts{};
   std::vector<HandleFor<Resource>> _freeHandles;  // TODO: Change to std::inplace_vector.
 
-  std::unordered_map<MetadataFor<Resource>, HandleFor<Resource>, HasherFor<Resource>> _collisionMap;
+  std::unordered_map<MetadataFor<Resource>, CacheSlot, HasherFor<Resource>> _collisionMap;
 
+  std::condition_variable _creationDone;
   mutable std::mutex _mutex;
 };
