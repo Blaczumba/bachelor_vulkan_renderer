@@ -269,11 +269,14 @@ Entity GCONTEXT_CLASS loadObject(
   MeshComponent msh = {.aabb = createAABBfromVertices(cubeData.positions, glm::mat4(1.0f))};
   if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
     AssetManager::VertexData vData = _assetManager->releaseVertexData(cubeData.vertexResourceID);
-    auto a = _bufferManager->storeBuffer(std::move(std::get<Buffer>(vData.buffers.at("P"))), {});
+    auto& [r1, m1] = vData.buffers.at("P");
+    auto a = _bufferManager->storeBuffer(std::move(r1), m1);
     msh.vertexBufferPrimitiveHandle = common::Ref(a.getCounter(), a.getHandle());
-    auto b = _bufferManager->storeBuffer(std::move(std::get<Buffer>(vData.buffers.at("PTN"))), {});
+    auto& [r2, m2] = vData.buffers.at("PTN");
+    auto b = _bufferManager->storeBuffer(std::move(r2), m2);
     msh.vertexBufferHandle = common::Ref(b.getCounter(), b.getHandle());
-    auto c = _bufferManager->storeBuffer(std::move(std::get<Buffer>(vData.indexBuffer)), {});
+    auto& [r3, m3] = vData.indexBuffer;
+    auto c = _bufferManager->storeBuffer(std::move(r3), m3);
     msh.indexBufferHandle = common::Ref(c.getCounter(), c.getHandle());
     msh.indexType = vData.indexType;
   } else if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
@@ -566,12 +569,15 @@ void GCONTEXT_CLASS loadObjects(
       AssetManager::VertexData vData =
           _assetManager->releaseVertexData(sceneObject.vertexResourceID);
       // TODO:
+      auto& [r1, m1] = vData.buffers.at("PTNT");
       auto a =
-          _bufferManager->storeBuffer(std::get<Buffer>(std::move(vData.buffers.at("PTNT"))), {});
+          _bufferManager->storeBuffer(std::move(r1), m1);
       msh.vertexBufferHandle = common::Ref(a.getCounter(), a.getHandle());
-      auto b = _bufferManager->storeBuffer(std::get<Buffer>(std::move(vData.buffers.at("P"))), {});
+      auto& [r2, m2] = vData.buffers.at("P");
+      auto b = _bufferManager->storeBuffer(std::move(r2), m2);
       msh.vertexBufferPrimitiveHandle = common::Ref(b.getCounter(), b.getHandle());
-      auto c = _bufferManager->storeBuffer(std::get<Buffer>(std::move(vData.indexBuffer)), {});
+      auto& [r3, m3] = vData.indexBuffer;
+      auto c = _bufferManager->storeBuffer(std::move(r3), m3);
       msh.indexBufferHandle = common::Ref(c.getCounter(), c.getHandle());
       msh.indexType = vData.indexType;
     } else if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
