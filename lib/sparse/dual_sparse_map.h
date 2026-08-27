@@ -1,11 +1,11 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <span>
-#include <type_traits>
-#include <functional>
 #include <tuple>
+#include <type_traits>
 
 #include "lib/types/util.h"
 
@@ -129,7 +129,8 @@ const TypeB& DualSparseMap<TypeA, TypeB, N>::getValueB(IndexType index) const {
 }
 
 template <typename TypeA, typename TypeB, size_t N>
-std::tuple<const TypeA&, const TypeB&> DualSparseMap<TypeA, TypeB, N>::getValue(IndexType index) const {
+std::tuple<const TypeA&, const TypeB&> DualSparseMap<TypeA, TypeB, N>::getValue(
+    IndexType index) const {
   const IndexType denseIndex = _sparse[index];
   return std::make_tuple(std::cref(_valuesA[denseIndex]), std::cref(_valuesB[denseIndex]));
 }

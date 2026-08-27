@@ -5,9 +5,9 @@
 #endif
 #include <string>
 
+#include "common/file/file_loader.h"
 #include "common/model_loader/model_loader.h"
 #include "common/util/asset_manager.h"
-#include "common/file/file_loader.h"
 
 namespace common {
 

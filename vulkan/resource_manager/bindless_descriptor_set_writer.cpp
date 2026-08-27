@@ -30,9 +30,10 @@ std::unique_ptr<BindlessDescriptorSetWriter> BindlessDescriptorSetWriter::create
 }
 
 UniformTextureHandle BindlessDescriptorSetWriter::writeTexture(
-    VkImageView view, VkImageLayout layout, VkSampler sampler) {
+    Ref<Image>& imageRef, Ref<Sampler>& samplerRef, VkImageView view, VkImageLayout layout,
+    VkSampler sampler) {
   const UniformTextureHandle handle = getNextHandle(_texturesMap.size(), _missingTextures);
-  if (!_texturesMap.insert(*handle)) [[unlikely]] {
+  if (!_texturesMap.insert(*handle, TextureResources{imageRef, samplerRef})) [[unlikely]] {
     throw EngineException(std::format(
         "BindlessDescriptorSetWriter::storeTexture: Failed to insert Texture Handle = {}.",
         *handle));
@@ -107,10 +108,10 @@ void BindlessDescriptorSetWriter::removeTexture(UniformTextureHandle handle) {
 }
 
 UniformBufferHandle BindlessDescriptorSetWriter::writeBuffer(
-    const Buffer& buffer, const BufferMetadata& metadata, std::optional<size_t> size,
-    size_t offset) {
+    Ref<Buffer>& bufferRef, VkBuffer buffer, const BufferMetadata& metadata,
+    std::optional<size_t> size, size_t offset) {
   const UniformBufferHandle handle = getNextHandle(_buffersMap.size(), _missingBuffers);
-  if (!_buffersMap.insert(*handle)) [[unlikely]] {
+  if (!_buffersMap.insert(*handle, BufferResources{bufferRef})) [[unlikely]] {
     throw EngineException(std::format(
         "BindlessDescriptorSetWriter::storeBuffer: Failed to insert Buffer Handle = {}.", *handle));
   }
@@ -123,8 +124,7 @@ UniformBufferHandle BindlessDescriptorSetWriter::writeBuffer(
             offset, range, metadata.size));
   }
 
-  const VkDescriptorBufferInfo bufferInfo = {
-    .buffer = buffer.getVkBuffer(), .offset = offset, .range = range};
+  const VkDescriptorBufferInfo bufferInfo = {.buffer = buffer, .offset = offset, .range = range};
   const VkWriteDescriptorSet write = {
     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
     .dstSet = _descriptorSet.getVkDescriptorSet(),

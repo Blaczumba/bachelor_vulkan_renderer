@@ -102,11 +102,14 @@ void Worker<N, Args...>::workingThread() {
 
 template <size_t N, typename... Args>
 void Worker<N, Args...>::addJob(Job&& job) {
-  std::lock_guard<std::mutex> lock(_mtx);
-  _tasks.push(std::move(job));
-  if (_tasks.size() >= N) {
-    _cv.notify_one();
+  {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _tasks.push(std::move(job));
+    if (_tasks.size() < N) {
+      return;
+    }
   }
+  _cv.notify_one();
 }
 
 }  // namespace lib::thread

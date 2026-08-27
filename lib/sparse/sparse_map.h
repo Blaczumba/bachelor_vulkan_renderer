@@ -64,8 +64,7 @@ Type* SparseMap<Type, N>::tryGetValue(IndexType index) {
 }
 
 template <typename Type, size_t N>
-const Type* SparseMap<Type, N>::tryGetValue(
-    IndexType index) const {
+const Type* SparseMap<Type, N>::tryGetValue(IndexType index) const {
   const IndexType denseIndex = _sparse[index];
   if (denseIndex < _size && _dense[denseIndex] == index) [[likely]] {
     return &_values[denseIndex];

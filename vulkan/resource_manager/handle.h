@@ -25,19 +25,19 @@ struct Handle<Sampler> {
 
 template <>
 struct Handle<Buffer> {
-  using type = GpuBufferHandle;
+  using type = BufferHandle;
   using vulkan_object = VkBuffer;
   using metadata = BufferMetadata;
-  static constexpr size_t size = MAX_GPU_BUFFERS;
+  static constexpr size_t size = MAX_BUFFERS;
   static constexpr std::string_view name = "Buffer";
 };
 
 template <>
 struct Handle<Image> {
-  using type = GpuImageHandle;
+  using type = ImageHandle;
   using vulkan_object = VkImage;
   using metadata = ImageMetadata;
-  static constexpr size_t size = MAX_GPU_IMAGES;
+  static constexpr size_t size = MAX_IMAGES;
   static constexpr std::string_view name = "Image";
 };
 

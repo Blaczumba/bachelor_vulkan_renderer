@@ -16,11 +16,11 @@ constexpr size_t MAX_STAGING_VERTEX_DATA_RESOURCES = 256;
 DEFINE_STRONG_INT(
     StagingVertexDataResourceHandle, lib::SmallestIndex<MAX_STAGING_VERTEX_DATA_RESOURCES>::type);
 
-constexpr size_t MAX_GPU_BUFFERS = 1024;
-DEFINE_STRONG_INT(GpuBufferHandle, lib::SmallestIndex<MAX_GPU_BUFFERS>::type);
+constexpr size_t MAX_BUFFERS = 1024;
+DEFINE_STRONG_INT(BufferHandle, lib::SmallestIndex<MAX_BUFFERS>::type);
 
-constexpr size_t MAX_GPU_IMAGES = 1024;
-DEFINE_STRONG_INT(GpuImageHandle, lib::SmallestIndex<MAX_GPU_IMAGES>::type);
+constexpr size_t MAX_IMAGES = 1024;
+DEFINE_STRONG_INT(ImageHandle, lib::SmallestIndex<MAX_IMAGES>::type);
 
 constexpr size_t MAX_SAMPLERS = 32;
 DEFINE_STRONG_INT(SamplerHandle, lib::SmallestIndex<MAX_SAMPLERS>::type);

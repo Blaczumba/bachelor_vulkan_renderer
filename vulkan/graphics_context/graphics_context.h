@@ -21,8 +21,9 @@
 #include "vulkan/graphics_context/presentation_lib.h"
 #include "vulkan/resource_manager/asset_manager.h"
 #include "vulkan/resource_manager/bindless_descriptor_set_writer.h"
+#include "vulkan/resource_manager/buffer_manager.h"
 #include "vulkan/resource_manager/framebuffer_attachments_manager.h"
-#include "vulkan/resource_manager/gpu_buffer_manager.h"
+#include "vulkan/resource_manager/image_manager.h"
 #include "vulkan/resource_manager/pipeline_manager.h"
 #include "vulkan/resource_manager/sampler_manager.h"
 #include "vulkan/wrapper/command_buffer/command_buffer.h"
@@ -99,9 +100,9 @@ private:
   std::shared_ptr<CommandPool> _singleTimeCommandPool;
 
   std::unique_ptr<AssetManager> _assetManager;
-  std::unique_ptr<GpuBufferManager> _gpuBufferManager;
+  std::unique_ptr<BufferManager> _bufferManager;
+  std::unique_ptr<ImageManager> _imageManager;
   std::unique_ptr<SamplerManager> _samplerManager;
-  std::vector<Ref<Sampler>> _samplerRefs;
   std::unique_ptr<PipelineManager> _pipelineManager;
   std::unique_ptr<FramebufferAttachmentManager> _framebufferAttachmentManager;
 
@@ -133,7 +134,7 @@ private:
   Renderpass _shadowRenderPass;
   AttachmentLayout _shadowAttachmentLayout;
   FramebufferHandle _shadowFramebuffer;
-  GpuImageHandle _shadowMapHandle;
+  Ref<Image> _shadowMapRef;
   Pipeline* _shadowPipeline;
   UniformTextureHandle _shadowHandle;
 
@@ -174,7 +175,7 @@ private:
 
   // Fragment rate shading.
   Pipeline* _fsrPipeline;
-  GpuImageHandle _fsrTextureHandle;
+  Ref<Image> _fsrTextureHandle;
 
   void setup();
 
@@ -193,11 +194,11 @@ private:
 
   void createSyncObjects();
 
-  std::tuple<UniformTextureHandle, GpuImageHandle> getOrLoadTexture(
+  std::tuple<UniformTextureHandle, ImageHandle> getOrLoadTexture(
       std::unordered_map<StagingImageDataResourceHandle,
-                         std::pair<UniformTextureHandle, GpuImageHandle>>& textureCache,
+                         std::pair<UniformTextureHandle, ImageHandle>>& textureCache,
       StagingImageDataResourceHandle textureID, VkFormat format, const CommandBuffer& commandBuffer,
-      float maxSamplerAnisotropy, SamplerHandle samplerHandle);
+      float maxSamplerAnisotropy, Ref<Sampler>& samplerRef);
 
   void loadObjects(std::span<const common::VertexData> sceneData, PipelineHandle pipelineHandle);
 

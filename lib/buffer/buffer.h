@@ -1,10 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include <initializer_list>
 #include <memory>
 #include <span>
 #include <utility>
-#include <initializer_list>
 
 namespace lib {
 
@@ -16,7 +16,8 @@ class Buffer {
 public:
   Buffer() = default;
 
-  explicit Buffer(size_t size) : _buffer(size > 0 ? std::make_unique_for_overwrite<T[]>(size) : nullptr), _size(size) {}
+  explicit Buffer(size_t size)
+    : _buffer(size > 0 ? std::make_unique_for_overwrite<T[]>(size) : nullptr), _size(size) {}
 
   Buffer(size_t size, T value) : Buffer(size) {
     std::fill(_buffer.get(), std::next(_buffer.get(), size), value);

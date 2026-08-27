@@ -98,8 +98,8 @@ std::span<const std::byte> getIndices(
 }
 
 ImageID getOrLoadTexture(
-    std::shared_ptr<SharedData>& sharedData, const FileLoader& fileLoader, std::string_view baseDir, int textureIndex,
-    AssetManager& assetManager,
+    std::shared_ptr<SharedData>& sharedData, const FileLoader& fileLoader, std::string_view baseDir,
+    int textureIndex, AssetManager& assetManager,
     std::unordered_map<std::string, StagingImageDataResourceHandle>& textureIndexMap) {
   if (textureIndex < 0) {
     return ImageID{{}, ""};
@@ -150,17 +150,17 @@ std::string getTextureUri(const tinygltf::Model& model, const tinygltf::Paramete
   return image.uri;
 }
 
-void processNode(common::AssetManager& assetManager, const FileLoader& fileLoader, std::shared_ptr<SharedData>& sharedData,
-                 const tinygltf::Node& node, const glm::mat4& parentTransform,
-                 std::vector<VertexData>& vertexDataList,
+void processNode(common::AssetManager& assetManager, const FileLoader& fileLoader,
+                 std::shared_ptr<SharedData>& sharedData, const tinygltf::Node& node,
+                 const glm::mat4& parentTransform, std::vector<VertexData>& vertexDataList,
                  std::unordered_map<std::string, StagingImageDataResourceHandle>& textureIndexMap,
                  const std::string& baseDir) {
   const glm::mat4 currentTransform = parentTransform * GetNodeTransform(node);
 
   if (node.mesh < 0) {
     for (int childIndex : node.children) {
-      processNode(assetManager, fileLoader, sharedData, sharedData->model.nodes[childIndex], currentTransform,
-                  vertexDataList, textureIndexMap, baseDir);
+      processNode(assetManager, fileLoader, sharedData, sharedData->model.nodes[childIndex],
+                  currentTransform, vertexDataList, textureIndexMap, baseDir);
     }
     return;
   }
@@ -186,9 +186,9 @@ void processNode(common::AssetManager& assetManager, const FileLoader& fileLoade
     ImageID diffuseID, normalID, metallicRoughnessID;
     if (primitive.material >= 0) {
       const tinygltf::Material& mat = sharedData->model.materials[primitive.material];
-      diffuseID =
-          getOrLoadTexture(sharedData, fileLoader, baseDir, mat.pbrMetallicRoughness.baseColorTexture.index,
-                           assetManager, textureIndexMap);
+      diffuseID = getOrLoadTexture(
+          sharedData, fileLoader, baseDir, mat.pbrMetallicRoughness.baseColorTexture.index,
+          assetManager, textureIndexMap);
       metallicRoughnessID = getOrLoadTexture(
           sharedData, fileLoader, baseDir, mat.pbrMetallicRoughness.metallicRoughnessTexture.index,
           assetManager, textureIndexMap);
@@ -230,8 +230,8 @@ void processNode(common::AssetManager& assetManager, const FileLoader& fileLoade
   }
 
   for (int childIndex : node.children) {
-    processNode(assetManager, fileLoader, sharedData, sharedData->model.nodes[childIndex], currentTransform,
-                vertexDataList, textureIndexMap, baseDir);
+    processNode(assetManager, fileLoader, sharedData, sharedData->model.nodes[childIndex],
+                currentTransform, vertexDataList, textureIndexMap, baseDir);
   }
 }
 
@@ -261,8 +261,8 @@ std::vector<VertexData> LoadGltfFromFile(
   for (const tinygltf::Scene& scene : sharedData->model.scenes) {
     for (int nodeIndex : scene.nodes) {
       const tinygltf::Node& node = sharedData->model.nodes[nodeIndex];
-      processNode(assetManager, fileLoader, sharedData, node, glm::mat4(1.0f), vertexDataList, textureIndexMap,
-                  baseDir);
+      processNode(assetManager, fileLoader, sharedData, node, glm::mat4(1.0f), vertexDataList,
+                  textureIndexMap, baseDir);
     }
   }
   return vertexDataList;
@@ -284,8 +284,8 @@ std::vector<VertexData> LoadGltfFromString(
   for (const tinygltf::Scene& scene : sharedData->model.scenes) {
     for (int nodeIndex : scene.nodes) {
       const tinygltf::Node& node = sharedData->model.nodes[nodeIndex];
-      processNode(assetManager, fileLoader, sharedData, node, glm::mat4(1.0f), vertexDataList, textureIndexMap,
-                  baseDir);
+      processNode(assetManager, fileLoader, sharedData, node, glm::mat4(1.0f), vertexDataList,
+                  textureIndexMap, baseDir);
     }
   }
   return vertexDataList;

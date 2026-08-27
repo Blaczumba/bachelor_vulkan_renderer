@@ -29,7 +29,6 @@
 #include "vulkan/resource_manager/asset_manager.h"
 #include "vulkan/resource_manager/bindless_descriptor_set_writer.h"
 #include "vulkan/resource_manager/framebuffer_attachments_manager.h"
-#include "vulkan/resource_manager/gpu_buffer_manager.h"
 #include "vulkan/resource_manager/pipeline_manager.h"
 #include "vulkan/resource_manager/sampler_manager.h"
 #include "vulkan/wrapper/builders/dependency_info_builder.h"
@@ -46,6 +45,7 @@
 #include "vulkan/wrapper/logical_device/logical_device.h"
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/memory_objects/image.h"
+#include "vulkan/wrapper/memory_objects/memory_objects_lib.h"
 #include "vulkan/wrapper/physical_device/physical_device.h"
 #include "vulkan/wrapper/render_pass/render_pass.h"
 #include "vulkan/wrapper/synchronization/fence.h"
@@ -58,12 +58,63 @@ namespace vlkn {
 
 namespace {
 
+void copyBuffer(
+    const VkCommandBuffer commandBuffer, VkBuffer dstBuffer, const BufferMetadata& dstMetadata,
+    VkBuffer srcBuffer, const BufferMetadata& srcMetadata,
+    std::optional<VkDeviceSize> srcSize = std::nullopt, VkDeviceSize srcOffset = 0,
+    VkDeviceSize dstOffset = 0) {
+  if ((dstMetadata.usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) == 0) [[unlikely]] {
+    throw EngineException(
+        "When copying one buffer to other the destination one must have "
+        "VK_BUFFER_USAGE_TRANSFER_DST_BIT specified.");
+  }
+
+  if ((srcMetadata.usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) == 0) [[unlikely]] {
+    throw EngineException(
+        "When copying one buffer to other the source one must have "
+        "VK_BUFFER_USAGE_TRANSFER_SRC_BIT specified.");
+  }
+
+  const VkDeviceSize size = srcSize.value_or(srcMetadata.size);
+  if (srcOffset + size > srcMetadata.size) [[unlikely]] {
+    throw EngineException(std::format(
+        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
+        srcOffset, size, srcMetadata.size));
+  }
+
+  if (dstOffset + size > dstMetadata.size) [[unlikely]] {
+    throw EngineException(std::format(
+        "Trying to access out of range memory. Offset: {}, copied size: {}, buffer size: {}.",
+        dstOffset, size, dstMetadata.size));
+  }
+
+  copyBufferToBuffer(commandBuffer, srcBuffer, dstBuffer, srcOffset, dstOffset, size);
+}
+
+Ref<Buffer> copyStagingToGpuBuffer(
+    const LogicalDevice& logicalDevice, BufferManager* bufferManager,
+    const VkCommandBuffer commandBuffer, const std::tuple<Buffer, BufferMetadata>& stagingBuffer,
+    bool vertexBuffer = true) {
+  auto [buffer, metadata] =
+      BufferBuilder()
+          .withUsage(vertexBuffer == true ?
+                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT :
+                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+          .withSize(std::get<BufferMetadata>(stagingBuffer).size)
+          .buildVertexInputBufferWithMetadata(logicalDevice);
+  copyBuffer(commandBuffer, buffer.getVkBuffer(), metadata,
+             std::get<Buffer>(stagingBuffer).getVkBuffer(),
+             std::get<BufferMetadata>(stagingBuffer));
+  return bufferManager->storeBuffer(std::move(buffer), metadata);
+}
+
 std::pair<Framebuffer, FramebufferMetadata> createFramebufferFromTextures(
-    const Renderpass& renderpass, std::span<const std::tuple<Image, ImageMetadata>> textures) {
+    const Renderpass& renderpass,
+    std::span<const std::tuple<VkImageView, ImageMetadata>> imageViews) {
   FramebufferBuilder builder;
   std::optional<VkExtent2D> extent;
-  for (const auto& [texture, metadata] : textures) {
-    builder.addAttachment(texture.getVkImageView());
+  for (const auto& [imageView, metadata] : imageViews) {
+    builder.addAttachment(imageView);
     if (!extent.has_value()) {
       extent = VkExtent2D{metadata.imageExtent.width, metadata.imageExtent.height};
     } else if (
@@ -202,35 +253,40 @@ Entity GCONTEXT_CLASS loadObject(
     VkCommandBuffer commandBuffer, const common::VertexData& cubeData,
     PipelineHandle pipelineHandle, Image&& image, const ImageMetadata& metadata) {
   Entity entity = _registry.createEntity();
-  Ref<Sampler>& samplerRef = _samplerRefs.emplace_back(_samplerManager->getOrCreateSampler(
+  Ref<Sampler> samplerRef = _samplerManager->getOrCreateSampler(
       *_logicalDevice, SamplerBuilder()
                            .withMaxAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
-                           .buildMetadata()));
+                           .buildMetadata());
+  VkImageView view = image.getVkImageView();
+  Ref<Image> imageRef = _imageManager->storeImage(std::move(image), metadata);
   _registry.addComponent<MaterialComponent>(
       entity,
       MaterialComponent{.diffuse = _bindlessWriter->writeTexture(
-                            image.getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                            imageRef, samplerRef, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             _samplerManager->getVkResource(samplerRef.getHandle())),
                         .pipelineHandle = pipelineHandle});
-
-  _gpuBufferManager->transferImage(std::move(image), metadata);
 
   MeshComponent msh = {.aabb = createAABBfromVertices(cubeData.positions, glm::mat4(1.0f))};
   if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
     AssetManager::VertexData vData = _assetManager->releaseVertexData(cubeData.vertexResourceID);
-    msh.vertexBufferPrimitiveHandle =
-        _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("P")));
-    msh.vertexBufferHandle = _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("PN")));
-    msh.indexBufferHandle = _gpuBufferManager->transferBuffer(std::move(vData.indexBuffer));
+    auto a = _bufferManager->storeBuffer(std::move(std::get<Buffer>(vData.buffers.at("P"))), {});
+    msh.vertexBufferPrimitiveHandle = common::Ref(a.getCounter(), a.getHandle());
+    auto b = _bufferManager->storeBuffer(std::move(std::get<Buffer>(vData.buffers.at("PTN"))), {});
+    msh.vertexBufferHandle = common::Ref(b.getCounter(), b.getHandle());
+    auto c = _bufferManager->storeBuffer(std::move(std::get<Buffer>(vData.indexBuffer)), {});
+    msh.indexBufferHandle = common::Ref(c.getCounter(), c.getHandle());
     msh.indexType = vData.indexType;
   } else if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
     const AssetManager::VertexData& vData = _assetManager->getVertexData(cubeData.vertexResourceID);
-    msh.vertexBufferPrimitiveHandle = _gpuBufferManager->storeBuffer(
-        commandBuffer, vData.buffers.at("P"), GpuBufferManager::BufferType::VERTEX);
-    msh.vertexBufferHandle = _gpuBufferManager->storeBuffer(
-        commandBuffer, vData.buffers.at("PTN"), GpuBufferManager::BufferType::VERTEX);
-    msh.indexBufferHandle = _gpuBufferManager->storeBuffer(
-        commandBuffer, vData.indexBuffer, GpuBufferManager::BufferType::INDEX);
+    auto a = copyStagingToGpuBuffer(
+        *_logicalDevice, _bufferManager.get(), commandBuffer, vData.buffers.at("P"));
+    msh.vertexBufferPrimitiveHandle = common::Ref(a.getCounter(), a.getHandle());
+    auto b = copyStagingToGpuBuffer(
+        *_logicalDevice, _bufferManager.get(), commandBuffer, vData.buffers.at("PTN"));
+    msh.vertexBufferHandle = common::Ref(b.getCounter(), b.getHandle());
+    auto c = copyStagingToGpuBuffer(
+        *_logicalDevice, _bufferManager.get(), commandBuffer, vData.indexBuffer, false);
+    msh.indexBufferHandle = common::Ref(c.getCounter(), c.getHandle());
     msh.indexType = vData.indexType;
   }
   _registry.addComponent(entity, std::move(msh));
@@ -264,7 +320,9 @@ void GCONTEXT_CLASS createDescriptorSets() {
             .withUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
             .withSize(sizeof(UniformBufferLight))
             .buildUniformBufferWithMetadata(*_logicalDevice);
-    _lightHandle = _bindlessWriter->writeBuffer(buffer, metadata);
+    Ref<Buffer> lightBufferRef = _bufferManager->storeBuffer(std::move(buffer), metadata);
+    _lightHandle = _bindlessWriter->writeBuffer(
+        lightBufferRef, _bufferManager->getVkResource(lightBufferRef.getHandle()), metadata);
 
     _ubLight.pos = glm::vec3(15.1891f, 2.66408f, -0.841221f);
     _ubLight.projView = glm::perspective(glm::radians(120.0f), 1.0f, 0.1f, 40.0f);
@@ -356,15 +414,17 @@ void GCONTEXT_CLASS createEnvMappingResources() {
 
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS createShadowResources() {
+  VkImageView view;
   {
     // TODO: Should not be in this function.
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     const VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
     auto [image, metadata] =
         createShadowmap(*_logicalDevice, handle, 1024 * 2, 1024 * 2, VK_FORMAT_D32_SFLOAT);
-    _shadowMapHandle = _gpuBufferManager->transferImage(std::move(image), metadata);
+    view = image.getVkImageView();
+    _shadowMapRef = _imageManager->storeImage(std::move(image), metadata);
   }
-  Ref<Sampler>& samplerRef = _samplerRefs.emplace_back(_samplerManager->getOrCreateSampler(
+  Ref<Sampler> samplerRef = _samplerManager->getOrCreateSampler(
       *_logicalDevice,
       SamplerBuilder()
           .withCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
@@ -373,11 +433,10 @@ void GCONTEXT_CLASS createShadowResources() {
               VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
           .withMinMagFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR)
           .withBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
-          .buildMetadata()));
-  const std::tuple<Image, ImageMetadata>& shadowMapData =
-      _gpuBufferManager->getImage(_shadowMapHandle);
+          .buildMetadata());
+  const ImageMetadata& shadowMetadata = _imageManager->getMetadata(_shadowMapRef.getHandle());
   _shadowHandle = _bindlessWriter->writeTexture(
-      std::get<Image>(shadowMapData).getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      _shadowMapRef, samplerRef, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       _samplerManager->getVkResource(samplerRef.getHandle()));
   _shadowAttachmentLayout.addShadowAttachment(
       VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -385,11 +444,12 @@ void GCONTEXT_CLASS createShadowResources() {
   RenderpassBuilder builder(_shadowAttachmentLayout);
   builder.createSubpass().addOutputAttachment(0);
   _shadowRenderPass = builder.build(*_logicalDevice);
+  const std::tuple<VkImageView, ImageMetadata> shadowMapData = {view, shadowMetadata};
   auto [framebuffer, framebufferMetadata] =
       createFramebufferFromTextures(_shadowRenderPass, std::span(&shadowMapData, 1));
   _shadowFramebuffer = _framebufferAttachmentManager->storeFramebuffer(
-      std::move(framebuffer), framebufferMetadata, {&_shadowMapHandle, 1});  // TODO pass proper
-                                                                             // attachments
+      std::move(framebuffer), framebufferMetadata, {&_shadowMapRef, 1});  // TODO pass proper
+                                                                          // attachments
 }
 
 GCONTEXT_TEMPLATE
@@ -442,27 +502,27 @@ void GCONTEXT_CLASS createSyncObjects() {
 }
 
 GCONTEXT_TEMPLATE
-std::tuple<UniformTextureHandle, GpuImageHandle> GCONTEXT_CLASS getOrLoadTexture(
+std::tuple<UniformTextureHandle, ImageHandle> GCONTEXT_CLASS getOrLoadTexture(
     std::unordered_map<StagingImageDataResourceHandle,
-                       std::pair<UniformTextureHandle, GpuImageHandle>>& textureCache,
+                       std::pair<UniformTextureHandle, ImageHandle>>& textureCache,
     StagingImageDataResourceHandle textureID, VkFormat format, const CommandBuffer& commandBuffer,
-    float maxSamplerAnisotropy, SamplerHandle samplerHandle) {
+    float maxSamplerAnisotropy, Ref<Sampler>& samplerRef) {
   auto [it, inserted] = textureCache.try_emplace(textureID);
 
   if (!inserted) {
-    _gpuBufferManager->increaseRefCount(it->second.second);
     return it->second;
   }
 
   const AssetManager::ImageData& imgData = _assetManager->getImageData(textureID);
   auto [image, metadata] =
       createTexture2D(*_logicalDevice, commandBuffer, imgData, format, maxSamplerAnisotropy);
+  VkImageView view = image.getVkImageView();
+  Ref<Image> imageRef = _imageManager->storeImage(std::move(image), metadata);
   UniformTextureHandle handle = _bindlessWriter->writeTexture(
-      image.getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      _samplerManager->getVkResource(samplerHandle));
-  const GpuImageHandle index = _gpuBufferManager->transferImage(std::move(image), metadata);
+      imageRef, samplerRef, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      _samplerManager->getVkResource(samplerRef.getHandle()));
 
-  const auto result = std::make_tuple(handle, index);
+  const auto result = std::make_tuple(handle, imageRef.getHandle());
   it->second = result;
 
   return result;
@@ -473,30 +533,29 @@ void GCONTEXT_CLASS loadObjects(
     std::span<const common::VertexData> sceneData, PipelineHandle pipelineHandle) {
   const float maxSamplerAnisotropy = _physicalDevice->getMaxSamplerAnisotropy();
 
-  std::
-      unordered_map<StagingImageDataResourceHandle, std::pair<UniformTextureHandle, GpuImageHandle>>
-          textureCache;
+  std::unordered_map<StagingImageDataResourceHandle, std::pair<UniformTextureHandle, ImageHandle>>
+      textureCache;
   textureCache.reserve(sceneData.size());
   SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
   VkCommandBuffer commandBuffer = handle.getVkCommandBuffer();
-  Ref<Sampler>& samplerRef = _samplerRefs.emplace_back(_samplerManager->getOrCreateSampler(
+  Ref<Sampler> samplerRef = _samplerManager->getOrCreateSampler(
       *_logicalDevice, SamplerBuilder()
                            .withMaxAnisotropy(_physicalDevice->getMaxSamplerAnisotropy())
                            .withLodRange(0.0f, VK_LOD_CLAMP_NONE)
-                           .buildMetadata()));
+                           .buildMetadata());
 
   for (const common::VertexData& sceneObject : sceneData) {
     const auto [diffuseHandle, diffuseTextureIndex] =
         getOrLoadTexture(textureCache, sceneObject.diffuseTexture.ID, VK_FORMAT_R8G8B8A8_SRGB,
-                         handle, maxSamplerAnisotropy, samplerRef.getHandle());
+                         handle, maxSamplerAnisotropy, samplerRef);
 
     const auto [normalHandle, normalTextureIndex] =
         getOrLoadTexture(textureCache, sceneObject.normalTexture.ID, VK_FORMAT_R8G8B8A8_UNORM,
-                         handle, maxSamplerAnisotropy, samplerRef.getHandle());
+                         handle, maxSamplerAnisotropy, samplerRef);
 
-    const auto [metallicRoughnessHandle, metallicRoughnessTextureIndex] = getOrLoadTexture(
-        textureCache, sceneObject.metallicRoughnessTexture.ID, VK_FORMAT_R8G8B8A8_UNORM, handle,
-        maxSamplerAnisotropy, samplerRef.getHandle());
+    const auto [metallicRoughnessHandle, metallicRoughnessTextureIndex] =
+        getOrLoadTexture(textureCache, sceneObject.metallicRoughnessTexture.ID,
+                         VK_FORMAT_R8G8B8A8_UNORM, handle, maxSamplerAnisotropy, samplerRef);
 
     Entity e = _registry.createEntity();
     _objects.emplace_back("", e);
@@ -506,21 +565,27 @@ void GCONTEXT_CLASS loadObjects(
     if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
       AssetManager::VertexData vData =
           _assetManager->releaseVertexData(sceneObject.vertexResourceID);
-      msh.vertexBufferHandle =
-          _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("PTNT")));
-      msh.vertexBufferPrimitiveHandle =
-          _gpuBufferManager->transferBuffer(std::move(vData.buffers.at("P")));
-      msh.indexBufferHandle = _gpuBufferManager->transferBuffer(std::move(vData.indexBuffer));
+      // TODO:
+      auto a =
+          _bufferManager->storeBuffer(std::get<Buffer>(std::move(vData.buffers.at("PTNT"))), {});
+      msh.vertexBufferHandle = common::Ref(a.getCounter(), a.getHandle());
+      auto b = _bufferManager->storeBuffer(std::get<Buffer>(std::move(vData.buffers.at("P"))), {});
+      msh.vertexBufferPrimitiveHandle = common::Ref(b.getCounter(), b.getHandle());
+      auto c = _bufferManager->storeBuffer(std::get<Buffer>(std::move(vData.indexBuffer)), {});
+      msh.indexBufferHandle = common::Ref(c.getCounter(), c.getHandle());
       msh.indexType = vData.indexType;
     } else if (_physicalDevice->getPhysicalDeviceType() == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
       const AssetManager::VertexData& vData =
           _assetManager->getVertexData(sceneObject.vertexResourceID);
-      msh.vertexBufferHandle = _gpuBufferManager->storeBuffer(
-          commandBuffer, vData.buffers.at("PTNT"), GpuBufferManager::BufferType::VERTEX);
-      msh.vertexBufferPrimitiveHandle = _gpuBufferManager->storeBuffer(
-          commandBuffer, vData.buffers.at("P"), GpuBufferManager::BufferType::VERTEX);
-      msh.indexBufferHandle = _gpuBufferManager->storeBuffer(
-          commandBuffer, vData.indexBuffer, GpuBufferManager::BufferType::INDEX);
+      auto a = copyStagingToGpuBuffer(
+          *_logicalDevice, _bufferManager.get(), commandBuffer, vData.buffers.at("PTNT"));
+      msh.vertexBufferHandle = common::Ref(a.getCounter(), a.getHandle());
+      auto b = copyStagingToGpuBuffer(
+          *_logicalDevice, _bufferManager.get(), commandBuffer, vData.buffers.at("P"));
+      msh.vertexBufferPrimitiveHandle = common::Ref(b.getCounter(), b.getHandle());
+      auto c = copyStagingToGpuBuffer(
+          *_logicalDevice, _bufferManager.get(), commandBuffer, vData.indexBuffer, false);
+      msh.indexBufferHandle = common::Ref(c.getCounter(), c.getHandle());
       msh.indexType = vData.indexType;
     }
     msh.aabb = createAABBfromVertices(sceneObject.positions, sceneObject.model);
@@ -552,7 +617,7 @@ void GCONTEXT_CLASS createOctreeScene() {
 
 GCONTEXT_TEMPLATE
 void GCONTEXT_CLASS recordShadowCommandBuffer(const CommandBuffer& commandBuffer) {
-  const auto& [image, metadata] = _gpuBufferManager->getImage(_shadowMapHandle);
+  const ImageMetadata& metadata = _imageManager->getMetadata(_shadowMapRef.getHandle());
   commandBuffer.setVieport({
     VkViewport{.width = static_cast<float>(metadata.imageExtent.width),
                .height = static_cast<float>(metadata.imageExtent.height),
@@ -583,14 +648,17 @@ void GCONTEXT_CLASS recordShadowCommandBuffer(const CommandBuffer& commandBuffer
                                 std::span(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
 
     commandBuffer.bindVertexBuffers(
-        {std::get<VkBuffer>(
-            _gpuBufferManager->getBuffer(meshComponent.vertexBufferPrimitiveHandle))},
+        {_bufferManager->getVkResource(
+            BufferHandle(meshComponent.vertexBufferPrimitiveHandle.getHandle()))},
         {0});
 
-    const auto& [indexBuffer, indexBufferMetadata] =
-        _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
-    commandBuffer.bindIndexBuffer(indexBuffer, meshComponent.indexType);
-    commandBuffer.drawIndexed(indexBufferMetadata.size / getIndexSize(meshComponent.indexType), 1);
+    commandBuffer.bindIndexBuffer(
+        _bufferManager->getVkResource(BufferHandle(meshComponent.indexBufferHandle.getHandle())),
+        meshComponent.indexType);
+    commandBuffer.drawIndexed(
+        _bufferManager->getMetadata(BufferHandle(meshComponent.indexBufferHandle.getHandle())).size
+            / getIndexSize(meshComponent.indexType),
+        1);
   }
   commandBuffer.endRenderPass();
 }
@@ -716,16 +784,19 @@ void GCONTEXT_CLASS recordOctreeSecondaryCommandBuffer(
           pipeline->getVkPipelineLayout(), pipeline->getPushConstantVkShaderStageFlags(),
           std::span(reinterpret_cast<const std::byte*>(&pc), sizeof(pc)));
       const auto& meshComponent = _registry.getComponent<MeshComponent>(object->getEntity());
-      const auto& [indexBuffer, indexBufferMetadata] =
-          _gpuBufferManager->getBuffer(meshComponent.indexBufferHandle);
       const VkBuffer vertexBuffers[] = {
-        std::get<VkBuffer>(_gpuBufferManager->getBuffer(meshComponent.vertexBufferHandle))};
+        _bufferManager->getVkResource(BufferHandle(meshComponent.vertexBufferHandle.getHandle()))};
       static constexpr VkDeviceSize offsets[] = {0};
       commandBuffer.bindVertexBuffers(vertexBuffers, offsets);
-      commandBuffer.bindIndexBuffer(indexBuffer, meshComponent.indexType);
+      commandBuffer.bindIndexBuffer(
+          _bufferManager->getVkResource(BufferHandle(meshComponent.indexBufferHandle.getHandle())),
+          meshComponent.indexType);
       vkCmdDrawIndexed(
           commandBuffer.getVkCommandBuffer(),
-          indexBufferMetadata.size / getIndexSize(meshComponent.indexType), 1, 0, 0, 0);
+          _bufferManager->getMetadata(BufferHandle(meshComponent.indexBufferHandle.getHandle()))
+                  .size
+              / getIndexSize(meshComponent.indexType),
+          1, 0, 0, 0);
     }
 
     static constexpr OctreeNode::Subvolume options[] = {
@@ -761,7 +832,9 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
       {_computeDescriptorSet.getVkDescriptorSet()});
   primaryCommandBuffer.dispatchCompute(16, 16);
 
-  const auto& [fsrTexture, fsrTextureMetadata] = _gpuBufferManager->getImage(_fsrTextureHandle);
+  const ImageMetadata& fsrTextureMetadata =
+      _imageManager->getMetadata(_fsrTextureHandle.getHandle());
+  VkImage fsrVkImage = _imageManager->getVkResource(_fsrTextureHandle.getHandle());
   static DependencyInfoBuilder dependencyInfoBuilder;
   dependencyInfoBuilder.clearBuilders()
       .addImageMemoryBarrier()
@@ -770,7 +843,7 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
                     VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR)
       .withLayouts(
           VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR)
-      .withImage(fsrTexture.getVkImage(),
+      .withImage(fsrVkImage,
                  VkImageSubresourceRange{
                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                    .baseMipLevel = 0,
@@ -859,13 +932,14 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
     const MeshComponent& cubeMeshComponent = _registry.getComponent<MeshComponent>(_skyboxEntity);
     const MaterialComponent& cubeMaterialComponent =
         _registry.getComponent<MaterialComponent>(_skyboxEntity);
-    const VkBuffer vertexBuffers[] = {std::get<VkBuffer>(
-        _gpuBufferManager->getBuffer(cubeMeshComponent.vertexBufferPrimitiveHandle))};
+    const VkBuffer vertexBuffers[] = {_bufferManager->getVkResource(
+        BufferHandle(cubeMeshComponent.vertexBufferPrimitiveHandle.getHandle()))};
     static constexpr VkDeviceSize offsets[] = {0};
     secondaryCommandBuffer.bindVertexBuffers(vertexBuffers, offsets);
-    const auto& [indexBuffer, indexBufferMetadata] =
-        _gpuBufferManager->getBuffer(cubeMeshComponent.indexBufferHandle);
-    secondaryCommandBuffer.bindIndexBuffer(indexBuffer, cubeMeshComponent.indexType);
+    secondaryCommandBuffer.bindIndexBuffer(
+        _bufferManager->getVkResource(
+            BufferHandle(cubeMeshComponent.indexBufferHandle.getHandle())),
+        cubeMeshComponent.indexType);
 
     const PushConstantsSkybox pc = {
       .proj = cameraProj,
@@ -881,7 +955,10 @@ void GCONTEXT_CLASS recordCommandBuffer(const glm::mat4& cameraProj, const glm::
         {_bindlessDescriptorSet.getVkDescriptorSet()});
 
     secondaryCommandBuffer.drawIndexed(
-        indexBufferMetadata.size / getIndexSize(cubeMeshComponent.indexType), 1);
+        _bufferManager->getMetadata(BufferHandle(cubeMeshComponent.indexBufferHandle.getHandle()))
+                .size
+            / getIndexSize(cubeMeshComponent.indexType),
+        1);
 
     CHECK_VKCMD(secondaryCommandBuffer.end(), "Failed to vkEndCommandBuffer.");
   });
@@ -919,10 +996,11 @@ GCONTEXT_CLASS GraphicsContext(
           .withQueueFamilyIndex(*_physicalDevice->getQueueFamilyIndices().graphicsFamily)
           .build(*_logicalDevice);
   _assetManager = AssetManager::create(*_logicalDevice, std::launch::async);
-  _gpuBufferManager = GpuBufferManager::create();
+  _bufferManager = BufferManager::create();
+  _imageManager = ImageManager::create();
   _samplerManager = SamplerManager::create();
   _pipelineManager = PipelineManager::create(fileLoader);
-  _framebufferAttachmentManager = FramebufferAttachmentManager::create(*_gpuBufferManager);
+  _framebufferAttachmentManager = FramebufferAttachmentManager::create();
 
   {
     _bindlessDescriptorPool =
@@ -1051,21 +1129,24 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
       .addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT, VK_ATTACHMENT_STORE_OP_DONT_CARE)
       .addFragmentShadingRateAttachment();
 
-  lib::Buffer<GpuImageHandle> attachmentHandles;
+  lib::Buffer<Ref<Image>> attachmentRefs;
+  lib::Buffer<VkImageView> attachmentViews(3);
   {
     SingleTimeCommandBuffer handle(*_singleTimeCommandPool);
     auto [colorAttachment, colorAttachmentMetadata] = createAttachment(
         *_logicalDevice, swapchainImageFormat, msaaSamples, extent, presentResources.numLayers,
         VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-    GpuImageHandle collorAttachmentHandle =
-        _gpuBufferManager->transferImage(std::move(colorAttachment), colorAttachmentMetadata);
+    attachmentViews[0] = colorAttachment.getVkImageView();
+    Ref<Image> collorAttachmentHandle =
+        _imageManager->storeImage(std::move(colorAttachment), colorAttachmentMetadata);
 
     auto [depthAtachment, depthAtachmentMetadata] = createAttachment(
         *_logicalDevice, VK_FORMAT_D24_UNORM_S8_UINT, msaaSamples, extent,
         presentResources.numLayers, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT);
-    GpuImageHandle depthAttachmentHandle =
-        _gpuBufferManager->transferImage(std::move(depthAtachment), depthAtachmentMetadata);
+    attachmentViews[1] = depthAtachment.getVkImageView();
+    Ref<Image> depthAttachmentHandle =
+        _imageManager->storeImage(std::move(depthAtachment), depthAtachmentMetadata);
 
     const VkPhysicalDeviceFragmentShadingRatePropertiesKHR& fsrProperties =
         _physicalDevice->getFragmentShadingRateProperties();
@@ -1080,16 +1161,18 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
             | VK_IMAGE_USAGE_STORAGE_BIT);
     createFsrContents(*_logicalDevice, fsrTexture, fsrTextureMetadata, handle);
 
+    attachmentViews[2] = fsrTexture.getVkImageView();
     _computeDescriptorSetWriter.storeImageStorage(
         fsrTexture.getVkImageView(), VK_IMAGE_LAYOUT_GENERAL);
     _computeDescriptorSetWriter.writeDescriptorSet(
         _logicalDevice->getVkDevice(), _computeDescriptorSet.getVkDescriptorSet());
 
-    GpuImageHandle fsrAttachmentHandle = _fsrTextureHandle =
-        _gpuBufferManager->transferImage(std::move(fsrTexture), fsrTextureMetadata);
+    Ref<Image> fsrAttachmentHandle = _fsrTextureHandle =
+        _imageManager->storeImage(std::move(fsrTexture), fsrTextureMetadata);
 
-    attachmentHandles = lib::Buffer<GpuImageHandle>{
-      collorAttachmentHandle, depthAttachmentHandle, fsrAttachmentHandle};
+    attachmentRefs = lib::Buffer<Ref<Image>>{
+      std::move(collorAttachmentHandle), std::move(depthAttachmentHandle),
+      std::move(fsrAttachmentHandle)};
   }
 
   RenderpassBuilder renderpassBuilder(_attachmentLayout);
@@ -1123,13 +1206,12 @@ void GCONTEXT_CLASS createPresentingResources(const common::PresentResources& pr
   for (VkImageView imageView : imageViews) {
     FramebufferBuilder framebufferBuilder;
     framebufferBuilder.addAttachment(imageView);
-    for (GpuImageHandle attachmentHandle : attachmentHandles) {
-      const auto& [image, metadata] = _gpuBufferManager->getImage(attachmentHandle);
-      framebufferBuilder.addAttachment(image.getVkImageView());
+    for (VkImageView view : attachmentViews) {
+      framebufferBuilder.addAttachment(view);
     }
     Framebuffer framebuffer = framebufferBuilder.build(_renderPass, extent, 1);
     _framebuffers.push_back(_framebufferAttachmentManager->storeFramebuffer(
-        std::move(framebuffer), framebufferBuilder.getMetadata(), attachmentHandles, imageView));
+        std::move(framebuffer), framebufferBuilder.getMetadata(), attachmentRefs, imageView));
   }
 }
 
