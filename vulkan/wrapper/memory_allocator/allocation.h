@@ -8,4 +8,6 @@
 
 using MemoryAllocator = std::variant<VmaWrapper>;
 using MemoryAllocatorPtr = std::unique_ptr<MemoryAllocator>;
-using Allocation = std::variant<std::monostate, VmaAllocation>;
+using Allocation = std::variant<VmaAllocation>;
+using VirtualBlock = std::variant<VmaVirtualBlock>;
+using VirtualAllocation = std::variant<VmaVirtualAllocation>;
