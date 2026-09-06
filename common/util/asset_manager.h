@@ -20,9 +20,6 @@ public:
       std::function<std::tuple<ImageResource, OwnedImageData>(void)>&& imageFunction) = 0;
 
   virtual StagingImageDataResourceHandle loadImageAsync(
-      std::shared_ptr<void> modelPtr, std::span<const std::byte> data) = 0;
-
-  virtual StagingImageDataResourceHandle loadImageAsync(
       std::shared_ptr<void> modelPtr, ImageResource&& imageResource) = 0;
 
   virtual StagingVertexDataResourceHandle loadVertexDataInterleavingAsync(

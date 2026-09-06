@@ -24,6 +24,9 @@
 #include "vulkan/wrapper/util/check.h"
 #include <array>
 #include <future>
+#include <deque>
+#include <span>
+#include "vulkan/resource_manager/reference_counter_with_metadata.h"
 
 class AssetManager : public common::AssetManager {
   AssetManager(const LogicalDevice& logicalDevice, std::launch launchPolicy);
@@ -51,9 +54,6 @@ public:
 
   StagingImageDataResourceHandle loadImageAsync(
       std::function<std::tuple<ImageResource, OwnedImageData>(void)>&& imageFunction) override;
-
-  StagingImageDataResourceHandle loadImageAsync(
-      std::shared_ptr<void> modelPtr, std::span<const std::byte> data) override;
 
   StagingImageDataResourceHandle loadImageAsync(
       std::shared_ptr<void> modelPtr, ImageResource&& imageResource) override;
@@ -89,99 +89,98 @@ private:
   VertexResourceMap _vertexDataResources;
 };
 
-namespace {
-
-struct VirtualBlockInitializer {
-  const size_t size;
-
-  VirtualBlock operator()(VmaAllocator allocator) {
-    const VmaVirtualBlockCreateInfo createInfo{
-      .size = size, .flags = VMA_VIRTUAL_BLOCK_CREATE_LINEAR_ALGORITHM_BIT};
-    VmaVirtualBlock virtualBlock;
-    CHECK_VKCMD(vmaCreateVirtualBlock(&createInfo, &virtualBlock),
-                "Failed to allocate Virtual Block for a staging buffer - VMA.");
-    return virtualBlock;
-  }
-
-  VirtualBlock operator()(auto&&) {
-    return {};
-  }
-};
-
-struct VirtualAllocator {
-  const size_t size;
-  const size_t alignment;
-
-  std::optional<std::tuple<VirtualAllocation, size_t>> operator()(VmaVirtualBlock virtualBlock) {
-    VmaVirtualAllocationCreateInfo createInfo {
-        .size = size,
-        .alignment = alignment
-    };
-
-    VmaVirtualAllocation allocation;
-    VkDeviceSize assignedOffset;
-
-    if (vmaVirtualAllocate(virtualBlock, &createInfo, &allocation, &assignedOffset)
-        != VK_SUCCESS) {
-      return std::nullopt;
-    }
-    return std::make_tuple(allocation, assignedOffset);
-  }
-
-  std::optional<std::tuple<VirtualAllocation, size_t>> operator()(auto&&) {
-    return std::nullopt;
-  }
-};
-
-}
-
-class NewAssetManager : public common::AssetManager {
+class NewAssetManager {
   struct ThreadData {
     std::thread thread;
-    Ref<Buffer> stagingBuffer;
-    VirtualBlock virtualBlock;
-    std::mutex _blockMutex;
-    bool stop = false;
+    struct BufferBlock {
+      Ref<Buffer> stagingBuffer;
+      VirtualBlock virtualBlock;
+    };
+    std::deque<BufferBlock> bufferBlocks; // We want pointer stability.
+    std::optional<BufferBlock> blockToBeReclaimed;
+    std::vector<std::unique_ptr<ReferenceCounterWithMetadata<VirtualAllocation>>> virtualAllocationCounters;
+    std::optional<std::unique_ptr<ReferenceCounterWithMetadata<VirtualAllocation>>>
+        virtualAllocationCouterToBeReclaimed;
   };
 
   NewAssetManager(const LogicalDevice& logicalDevice, BufferManager& bufferManager, uint8_t threadCount, size_t size = 2 * lib::GiB)
-    : _threads(threadCount), _alignment(logicalDevice.getPhysicalDevice().getStagingAlignment()) {
+    : _logicalDevice(logicalDevice), _bufferManager(bufferManager), _threads(threadCount),
+      _bufferSize(size / threadCount), _alignment(logicalDevice.getPhysicalDevice().getStagingAlignment()) {
     for (uint8_t i = 0; i < _threads.size(); i++) {
-      const size_t requestedSize = size / threadCount;
       auto [buffer, metadata] = BufferBuilder()
               .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-              .withSize(requestedSize)
-              .buildStagingBufferWithMetadata(logicalDevice);
-      _threads[i].stagingBuffer = bufferManager.storeBuffer(std::move(buffer), metadata);
-      _threads[i].virtualBlock = std::visit(
-          VirtualBlockInitializer{requestedSize}, logicalDevice.getMemoryAllocator());
+              .withSize(_bufferSize)
+              .buildStagingBufferWithMetadata(_logicalDevice);
+      _threads[i].bufferBlocks.push_back(ThreadData::BufferBlock{
+        .stagingBuffer = bufferManager.storeBuffer(std::move(buffer), metadata),
+        .virtualBlock = VirtualBlock::create(logicalDevice.getMemoryAllocator(), _bufferSize)});
+      _threads[i].virtualAllocationCounters.push_back(
+          std::make_unique<ReferenceCounterWithMetadata<VirtualAllocation>>());
       _threads[i].thread = std::thread(&NewAssetManager::doWork, this, i);
     }
+    _tasks.reserve(256);
   }
 
   void doWork(uint8_t threadIndex) {
     ThreadData& thisThread = _threads[threadIndex];
-    std::function<void(ThreadData&)> task;
+    std::move_only_function<void(const LogicalDevice&, ThreadData&, BufferManager&, size_t, size_t)> task;
+    bool timedOut;
     while (true) {
         {
           std::unique_lock lock(_mutex);
-          _conditionVariable.wait(lock, [this] {
+          timedOut = !_conditionVariable.wait_for(lock, std::chrono::milliseconds(200), [this] {
             return !_tasks.empty() || _stop;
           });
 
-          if (_stop) {
+          if (_stop) [[unlikely]] {
             return;
           }
 
-          task = std::move(_tasks.front());
-          _tasks.pop();
+          if (!timedOut) {
+            task = std::move(_tasks.back());
+            _tasks.pop_back();
+          }
         }
-        task(thisThread);
+
+        if (!timedOut) {
+          task(_logicalDevice, thisThread, _bufferManager, _bufferSize, _alignment);
+        } else {
+          cleanVirtualAllocatorCounters(thisThread);
+          cleanVirtualBlocks(thisThread);
+        }
+    }
+  }
+
+  // Pop from the back of the vector as long as the size of the allocation is 0.
+  void cleanVirtualAllocatorCounters(ThreadData& threadData) {
+    while (threadData.virtualAllocationCounters.size() > 1
+           && threadData.virtualAllocationCounters.back()->size() == 0) {
+      if (!threadData.virtualAllocationCouterToBeReclaimed.has_value()) {
+        threadData.virtualAllocationCouterToBeReclaimed =
+            std::move(threadData.virtualAllocationCounters.back());
+      }
+      threadData.virtualAllocationCounters.pop_back();
+    } 
+  }
+
+  void cleanVirtualBlocks(ThreadData& threadData) {
+    while (threadData.bufferBlocks.size() > 1
+        && threadData.bufferBlocks.front().virtualBlock.empty()) {
+      if (!threadData.blockToBeReclaimed.has_value()) {
+        threadData.blockToBeReclaimed.emplace(std::move(threadData.bufferBlocks.front()));
+      }
+      threadData.bufferBlocks.pop_front();
     }
   }
 
 public:
   static std::unique_ptr<AssetManager> create(const LogicalDevice& logicalDevice);
+
+   enum class LoadState : uint8_t {
+     PENDING,
+     PARTIAL,
+     READY
+   };
 
    struct ImageData {
     uint32_t width;
@@ -189,41 +188,24 @@ public:
     uint32_t mipLevels;
     uint32_t layerCount;
     lib::Buffer<VkBufferImageCopy> copyRegions;
-    std::atomic<bool> ready;
-
-  private:
-    Ref<Buffer> bufferRef;
-
+    std::atomic<uint8_t> residentMips = 0;
+    std::atomic<LoadState> loadState = LoadState::PENDING;
   };
 
-  StagingImageDataResourceHandle loadImageAsync(
-      std::function<std::tuple<ImageResource, OwnedImageData>(void)>&& imageFunction) override {
-      auto promise = std::make_shared<std::promise<int>>();
-      [promise, imageFunction = std::move(imageFunction)](ThreadData& threadData) {
-        const auto [resource, dataPtr] = imageFunction();
-        ImageData imageData = {
-          .stagingBuffer = BufferBuilder()
-                               .withSize(resource.size)
-                               .withUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-                               .buildStagingBufferWithMetadata(_logicalDevice),
-          .width = resource.width,
-          .height = resource.height,
-          .mipLevels = resource.mipLevels,
-          .layerCount = resource.layerCount,
-          .copyRegions = translateToVkBufferImageCopy(resource.subresources),
-        };
-        common::copyData(std::get<BufferMetadata>(imageData.stagingBuffer).getMappedMemoryAsSpan(),
-                         0, std::span(static_cast<const std::byte*>(resource.data), resource.size));
-
-      };
-  }
+  // TODO virtual override
+  std::shared_ptr<std::tuple<Ref<VirtualAllocation>, NewAssetManager::ImageData>> loadImageAsync(
+      std::function<std::tuple<ImageResource, OwnedImageData>(void)>&& imageFunction);
 
 private:
+  const LogicalDevice& _logicalDevice;
+  BufferManager& _bufferManager;
   lib::Buffer<ThreadData> _threads;
+  const size_t _bufferSize;
   const size_t _alignment;
 
   std::mutex _mutex;
   std::condition_variable _conditionVariable;
-  std::queue<std::function<void(ThreadData&)>> _tasks;
+  std::vector<std::move_only_function<void(const LogicalDevice&, ThreadData&, BufferManager&, size_t, size_t)>>
+      _tasks;
   bool _stop = false;
 };

@@ -7,6 +7,7 @@
 #include "vulkan/wrapper/memory_objects/buffer.h"
 #include "vulkan/wrapper/memory_objects/image.h"
 #include "vulkan/wrapper/sampler/sampler.h"
+#include "vulkan/wrapper/memory_allocator/allocation.h"
 
 namespace {
 
@@ -39,6 +40,15 @@ struct Handle<Image> {
   using metadata = ImageMetadata;
   static constexpr size_t size = MAX_IMAGES;
   static constexpr std::string_view name = "Image";
+};
+
+template <>
+struct Handle<VirtualAllocation> {
+  using type = VirtualAllocationHandle;
+  using vulkan_object = std::variant<VmaVirtualAllocation>;
+  using metadata = VirtualAllocationMetadata;
+  static constexpr size_t size = MAX_VIRTUAL_ALLOCATIONS;
+  static constexpr std::string_view name = "VirtualAllocation";
 };
 
 }  // namespace
